@@ -44,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const id=await page.evaluate(()=>Sim.ateliers.ouvert);
    let n=await notifs();
    assert.equal(n.length,1,V+'la création se dit');
-   assert.match(n[0].texte,/Case créée/);assert.equal(n[0].annuler,true,V+'et se défait');
+   assert.match(n[0].texte,/(Case|Équipe) créée/);assert.equal(n[0].annuler,true,V+'et se défait');
    assert.equal(await page.locator('#at-status').isVisible(),false,V+'l’ancienne ligne d’état n’est plus à l’écran');
    await page.locator(`[data-at="${id}"] [data-at-action=supprimer]`).click();await attendre();
    assert.equal(await cases(),n0,V+'supprimée, sans question');
@@ -55,7 +55,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await cases(),n0+1,V+'« Annuler » rend la case');
    n=await notifs();
    assert.deepEqual(n.map(x=>x.annuler),[false]);
-   assert.match(n[0].texte,/^Annulé\s*:\s*Case\s*«/,V+'et le dit, en bref');
+   assert.match(n[0].texte,/^Annulé\s*:\s*(Case|Équipe)\s*«/,V+'et le dit, en bref');
    assert.doesNotMatch(n[0].texte,/sautent/,V+'en bref');
    assert.equal(await page.locator('#btn-retablir').isDisabled(),false,V+'Rétablir, en haut, refait la suppression');
 

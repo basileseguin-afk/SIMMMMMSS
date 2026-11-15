@@ -93,7 +93,7 @@ const OUVERTURE={de:'05:00',a:'23:00'};
     assert.ok(colonnes.sans&&colonnes.arrivage,V+'les deux nouvelles colonnes sont à l’écran');
     assert.ok(colonnes.attend.some(x=>/attend l’ouverture de .+, à 05:00/.test(x)),V+'une ligne nomme la mise à disposition attendue : '+colonnes.attend);
     assert.ok(colonnes.arrivages.length>=3&&colonnes.arrivages.every(x=>/^\d+ arrivages?/.test(x)),V+'les arrivages du jour : '+colonnes.arrivages);
-    assert.match(colonnes.occupation,/^Occupation : la part du temps de présence couverte par le travail du barème\./,V+'la ligne qui explique l’occupation');
+    assert.match(colonnes.occupation,/^Occupation : la part du temps de présence couverte par le travail compté aux temps par vol\./,V+'la ligne qui explique l’occupation');
     await capturer('synthese-colonnes');
 
     /* ---- le planning des équipes : l'unité fictive de 15 services ------------------------------ */

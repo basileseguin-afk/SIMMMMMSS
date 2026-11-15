@@ -59,7 +59,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   casse.contenu['ory-ateliers-v1'].version=99;
   await page.locator('#sauvegarde-import').setInputFiles({name:'casse.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(casse))});
   await page.waitForFunction(()=>document.getElementById('sauvegarde-etat').classList.contains('error'));
-  assert.match(await page.locator('#sauvegarde-etat').textContent(),/ateliers de travail/);
+  assert.match(await page.locator('#sauvegarde-etat').textContent(),/Restauration refusée : équipes — /);
   assert.match(await page.locator('#sauvegarde-etat').textContent(),/Rien n’a été remplacé/);
   assert.deepEqual(await cles(),avant,'un refus ne doit toucher à aucune clé');
   await page.locator('#sauvegarde-import').setInputFiles({name:'autre.json',mimeType:'application/json',buffer:Buffer.from('{"schema":"autre"}')});

@@ -208,7 +208,7 @@
       v.poses = [];
       if (!v.site || !v.site.zones.length) {
         ctx.fillStyle = pal.c('texte2'); ctx.font = G().police(13, false); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('Aucun atelier à montrer : décrivez votre unité dans « Équipes ».', ecran.w / 2, ecran.h / 2);
+        ctx.fillText('Aucune équipe à montrer : décrivez votre unité dans « Équipes ».', ecran.w / 2, ecran.h / 2);
         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
         return;
       }

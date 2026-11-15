@@ -76,7 +76,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 6. Décocher la dernière équipe d'une commande : le site demande s'il faut
   //    retirer le service de son flux — pour tout le flux, ou pour elle seule.
   await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).uncheck();await attendre();
-  assert.match(await page.locator('.mu-q').innerText(),/reste sur le flux de FWI YC/);
+  assert.match(await page.locator('.mu-q').innerText(),/reste sur le chemin de FWI YC/);
   const ecoAvant=(await chemin('AF/YC')).services;
   await page.locator('.mu-q [data-mu-q=seul]').click();await attendre();
   assert.ok(!(await chemin('FWI/YC')).services.includes('prepa'),'FWI YC a sa variante, sans Montage');
@@ -127,7 +127,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(v.type&&v.auto,'une variante partagée');
   await page.locator(`.mu-liste [data-mu-flux-choisir="${v.id}"]`).click();await attendre();
   assert.ok(await page.locator('#mu-flux .gr-noeud[data-noeud="'+apm+'"]').count(),'le diagramme montre le nouveau service');
-  assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/CRL · Business suit ce flux, alors que les Business suivent « Complet »/);
+  assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/CRL · Business suit ce chemin, alors que les Business suivent « Complet »/);
   await page.locator(`[data-mu-flux-nom="${v.id}"]`).fill('Business APM');await page.locator(`[data-mu-flux-nom="${v.id}"]`).press('Tab');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,v.id),'Business APM');
   // TX Business suit aussi ce flux : on la choisit dans la liste.
@@ -158,7 +158,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#mu-flux [data-mu-flux-chemin]').selectOption('AF/BC');await attendre();
   assert.equal(await sous(),'at-chemins');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
-  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le flux « Complet »/);
+  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le chemin « Complet »/);
   assert.equal(await page.locator('#at-parcours .pc-outils').count(),0,'un flux partagé ne se modifie pas ici');
   // … qui montre, sur chaque service, l'équipe qui la prépare, et y mène.
   await page.locator('#at-parcours [data-noeud=prepa]').click();await attendre();

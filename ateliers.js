@@ -12,10 +12,12 @@
   // modules se chargent ; dans la page, ils sont déjà là.
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const P = enNode ? require('./moteur/production.js') : root.MoteurProduction;
-  const PC = enNode ? require('./parcours.js') : root.OrlyParcours;
+  const PC = enNode ? require('./mots/parcours.js') : root.OrlyParcours;
   // L'assemblage du calcul (moteur/journee.js), le même que celui du banc d'essai.
   // Pris à la demande : il relit lui-même ce fichier pour valider une sauvegarde.
   const J = () => (enNode ? require('./moteur/journee.js') : root.OrlyJournee);
+  // Évolution 19 (a) : les messages du moteur, avec les mots de la page (le moteur, lui, ne change pas).
+  const MM = () => (enNode ? require('./mots-moteur.js') : root.OrlyMotsMoteur);
   /** « J », « J-1 », « J+1 » : un décalage en jours, écrit comme on le dit. */
   const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
   /* La plonge lave ce qui revient des vols : son jour se compte depuis
@@ -61,7 +63,7 @@
     if (!o) return {};
     const de = String(o.de ?? ''), fin = String(o.a ?? '');
     P.minutes(de); P.minutes(fin);
-    if (P.minutes(de) === P.minutes(fin)) throw new Error((a.nom || 'Case') + ' : ouverture et fermeture à la même heure.');
+    if (P.minutes(de) === P.minutes(fin)) throw new Error((a.nom || 'Équipe') + ' : ouverture et fermeture à la même heure.');
     return { ouverture: { de, a: fin } };
   }
 
@@ -289,14 +291,14 @@
 
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
-      throw new Error('Fichier d’ateliers v1 attendu.');
+      throw new Error('Fichier d’équipes v1 attendu.');
     // Une case par service et par commande : plusieurs milliers pour une grosse unité.
-    if (brut.ateliers.length > 5000) throw new Error('Maximum 5000 cases.');
+    if (brut.ateliers.length > 5000) throw new Error('Maximum 5000 équipes.');
     const ids = new Set();
     const ateliers = brut.ateliers.map(a => {
-      if (!a || typeof a !== 'object') throw new Error('Atelier invalide.');
+      if (!a || typeof a !== 'object') throw new Error('Équipe invalide.');
       const id = typeof a.id === 'string' && a.id ? a.id : uid();
-      if (ids.has(id)) throw new Error('Identifiant d’atelier en double.');
+      if (ids.has(id)) throw new Error('Identifiant d’équipe en double.');
       ids.add(id);
       const nom = String(a.nom ?? '').slice(0, 160);
       const service = String(a.service ?? '').slice(0, 160);
@@ -544,7 +546,7 @@
           }
         }
       }
-      catch (e) { alerte = 'Ateliers enregistrés non chargés : ' + e.message + ' La copie reste en place.'; }
+      catch (e) { alerte = 'Équipes enregistrées non chargées : ' + e.message + ' La copie reste en place.'; }
       // Un chemin de commande dessiné avant le 24/09 n'avait pas ses cases :
       // chaque service reçoit la sienne, une fois, pour qu'on puisse la régler.
       try {
@@ -552,7 +554,7 @@
         const n = PC.completerCases ? PC.completerCases(this.state, nomDe, this.classes) : 0;
         if (n) {
           this.state = valider(this.state); this.enregistrer();
-          alerte = (n > 1 ? n + ' cases créées' : '1 case créée') + ' dans les chemins déjà dessinés : chaque service a maintenant la sienne, à régler dans « Les chemins » ou « Les cases ».';
+          alerte = (n > 1 ? n + ' équipes créées' : '1 équipe créée') + ' dans les chemins déjà dessinés : chaque service a maintenant la sienne, à régler dans « Les chemins » ou « Les équipes ».';
         }
       } catch (e) { /* un état illisible est déjà signalé plus haut */ }
       // La légumerie, le magasin, la réception : une seule case par poste
@@ -637,6 +639,8 @@
         this.args = null;
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
+      // Ce que la page affiche : les messages du moteur avec ses mots (« équipe », « temps par vol ») ; sans ancien mot, le même objet.
+      this.resultat = MM().avecLesMotsDeLaPage(this.resultat);
       this.reporterEffectifs();
       return this.resultat;
     }
@@ -783,15 +787,15 @@
     choixEffectifEquipe(a, classe) {
       if (a && a.type === 'robot') {
         // Un robot : calculé d'après le barème de son service (évolution 9), ou constant (saisi).
-        const svc = this.robotSuitSonService(a) ? 'calculé s’il a des heures par vol au barème' : 'saisi', v = a.effectif || '';
+        const svc = this.robotSuitSonService(a) ? 'calculé s’il a des temps par vol' : 'saisi', v = a.effectif || '';
         const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
-        return `<label class="${classe || 'at-eff-equipe'}" title="Le travail autour de la ligne (chargement, montage, runner) se compte en heures par vol au barème du service : l’effectif suit alors les vols. La ligne, elle, va toujours à son débit.">Effectif
-        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Calculé d’après le barème')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
+        return `<label class="${classe || 'at-eff-equipe'}" title="Le travail autour de la ligne (chargement, montage, runner) se compte en temps par vol du service : l’effectif suit alors les vols. La ligne, elle, va toujours à son débit.">Effectif
+        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Calculé d’après les temps par vol')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
       }
       if (!a || !(a.type === 'manuel' || a.type === 'appui')) return '';
       const svc = this.effectifConstant(a.service) ? 'constant' : this.effectifImpose(a.service) ? 'effectif imposé' : 'dépend des vols', v = a.effectif || '';
       const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
-      return `<label class="${classe || 'at-eff-equipe'}" title="Le poste de cette équipe dépend-il du nombre de vols ? Par défaut, comme son service (case « Effectif constant »).">Effectif
+      return `<label class="${classe || 'at-eff-equipe'}" title="Le poste de cette équipe dépend-il du nombre de vols ? Par défaut, comme son service (option « Effectif constant »).">Effectif
         <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('impose', 'Dépend des vols, effectif imposé (essai)')}${this.parVols(a.service) ? '' : opt('fixe', 'Constant (saisi)')}</select></label>`;
     }
 
@@ -938,12 +942,12 @@
       // Gardées en minutes, saisies et lues en heures par vol (08/10).
       const ligne = (cie, nom) => `<tr><th scope="row">${esc(nom)}</th><td><input type="number" min="0" step="any" value="${P.versHeures(m[cie]) ?? ''}"
         placeholder="${cie === P.TOUTES ? '—' : (P.heuresFr(m[P.TOUTES]) || '—')}" data-at-champ="appui-h" data-cie="${esc(cie)}" aria-label="Heures par vol : ${esc(nom)}"></td></tr>`;
-      return `<p class="mini-note at-regle">Une équipe <b>hors ${lave ? 'tunnel' : 'flux'}</b> : elle est là à ses heures, ne prépare pas de commande${lave ? ', ne tient pas de tunnel' : ''}
+      return `<p class="mini-note at-regle">Une équipe <b>hors ${lave ? 'tunnel' : 'chemin'}</b> : elle est là à ses heures, ne prépare pas de commande${lave ? ', ne tient pas de tunnel' : ''}
         et ne fait rien attendre. ${constant
           ? 'Son effectif est <b>constant</b> : celui saisi plus haut.'
           : 'Son effectif <b>dépend des vols</b> : heures par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
         Le choix se fait plus haut (« Effectif »), ou pour tout le service : « Effectif constant ».</p>
-        ${constant ? '' : `<div class="at-sous-titre">Heures de travail par vol, pour une personne
+        ${constant ? '' : `<div class="at-sous-titre">Temps par vol, pour une personne
           <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
         <table class="at-appui-cies" data-clavier><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
         <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
@@ -1006,7 +1010,7 @@
 
     enregistrer() {
       try { localStorage.setItem(CLE, JSON.stringify(this.state)); }
-      catch { this.a.notify('Enregistrement impossible : exportez vos ateliers.'); }
+      catch { this.a.notify('Enregistrement impossible : exportez vos équipes.'); }
     }
 
     histoire(refaire) {
@@ -1025,9 +1029,9 @@
   <div class="at-actions">
     <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">${pic('annuler')}<span class="mot-outil">Annuler</span></button>
     <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}<span class="mot-outil">Rétablir</span></button>
-    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">${pic('telecharger')}Cases et chemins</button>
-    <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">${pic('telecharger')}Horaires</button>
-    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur de cases et chemins, ou d’horaires, modifié dans Excel">${pic('importer')}Importer</button>
+    <button class="btn btn-sm" id="at-export" title="Les équipes, ce qu’elles préparent et les chemins, dans un classeur Excel">${pic('telecharger')}Équipes et chemins</button>
+    <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque équipe, dans un petit classeur Excel à modifier puis réimporter">${pic('telecharger')}Horaires</button>
+    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur d’équipes et de chemins, ou d’horaires, modifié dans Excel">${pic('importer')}Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>
@@ -1036,14 +1040,14 @@
 <details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-recap" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
 <section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
-<section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les flux de production"></section>
+<section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre" data-sous="at-equipes">Les cases <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler sa case</span></h3>
+<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler son équipe</span></h3>
 <div class="at-barre" data-sous="at-equipes">
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
   <span class="at-barre-fin"></span>
-  <button class="btn" id="at-new" title="Une case qui ne suit pas une commande : une plonge, une mise à disposition qui sert tout le monde">+ Case hors chemin</button>
+  <button class="btn" id="at-new" title="Une équipe qui ne suit pas une commande : une plonge, une mise à disposition">+ Équipe hors chemin</button>
 </div>
 <div id="at-liste" data-sous="at-equipes"></div>
 <p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
@@ -1052,14 +1056,14 @@
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 <section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
 
-<section class="recap-cases" data-sous="at-recap" aria-label="Récap des cases">
+<section class="recap-cases" data-sous="at-recap" aria-label="Récap des équipes">
   <div class="rc-outils">
-    <label class="rc-cherche">Chercher <input id="rc-filtre" type="search" placeholder="Case, service ou compagnie"></label>
+    <label class="rc-cherche">Chercher <input id="rc-filtre" type="search" placeholder="Équipe, service ou compagnie"></label>
     <span class="rc-fin"></span>
     <button class="btn btn-sm" id="rc-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button>
     <button class="btn btn-sm" id="rc-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button>
-    <button class="btn btn-sm" id="rc-export" title="Toutes les cases dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">${pic('telecharger')}Cases</button>
-    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des cases modifié">${pic('importer')}Importer</button>
+    <button class="btn btn-sm" id="rc-export" title="Toutes les équipes dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">${pic('telecharger')}Équipes</button>
+    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des équipes modifié">${pic('importer')}Importer</button>
     <input id="rc-import" type="file" accept=".xlsx" hidden>
   </div>
   <p class="rc-legende"><span class="rc-deroule unique">tâche unique</span> une seule préparation, de son départ à sa fin ·
@@ -1129,7 +1133,7 @@
         : { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
           debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
       this.changer(() => this.state.ateliers.push(atelier),
-        'Case créée, hors chemin. Donnez-lui son type (plonge, mise à disposition…) ; une case qui prépare se rattache à une commande dans son chemin.');
+        'Équipe créée, hors chemin. Donnez-lui son type (plonge, mise à disposition…) ; une équipe qui prépare se rattache à une commande dans son chemin.');
       this.ouvert = atelier.id; this.rendre();
     }
 
@@ -1169,8 +1173,8 @@
     }
     messageFonte(r) {
       const noms = r.services.map(id => (this.a.services().find(x => x.id === id) || {}).nom || id).join(', ');
-      return noms + ' : ' + r.converties + (r.converties > 1 ? ' cases deviennent ' : ' case devient ')
-        + (r.services.length > 1 ? 'une case par poste' : 'une seule case') + ', partagée par toutes les commandes ; leurs heures sont ses vagues.';
+      return noms + ' : ' + r.converties + (r.converties > 1 ? ' équipes deviennent ' : ' équipe devient ')
+        + (r.services.length > 1 ? 'une équipe par poste' : 'une seule équipe') + ', partagée par toutes les commandes ; leurs heures sont ses vagues.';
     }
 
     /** Changer la nature d'une case (Équipes › Services et équipes : ce que fait le service). */
@@ -1203,8 +1207,8 @@
       switch (quoi) {
         case 'handling-convertir': {
           const r = this.brancherHandling();
-          if (r) this.rendre(r.converties + (r.converties > 1 ? ' cases de handling deviennent' : ' case de handling devient')
-            + ' une seule case Handling, qui charge les vols' + (r.chemins ? ' ; ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.'));
+          if (r) this.rendre(r.converties + (r.converties > 1 ? ' équipes de handling deviennent' : ' équipe de handling devient')
+            + ' une seule équipe Handling, qui charge les vols' + (r.chemins ? ' ; ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.'));
           return;
         }
         case 'chemin': return this.parcours.ouvrir(data.classe, a ? a.service : '');
@@ -1235,7 +1239,7 @@
         // Supprimer se fait tout de suite : la notification porte « Annuler » (08/10).
         case 'supprimer':
           return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); },
-            'Case « ' + a.nom + ' » supprimée : ses commandes sautent cette étape jusqu’à ce qu’on leur en donne une autre.');
+            'Équipe « ' + a.nom + ' » supprimée : ses commandes sautent cette étape jusqu’à ce qu’on leur en donne une autre.');
         case 'dupliquer':
           return this.changer(() => {
             const c = clone(a); c.id = uid(); c.nom = (a.nom + ' (2)').slice(0, 160);
@@ -1304,7 +1308,7 @@
           const sv = data.service, nomSv = (this.a.services().find(x => x.id === sv) || {}).nom || sv;
           let n = 0;
           this.changer(() => { n = PC.separerParCommande(this.state, sv, nomSv, this.classes); }, '');
-          return this.rendre(nomSv + ' : ' + n + (n > 1 ? ' cases, une par commande' : ' case') + ', à l’heure de sa première vague. '
+          return this.rendre(nomSv + ' : ' + n + (n > 1 ? ' équipes, une par commande' : ' équipe') + ', à l’heure de sa première vague. '
             + 'Reprenez leurs effectifs et leurs heures (ou réimportez vos horaires : « Importer »). « Annuler » revient en arrière.');
         }
         case 'avant-fonte': {
@@ -1312,14 +1316,14 @@
           try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
           if (!copie || !copie.etat) return this.rendre('Aucune copie d’avant la fusion.');
           this.changer(() => { this.state = valider(copie.etat); }, 'Organisation d’avant la fusion (' + String(copie.le || '').slice(0, 16).replace('T', ' ') + ') rétablie. La légumerie et le magasin ne sont plus fondus : '
-            + 'utilisez « Passer à une case partagée » dans les points à regarder, si besoin.');
+            + 'utilisez « Passer à une équipe partagée » dans les points à regarder, si besoin.');
           try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
           return this.rendre();
         }
         case 'boutiques': {
           const ids = this.state.ateliers.filter(x => x.type === 'dispo' && x.permanent === false && PC.SERVICES_DISPO.includes(x.service)).map(x => x.id);
           return this.changer(() => { for (const x of this.state.ateliers) if (ids.includes(x.id)) { x.permanent = true; x.ouverture = { de: '07:00', a: '18:00' }; } },
-            ids.length + (ids.length > 1 ? ' cases ouvertes' : ' case ouverte') + ' comme des boutiques, de 07:00 à 18:00, chaque jour. « Annuler » revient aux vagues.');
+            ids.length + (ids.length > 1 ? ' équipes ouvertes' : ' équipe ouverte') + ' comme des mises à disposition, de 07:00 à 18:00, chaque jour. « Annuler » revient aux vagues.');
         }
         case 'fantome-effacer':
           if (this.a.effacerService) this.a.effacerService(data.service, null);
@@ -1756,7 +1760,7 @@
     /** Juste les heures de début : le fichier qu'on retouche le plus souvent. */
     exporterHoraires() {
       const E = root.OrlyEchanges, T = root.OrlyTableur;
-      if (!this.state.ateliers.length) return this.rendre('Aucune case encore : créez les chemins, les horaires suivront.');
+      if (!this.state.ateliers.length) return this.rendre('Aucune équipe encore : créez les chemins, les horaires suivront.');
       const octets = T.ecrireClasseur(E.horairesVersClasseur(this.state,
         { services: this.a.services(), resultat: this.resultat }));
       T.telecharger('ory-horaires-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
@@ -1783,7 +1787,7 @@
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
           this.fondreDispos(etat); etat = valider(etat);
         }
-        this.changer(() => { this.state = etat; }, 'Cases importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases' : ' case')
+        this.changer(() => { this.state = etat; }, 'Équipes importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes' : ' équipe')
           + ', avec les chemins du fichier, à la place des précédents.'
           + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
@@ -1794,7 +1798,7 @@
       if (!changes.length) return this.rendre('Horaires lus : aucune heure ne change.');
       const liste = changes.slice(0, 6).join(', ') + (changes.length > 6 ? '…' : '');
       this.changer(() => { this.state = valider(etat); },
-        'Horaires importés : ' + changes.length + (changes.length > 1 ? ' cases décalées' : ' case décalée') + ' (' + liste + ').');
+        'Horaires importés : ' + changes.length + (changes.length > 1 ? ' équipes décalées' : ' équipe décalée') + ' (' + liste + ').');
     }
 
     /* ---- rendu ------------------------------------------------------- */
@@ -1878,7 +1882,7 @@
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
       for (const f of fantomes) {
         list.unshift('<b>« ' + esc(f.nom) + ' » n’existe plus dans l’unité</b>, mais '
-          + [f.cases ? f.cases + (f.cases > 1 ? ' cases' : ' case') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
+          + [f.cases ? f.cases + (f.cases > 1 ? ' équipes' : ' équipe') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
           + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Équipes › Liste des services →</button>');
@@ -1886,16 +1890,16 @@
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
       const vieilles = this.anciensHandlings();
-      if (vieilles.length) list.unshift('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' cases le préparent' : ' case le prépare')
+      if (vieilles.length) list.unshift('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' équipes le préparent' : ' équipe le prépare')
         + ' commande par commande (ancienne logique).</b> Le handling travaille par vol : il réunit les classes de chaque vol et le charge, le jour J. '
         + '<button class="btn btn-sm btn-play" data-at-action="handling-convertir">Passer au handling par vol</button>');
       const dispos = PC.anciensDispos(this.state);
       if (dispos.length) {
         const noms = [...new Set(dispos.map(a => (this.a.services().find(x => x.id === a.service) || {}).nom || a.service))];
-        list.unshift('<b>' + esc(noms.join(', ')) + ' : ' + dispos.length + (dispos.length > 1 ? ' cases préparent' : ' case prépare')
+        list.unshift('<b>' + esc(noms.join(', ')) + ' : ' + dispos.length + (dispos.length > 1 ? ' équipes préparent' : ' équipe prépare')
           + ' commande par commande.</b> Ces postes travaillent pour toutes les commandes à la fois, par vagues : '
-          + (dispos.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case par poste, et leurs heures de début deviennent ses vagues. '
-          + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une case partagée</button>');
+          + (dispos.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule équipe par poste, et leurs heures de début deviennent ses vagues. '
+          + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une équipe partagée</button>');
       }
       // Un service qui prépare commande par commande (la cuisine…) remplacé par
       // une mise à disposition : on propose de lui rendre une case par commande.
@@ -1907,17 +1911,17 @@
       for (const sv of remplaces) {
         const nomSv = (this.a.services().find(x => x.id === sv) || {}).nom || sv;
         list.unshift('<b>« ' + esc(nomSv) + ' » est une mise à disposition</b> : elle sert toutes les commandes à la fois, comme la légumerie. '
-          + 'Si ce service prépare commande par commande, rendez-lui une case par commande. '
-          + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une case par commande dans ' + esc(nomSv) + '</button>');
+          + 'Si ce service prépare commande par commande, rendez-lui une équipe par commande. '
+          + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une équipe par commande dans ' + esc(nomSv) + '</button>');
       }
       // La légumerie, le magasin, la réception par vagues : ce sont plutôt des
       // boutiques, ouvertes de telle à telle heure (retour d'usage du 28/09).
       const parVagues = this.state.ateliers.filter(a => a.type === 'dispo' && a.permanent === false && PC.SERVICES_DISPO.includes(a.service));
       if (parVagues.length) {
         list.push('<b>' + esc(parVagues.map(a => a.nom).join(', ')) + (parVagues.length > 1 ? ' servent' : ' sert') + ' par vagues.</b> '
-          + 'Ouverts de telle à telle heure, comme une boutique, ils servent à l’instant où l’on vient ; fermés, l’étape d’après attend l’ouverture. '
-          + '<button class="btn btn-sm btn-play" data-at-action="boutiques">Ouvrir comme des boutiques, de 07:00 à 18:00</button> '
-          + '<span class="mini-note">(les heures se changent ensuite dans chaque case, ou dans le récap des cases)</span>');
+          + 'Ouverts de telle à telle heure, ils servent à l’instant où l’on vient ; fermés, l’étape d’après attend l’ouverture. '
+          + '<button class="btn btn-sm btn-play" data-at-action="boutiques">Les ouvrir de 07:00 à 18:00</button> '
+          + '<span class="mini-note">(les heures se changent ensuite dans chaque équipe, ou dans le récap des équipes)</span>');
       }
       let copie = null;
       try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
@@ -2016,8 +2020,8 @@
       const montrer = this.filtre ? this.state.ateliers.filter(a => a.service === this.filtre) : this.state.ateliers;
       const box = document.getElementById('at-liste');
       if (!montrer.length) {
-        box.innerHTML = '<p class="at-vide">Aucune case' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
-          + '. Les cases se créent dans Équipes › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
+        box.innerHTML = '<p class="at-vide">Aucune équipe' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
+          + '. Les équipes se créent dans Équipes › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
           + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Une commande » →</button></p>';
         return;
       }
@@ -2048,7 +2052,7 @@
       const resume = dispo ? 'sert toutes les commandes à la fois'
         : a.type === 'lavage' ? 'lave pour toutes les commandes'
         : handling ? 'charge les vols dans l’ordre des départs' + (nVols ? ' · ' + nVols + ' vol' + (nVols > 1 ? 's' : '') : '')
-        : a.type === 'appui' ? 'hors tunnel, hors flux : présente à ses heures, ne fait rien attendre'
+        : a.type === 'appui' ? 'hors tunnel, hors chemin : présente à ses heures, ne fait rien attendre'
         : !a.lots.length ? 'rattachée à aucune commande'
         : a.lots.map(l => l.map(c => `<button class="at-cmd-chip" data-at-action="chemin" data-classe="${esc(c)}"
             title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')).join(' <span aria-hidden="true">→</span> ');
@@ -2057,7 +2061,7 @@
       const sous = dispo
         ? (a.permanent === false ? (a.vagues.length > 1 ? a.vagues.length + ' vagues : ' : 'une vague : ')
             + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ')
-          : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
+          : a.ouverture ? 'ouverte de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) : 'toujours ouverte')
           + (+a.personnes > 0 ? ' · ' + a.personnes + ' pers. sur la journée' : '')
         : esc(a.debut) + jour + (handling && (a.creneaux || []).length ? '' : ' · ' + a.personnes + ' pers.')
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
@@ -2066,7 +2070,7 @@
           + ' → fin ' + esc(fin) + esc(attente);
 
       const entete = dansChemin
-        ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Case « ${esc(a.nom)} »</strong><span>${sous}</span></div></div>`
+        ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Équipe « ${esc(a.nom)} »</strong><span>${sous}</span></div></div>`
         : `<div class="at-carte-tete">
         <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}" title="La régler dans le chemin d’une de ses commandes">
           <strong>${esc(a.nom)}</strong>
@@ -2096,10 +2100,10 @@
         // Un poste qui ne dépend pas des vols n'a pas d'heures par vol (06/10).
         if (a.type === 'manuel' && !this.dependDesVols(a)) return '';
         const imp = importees(c), propre = (a.minutes || {})[c], hImp = P.heuresFr(imp, 2);
-        return `<label class="at-mm" title="Heures de travail de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${hImp} h).">
+        return `<label class="at-mm" title="Heures de ${esc(P.libelleClasse(c))} dans cette équipe, pour toute sa journée (tous ses vols). Vide : celles de ses temps par vol (${hImp} h).">
           <input type="number" min="0" step="any" value="${P.versHeures(propre) ?? ''}" placeholder="${hImp}" data-at-champ="heures" data-classe="${esc(c)}"
-            aria-label="Heures de travail de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${hImp} h)"><span>h d’une personne / jour</span>${
-          propre != null ? `<small class="at-mm-import">barème ${hImp} h</small>` : ''}</label>`;
+            aria-label="Heures de ${esc(P.libelleClasse(c))} dans cette équipe, pour la journée (d’après ses temps par vol : ${hImp} h)"><span>h d’une personne / jour</span>${
+          propre != null ? `<small class="at-mm-import">temps par vol ${hImp} h</small>` : ''}</label>`;
       };
       // Un robot : le débit de chaque commande, en plateaux par heure ; vide = celui du robot.
       const db = c => {
@@ -2113,7 +2117,7 @@
           <div class="at-lot-tete">
             <b>${i + 1}.</b>
             <span class="at-chips">${l.map(c => `<span class="at-lot-cmd"><button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
-              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))}${pic('croix', 'ico-apres')}</button>${a.type === 'manuel' ? mm(c) : a.type === 'robot' ? db(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
+              title="Retirer ${esc(P.libelleClasse(c))} de cette équipe">${esc(P.libelleClasse(c))}${pic('croix', 'ico-apres')}</button>${a.type === 'manuel' ? mm(c) : a.type === 'robot' ? db(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
             <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
             <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
@@ -2142,7 +2146,7 @@
             <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
             <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option>
             <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option>
-            <option value="appui" ${a.type === 'appui' ? 'selected' : ''}>Hors tunnel, hors flux (ne fait rien attendre)</option></select></label>`}
+            <option value="appui" ${a.type === 'appui' ? 'selected' : ''}>Hors tunnel, hors chemin (ne fait rien attendre)</option></select></label>`}
           ${dispo || o.compact ? '' : `
           <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
@@ -2161,14 +2165,14 @@
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
-          <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), comme une boutique où l’on vient se servir.
-          Ni heures de travail par vol, ni durée : des gens y travaillent, en nombre constant sur la journée.
+          <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…) : on vient s’y servir.
+          Ni temps par vol, ni durée : des gens y travaillent, en nombre constant sur la journée.
           Sur chaque chemin, une seule question : « Besoin de ${esc((services.find(x => x.id === a.service) || {}).nom || a.service)} ? ».</p>
         <div class="at-cases">
           ${(() => { const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
             return `<label class="at-mode-dispo">Quand sert-il ?<select data-at-champ="mode-dispo">
-              <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>Ouvert tous les jours, de … à … (comme une boutique)</option>
-              <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>Toujours ouvert — personne ne l’attend</option>
+              <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>Ouverte de … à …, chaque jour</option>
+              <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>Toujours ouverte — personne ne l’attend</option>
               <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>À heures fixes (vagues)</option></select></label>
             ${this.champPersonnesJournee(a)}
             ${mode === 'boutique' ? `<div class="at-pause at-ouverture">
@@ -2251,10 +2255,10 @@
               toutes.</p>
           </span></details></div>
         <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de commande : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>`}` : `
-        <div class="at-sous-titre">Ce que cette case prépare, dans l’ordre</div>
+        <div class="at-sous-titre">Ce que cette équipe prépare, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une préparation. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
           sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
-        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette case ne prépare rien.</p>'}
+        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne prépare rien.</p>'}
         <div class="at-actions-lot">
           <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter une commande à préparer">
             <option value="">+ Ajouter une commande à préparer…</option>
@@ -2269,13 +2273,13 @@
           <summary>Arrêt programmé${a.pauses.length ? ' (' + a.pauses.length + ')' : ''}</summary>
           <p class="mini-note">Les pauses de l’équipe sont déjà prises en compte plus haut. Ici, c’est autre chose :
             une plage où <b>rien ne tourne</b> — machine à l’arrêt, local fermé, créneau de nettoyage.
-            À une heure fixe, pas après un temps de travail.</p>
+            À une heure fixe, pas après une durée.</p>
           ${pauses}
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="pause-ajouter">+ Arrêt</button></div>
         </details>`}
 
         <div class="at-actions-lot at-bas">${dansChemin
-          ? `<button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer la case</button>`
+          ? `<button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer l’équipe</button>`
           : `<button class="btn btn-play btn-sm" data-at-action="fermer">Terminé</button>
           <button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer</button>`}
         </div>
@@ -2397,7 +2401,7 @@
             <td><label class="chk chk-mini"><input type="checkbox" data-at-champ="echange" data-cie="${esc(cie)}" ${echange.has(cie) ? 'checked' : ''}
               aria-label="${esc(cie)} : chaque avion déchargé puis chargé dans la même visite"><span class="sr-only">Échange</span></label></td>` : ''),
           tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' + (h24 ? '<th scope="col">Véhicule</th><th scope="col" title="Chaque avion déchargé puis chargé dans la même visite, quelle que soit son escale">Échange</th>' : '') })}
-        <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
+        <p class="mini-note at-regle">Des durées, pas des temps par vol : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.${h24 ? ` Escale : de l’arrivée de l’avion à son départ (vide : pas de
           déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.
           Échange : chaque avion de la compagnie est déchargé puis chargé dans la même visite, quelle que soit son escale,
@@ -2602,9 +2606,9 @@
       const arrets = a.arretsLigne || [];
       return `<div class="at-ligne-robot">
         <div class="at-sous-titre">La ligne robot</div>
-        <p class="mini-note">${a.lignePropre ? 'Cette case a <b>sa propre machine</b> : elle tourne en même temps que les autres robots.'
+        <p class="mini-note">${a.lignePropre ? 'Cette équipe a <b>sa propre machine</b> : elle tourne en même temps que les autres robots.'
           : autres.length ? `Une seule ligne, partagée avec ${autres.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : un lot à la fois, quelle que soit l’équipe.`
-          : 'Une seule ligne : une autre case Robot de ce service (l’équipe de l’après-midi…) la partagera.'}
+          : 'Une seule ligne : une autre équipe Robot de ce service (l’équipe de l’après-midi…) la partagera.'}
           ${attend >= 1 ? ` <b>Attend la ligne ${Math.round(attend)} min</b> aujourd’hui.` : ''}</p>
         <label class="chk chk-mini"><input type="checkbox" data-at-champ="ligne-propre" ${a.lignePropre ? 'checked' : ''}> Un second robot : sa propre ligne</label>
         ${arrets.map((x, i) => `<div class="at-pause">
@@ -2646,16 +2650,16 @@
           <b>${Number.isFinite(d) ? min(d) : 'rien ne se fait sans personne'}</b>${n === 1 ? ' : seule, la personne fait les deux, l’un après l’autre'
             : k ? ` : ${k} au ${esc(nom(f))}, ${n - k} au ${esc(nom(a.service))} — le poste le plus lent donne le rythme` : ''}.</p>`;
         if (seules.length) bilan += `<p class="mini-note">À la chaîne pour ${esc(enChaine.map(c => PC.etiquette(c)).join(', ') || 'aucune')} ;
-          ${esc(nom(a.service))} seul pour ${esc(seules.map(c => PC.etiquette(c)).join(', '))} (leur flux ne passe pas par ${esc(nom(f))}).</p>`;
+          ${esc(nom(a.service))} seul pour ${esc(seules.map(c => PC.etiquette(c)).join(', '))} (leur chemin ne passe pas par ${esc(nom(f))}).</p>`;
         const ailleurs = this.state.ateliers.filter(x => x.service === f && x.id !== a.id && (x.lots || []).some(l => l.some(c => enChaine.includes(c))));
         if (ailleurs.length) bilan += `<p class="mini-note at-alerte">Encore dans ${ailleurs.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : ces commandes y sont faites à part.
           Rechoisissez « à la chaîne » pour les en retirer.</p>`;
       }
       return `<div class="at-fusion">
-        <label class="at-mode-dispo">À la chaîne avec l’étape d’avant ?<select data-at-champ="fusion" aria-label="Cette case fait-elle aussi l’étape d’avant, à la chaîne ?">
-          <option value="" ${f ? '' : 'selected'}>Non — l’étape d’avant a sa propre case</option>
-          ${[...avant].map(s => `<option value="${esc(s)}" ${s === f ? 'selected' : ''}>Oui, avec ${esc(nom(s))} : ${esc(nom(s))} + ${esc(nom(a.service))} dans cette case</option>`).join('')}</select></label>
-        <span class="mini-note">Pour les commandes de cette case dont le flux passe par cette étape (les autres : son étape seule) : une personne dresse et passe le plat, l’autre monte directement.
+        <label class="at-mode-dispo">À la chaîne avec l’étape d’avant ?<select data-at-champ="fusion" aria-label="Cette équipe fait-elle aussi l’étape d’avant, à la chaîne ?">
+          <option value="" ${f ? '' : 'selected'}>Non — l’étape d’avant a sa propre équipe</option>
+          ${[...avant].map(s => `<option value="${esc(s)}" ${s === f ? 'selected' : ''}>Oui, avec ${esc(nom(s))} : ${esc(nom(s))} + ${esc(nom(a.service))} dans cette équipe</option>`).join('')}</select></label>
+        <span class="mini-note">Pour les commandes de cette équipe dont le chemin passe par cette étape (les autres : son étape seule) : une personne dresse et passe le plat, l’autre monte directement.
           Seule, une personne fait les deux ; à plusieurs, elles se répartissent entre les deux postes.</span>
         ${bilan}</div>`;
     }
@@ -2734,7 +2738,7 @@
       const cases = this.state.ateliers.slice()
         .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
         .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
-      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez vos équipes (Équipes › Services et équipes).</p>'; return; }
+      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune équipe pour l’instant : décrivez vos équipes (Équipes › Services et équipes).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
       const jours = (v, attrs, plonge) => `<select ${attrs}>${(plonge ? [-1, 0, 1] : [0, -1, -2, -3]).map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${jourEcrit(j)}</option>`).join('')}</select>`;
       // Une commande mène à son chemin, ouvert sur le service de cette case :
@@ -2745,7 +2749,7 @@
         if (a.type === 'dispo') {
           const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
           return `<select class="rc-mode" data-at-champ="mode-dispo" aria-label="Quand ${esc(a.nom)} sert-il ?">
-            <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>boutique (de … à …)</option>
+            <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>mise à disposition (de … à …)</option>
             <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>toujours ouvert</option>
             <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>${(a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'par vagues'}</option></select>`;
         }
@@ -2764,7 +2768,7 @@
           if (a.permanent !== false && a.ouverture) return `<span class="rc-vagues"><span class="rc-vague">de
             <input ${HEURE} value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de" aria-label="Heure d’ouverture de ${esc(a.nom)}"> à
             <input ${HEURE} value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a" aria-label="Heure de fermeture de ${esc(a.nom)}"></span></span>
-            <span class="mini-note">chaque jour, comme une boutique : ouvert, on est servi ; fermé, on attend l’ouverture</span>`;
+            <span class="mini-note">chaque jour : ouverte, on est servi ; fermée, on attend l’ouverture</span>`;
           if (a.permanent !== false) return '<span class="mini-note">sert toutes les commandes, à tout moment</span>';
           return `<span class="rc-vagues">${(a.vagues || []).map((v, i) => `<span class="rc-vague"><b>${i + 1}</b>
             ${jours(v.jour, `data-at-champ="vague-jour" data-index="${i}" aria-label="Jour de la vague ${i + 1}"`)}
@@ -2811,7 +2815,7 @@
       const lignes = cases.map(a => {
         const vue = calc.get(a.id) || {};
         const tete = a.service !== service ? (service = a.service, `<tr class="rc-svc"><th colspan="6"><span>${I ? I.ico(I.icoService(a.service, nomSvc(a.service))) : ''}${esc(nomSvc(a.service))}</span>
-          <small>${this.state.ateliers.filter(x => x.service === a.service).length} case${this.state.ateliers.filter(x => x.service === a.service).length > 1 ? 's' : ''}</small></th></tr>`) : '';
+          <small>${this.state.ateliers.filter(x => x.service === a.service).length} équipe${this.state.ateliers.filter(x => x.service === a.service).length > 1 ? 's' : ''}</small></th></tr>`) : '';
         return tete + `<tr data-at="${esc(a.id)}" class="rc-case">
           <th scope="row"><button class="lien-discret" data-at-action="ouvrir" title="Régler « ${esc(a.nom)} » dans sa fiche">${esc(a.nom)}</button>
             <small>${a.type === 'dispo' ? 'mise à disposition' + (+a.personnes > 0 ? ' · ' + a.personnes + ' pers.' : '') : a.type === 'lavage' ? 'plonge' : a.type === 'handling' ? 'handling' : a.type === 'robot' ? 'robot · ' + a.personnes + ' pers.' : a.personnes + ' pers.'}</small></th>
@@ -2827,9 +2831,9 @@
       const actif = box.contains(document.activeElement) && document.activeElement.dataset.atChamp ? document.activeElement : null;
       const cle = actif && { at: actif.closest('[data-at]')?.dataset.at, champ: actif.dataset.atChamp, index: actif.dataset.index };
       box.innerHTML = `<div class="rc-scroll"><table class="rc-table" data-clavier>
-        <thead><tr><th scope="col">Case</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
+        <thead><tr><th scope="col">Équipe</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
           <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin</th></tr></thead>
-        <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune case ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
+        <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune équipe ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
       const apres = box.querySelector('.rc-scroll');
       if (apres) { apres.scrollTop = haut; apres.scrollLeft = gauche; }
       if (cle && cle.at) {
@@ -2843,7 +2847,7 @@
       const E = root.OrlyEchanges, T = root.OrlyTableur;
       T.telecharger('ory-cases-' + new Date().toISOString().slice(0, 10) + '.xlsx',
         T.ecrireClasseur(E.recapCasesVersClasseur(this.state, { services: this.a.services(), classes: this.classes, resultat: this.resultat })));
-      this.rendre('Cases exportées : modifiez jour, heure, personnes ou commandes dans Excel, puis « Importer ».');
+      this.rendre('Équipes exportées : modifiez jour, heure, personnes ou commandes dans Excel, puis « Importer ».');
     }
 
     async importerRecapCases(e) {
@@ -2851,9 +2855,9 @@
       try {
         const E = root.OrlyEchanges, T = root.OrlyTableur;
         const r = E.classeurVersRecapCases(await T.lireFichier(f, 4 * 1024 * 1024), this.state, { services: this.a.services(), classes: this.classes });
-        if (!r.changes.length) return this.rendre('Cases lues : rien ne change.');
+        if (!r.changes.length) return this.rendre('Équipes lues : rien ne change.');
         const liste = r.changes.slice(0, 6).join(', ') + (r.changes.length > 6 ? '…' : '');
-        this.changer(() => { this.state = valider(r.etat); }, 'Cases importées : ' + r.changes.length + (r.changes.length > 1 ? ' cases changées' : ' case changée') + ' (' + liste + ').');
+        this.changer(() => { this.state = valider(r.etat); }, 'Équipes importées : ' + r.changes.length + (r.changes.length > 1 ? ' équipes changées' : ' équipe changée') + ' (' + liste + ').');
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }

@@ -19,6 +19,8 @@ const T = require('../tableur.js');
 const E = require('../echanges.js');
 const EC = require('../echanges-calage.js');
 const N = require('../calage-nuage.js');
+// Évolution 19 (a) : le classeur écrit les phrases du moteur avec les mots de la version 1.
+const MM = require('../mots-moteur.js');
 const F = require('./calage-17-fictif.cjs');
 
 const n2 = x => Math.round(x * 100) / 100, n3 = x => Math.round(x * 1000) / 1000;
@@ -97,14 +99,14 @@ test('le nuage d’une ligne : un point par jour appris, la courbe retenue et ce
   assert.ok(xaTrace.every(q => q[1] >= N.py(d, d.y.max) - 0.05 && q[1] <= N.py(d, 0) + 0.05), 'aucun point hors du cadre');
   // L'ordonnée se règle sur les jours et la courbe retenue, pas sur « × a ».
   assert.equal(N.donnees(jours, { modele: 'constante', nom: 'constante', parametres: { c: 11 } }, N.AUCUNE).y.max, 15);
-  assert.match(N.decrire(d), /^62 jours appris : le travail au barème va de 3,5 à 20,3 ETP, les heures réelles de [\d,]+ à [\d,]+ ETP\. La courbe retenue \(« puissance »\) et celle de « × a », apprises sans le mois de octobre 2026 : ses 31 jours, laissés de côté, sont marqués d’un cercle vide\.$/);
+  assert.match(N.decrire(d), /^62 jours appris : le travail compté aux temps par vol va de 3,5 à 20,3 ETP, les heures réelles de [\d,]+ à [\d,]+ ETP\. La courbe retenue \(« puissance »\) et celle de « × a », apprises sans le mois de octobre 2026 : ses 31 jours, laissés de côté, sont marqués d’un cercle vide\.$/);
   assert.match(N.decrire(tous), /apprises sur tous les jours\.$/);
   assert.ok(svg.includes('aria-label="' + N.decrire(d).replace(/’/g, '’') + '"'));
   // Un point survolé : le plus proche, à 24 px au plus ; ses chiffres.
   const i = d.points.findIndex(x => x.cote), x = N.px(d, d.points[i].x), y = N.py(d, d.points[i].y), proche = N.plusProche(d, x, y);
   assert.ok(Math.abs(N.px(d, d.points[proche].x) - x) < 1e-9 && Math.abs(N.py(d, d.points[proche].y) - y) < 1e-9);
   assert.equal(N.plusProche(d, 5, 5), -1, 'loin de tout point : rien');
-  assert.match(N.bulle(d, i), /^\d\d\/10\/2026 : [\d,]+ ETP au barème, [\d,]+ ETP réels ; la formule retenue en prévoit [\d,]+, « × a » [\d,]+ — laissé de côté \(le mois de octobre 2026\) : les courbes sont apprises sans lui\.$/);
+  assert.match(N.bulle(d, i), /^\d\d\/10\/2026 : [\d,]+ ETP aux temps par vol, [\d,]+ ETP réels ; la formule retenue en prévoit [\d,]+, « × a » [\d,]+ — laissé de côté \(le mois de octobre 2026\) : les courbes sont apprises sans lui\.$/);
   assert.match(N.bulle(tous, i), /« × a » [\d,]+\.$/);
   // Une ligne retenue en « × a » : une seule courbe. Une constante : une droite à plat, et « × a » à côté.
   const plonge = N.donnees(COMP.lignes.find(l => l.nom === 'Plonge').jours, ligne('Plonge').retenu, N.AUCUNE);
@@ -127,23 +129,23 @@ test('la feuille « Calage » : les colonnes d’avant à leur place, puis p, la
   // Le modèle retenu de la cuisine : a, p, sa formule, son statut ; pas de rythme (à la limite).
   const cuisine = ligne('Cuisine'), r = rangee('Cuisine', 'retenu');
   assert.deepEqual([r[col('Modèle')], r[col('a')], r[col('p')], r[col('Formule')], r[col('Statut')], r[col('Ce que dit la formule')], r[col('Rythme des jours chargés')], r[col('Raison du statut')]],
-    ['puissance', n3(cuisine.retenu.parametres.a), 0.4, cuisine.retenu.formule, 'à la limite', 'besoin', null, cuisine.statut.raison]);
+    ['puissance', n3(cuisine.retenu.parametres.a), 0.4, MM.dire(cuisine.retenu.formule), 'à la limite', 'besoin', null, MM.dire(cuisine.statut.raison)]);
   // Le candidat « puissance » : p et sa plage, sa formule, son choix ; un candidat accepté et pas retenu dit pourquoi.
   const c = cuisine.candidats.find(x => x.modele === 'puissance'), rc = rangee('Cuisine', 'candidat', 'puissance');
-  assert.deepEqual([rc[col('p')], rc[col('p min')], rc[col('p max')], rc[col('Formule')], rc[col('Choix')]], [c.parametres.p.tous, c.parametres.p.min, c.parametres.p.max, c.formule, 'retenu']);
+  assert.deepEqual([rc[col('p')], rc[col('p min')], rc[col('p max')], rc[col('Formule')], rc[col('Choix')]], [c.parametres.p.tous, c.parametres.p.min, c.parametres.p.max, MM.dire(c.formule), 'retenu']);
   for (const x of cuisine.candidats.filter(y => y.accepte && y.choix !== 'retenu')) assert.equal(rangee('Cuisine', 'candidat', x.nom)[col('Choix')], x.choix, x.modele);
   // Un plancher ou un plafond : son c dans la colonne « Constante », sa formule à côté.
   const plancher = cuisine.candidats.find(x => x.modele === 'plancher'), rp = rangee('Cuisine', 'candidat', 'plancher');
-  assert.deepEqual([rp[col('Constante')], rp[col('Formule')]], [n3(plancher.parametres.c.tous), plancher.formule]);
+  assert.deepEqual([rp[col('Constante')], rp[col('Formule')]], [n3(plancher.parametres.c.tous), MM.dire(plancher.formule)]);
   // La plonge : l'effectif mis, son rythme des jours chargés ; le bureau, hors simulation : ni statut ni rythme.
   const plonge = ligne('Plonge'), rpl = rangee('Plonge', 'retenu'), rb = rangee('Bureau', 'retenu');
   assert.deepEqual([rpl[col('Statut')], rpl[col('Ce que dit la formule')], rpl[col('Rythme des jours chargés')], rpl[col('Raison du statut')]],
-    ['en sur-effectif', 'effectif mis', n3(plonge.rythmeCharge.rythme), plonge.statut.raison]);
-  assert.deepEqual([rb[col('Formule')], rb[col('Statut')], rb[col('Rythme des jours chargés')]], [ligne('Bureau').retenu.formule, null, null]);
+    ['en sur-effectif', 'effectif mis', n3(plonge.rythmeCharge.rythme), MM.dire(plonge.statut.raison)]);
+  assert.deepEqual([rb[col('Formule')], rb[col('Statut')], rb[col('Rythme des jours chargés')]], [MM.dire(ligne('Bureau').retenu.formule), null, null]);
   // Sans borne, la raison le dit à la suite de celle du statut.
   const sansBorne = { ...RAPPORT, lignes: RAPPORT.lignes.map(l => (l.nom === 'Plonge' ? { ...l, rythmeCharge: { rythme: null, jours: 4, raison: 'pas de borne : 4 jours dans le dixième des jours les plus chargés, il en faut 5' } } : l)) };
   const f2 = EC.calageVersClasseur({ comparaison: COMP, reel: R.controler(R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv(CSV) }])), rapport: sansBorne }, {}).find(x => x.nom === 'Calage').lignes;
-  assert.equal(f2.find(l => l[0] === 'Plonge' && l[2] === 'retenu')[col('Raison du statut')], plonge.statut.raison + ' ; pas de borne : 4 jours dans le dixième des jours les plus chargés, il en faut 5');
+  assert.equal(f2.find(l => l[0] === 'Plonge' && l[2] === 'retenu')[col('Raison du statut')], MM.dire(plonge.statut.raison) + ' ; pas de borne : 4 jours dans le dixième des jours les plus chargés, il en faut 5');
 });
 
 test('la feuille « Période » : « Statut » et « Besoin au plus (ETP) », à droite ; sans statut, le classeur d’avant', () => {

@@ -12,7 +12,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const T = require('../tableur.js');
-const E = require('../echanges.js');
+// L'outil et la page écrivent le classeur avec la copie du module commun, aux mots de la version 1 (évolution 19 a).
+const E = require('../mots/echanges.js');
 const UI = require('../ui-model.js');
 const PE = require('../moteur/periode.js');
 const REF = require('./non-regression.attendu.json');

@@ -12,7 +12,7 @@ const nav=require('./nav.cjs'),F=require('./plan-rejoue-fictif.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
-const PHRASE='Les ateliers et le nombre de personnes sont ceux de vos réglages ; le moteur calcule combien de personnes sont dans chaque état ; leurs déplacements sont une mise en scène.';
+const PHRASE='Les équipes et le nombre de personnes sont ceux de vos réglages ; le moteur calcule combien de personnes sont dans chaque état ; leurs déplacements sont une mise en scène.';
 const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{});
 
 (async()=>{

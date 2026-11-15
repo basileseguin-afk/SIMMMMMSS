@@ -35,7 +35,7 @@
       intro: 'Les avions qui partent aujourd’hui, et si leurs repas sont prêts à temps.' },
     ateliers: { titre: 'Les équipes',
       intro: 'Une commande par compagnie et par classe : par où elle passe, et quelle équipe la prépare.' },
-    reglages: { titre: 'Les temps de travail',
+    reglages: { titre: 'Les temps par vol',
       intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },
     plan: { titre: 'La journée',
       intro: 'La journée en direct : qui travaille, qui attend, ce qui circule, où ça coince.' },
@@ -139,10 +139,10 @@
     const r = e.reglages || {};
     const donnees = [ligne('vols', 'Vols')];
     const c = e.chemins || {};
-    const chemins = [{ texte: 'Flux : ' + pluriel(c.flux || 0, 'flux', 'flux') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
+    const chemins = [{ texte: 'Chemins : ' + pluriel(c.flux || 0, 'chemin', 'chemins') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
       etat: c.flux ? 'fait' : 'afaire' }];
     if (c.sansChemin) chemins.push({ texte: pluriel(c.sansChemin, 'commande') + ' sans chemin', etat: 'afaire' });
-    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Heures de travail'), ligne('unite', 'Unité')];
+    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Temps par vol'), ligne('unite', 'Unité')];
     const reglages = [
       { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
         + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },

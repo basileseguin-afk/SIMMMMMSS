@@ -30,8 +30,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     ['donnees','chemins','organisation','reglages','resultats'],'cinq parties, dans l’ordre du travail');
   // Chaque tuile dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
   assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple/);
-  assert.match(await tuile('organisation').textContent(),/Heures de travail : chiffres d’exemple/);
-  assert.match(await tuile('chemins').textContent(),/Flux : \d+ flux/,'la tuile des chemins compte les flux');
+  assert.match(await tuile('organisation').textContent(),/Temps par vol : chiffres d’exemple/);
+  assert.match(await tuile('chemins').textContent(),/Chemins : \d+ chemin/,'la tuile des chemins compte les flux');
   assert.match(await tuile('donnees').locator('.acc-etat').textContent(),/provisoire/);
   assert.match(await tuile('organisation').textContent(),/aucune équipe/);
   assert.match(await tuile('reglages').textContent(),/Repas prêts 45 min avant le départ/);
@@ -114,14 +114,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 4. Les outils suivent la page : ceux des cases dans Chemins et Équipes, pas dans les résultats.
   await nav.aller(page,'at-chemins');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
-  assert.match(await page.locator('#at-export').textContent(),/Cases et chemins/,'un export dit ce qu’il contient');
+  assert.match(await page.locator('#at-export').textContent(),/Équipes et chemins/,'un export dit ce qu’il contient');
   await nav.aller(page,'mu-services');
   assert.equal(await page.locator('#at-export').isVisible(),true,'et dans la fiche des services');
   await nav.aller(page,'at-planning');
   assert.equal(await page.locator('#at-export').isVisible(),false,'pas d’import ni d’export des cases dans les résultats');
   assert.equal(await page.locator('#at-planning').isVisible(),true);
   await nav.aller(page,'rg-simulation');
-  assert.match(await page.locator('#rg-export').textContent(),/Temps de travail/);
+  assert.match(await page.locator('#rg-export').textContent(),/Temps par vol/);
 
   // 5. Au clavier : les flèches passent d'une page à l'autre de la partie.
   await nav.aller(page,'j-comparer');

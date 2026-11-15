@@ -375,9 +375,9 @@ function sectionFantomes(){
   const f=servicesFantomes();if(!f.length)return '';
   const pl=(n,s,p)=>n+' '+(n>1?p:s);
   return '<section class="svc-bloc svc-alerte" data-svc-fantomes><h3>'+(f.length>1?f.length+' services supprimés sont encore utilisés':'Un service supprimé est encore utilisé')+'</h3>'
-    +'<p class="mini-note">Ils ne sont plus dans l’unité, mais des cases ou des chemins y passent encore : ce sont eux qui font les alertes. '
+    +'<p class="mini-note">Ils ne sont plus dans l’unité, mais des équipes ou des chemins y passent encore : ce sont eux qui font les alertes. '
     +'Effacez-les partout, ou faites passer leur travail dans un autre service.</p><ul class="svc-liste">'
-    +f.map(x=>'<li><b>'+escapeHTML(x.nom)+'</b><span>'+[x.cases?pl(x.cases,'case','cases'):'',x.chemins?pl(x.chemins,'chemin','chemins'):''].filter(Boolean).join(' · ')+'</span>'
+    +f.map(x=>'<li><b>'+escapeHTML(x.nom)+'</b><span>'+[x.cases?pl(x.cases,'équipe','équipes'):'',x.chemins?pl(x.chemins,'chemin','chemins'):''].filter(Boolean).join(' · ')+'</span>'
       +'<button class="btn btn-sm svc-danger" type="button" data-svc-effacer="'+escapeHTML(x.id)+'">Effacer partout</button>'
       +'<label>ou passer dans <select data-svc-vers="'+escapeHTML(x.id)+'">'+optionsServices(null)+'</select></label>'
       +'<button class="btn btn-sm" type="button" data-svc-remplacer="'+escapeHTML(x.id)+'">Passer</button>'
@@ -398,7 +398,7 @@ function sectionLocaux(){
   const l=locauxDuPlan();if(!l.length)return '';
   const racines=servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('');
   return '<section class="svc-bloc"><h3>Zones du plan qui ne sont pas des services</h3>'
-    +'<p class="mini-note">Un <b>local</b> dessiné sur le plan est une annotation : il n’apparaît ni dans les chemins ni dans les cases. '
+    +'<p class="mini-note">Un <b>local</b> dessiné sur le plan est une annotation : il n’apparaît ni dans les chemins ni dans les équipes. '
     +'Pour y faire travailler une équipe, faites-en un service (une zone de production, rattachée à un service du plan dont elle reprend les liens).</p><ul class="svc-liste">'
     +l.map(z=>{const pere=parentProbable(z.nom);return '<li><b>'+escapeHTML(z.nom)+'</b><label>Rattachée à <select data-svc-parent="'+escapeHTML(z.id)+'">'
       +racines.replace('value="'+escapeHTML(pere)+'"','value="'+escapeHTML(pere)+'" selected')+'</select></label>'
@@ -436,7 +436,7 @@ function effacerService(id,vers){
   const nom=nomDeService(id);
   const f=servicesFantomes().find(x=>x.id===id)||{cases:0,chemins:0};
   const cible=vers?nomDeService(vers):'';
-  const quoi=[f.cases?f.cases+(f.cases>1?' cases':' case'):'',f.chemins?f.chemins+(f.chemins>1?' chemins':' chemin'):''].filter(Boolean).join(' et ');
+  const quoi=[f.cases?f.cases+(f.cases>1?' équipes':' équipe'):'',f.chemins?f.chemins+(f.chemins>1?' chemins':' chemin'):''].filter(Boolean).join(' et ');
   // Tout de suite : la notification porte « Annuler » (08/10).
   reaffecterService(id,vers,nom.replace(/ \(supprimé\)$/,''));
   const detail=quoi?' ('+quoi+')':'';
@@ -463,7 +463,7 @@ function suivreNomsServices(){
   if(!touchees.length)return;
   Sim.ateliers.changer(()=>{for(const [aid,n] of touchees){const a=Sim.ateliers.state.ateliers.find(x=>x.id===aid);
     if(a)a.nom=OrlyParcours.nomLibre({ateliers:Sim.ateliers.state.ateliers.filter(x=>x!==a)},n);}},
-    touchees.length+(touchees.length>1?' cases suivent':' case suit')+' le nouveau nom de leur service.');
+    touchees.length+(touchees.length>1?' équipes suivent':' équipe suit')+' le nouveau nom de leur service.');
 }
 /* Un refus de saisie se lit sous son champ, tel qu'il est à l'écran (étape 7) ; sans lui, en notification. */
 function refuserAuChamp(el,raison){const C=window.OrlyChamps,ici=C&&el?C.retrouver(el):null;if(ici)C.refuser(ici,raison);else toast(raison);}
@@ -492,7 +492,7 @@ function initServices(){
     const nom=f.elements.nom.value.trim();if(!nom){refuserAuChamp(f.elements.nom,'Donnez un nom au service.');return;}
     if(servicesDisponibles().some(x=>x.nom.toLowerCase()===nomLisible(nom).toLowerCase())){refuserAuChamp(f.elements.nom,'« '+nom+' » existe déjà : choisissez un autre nom.');return;}
     const id=Sim.editor.nouveauService(nom,f.elements.parent.value,!f.elements.parent.value);
-    if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les cases et le barème.');renderServices();
+    if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les équipes et les temps par vol.');renderServices();
       const i=box.querySelector('[data-svc-nom="'+CSS.escape(id)+'"]');if(i)i.closest('tr').classList.add('svc-nouveau-ligne');}
   });
   box.addEventListener('change',e=>{
@@ -514,7 +514,7 @@ function initServices(){
     if(rp){const sel=box.querySelector('[data-svc-vers="'+CSS.escape(rp.dataset.svcRemplacer)+'"]');if(sel&&sel.value)effacerService(rp.dataset.svcRemplacer,sel.value);return;}
     const cv=e.target.closest('[data-svc-convertir]');
     if(cv){const id=cv.dataset.svcConvertir,sel=box.querySelector('[data-svc-parent="'+CSS.escape(id)+'"]');
-      if(Sim.editor.convertir(id,sel?sel.value:null)){toast('« '+Sim.editor.state.zones.find(z=>z.id===id).nom+' » est maintenant un service : il apparaît dans les chemins et les cases.');renderServices();}
+      if(Sim.editor.convertir(id,sel?sel.value:null)){toast('« '+Sim.editor.state.zones.find(z=>z.id===id).nom+' » est maintenant un service : il apparaît dans les chemins et les équipes.');renderServices();}
       return;}
     const ra=e.target.closest('[data-svc-rattacher]');
     if(ra){const id=ra.dataset.svcRattacher,sel=box.querySelector('[data-svc-orpheline="'+CSS.escape(id)+'"]');
@@ -833,7 +833,7 @@ function renderControles(){
   box.innerHTML=(corriger.length
       ?'<div class="fc-alerte grave"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger dans l’organisation</b>'+liste(corriger)
         +'<button type="button" class="lien-fort" data-page="at-chemins">Ouvrir les chemins →</button></div>'
-      :'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a sa case, chaque case sait quoi préparer.</p>')
+      :'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a son équipe, chaque équipe sait quoi préparer.</p>')
     +(journee.length?'<details class="fc-alerte"><summary><b>'+journee.length+(journee.length>1?' choses que la journée montre':' chose que la journée montre')
         +'</b> — retards, postes trop courts, attentes : ce sont des résultats, pas des erreurs de saisie.</summary>'+liste(journee)
         +'<button type="button" class="lien-fort" data-page="j-chiffres">Voir les résultats →</button></details>':'')
@@ -2079,10 +2079,10 @@ function initCalage(){
     verifierTravail:(services,k)=>facteurDesServices(services,k).refus,
     appliquerTravail:(services,k)=>{
       const r=facteurDesServices(services,k);if(r.refus)return{refus:r.refus};
-      changerTravail(r,services.join(', ')+' : travail × '+String(Math.round(k*1000)/1000).replace('.',',')+' au barème.');
+      changerTravail(r,services.join(', ')+' : travail × '+String(Math.round(k*1000)/1000).replace('.',',')+' aux temps par vol.');
       return{avant:r.avant};
     },
-    annulerTravail:avant=>changerTravail(OrlyCalagePeriode.annulerFacteur(etatDuTravail(),avant),'Le barème d’avant le calage est rétabli.'),
+    annulerTravail:avant=>changerTravail(OrlyCalagePeriode.annulerFacteur(etatDuTravail(),avant),'Les temps par vol d’avant le calage sont rétablis.'),
     journee:journeeCalee,
     // Le rejeu à effectif imposé (évolution 11 f) : les équipes, pour lire un planning ; la période à rejouer, et sa signature.
     ateliers:()=>(Sim.ateliers?Sim.ateliers.state.ateliers:[]),
@@ -2690,7 +2690,7 @@ function renderReglageSpml(){
     +'<summary aria-label="Comment les repas spéciaux se comptent par cabine">?</summary>'
     +'<span class="aide-corps">Le travail des repas spéciaux se compte par vol, comme le reste : un vol entre dans la commande SPML d’un service '
     +'s’il a au moins un repas spécial d’une cabine que ce service prépare. Les cabines viennent du programme de vols (colonnes nb_SPML_BC, '
-    +'nb_SPML_PC, nb_SPML_YC) ; un vol qui n’a que nb_SPML compte pour tous les services. Le barème reste par vol.</span></details></div>'
+    +'nb_SPML_PC, nb_SPML_YC) ; un vol qui n’a que nb_SPML compte pour tous les services. Les temps restent comptés par vol.</span></details></div>'
     +'<p class="mini-note">'+(detailles?detailles+(detailles>1?' vols du programme détaillent leurs':' vol du programme détaille ses')+' repas spéciaux par cabine.'
       :'Le programme de vols ne détaille pas les repas spéciaux par cabine : tous les vols comptent pour tous les services.')+'</p>'
     +(services.length?'<div class="table-scroll"><table class="svc-table spml-table"><thead><tr><th scope="col">Service</th>'
@@ -2819,11 +2819,11 @@ function majCompare() {
  * ==========================================================================*/
 const PARTIES = [
   { cle:'orly-plan-v3',     nom:'plan et zones',           valider:r => window.OrlyPlan.validatePlan(r, Sim.editor.originals) },
-  { cle:'ory-ateliers-v1',  nom:'ateliers de travail',     valider:r => window.OrlyAteliers.valider(r) },
-  { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
+  { cle:'ory-ateliers-v1',  nom:'équipes',                 valider:r => window.OrlyAteliers.valider(r) },
+  { cle:'orly-flows-v1',    nom:'liens entre services',    valider:r => window.OrlyFlows.validate(r) },
   // Le barème est une étude à part entière : une sauvegarde qui l'oublierait
   // ramènerait les valeurs de démonstration sans le dire.
-  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
+  { cle:'ory-modele-v1',    nom:'temps par vol et règles de poste', valider:r => window.OrlyReglages.valider(r) },
   // Où l'on a posé les services dans les diagrammes : une préférence, mais un
   // tracé soigné qu'on ne veut pas refaire.
   { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) },
@@ -2885,7 +2885,7 @@ async function restaurerSauvegarde(e) {
     }
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
     // Une vraie question : la restauration remplace tout, et ne se défait pas.
-    if (!await OrlyNotif.demander('Le plan, les équipes, les flux et les réglages enregistrés dans ce navigateur seront remplacés par ceux de la sauvegarde ('
+    if (!await OrlyNotif.demander('Le plan, les équipes, les chemins et les réglages enregistrés dans ce navigateur seront remplacés par ceux de la sauvegarde ('
       + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + ').'
       // Une sauvegarde d'avant, sans les règles d'import Winrest : elles reviennent aux défauts, et la question le dit.
       + (aRetirer.includes(CLE_WINREST) ? ' Elle n’a pas de règles d’import Winrest : les règles d’import Winrest par défaut reviennent.' : '')
@@ -3185,7 +3185,8 @@ function exporter() {
     schemaVersion: '0.5', modele: 'ateliers', source: dataSource,
     instant: Sim.vue && !Sim.vue.vide ? hh(Sim.vue.t) : null,
     indicateurs: r && r.indicateurs ? r.indicateurs : null,
-    anomalies: r ? r.anomalies || [] : [],
+    // Les anomalies telles que le moteur les rend (évolution 19 a) : l'export ne change pas, la page les affiche avec ses mots.
+    anomalies: r ? (r.anomalies || []).map(OrlyMotsMoteur.duMoteur) : [],
     departs: departsSuivis().map(d => ({
       id: d.id, compagnie: d.cie, depart: hh(d.depart), echeance: hh(d.echeance),
       fin: hh(d.fin), retard: d.retard,
@@ -3234,7 +3235,7 @@ function installerCentreReglages() {
         '« '+a.nom+' » : '+MoteurProduction.libelleClasse(cls)+(n==null?' reprend le débit du robot.':' à '+n+' plateaux/h.'));},
     casesImportees:(par,debits)=>Sim.ateliers&&Sim.ateliers.changer(()=>{for(const a of Sim.ateliers.state.ateliers){
       if(par[a.id]!=null)a.personnes=par[a.id];
-      if(debits[a.id]){a.debit=debits[a.id].debit;if(Object.keys(debits[a.id].debits).length)a.debits=debits[a.id].debits;else delete a.debits;}}},'Cases mises à jour d’après le fichier.'),
+      if(debits[a.id]){a.debit=debits[a.id].debit;if(Object.keys(debits[a.id].debits).length)a.debits=debits[a.id].debits;else delete a.debits;}}},'Équipes mises à jour d’après le fichier.'),
     histoireCases:refaire=>Sim.ateliers&&Sim.ateliers.histoire(refaire),
     // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
     // que le classeur du barème propose de renseigner, service par service.
@@ -3483,7 +3484,7 @@ function migrerRobot(){
   at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
-    +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Équipes › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
+    +'. Une seule équipe Robot les prépare, à régler (débit par commande, personnes) dans Équipes › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
 }
 
 
@@ -3527,7 +3528,7 @@ function migrerSansQrDl(){
     n=avant!==JSON.stringify(st);
     st.migrations=[...(st.migrations||[]),'sans-qr-dl'];
   },'');
-  if(n)at.rendre('QR et DL retirées de la simulation : leurs cases cochées et leurs réglages sont partis. « Annuler » revient en arrière.');
+  if(n)at.rendre('QR et DL retirées de la simulation : leurs équipes cochées et leurs réglages sont partis. « Annuler » revient en arrière.');
 }
 
 /* L'armement (retour d'usage du 02/10 : « intègre pour moi l'armement sur tous
@@ -3582,7 +3583,7 @@ function migrerArmement(){
     n=OrlyParcours.integrerArmement(st,armements.map(s=>s.id),handlings);
     st.migrations=[...(st.migrations||[]),'armement-handling','handling-seul'];
   },'');
-  at.rendre(armements.map(s=>s.nom).join(', ')+' : intégré à '+n+(n>1?' chemins':' chemin')+', en branche à part, relié seulement au handling ; une case par compagnie. « Annuler » revient en arrière.');
+  at.rendre(armements.map(s=>s.nom).join(', ')+' : intégré à '+n+(n>1?' chemins':' chemin')+', en branche à part, relié seulement au handling ; une équipe par compagnie. « Annuler » revient en arrière.');
 }
 
 /* Le handling, là où l'on regarde les vols : s'il n'y en a pas, un vol est
@@ -3598,22 +3599,22 @@ function renderHandlingVols() {
     // Des cases de handling d'avant : une par commande, qui préparent comme un
     // service. Elles se convertissent en une seule case qui charge les vols.
     html = '<p><b>Vos chemins passent déjà par le handling, mais avec l’ancienne logique</b> : '
-      + vieilles.length + (vieilles.length > 1 ? ' cases le préparent' : ' case le prépare') + ' commande par commande ('
+      + vieilles.length + (vieilles.length > 1 ? ' équipes le préparent' : ' équipe le prépare') + ' commande par commande ('
       + escapeHTML(vieilles.slice(0, 3).map(a => a.nom).join(', ')) + (vieilles.length > 3 ? '…' : '') + '). '
-      + 'Le handling travaille par vol : ' + (vieilles.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case Handling, '
+      + 'Le handling travaille par vol : ' + (vieilles.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule équipe Handling, '
       + 'qui réunit les classes de chaque vol et le charge, le jour J. Vos chemins ne changent pas.</p>'
       + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Passer au handling par vol</button>'
-      + '<span class="mini-note">Leurs heures de travail ne servent plus : le handling a une durée par vol et par compagnie. Annuler (Organisation) revient en arrière.</span></p>';
+      + '<span class="mini-note">Leurs temps par vol ne servent plus : le handling a une durée par vol et par compagnie. Annuler (Organisation) revient en arrière.</span></p>';
   } else if (!h.length) {
     html = '<p><b>Pas de handling pour l’instant.</b> Un vol est donc « prêt » dès que ses commandes le sont. '
       + 'Le handling réunit les classes d’un même vol et le charge, dans l’ordre des départs, le jour J : '
       + 'le vol doit être chargé à son départ.</p>'
       + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Mettre en place le handling</button>'
-      + '<span class="mini-note">Crée la case Handling et l’ajoute au bout de chaque chemin. « Annuler » (en haut de page) le retire.</span></p>';
+      + '<span class="mini-note">Crée l’équipe Handling et l’ajoute au bout de chaque chemin. « Annuler » (en haut de page) le retire.</span></p>';
   } else {
     const a = h[0], vus = (r.vols || []).length;
     const sans = (at.state.parcours || []).filter(p => Array.isArray(p.noeuds) && !p.noeuds.includes(a.service)).length;
-    html = '<p><b>Handling : « ' + escapeHTML(a.nom) + ' »</b> — ' + (h.length > 1 ? h.length + ' cases · ' : '')
+    html = '<p><b>Handling : « ' + escapeHTML(a.nom) + ' »</b> — ' + (h.length > 1 ? h.length + ' équipes · ' : '')
       + (a.handling24h ? '24 h/24, en tournées qui chargent puis déchargent, ' : 'arrive à ' + escapeHTML(a.debut) + ' (jour J), ' + a.simultanes + (a.simultanes > 1 ? ' vols' : ' vol') + ' à la fois, ')
       + 'pas avant ' + String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',') + ' h avant le départ. '
       + (vus ? '<b>' + (k.volsAHeure || 0) + ' vol' + (k.volsAHeure > 1 ? 's' : '') + ' chargé' + (k.volsAHeure > 1 ? 's' : '') + ' à l’heure sur ' + vus + '</b>'
@@ -3630,9 +3631,9 @@ function initHandlingVols() {
     const b = e.target.closest('[data-vh-action]'); if (!b) return;
     if (b.dataset.vhAction === 'brancher') {
       const r = Sim.ateliers.brancherHandling();
-      if (r) toast(r.converties ? r.converties + (r.converties > 1 ? ' anciennes cases deviennent' : ' ancienne case devient') + ' une case Handling par vol'
+      if (r) toast(r.converties ? r.converties + (r.converties > 1 ? ' anciennes équipes deviennent' : ' ancienne équipe devient') + ' une équipe Handling par vol'
           + (r.chemins ? ', ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.')
-        : (r.cree ? 'Case Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
+        : (r.cree ? 'Équipe Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
       renderFlights();
     } else if (b.dataset.vhAction === 'regler') {
       Sim.ateliers.ouvert = b.dataset.vhAtelier;
@@ -3786,7 +3787,7 @@ const etape=(nom,fn)=>{try{fn();}catch(e){pannes.push(nom+' : '+(e&&e.message||e
 etape('plan',()=>{chargerZones();construirePlan();});
 etape('vols',()=>chargerVols(SAMPLE));
 etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
-etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
+etape('équipes et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); etape('robot',migrerRobot); etape('armement',migrerArmement);
 etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});
 etape('planche retour',()=>{initPlanche();renderPlanche();});

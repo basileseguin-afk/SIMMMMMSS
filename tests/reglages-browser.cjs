@@ -31,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
   const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
     .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
-  assert.equal(ordre[0],'Heures de travail par vol, pour une personne','il vient en premier');
+  assert.equal(ordre[0],'Temps par vol, pour une personne','il vient en premier');
   assert.ok(!ordre.includes('Ancien moteur de démonstration'),'l’ancien moteur a disparu');
   // Les temps de travail, et eux seuls : la comparaison est un onglet de « La journée ».
   assert.ok(!ordre.includes('Comparer deux essais'),'la comparaison n’encombre plus les temps de travail');
@@ -137,7 +137,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const fichier=path.join(dossier,'bareme.xlsx');
   await dl[0].saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
-  const bareme=T.feuille(feuilles,'Barème');
+  const bareme=T.feuille(feuilles,'Temps par vol');
   const ligne=(svc,cie,cab)=>bareme.lignes.findIndex(l=>String(l[0]).toUpperCase()===svc&&l[1]===cie&&l[2]===cab);
   assert.equal(bareme.lignes[0][3],'Heures par vol');
   assert.equal(bareme.lignes[ligne('CUISINE','*','BC')][3],1.1667,'la valeur commune est dans le classeur, en heures');

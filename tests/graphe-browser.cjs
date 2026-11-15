@@ -30,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // à elle, avec ses propres cases : ici TX · Business, copié de son flux.
   assert.ok(await page.locator('.pc-cmds [data-pc-action=cmd]').count()>=20,'une ligne par commande');
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  assert.match(await page.locator('.pc-flux-bandeau').textContent(),/TX · Business suit le flux « Complet »/);
+  assert.match(await page.locator('.pc-flux-bandeau').textContent(),/TX · Business suit le chemin « Complet »/);
   await page.locator('.pc-creer-plus>summary').click();
   assert.equal(await page.locator('[data-pc-champ=creer-depuis]').inputValue(),'complet','son modèle est proposé');
   await page.locator('[data-pc-action=creer]').click();await attendre();
@@ -81,7 +81,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.fill(mm,'0.5');await page.dispatchEvent(mm,'change');await attendre(300);
   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).minutes,kase.id),{'TX/BC':30});
   assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),30,'le calcul prend celles de la case');
-  assert.match(await page.locator(`${fiche} .at-mm`).textContent(),new RegExp('barème '+importees+' h'));
+  assert.match(await page.locator(`${fiche} .at-mm`).textContent(),new RegExp('temps par vol '+importees+' h'));
 
   // 3. « Dupliquer pour… » TX · Économie, dans les mêmes cases, à la suite de TX BC.
   await page.locator('.pc-dup>summary').click();

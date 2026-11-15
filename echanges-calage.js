@@ -17,6 +17,8 @@
   const T = () => (enNode ? require('./tableur.js') : root.OrlyTableur);
   const R = () => (enNode ? require('./moteur/reel.js') : root.OrlyReel);
   const C = () => (enNode ? require('./moteur/calage-periode.js') : root.OrlyCalagePeriode);
+  // Évolution 19 (a) : les phrases du moteur (une formule, un statut) s'écrivent avec les mots de la version 1.
+  const MM = () => (enNode ? require('./mots-moteur.js') : root.OrlyMotsMoteur);
   const n2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 100) / 100);
   const n3 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 1000) / 1000);
   const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
@@ -185,7 +187,7 @@
       lignes.push(rangee({ ...id, rang: 'calage du travail', modele: 'facteur de travail', accepte: l.accepte ? 'oui' : 'non',
         parametres: [n3(l.facteur), n3(Math.min(...l.semaines.map(s => s.k))), n3(Math.max(...l.semaines.map(s => s.k))), null, null, null, null, null, null],
         semaines: n3(l.erreur), regles: REGLES.map(([k]) => (l.regles[k] ? l.regles[k].raison : null)), n: l.jours,
-        validation: l.validation + ' — heures supp : ' + fr(l.erreurMoteur) + ' h par jour avec le barème, ' + fr(l.erreur) + ' h avec le facteur' }));
+        validation: l.validation + ' — heures supp : ' + fr(l.erreurMoteur) + ' h par jour avec les temps par vol, ' + fr(l.erreur) + ' h avec le facteur' }));
     }
     const u = rapport.unite || {};
     // Avec une validation par mois, le total aussi en validation par semaines (correction 12) : les deux se lisent ensemble.
@@ -243,7 +245,9 @@
    */
   function calageVersClasseur(x, ctx = {}) {
     const c = x.comparaison;
-    return [lisezMoi(c, ctx, x.reel), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
+    const feuilles = [lisezMoi(c, ctx, x.reel), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
+    const dire = MM().dire;
+    return feuilles.map(f => ({ ...f, lignes: f.lignes.map(l => l.map(v => (typeof v === 'string' ? dire(v) : v))) }));
   }
 
   const api = { avecSigmaUnite, avecBesoin, avecPrevuCale, calageVersClasseur };

@@ -128,7 +128,7 @@ const critiques=page=>page.evaluate(()=>{
      assert.ok(x.max?x.texte.includes(x.max):x.texte.endsWith('—'),V+'l’attente la plus longue, ou « — » : '+JSON.stringify(x));
      assert.equal(x.ton,null,V+'aucun arrivage n’attend plus de 6 h : pas de couleur');
     }
-    assert.ok(att.notes.some(n=>n==='Occupation : la part du temps de présence couverte par le travail du barème. Elle dépend des temps par vol et des effectifs réglés.'),V+'l’occupation s’explique sous le tableau');
+    assert.ok(att.notes.some(n=>n==='Occupation : la part du temps de présence couverte par le travail compté aux temps par vol. Elle dépend des temps par vol et des effectifs réglés.'),V+'l’occupation s’explique sous le tableau');
     // Les mots : jamais « un lot attend » pour un lot simplement à faire, plus de « file la plus longue ».
     assert.doesNotMatch(att.texte,/un lot (y )?attend|File la plus longue|lots en file/i,V+'les mots');
     // « Où ça coince », sur les conséquences : avec ses départs en retard, l'unité fictive coince ; la carte en montre trois au plus.

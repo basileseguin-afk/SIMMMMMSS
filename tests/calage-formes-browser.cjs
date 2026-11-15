@@ -19,6 +19,8 @@ const assert=require('node:assert/strict'),path=require('node:path'),fs=require(
 const nav=require('./nav.cjs');
 const R=require('../moteur/reel.js'),C=require('../moteur/calage-periode.js'),T=require('../tableur.js'),N=require('../calage-nuage.js');
 const F=require('./calage-17-fictif.cjs');
+// Évolution 19 (a) : la page affiche les phrases du moteur avec ses mots (« temps par vol »).
+const MM=require('../mots-moteur.js');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 
@@ -51,7 +53,7 @@ const n2=x=>Math.round(x*100)/100;
   await page.waitForSelector(`${B} [data-cal-rapport="Cuisine"] [data-cal-formule]`);
   for(const l of rapport.lignes){
     assert.equal(await ligne(l.nom).locator('[data-cal-retenu]').innerText(),l.retenu.nom,l.nom);
-    assert.equal(await ligne(l.nom).locator('summary [data-cal-formule]').innerText(),l.retenu.formule,l.nom+' : la formule en clair');
+    assert.equal(await ligne(l.nom).locator('summary [data-cal-formule]').innerText(),MM.dire(l.retenu.formule),l.nom+' : la formule en clair');
     const etiquette=ligne(l.nom).locator('summary [data-cal-statut]');
     if(l.statut){
       assert.equal(await etiquette.getAttribute('data-cal-statut'),l.statut.code,l.nom);
@@ -62,9 +64,9 @@ const n2=x=>Math.round(x*100)/100;
   // La ligne dépliée : la raison du statut ; hors « à la limite », l'effectif mis et sa borne.
   await ligne('Plonge').locator('summary').click();
   const raison=await ligne('Plonge').locator('[data-cal-statut-raison]').innerText();
-  assert.ok(raison.startsWith('En sur-effectif : les heures réelles ne suivent pas le travail au barème'),raison);
-  assert.match(raison,/La formule retenue dit l’effectif mis, pas le besoin : besoin au plus [\d,]+ × le travail au barème du jour, sans dépasser le prévu \(le rythme des 6 jours les plus chargés\)\.$/);
-  assert.equal(await ligne('Plonge').locator('[data-cal-borne]').innerText(),'besoin au plus '+fr(plonge.rythmeCharge.rythme)+' × le travail au barème du jour, sans dépasser le prévu (le rythme des 6 jours les plus chargés)');
+  assert.ok(raison.startsWith('En sur-effectif : les heures réelles ne suivent pas le travail compté aux temps par vol'),raison);
+  assert.match(raison,/La formule retenue dit l’effectif mis, pas le besoin : besoin au plus [\d,]+ × le travail du jour compté aux temps par vol, sans dépasser le prévu \(le rythme des 6 jours les plus chargés\)\.$/);
+  assert.equal(await ligne('Plonge').locator('[data-cal-borne]').innerText(),'besoin au plus '+fr(plonge.rythmeCharge.rythme)+' × le travail du jour compté aux temps par vol, sans dépasser le prévu (le rythme des 6 jours les plus chargés)');
   await ligne('Cuisine').locator('summary').click();
   assert.match(await ligne('Cuisine').locator('[data-cal-statut-raison]').innerText(),/^À la limite : .* La formule retenue est aussi le besoin de la ligne\.$/);
   // Le tableau des candidats : les deux références, puis les sept candidats, chacun avec sa formule ; le seuil corrigé.
@@ -72,7 +74,7 @@ const n2=x=>Math.round(x*100)/100;
   assert.deepEqual(await candidats.evaluateAll(l=>l.map(x=>x.dataset.calModele)),['moteur','constante',...cuisine.candidats.map(c=>c.modele)]);
   assert.deepEqual([cuisine.essayes,cuisine.candidats.length+cuisine.confondus.length],[7,7],'les sept candidats essayés (« b + a × » se confond ici avec « × a »)');
   assert.equal(await ligne('Cuisine').locator('[data-cal-confondu]').count(),cuisine.confondus.length);
-  assert.equal(await ligne('Cuisine').locator('[data-cal-modele="puissance"] [data-cal-formule-modele]').innerText(),cuisine.retenu.formule);
+  assert.equal(await ligne('Cuisine').locator('[data-cal-modele="puissance"] [data-cal-formule-modele]').innerText(),MM.dire(cuisine.retenu.formule));
   assert.match(await ligne('Cuisine').locator('[data-cal-modele="puissance"] th').innerText(),/puissance\s+retenu/);
   assert.equal(await ligne('Cuisine').locator('[data-cal-seuil]').innerText(),'7 candidats essayés : le test de Wilcoxon se juge à 0,05 ÷ 7 = 0,0071. Une forme plus riche n’est retenue que si elle bat la plus simple des acceptées de plus de 0,1 ETP.');
   for(const c of cuisine.candidats.filter(x=>x.choix&&x.choix!=='retenu'))
@@ -97,7 +99,7 @@ const n2=x=>Math.round(x*100)/100;
   const boite=await point.boundingBox();
   await page.mouse.move(boite.x+boite.width/2,boite.y+boite.height/2);
   await page.waitForFunction(([sel,texte])=>document.querySelector(sel).textContent===texte,[`${B} [data-cal-rapport="Cuisine"] [data-cal-bulle]`,N.bulle(d,N.plusProche(d,N.px(d,d.points[i].x),N.py(d,d.points[i].y)))]);
-  assert.match(await nuage.locator('[data-cal-bulle]').innerText(),/ETP au barème, [\d,]+ ETP réels ; la formule retenue en prévoit [\d,]+, « × a » [\d,]+ — laissé de côté \(le mois de /);
+  assert.match(await nuage.locator('[data-cal-bulle]').innerText(),/ETP aux temps par vol, [\d,]+ ETP réels ; la formule retenue en prévoit [\d,]+, « × a » [\d,]+ — laissé de côté \(le mois de /);
   assert.equal(await nuage.locator('.pcn-curseur').getAttribute('hidden'),null,'le jour survolé est entouré');
   // Le pointeur sorti du dessin : plus de cercle, et la phrase qui décrit le nuage revient.
   await ligne('Cuisine').locator('summary').hover();
@@ -135,15 +137,15 @@ const n2=x=>Math.round(x*100)/100;
       fr(prevu.lignes[2].jours[k].simule),bande(prevu.lignes[2].jours[k]),bande(prevu.unite[k]),fr(prevu.unite[k].besoinAuPlus)],w.date);
     assert.equal(n2(prevu.lignes[1].jours[k].besoinAuPlus),n2(Math.min(prevu.lignes[1].jours[k].prevu,prevu.lignes[1].jours[k].simule*plonge.rythmeCharge.rythme)));
   }
-  assert.equal(await page.locator(`${B} [data-cal-politique-ligne="Cuisine"]`).innerText(),'Cuisine : '+cuisine.retenu.formule+' à la limite : besoin');
-  assert.equal(await page.locator(`${B} [data-cal-politique-ligne="Plonge"]`).innerText(),'Plonge : '+plonge.retenu.formule+' en sur-effectif : effectif mis');
+  assert.equal(await page.locator(`${B} [data-cal-politique-ligne="Cuisine"]`).innerText(),'Cuisine : '+MM.dire(cuisine.retenu.formule)+' à la limite : besoin');
+  assert.equal(await page.locator(`${B} [data-cal-politique-ligne="Plonge"]`).innerText(),'Plonge : '+MM.dire(plonge.retenu.formule)+' en sur-effectif : effectif mis');
   assert.equal(await page.locator(`${B} [data-cal-note-au-plus]`).count(),1);
 
   // 4. La Synthèse d'une journée : par ligne, les ETP au barème, le prévu et sa bande, le statut, le besoin ; la phrase de tête.
   await nav.aller(page,'j-chiffres');
   await page.waitForSelector('#bilan-cale tr[data-cal-jour-ligne="Plonge"]');
   const jour=await page.evaluate(()=>Sim.calage.a.journee()),pj=C.prevuDesJours(pol,corr,[jour],R.simuleDe);
-  assert.deepEqual(await page.locator('#bilan-cale thead th').allTextContents(),['Ligne','Au barème (ETP)','Prévu (ETP)','P10 – P90','Statut','Besoin (ETP)']);
+  assert.deepEqual(await page.locator('#bilan-cale thead th').allTextContents(),['Ligne','Aux temps par vol (ETP)','Prévu (ETP)','P10 – P90','Statut','Besoin (ETP)']);
   const cellules=nom=>page.locator(`#bilan-cale tr[data-cal-jour-ligne="${nom}"] td`).allTextContents();
   const tete=l=>[fr(l.jours[0].simule),fr(l.jours[0].prevu),fr(l.jours[0].p10)+' – '+fr(l.jours[0].p90)];
   assert.deepEqual(await cellules('Cuisine'),[...tete(pj.lignes[0]),'à la limite besoin','le prévu']);
@@ -177,10 +179,10 @@ const n2=x=>Math.round(x*100)/100;
   assert.deepEqual(fc[0].slice(-9),['p','p min','p max','Formule','Choix','Statut','Ce que dit la formule','Rythme des jours chargés','Raison du statut']);
   const retenu=nom=>fc.find(l=>l[0]===nom&&l[2]==='retenu');
   assert.deepEqual([retenu('Cuisine')[col('Modèle')],retenu('Cuisine')[col('p')],retenu('Cuisine')[col('Formule')],retenu('Cuisine')[col('Statut')],retenu('Cuisine')[col('Ce que dit la formule')]],
-    ['puissance',cuisine.retenu.parametres.p,cuisine.retenu.formule,'à la limite','besoin']);
+    ['puissance',cuisine.retenu.parametres.p,MM.dire(cuisine.retenu.formule),'à la limite','besoin']);
   assert.deepEqual([retenu('Plonge')[col('Statut')],retenu('Plonge')[col('Ce que dit la formule')],retenu('Plonge')[col('Rythme des jours chargés')]],
     ['en sur-effectif','effectif mis',Math.round(plonge.rythmeCharge.rythme*1000)/1000]);
-  assert.equal(retenu('Plonge')[col('Raison du statut')],plonge.statut.raison);
+  assert.equal(retenu('Plonge')[col('Raison du statut')],MM.dire(plonge.statut.raison));
 
   // 5 bis. Une politique gardée avant l'évolution (ni statut ni rythme) : la page Période d'avant — ni formules, ni colonne « besoin au plus » —
   // et, dans la Synthèse, le bloc d'avant à quatre colonnes ; la phrase de tête, elle, dit toujours ce que l'unité mettrait.

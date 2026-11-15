@@ -69,15 +69,15 @@ const B='#pv-reel';
     await page.waitForSelector(`${B} [data-cal-rapport="Cuisine"] [data-cal-formule]`);
     // Une forme en puissance : la formule en clair, « à la limite », le nuage, ses deux courbes, les jours laissés de côté marqués.
     const cuisine=await montrer('Cuisine');
-    assert.match(cuisine.formule,/^heures réelles ≈ 4,\d+ × \(travail au barème\) puissance 0,4$/,V+cuisine.formule);
+    assert.match(cuisine.formule,/^heures réelles ≈ 4,\d+ × \(travail compté aux temps par vol\) puissance 0,4$/,V+cuisine.formule);
     assert.equal(cuisine.statut,'à la limite : besoin',V+'le statut de la cuisine');
     assert.ok(cuisine.nuage&&cuisine.points>=60&&cuisine.cote>=14&&cuisine.courbes===2&&cuisine.raison,V+JSON.stringify(cuisine));
     await capturer('calage-puissance');
     // Une ligne en sur-effectif : l'effectif mis, et la borne de son besoin.
     const plonge=await montrer('Plonge');
-    assert.match(plonge.formule,/^heures réelles ≈ 6(,\d+)?, quel que soit le travail au barème$/,V+plonge.formule);
+    assert.match(plonge.formule,/^heures réelles ≈ 6(,\d+)?, quel que soit le travail compté aux temps par vol$/,V+plonge.formule);
     assert.equal(plonge.statut,'en sur-effectif : effectif mis',V+'le statut de la plonge');
-    assert.match(plonge.borne,/^besoin au plus [\d,]+ × le travail au barème du jour, sans dépasser le prévu/,V+plonge.borne);
+    assert.match(plonge.borne,/^besoin au plus [\d,]+ × le travail du jour compté aux temps par vol, sans dépasser le prévu/,V+plonge.borne);
     assert.ok(plonge.nuage&&plonge.raison,V+JSON.stringify(plonge));
     await capturer('calage-sur-effectif');
 

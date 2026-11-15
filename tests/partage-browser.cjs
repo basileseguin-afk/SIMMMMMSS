@@ -49,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.service!=='decontam');
     for(const [c,h] of [['AF/BC','14:00'],['TX/BC','15:00']])st.ateliers.push({id:'vl'+c.replace('/',''),nom:'Légumerie '+c,service:'decontam',type:'manuel',debut:h,jour:-1,personnes:2,pauses:[],lots:[[c]],regime:{actif:true}});},''));
   await nav.aller(page,'at-chemins');
-  assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie : 2 cases préparent commande par commande/);
+  assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie : 2 équipes préparent commande par commande/);
   await page.locator('#at-anomalies [data-at-action=dispo-partager]').click();await attendre();
   const leg=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').map(a=>({type:a.type,vagues:a.vagues})));
   assert.deepEqual(leg,[{type:'dispo',vagues:[{debut:'14:00',jour:-1},{debut:'15:00',jour:-1}]}],'leurs heures deviennent ses vagues');
@@ -69,7 +69,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const fondu=await p2.evaluate(()=>['decontam','magasin'].map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>({type:a.type,permanent:a.permanent,vagues:a.permanent?undefined:a.vagues}))));
   assert.deepEqual(fondu,[[{type:'dispo',permanent:false,vagues:[{debut:'14:00',jour:-1},{debut:'16:00',jour:-1}]}],[{type:'dispo',permanent:true,vagues:undefined}]],'une case par poste, dès l’ouverture');
   await nav.aller(p2,'at-chemins');
-  assert.match(await p2.locator('#at-status').innerText(),/deviennent une case par poste[\s\S]*Annuler/);
+  assert.match(await p2.locator('#at-status').innerText(),/deviennent une équipe par poste[\s\S]*Annuler/);
   await p2.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await p2.waitForTimeout(300);
   assert.match(await p2.locator('#at-parcours .pc-graphe [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par la case partagée');
   // « Annuler » revient à l'organisation d'avant.

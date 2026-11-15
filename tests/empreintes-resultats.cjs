@@ -17,10 +17,24 @@ const JOURS = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-
 const empreinte = x => crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 
 /**
+ * Évolution 19 (a) — un seul mot par chose : les classeurs écrivent les nouveaux mots. Quatre phrases ont changé (deux dans
+ * « Lisez-moi », deux remarques dans « Réponses ») ; aucun chiffre. Pour comparer une feuille à son empreinte d'avant, ces
+ * phrases reprennent leurs mots d'avant ; tout le reste est comparé tel quel, cellule par cellule.
+ */
+const MOTS_D_AVANT = Object.freeze([
+  ['cellule vide, raison dans la colonne', 'case vide, raison dans la colonne'],
+  ['PROTOTYPE — temps par vol non calibrés', 'PROTOTYPE — barème non calibré'],
+  ['aucun temps par vol pour ses équipes', 'aucun travail au barème pour ses équipes'],
+  ['mises à disposition, appui, handling : sans besoin calculé', 'permanents, appui, handling : sans besoin calculé']
+]);
+const avecLesMotsDAvant = lignes => lignes.map(l => l.map(c => (typeof c === 'string' ? MOTS_D_AVANT.reduce((t, [de, vers]) => t.split(de).join(vers), c) : c)));
+
+/**
  * Les empreintes, avec les modules de `racine` : { journee (le JSON de simuler-journee), classeurJournee (chaque feuille du
  * classeur de la journée, relue), periode (le JSON de simuler-periode), classeurPeriode (chaque feuille, relue) }.
+ * `retouche` (facultatif) : ce qu'on fait des lignes d'une feuille avant son empreinte (`avecLesMotsDAvant`).
  */
-async function empreintes(racine) {
+async function empreintes(racine, retouche = lignes => lignes) {
   const OJ = require(path.join(racine, 'outils/simuler-journee.cjs')), OP = require(path.join(racine, 'outils/simuler-periode.cjs'));
   const T = require(path.join(racine, 'tableur.js'));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ory-empreintes-'));
@@ -34,8 +48,8 @@ async function empreintes(racine) {
     const p = await OP.simulerPeriode(sv, semaine);
     const { _journees, _vols, ...json } = p;
     const cp = await T.lireClasseur(OP.classeurDeLaPeriode(p, LE));
-    return { journee: empreinte(j), classeurJournee: Object.fromEntries(cj.map(x => [x.nom, empreinte(x.lignes)])),
-      periode: empreinte(json), classeurPeriode: Object.fromEntries(cp.map(x => [x.nom, empreinte(x.lignes)])) };
+    return { journee: empreinte(j), classeurJournee: Object.fromEntries(cj.map(x => [x.nom, empreinte(retouche(x.lignes))])),
+      periode: empreinte(json), classeurPeriode: Object.fromEntries(cp.map(x => [x.nom, empreinte(retouche(x.lignes))])) };
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
@@ -55,6 +69,6 @@ function empreintesDuDirect(racine) {
   return out;
 }
 
-module.exports = { empreintes, empreintesDuDirect, LE };
+module.exports = { empreintes, empreintesDuDirect, LE, MOTS_D_AVANT, avecLesMotsDAvant };
 
 if (require.main === module) empreintes(path.resolve(process.argv[2] || path.join(__dirname, '..'))).then(e => console.log(JSON.stringify(e, null, 2)));

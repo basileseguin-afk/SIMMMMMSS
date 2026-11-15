@@ -72,7 +72,7 @@
   /** La phrase qui décrit le nuage, pour qui ne le voit pas. */
   function decrire(d) {
     const n = d.points.length, autre = d.courbes.some(c => c.id === 'x-a');
-    return n + ' jours appris : le travail au barème va de ' + nombre(d.etendue.x[0]) + ' à ' + nombre(d.etendue.x[1]) + ' ETP, les heures réelles de '
+    return n + ' jours appris : le travail compté aux temps par vol va de ' + nombre(d.etendue.x[0]) + ' à ' + nombre(d.etendue.x[1]) + ' ETP, les heures réelles de '
       + nombre(d.etendue.y[0]) + ' à ' + nombre(d.etendue.y[1]) + ' ETP. La courbe retenue (« ' + d.modele + ' »)' + (autre ? ' et celle de « × a »' : '')
       + (d.part ? ', apprise' + (autre ? 's' : '') + ' sans ' + d.part.nom + ' : ses ' + d.part.jours + ' jours, laissés de côté, sont marqués d’un cercle vide.'
         : ', apprise' + (autre ? 's' : '') + ' sur tous les jours.');
@@ -81,7 +81,7 @@
   /** Ce que dit un point : son jour, son travail au barème, ses heures réelles, ce qu'en prévoient les deux courbes ; s'il est laissé de côté. */
   function bulle(d, i) {
     const p = d.points[i];
-    return dateFr(p.date) + ' : ' + nombre(p.x) + ' ETP au barème, ' + nombre(p.y) + ' ETP réels'
+    return dateFr(p.date) + ' : ' + nombre(p.x) + ' ETP aux temps par vol, ' + nombre(p.y) + ' ETP réels'
       + (p.retenue === null ? '' : ' ; la formule retenue en prévoit ' + nombre(p.retenue)) + (p.xa === null ? '' : ', « × a » ' + nombre(p.xa))
       + (p.cote ? ' — laissé de côté (' + d.part.nom + ') : les courbes sont apprises sans lui' : '') + '.';
   }
@@ -119,7 +119,7 @@
         + '<text class="pcn-echelle" x="' + (GAUCHE - 6) + '" y="' + (py(d, v) + 4).toFixed(1) + '">' + esc(nombre(v)) + '</text>').join('')
       + gx.map(v => '<text class="pcn-abscisse" x="' + px(d, v).toFixed(1) + '" y="' + (H - BAS + 16) + '">' + esc(nombre(v)) + '</text>').join('')
       + '<text class="pcn-titre-axe" x="' + GAUCHE + '" y="12">heures réelles (ETP)</text>'
-      + '<text class="pcn-titre-axe pcn-titre-x" x="' + (L - DROITE) + '" y="' + (H - 4) + '">travail au barème (ETP)</text>'
+      + '<text class="pcn-titre-axe pcn-titre-x" x="' + (L - DROITE) + '" y="' + (H - 4) + '">travail aux temps par vol (ETP)</text>'
       // « × a » d'abord, la courbe retenue par-dessus ; puis les jours, ceux laissés de côté au premier plan.
       + d.courbes.slice().reverse().map(c => '<path class="' + classe[c.id] + '" d="' + trace(d, c.points) + '"/>').join('')
       + d.points.map((p, i) => ({ p, i })).sort((a, b) => a.p.cote - b.p.cote)

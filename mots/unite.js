@@ -1,0 +1,1617 @@
+/* ÉCRIT PAR outils/vocabulaire.cjs — ne pas modifier à la main. Les mots de la version 1 (évolution 19 a) : une copie de
+ * ../unite.js, commun avec la version 2 et laissé tel quel, où seuls les mots affichés changent (outils/vocabulaire-regles.cjs). */
+/* ==========================================================================
+ *  MON UNITÉ — tout le paramétrage, service par service (retour d'usage du 29/09)
+ *
+ *  « Que quelqu'un qui connaît uniquement l'unité puisse paramétrer
+ *  entièrement la simulation. » Il connaît ses services, ses équipes, leurs
+ *  horaires et ce que chacune prépare ; il ne connaît ni « chemins », ni
+ *  « cases », ni « liens entre services ». Deux pages, donc :
+ *
+ *    Pas à pas — ce qui reste à faire avant de simuler, dans l'ordre, et
+ *                chaque point mène à l'endroit où il se règle ;
+ *    Services  — la liste des services, et la fiche de celui qu'on choisit :
+ *                ce qu'il fait, ses équipes (heure, personnes, et une grille
+ *                compagnies × classes à cocher), ses heures de travail.
+ *
+ *  Les chemins des commandes se déduisent des coches (parcours.js, « la
+ *  grille à cocher ») ; les outils fins restent, pour les cas rares, après la
+ *  mention « Plus » de chaque partie.
+ * ==========================================================================*/
+(function (root) {
+  'use strict';
+  const P = root.MoteurProduction, PC = root.OrlyParcours;
+  /** Un pictogramme de icones.js (deux maillons, une alerte, une coche…), au lieu d'un caractère. */
+  const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
+  /** Une heure en 24 h (champs.js, étape 7) : un champ texte, plus le champ natif
+   *  qui s'affichait « 04:00 AM » selon la langue du navigateur. */
+  const HEURE = 'type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false"';
+  /** Un champ et son unité, dans le champ, à droite (étape 7) : « 3 pers. », « 480 min ». */
+  const avecUnite = (champ, unite) => `<span class="champ-unite">${champ}<span class="unite">${unite}</span></span>`;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pl = (n, s, p) => n + ' ' + (n > 1 ? (p || s + 's') : s);
+  /** Ce qui est réglé dans « Plus de réglages » d'une équipe, dit sur sa ligne repliée (étape 7). */
+  const reglesEquipe = a => {
+    const n = Object.keys(a.minutes || {}).length;
+    const l = [a.condition ? '⚡ certains jours' : '', (a.pauses || []).length ? pl(a.pauses.length, 'pause') : '',
+      (a.arretsLigne || []).length ? pl(a.arretsLigne.length, 'arrêt') : '', n ? pl(n, 'heure propre', 'heures propres') : ''].filter(Boolean);
+    return l.length ? `<span class="mu-regles">${esc(l.join(' · '))}</span>` : '';
+  };
+  const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
+  const CLE = 'ory-service-ouvert';
+
+  /** Ce que fait un service, en mots de l'unité. */
+  const NATURES = [
+    { id: 'manuel', nom: 'Des équipes préparent les commandes', court: 'préparation' },
+    { id: 'robot', nom: 'Un robot (une ligne) prépare les commandes', court: 'robot' },
+    { id: 'dispo', nom: 'Une mise à disposition : légumerie, magasin, réception…', court: 'mise à disposition' },
+    { id: 'lavage', nom: 'Plonge : il lave ce qui revient des vols', court: 'plonge' },
+    { id: 'handling', nom: 'Il charge les vols (handling)', court: 'chargement des vols' },
+    // L'armement : ni BC, ni PC, ni Éco — ses catégories à lui (retour d'usage du 01/10).
+    // « Une seule case par compagnie, oui ou non » (01/10), « toujours lié au handling » (02/10).
+    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans ses chemins)', court: 'par compagnie' },
+    // « Le plus simple : le service comporte un seul atelier de x personnes, commençant à
+    // telle heure, faisant certaines compagnies » (07/10 : BOB, checkeurs de CF départ food).
+    { id: 'atelier', nom: 'Une seule équipe : x personnes, à telle heure, pour certaines compagnies', court: 'une équipe' }
+  ];
+  const preparent = n => n === 'manuel' || n === 'robot' || n === 'categories';
+
+  class MonUnite {
+    /* a = {
+     *   at()          — le centre des ateliers (état, calcul, fiches de case)
+     *   rg()          — le centre des réglages (heures de travail)
+     *   services()    — [{id, nom}]
+     *   parent(id)    — le service dont une salle annexe dépend, ou null
+     *   racines()     — [{id, nom}] les services du plan, pour placer un nouveau service
+     *   liaisons()    — [{from, to}] les liens de l'unité
+     *   brut(id)      — le nom tel qu'il est enregistré (pour le champ « Nom »)
+     *   renommer(id, nom), creer(nom, parent) → id, supprimer(id) → bool
+     *   voir(id), plan(id) — le montrer sur le plan, le modifier sur le plan
+     *   vols()        — { departs, importes }
+     *   page(id)      — ouvrir une page du site
+     *   notify(msg)
+     * } */
+    constructor(a) {
+      this.a = a;
+      this.natures = {};   // la nature choisie d'un service qui n'a pas encore d'équipe
+      this.sections = new Map();   // les sections de la fiche d'un service, repliées ou non (étape 7)
+      this.lierFlux();
+      this.lierCarte();
+      try { this.choisi = localStorage.getItem(CLE) || null; } catch (e) { this.choisi = null; }
+      this.lier();
+    }
+
+    get at() { return this.a.at(); }
+    get etat() { return this.at.state; }
+    nom(id) { return (this.a.services().find(s => s.id === id) || {}).nom || id; }
+    options() { return { classes: this.at.classes, liaisons: this.a.liaisons ? this.a.liaisons() : [], parent: this.a.parent, nomDe: s => this.nom(s) }; }
+
+    /* ---- ce qu'on sait d'un service ------------------------------------ */
+
+    /** L'état d'un service : ses équipes, ce qu'il lui manque, en une phrase. */
+    bilan(id, classes, resultat) {
+      const st = this.etat, cases = st.ateliers.filter(a => a.service === id);
+      const nature = this.natures[id] && !cases.length ? this.natures[id] : PC.natureService(st, id, this.nom(id));
+      // Par catégories : ses commandes à lui (« AF · Trolleys bar »), pas les classes des vols.
+      if (nature === 'categories') classes = this.at.classesDe(id) || [];
+      const g = PC.grille(st, id, '-', classes);
+      const passent = classes.filter(c => g.get(c.id).etat !== 'hors').length;
+      const attendues = preparent(nature) ? classes.filter(c => g.get(c.id).etat === 'attendue').map(c => c.id) : [];
+      const vides = preparent(nature) ? cases.filter(a => (a.type === 'manuel' || a.type === 'robot') && !a.lots.some(l => l.length)) : [];
+      const rg = this.a.rg ? this.a.rg() : null;
+      // Seuls les postes qui dépendent des vols ont des heures par vol à remplir (06/10).
+      const temps = rg && nature === 'manuel' && cases.some(a => a.lots.some(l => l.length) && this.at.dependDesVols(a)) ? rg.blocService({ id, nom: this.nom(id) }) : null;
+      const sansTemps = !!temps && (temps.etat === 'vide' || temps.manquent.length > 0);
+      const alertes = ((resultat && resultat.anomalies) || []).filter(x => !CODES_JOURNEE.has(x.code)
+        && (x.service === id || cases.some(a => a.id === x.atelier)) && x.code !== 'parcours-trou' && x.code !== 'bareme' && x.code !== 'bareme-classe' && x.code !== 'lots');
+      const points = [];
+      if (passent && !cases.length) points.push(pl(passent, 'commande passe', 'commandes passent') + ' par ici, sans équipe');
+      if (attendues.length && cases.length) points.push(pl(attendues.length, nature === 'categories' ? 'compagnie' : 'commande') + ' à cocher dans une équipe');
+      if (vides.length) points.push(vides.length > 1 ? vides.length + ' équipes ne préparent rien' : '« ' + vides[0].nom + ' » ne prépare rien');
+      if (sansTemps) points.push('temps par vol à remplir');
+      if (nature === 'categories' && !classes.length) points.push('aucune compagnie armée : aucun chemin ne passe par ce service');
+      else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('heures par vol à remplir');
+      for (const x of alertes.slice(0, 3)) points.push(x.message);
+      const utilise = cases.length > 0 || passent > 0 || nature === 'categories';
+      return { id, nature, cases, passent, attendues, vides, sansTemps, alertes, points,
+        etat: !utilise ? 'libre' : points.length ? 'afaire' : 'ok' };
+    }
+
+    /**
+     * Les bilans d'un même calcul. Après un changement, la liste des services,
+     * « Prêt à simuler ? » et le registre des problèmes les demandent tour à
+     * tour, pour le même état : on ne les refait pas. Ils valent pour la tâche
+     * en cours, tant que les cases et le résultat restent les mêmes (refonte,
+     * étape 10 : un changement ne doit pas coûter plus qu'avant la refonte).
+     */
+    bilanDuCalcul(id, classes, resultat) {
+      const v = this.at.version;
+      if (!this.memo || this.memo.r !== resultat || this.memo.v !== v) {
+        const memo = this.memo = { r: resultat, v, bilans: new Map() };
+        queueMicrotask(() => { if (this.memo === memo) this.memo = null; });
+      }
+      if (!this.memo.bilans.has(id)) this.memo.bilans.set(id, this.bilan(id, classes, resultat));
+      return this.memo.bilans.get(id);
+    }
+
+    /* ---- rendu ---------------------------------------------------------- */
+
+    /** La page affichée de cette vue, s'il y en a une. */
+    page() { const b = root.document.body; return b.dataset.vue === 'ateliers' ? b.dataset.sous : null; }
+
+    rendre() {
+      const p = this.page();
+      if (p === 'mu-services') this.rendreServices();
+      if (p === 'mu-pas') this.rendrePas();
+      if (p === 'mu-flux') this.rendreFlux();
+      if (p === 'mu-carte') this.rendreCarte();
+    }
+
+    /** Un refus de saisie se lit sous son champ, tel qu'il est à l'écran (étape 7) ; sans lui, en notification. */
+    refuserAuChamp(el, raison) {
+      const C = root.OrlyChamps, ici = C && C.retrouver(el);
+      if (ici) C.refuser(ici, raison); else this.a.notify(raison);
+    }
+
+    /* Remplacer le HTML sans perdre le champ où l'on est, ni le défilement. */
+    poser(box, html) {
+      if (box._html === html) return;
+      const actif = root.document.activeElement, dedans = actif && box.contains(actif) && actif !== box ? actif : null;
+      let sel = null;
+      if (dedans) {
+        const attrs = Object.keys(dedans.dataset).map(k => `[data-${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}="${CSS.escape(dedans.dataset[k])}"]`).join('');
+        const at = dedans.closest('[data-at]');
+        sel = attrs ? (at && at !== dedans ? `[data-at="${CSS.escape(at.dataset.at)}"] ` : '') + dedans.tagName.toLowerCase() + attrs : null;
+      }
+      // La page défile dans un conteneur, pas dans la fenêtre : on retient la
+      // position de chaque ancêtre qui a défilé.
+      const defiles = [];
+      for (let e = box.parentElement; e; e = e.parentElement) if (e.scrollTop || e.scrollLeft) defiles.push([e, e.scrollTop, e.scrollLeft]);
+      const liste = box.querySelector('.mu-liste'), hautListe = liste ? liste.scrollTop : 0;
+      box.innerHTML = html; box._html = html;
+      for (const [e, t, l] of defiles) { e.scrollTop = t; e.scrollLeft = l; }
+      const liste2 = box.querySelector('.mu-liste'); if (liste2) liste2.scrollTop = hautListe;
+      // Le focus, seulement s'il a été perdu : sur une heure déjà active, focus()
+      // efface les chiffres en cours (le rendu a pu attendre, champ intact).
+      if (sel) { const el = box.querySelector(sel); if (el && el !== root.document.activeElement) el.focus({ preventScroll: true }); }
+    }
+
+    ordre(services) {
+      const cols = PC.colonnes(this.etat.parcours || []).map(c => c.service);
+      const rang = id => { const i = cols.indexOf(id); return i < 0 ? 999 : i; };
+      return services.slice().sort((x, y) => rang(x.id) - rang(y.id) || x.nom.localeCompare(y.nom));
+    }
+
+    rendreServices() {
+      const box = root.document.getElementById('mu-services'); if (!box) return;
+      const classes = this.at.classes, r = this.at.resultat || {};
+      const services = this.ordre(this.a.services());
+      // Un service dont le bilan échoue reste dans la liste, avec son erreur : le reste s'affiche.
+      const bilanSur = id => {
+        try { return this.bilanDuCalcul(id, classes, r); }
+        catch (e) { if (root.console) root.console.error(e); return { id, nature: 'manuel', cases: this.etat.ateliers.filter(a => a.service === id), passent: 0, attendues: [], vides: [], sansTemps: false, alertes: [], points: ['erreur d’affichage : ' + e.message], etat: 'afaire' }; }
+      };
+      const bilans = new Map(services.map(s => [s.id, bilanSur(s.id)]));
+      if (!services.some(s => s.id === this.choisi)) {
+        const premier = services.find(s => bilans.get(s.id).etat === 'afaire') || services.find(s => bilans.get(s.id).etat === 'ok') || services[0];
+        this.choisi = premier ? premier.id : null;
+      }
+      const I = root.OrlyIcones;
+      const ico = s => (I ? I.ico(I.icoService(s.id, s.nom)) : '');
+      // Deux services faits d'un bloc par une même équipe : chacun le dit, dans la liste.
+      const ch = PC.chaines(this.etat, null, null);
+      const lies = id => ch.filter(g => g.service === id).map(g => '+ ' + this.nom(g.avant)).concat(ch.filter(g => g.avant === id).map(g => 'avec ' + this.nom(g.service)));
+      const groupe = (titre, liste) => liste.length ? `<p class="mu-groupe">${esc(titre)}</p>` + liste.map(s => {
+        const b = bilans.get(s.id), n = b.cases.length, l = lies(s.id);
+        const sous = b.etat === 'libre' ? 'pas utilisé'
+          : (NATURES.find(x => x.id === b.nature) || {}).court + (n ? ' · ' + pl(n, 'équipe') : '') + (b.passent && preparent(b.nature) ? ' · ' + pl(b.passent, 'commande') : '');
+        return `<button type="button" class="mu-svc ${b.etat}${l.length ? ' en-chaine' : ''}${s.id === this.choisi ? ' actif' : ''}" data-mu-choisir="${esc(s.id)}" aria-current="${s.id === this.choisi}">
+          <span class="mu-svc-ico" aria-hidden="true">${ico(s)}</span><span class="mu-svc-txt"><b>${esc(s.nom)}</b><small>${esc(sous)}</small>${l.length
+            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">${pic('chaine', 'ico-texte')} ${esc(l.join(' · '))} à la chaîne</i>` : ''}</span>
+          <span class="mu-point ${b.etat}" title="${b.etat === 'afaire' ? esc(b.points.join(' · ')) : b.etat === 'ok' ? 'Complet' : 'Pas utilisé'}" aria-hidden="true"></span></button>`;
+      }).join('') : '';
+      const utilises = services.filter(s => bilans.get(s.id).etat !== 'libre'), libres = services.filter(s => bilans.get(s.id).etat === 'libre');
+      const liste = `<nav class="mu-liste" aria-label="Les services">
+        ${groupe('Utilisés', utilises)}${groupe('Pas utilisés', libres)}
+        <form class="mu-nouveau" data-mu-nouveau><b>Nouveau service</b>
+          <label>Nom <input name="nom" maxlength="120" placeholder="ex. Découpe" required></label>
+          <label>Sur le plan, près de <select name="parent">${this.a.racines().map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>
+          <label title="À part entière : ses propres temps par vol et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les heures et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
+            <option value="salle">une salle de plus de ce service</option></select></label>
+          <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
+      </nav>`;
+      const s = services.find(x => x.id === this.choisi);
+      // Une fiche qui ne s'affiche pas doit le dire, pas laisser une page vide sans raison.
+      let corps;
+      try { corps = s ? this.fiche(s, bilans.get(s.id), classes, r) : '<p class="mini-note">Aucun service.</p>'; }
+      catch (e) {
+        corps = `<p class="mu-q" role="alert">La fiche de « ${esc(s.nom)} » n’a pas pu s’afficher : ${esc(e.message)}. Envoyez ce message pour qu’on corrige.</p>`;
+        if (root.console) root.console.error(e);
+      }
+      this.poser(box, `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-fiche="${esc(this.choisi || '')}">${corps}</div></div>`);
+    }
+
+    /** La fiche d'un service : ce qu'il fait, ses équipes, ses heures de travail. */
+    fiche(s, b, classes, r) {
+      const I = root.OrlyIcones, st = this.etat;
+      if (b.nature === 'categories') classes = this.at.classesDe(s.id) || [];
+      const calc = new Map(((r && r.ateliers) || []).map(a => [a.id, a]));
+      const nature = b.nature;
+      const tete = `<div class="mu-tete">
+        <span class="mu-tete-ico" aria-hidden="true">${I ? I.ico(I.icoService(s.id, s.nom)) : ''}</span>
+        <label class="mu-nom">Nom du service<input data-mu-nom="${esc(s.id)}" maxlength="120" value="${esc(this.a.brut ? this.a.brut(s.id) : s.nom)}"></label>
+        <span class="mu-tete-fin"></span>
+        <button class="btn btn-sm" type="button" data-mu-action="voir">Voir sur le plan</button>
+        <button class="btn btn-sm" type="button" data-mu-action="plan">Le déplacer sur le plan</button>
+        <button class="btn btn-sm svc-danger" type="button" data-mu-action="supprimer">Supprimer</button>
+      </div>`;
+      const passent = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
+      // Les commandes d'un flux qui ne passe pas ici ne se cochent pas : on fait d'abord passer le flux.
+      const autres = b.nature === 'manuel' || b.nature === 'robot' ? PC.types(st).filter(t => !P.servicesDuParcours(t).includes(s.id)) : [];
+      const ajoutFlux = autres.length ? `<select class="mu-flux-ajout-ici" data-mu-flux-ici="${esc(s.id)}" aria-label="Faire passer un chemin par ce service">
+        <option value="">+ Faire passer un chemin par ici…</option>${autres.map(t => `<option value="${esc(t.id)}">${esc(t.nom)}</option>`).join('')}</select>` : '';
+      const lesFlux = `<p class="mu-flux-passent"><span>${passent.length ? 'Chemins qui passent ici :' : 'Aucun chemin ne passe ici.'}</span>
+        ${passent.map(t => `<button type="button" class="mu-flux-lien" data-mu-voir-flux="${esc(t.id)}">${esc(t.nom)}</button>`).join('')}
+        ${ajoutFlux}
+        <button type="button" class="lien-discret" data-page="mu-flux">${passent.length ? 'Tous les chemins' : 'Les chemins de production'} →</button></p>`;
+      // Des commandes encore cochées ici alors que leur flux ne passe plus par ce service
+      // (le service a été retiré du flux avant que ses équipes ne les lâchent toutes seules).
+      // Pendant la question qui suit un clic (« Ajouter … au flux ? »), elle seule parle.
+      const perdues = preparent(b.nature) && !(this.question && this.question.service === s.id) ? PC.liberer(st, s.id, b.nature === 'categories' ? this.at.classes : classes, { essai: true }) : [];
+      const horsFlux = perdues.length ? `<div class="mu-q mu-hors-flux" role="alert"><p>${pic('alerte', 'ico-texte')} ${perdues.length > 1 ? pl(perdues.length, 'commande') + ' sont encore cochées' : '1 commande est encore cochée'} ici
+        (${esc(perdues.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (perdues.length > 6 ? '…' : ''))}), mais ${perdues.length > 1 ? 'leur chemin ne passe' : 'son chemin ne passe'} plus par ${esc(s.nom)}.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="liberer">Les retirer de ses équipes</button></div></div>` : '';
+      const aFaire = b.points.length ? `<ul class="mu-afaire">${b.points.map(p => `<li>${esc(P.enClair ? P.enClair(p) : p)}</li>`).join('')}</ul>` : '';
+      // Une feuille de propriétés (étape 7) : chaque section se replie, et le reste
+      // d'un service à l'autre ; l'avancé est replié tant qu'on ne l'ouvre pas.
+      const section = (cle, marque, titre, corps, note, ouvert = true) => `<details class="mu-etape" data-mu-section="${cle}"${this.sections.get(cle) ?? ouvert ? ' open' : ''}>
+        <summary><h3><span class="mu-num">${marque}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3></summary>${corps}</details>`;
+      const etape = (num, titre, corps, note, cle) => section(cle, num, titre, corps, note);
+
+      // À la chaîne : ce service et un autre ne font qu'un, pour certaines commandes.
+      const ch = PC.chaines(st, null, null);
+      const cmds = g => g.commandes.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (g.commandes.length > 6 ? '…' : '');
+      const eqs = g => g.equipes.map(a => '« ' + esc(a.nom) + ' »').join(', ');
+      const chaine = ch.filter(g => g.service === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">${pic('chaine')}</span>
+          <span><b>${esc(this.nom(g.avant))} + ${esc(s.nom)}, à la chaîne.</b> ${eqs(g)} ${g.equipes.length > 1 ? 'font' : 'fait'} aussi ${esc(this.nom(g.avant))}
+          pour ${pl(g.commandes.length, 'commande')} (${esc(cmds(g))}) : pour elles, ${esc(this.nom(g.avant))} n’a pas d’équipe à part.</span>
+          <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.avant)}">Ouvrir ${esc(this.nom(g.avant))} →</button></p>`)
+        .concat(ch.filter(g => g.avant === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">${pic('chaine')}</span>
+          <span><b>${esc(s.nom)} + ${esc(this.nom(g.service))}, à la chaîne.</b> Pour ${pl(g.commandes.length, 'commande')} (${esc(cmds(g))}), ${esc(s.nom)}
+          est fait par ${eqs(g)}, au ${esc(this.nom(g.service))}, d’un bloc : pas besoin d’équipe ici pour elles. Sa fiche est plus bas : elle se règle ici comme au ${esc(this.nom(g.service))}.</span>
+          <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.service)}">Ouvrir ${esc(this.nom(g.service))} →</button></p>`)).join('');
+      const blocChaine = chaine ? `<div class="mu-chaine-bloc">${chaine}</div>` : '';
+
+      // L'effectif : constant (saisi) ou calculé d'après les homme-minutes (retour d'usage du 05/10).
+      const constant = this.at.effectifConstant(s.id);
+      const impose = `<label class="mu-effectif mu-impose"><input type="checkbox" data-mu-impose="${esc(s.id)}"${this.at.effectifImpose(s.id) ? ' checked' : ''}>
+          <span><b>Effectif imposé (essai)</b><small>les heures par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`;
+      // L'armement dépend toujours des vols de chaque compagnie (07/10) : pas de case « constant ».
+      const choixEffectif = nature === 'categories' ? `<p class="mu-effectif mu-par-vols"><b>Effectif selon les vols</b>
+          <small>le nombre de personnes de chaque équipe se calcule : heures par vol × vols de chaque compagnie ÷ heures de son poste.
+          Plus une compagnie a de vols, plus il faut de monde.</small></p>` + impose
+        : preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
+        <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
+          : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, heures par vol × vols qui reviennent de chaque compagnie ÷ heures de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
+          : 'non coché : le nombre de personnes de chaque équipe se calcule, heures par vol × vols de chaque compagnie ÷ heures de son poste. Le robot garde le sien. Cochez pour le saisir.'}
+          Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>`
+        + (constant ? '' : impose) : '';
+      // Il travaille en même temps qu'un autre service (08/10 : « la cuisine chaude et la
+      // cuisine travaillent en parallèle ») : dans chaque chemin, une branche à côté de lui.
+      const partenaire = (st.paralleles || {})[s.id] || '';
+      const avecLui = new Set((st.parcours || []).filter(p => (p.noeuds || []).includes(s.id)).flatMap(p => p.noeuds || []));
+      const handlings = new Set(this.handlings(st));
+      const candidats = [...(avecLui.size > 1 ? avecLui : new Set((st.parcours || []).flatMap(p => p.noeuds || [])))]
+        .filter(x => x !== s.id && !handlings.has(x) && !(st.categories || {})[x]).sort((x, y) => this.nom(x).localeCompare(this.nom(y)));
+      if (partenaire && !candidats.includes(partenaire)) candidats.unshift(partenaire);
+      const choixParallele = nature === 'handling' || nature === 'categories' || nature === 'lavage' ? ''
+        : `<label class="mu-parallele">Il travaille en même temps que<select data-mu-parallele="${esc(s.id)}">
+            <option value="">— aucun : il a sa place dans le chemin</option>
+            ${candidats.map(x => `<option value="${esc(x)}"${x === partenaire ? ' selected' : ''}>${esc(this.nom(x))}</option>`).join('')}</select>
+          <small>${partenaire ? `En parallèle de ${esc(this.nom(partenaire))} : dans chaque chemin qui a les deux, il reçoit les mêmes livraisons et livre les mêmes étapes ; l’étape d’après attend les deux.`
+            : 'Deux services qui préparent la même commande au même moment (la cuisine chaude et la cuisine) : choisissez l’autre, ils se rangent côte à côte dans chaque chemin.'}</small></label>`;
+      const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
+        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
+      // L'avancé : replié, il dit ce qu'on y a réglé.
+      const enc = this.at.encadrement(s.id);
+      const regles = [choixParallele && partenaire ? 'en même temps que ' + this.nom(partenaire) : '', enc > 0 ? pl(enc, 'superviseur') : ''].filter(Boolean);
+      const avance = section('avance', pic('curseurs'), 'Avancé', choixParallele
+        + `<label class="mu-encadrement">Superviseurs / coordinateurs${avecUnite(`<input type="number" min="0" max="99" value="${enc}" data-mu-encadrement="${esc(s.id)}">`, 'pers.')}
+          <small>présents dans le service, hors production : ${this.at.encadrementDe ? 'ils ne changent rien au déroulé de la journée ; la période compte leur charge et, au-delà de leur contrat, leurs heures sup d’office' : 'ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien'}</small></label>`
+        + (this.at.encadrementDe && enc > 0 ? (() => { const d = this.at.encadrementDe(s.id), h = m => (Number.isFinite(m) ? String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') : '');
+            return `<label class="mu-encadrement-horaires">Leur présence<input value="${h(d.presence)}" placeholder="générale" data-mu-encadrement-presence="${esc(s.id)}" aria-label="Présence de l’encadrement (HH:MM)">
+              au contrat<input value="${h(d.presenceContrat)}" placeholder="—" data-mu-encadrement-contrat="${esc(s.id)}" aria-label="Présence au contrat de l’encadrement (HH:MM)">
+              <small>au-delà du contrat, des heures sup d’office chaque jour</small></label>`; })() : ''),
+        regles.length ? esc(pl(regles.length, 'réglage') + ' : ' + regles.join(' · ')) : 'rien de réglé', false);
+
+      // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
+      // existe dans les deux, et se règle dans les deux (retour d'usage du 01/10).
+      const chainees = (st.ateliers || []).filter(a => a.type === 'manuel' && a.fusion === s.id && a.service !== s.id);
+      let equipes;
+      if (preparent(nature)) {
+        equipes = b.cases.map(a => (a.type === 'manuel' || a.type === 'robot') ? this.equipe(a, calc.get(a.id), classes)
+          : `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
+          + (b.cases.length ? '' : '<p class="mini-note mu-vide">Aucune équipe pour l’instant.</p>')
+          + (chainees.length ? `<h4 class="mu-chainees">${pic('chaine', 'ico-texte')} À la chaîne : ${chainees.length > 1 ? 'ces équipes font' : 'cette équipe fait'} aussi ${esc(s.nom)}</h4>`
+            + chainees.map(a => this.equipe(a, calc.get(a.id), classes, { depuis: s.id })).join('') : '')
+          + `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe</button>
+             <span class="mini-note">une équipe du matin, de l’après-midi, de nuit… chacune avec son heure, ses personnes et ce qu’elle prépare</span></p>`;
+      } else {
+        const phrase = nature === 'dispo' ? 'Il sert toutes les commandes à la fois : ni temps par vol, ni durée. Dites quand il est ouvert, combien de personnes y travaillent sur la journée, et qui en a besoin.'
+          : nature === 'lavage' ? 'Elle lave les retours de tous les vols, à mesure qu’ils arrivent : rien à cocher. Réglez ses tunnels et ses horaires.'
+          : 'Il charge chaque vol à son départ, pour toutes les commandes : rien à cocher. Réglez ses horaires et le temps par vol.';
+        equipes = `<p class="mini-note">${esc(phrase)}</p>`
+          + (nature === 'lavage' ? this.friseRetours(b.cases) : '')
+          + b.cases.map(a => `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
+          + (nature === 'lavage' ? this.ajoutPlonge(b.cases)
+            : b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
+          // Des équipes hors tunnel (06/10) : tri, chariots… présentes à leurs heures, sans tunnel.
+          + (nature === 'lavage' ? `<p class="mu-ajout"><button class="btn btn-sm" type="button" data-mu-action="appui">+ Ajouter une équipe hors tunnel</button>
+             <span class="mini-note">des gens qui travaillent à la plonge sans tenir un tunnel ; leur effectif est saisi, ou suit les vols (option « Effectif constant »)</span></p>` : '')
+          + (nature === 'dispo' ? `<div class="mu-besoin"><h4>Quels chemins en ont besoin ?</h4>${this.besoinFlux(s.id, classes)}</div>` : '');
+      }
+
+      const rg = this.a.rg ? this.a.rg() : null;
+      // Des postes qui ne dépendent pas des vols n'ont pas d'heures par vol (06/10).
+      const aucunVol = nature === 'manuel' && !(st.ateliers || []).some(a => a.service === s.id && this.at.dependDesVols(a));
+      const temps = aucunVol && b.cases.length
+        ? etape(3, 'Temps par vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas d’heures par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>', '', 'temps')
+        : nature === 'manuel' && rg
+        ? etape(3, 'Temps par vol, pour une personne', rg.ficheTemps(s.id), constant ? 'le temps d’une seule personne, pour une compagnie dans une classe : à plusieurs, la durée se divise par les personnes de l’équipe'
+          : 'le temps d’une seule personne, pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent', 'temps')
+        : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>', '', 'temps') : '';
+
+      if (nature === 'atelier') return tete + lesFlux + aFaire
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, 'Son équipe : ses personnes, son heure, ses compagnies', this.atelierUnique(s, b.cases[0], calc), '', 'equipes')
+        + avance;
+      if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, 'Heures par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'pour une personne ; une cellule vide prend la valeur de « Toutes les compagnies »', 'temps')
+        + etape(3, 'Ses équipes : une par compagnie', equipes, '', 'equipes')
+        + avance;
+      // Un armement qui suit encore les classes (BC, PC, Éco…) : on propose la bonne façon, à la vue.
+      // Quelle que soit sa nature actuelle (sert tout le monde, préparation…) : le réglage ne se cache pas.
+      const proposer = /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
+        <b>une équipe par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des heures par vol.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="par-compagnie">Passer à « une équipe par compagnie »</button></div></div>` : '';
+      return tete + lesFlux + blocChaine + horsFlux + proposer + aFaire
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, preparent(nature) ? 'Ses équipes, et ce que chacune prépare' : 'Ses horaires et ses réglages', equipes, '', 'equipes')
+        + temps + avance;
+    }
+
+    /* L'armement est lié au handling, pas aux chemins des repas : on arme un vol
+     * (pas une classe), en parallèle des repas, et les deux se retrouvent au
+     * handling, qui charge le vol quand tout est prêt (retour d'usage du 02/10).
+     * Placé dans un flux, il n'y sert à rien : on propose de l'en retirer. */
+    /** Les services de handling de l'unité (ceux de ses équipes de chargement). */
+    handlings(st) { return [...new Set(((st || this.etat).ateliers || []).filter(a => a.type === 'handling').map(a => a.service))]; }
+
+    lienHandling(s) {
+      const st = this.etat, handlings = st.ateliers.filter(a => a.type === 'handling');
+      const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
+      // Seulement les chemins que suivent les commandes et qui passent par lui ; un lien vers un handling suffit.
+      const aCorriger = handlings.length ? PC.armementACorriger(st, [s.id], this.handlings(st), this.at.classes) : [];
+      // Un chemin sans armement dit que ses compagnies n'en ont pas (retour d'usage du
+      // 08/10) : on ne le réclame pas. Encore dans aucun chemin : on propose de commencer.
+      const suivis = new Set((this.at.classes || []).map(c => (PC.fluxDe(st, c) || {}).id).filter(Boolean));
+      const dans = (st.parcours || []).some(p => suivis.has(p.id) && (p.noeuds || []).includes(s.id));
+      const liste = aCorriger.slice(0, 4).map(x => '« ' + esc(x.parcours.nom || x.parcours.id) + ' » ('
+        + (x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : 'pas relié au handling') + ')').join(', ')
+        + (aCorriger.length > 4 ? '…' : '');
+      const ou = !handlings.length ? ''
+        : aCorriger.length ? `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
+          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">Le relier au seul handling</button></p>`
+        : dans ? `<p class="mini-note mu-arm-ok">${pic('check', 'ico-texte')} Dans chaque chemin qui passe par lui, en branche à part, relié seulement au handling.</p>`
+        : `<p class="mini-note mu-arm-aucun">Aucun chemin ne passe encore par ${esc(s.nom)}.
+          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’ajouter à tous les chemins, relié au handling</button>
+          Retirez-le ensuite du chemin des compagnies qui n’ont pas d’armement.</p>`;
+      return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
+        ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' les repas du vol, et son armement quand sa compagnie en a un, pour le charger.'
+        : 'Pas encore de handling dans l’unité : créez-en un, puis reliez-lui l’armement dans les chemins.'}
+        Une compagnie a un armement quand un de ses chemins passe par ${esc(s.nom)}, ou qu’une de ses équipes l’a cochée
+        (une équipe par compagnie : on arme un vol, pas une classe). Sinon, le handling charge ses vols sans l’attendre.</p>
+        ${ou}</div>`;
+    }
+
+    /* Un service qui travaille par compagnie (l'armement) : ses heures par vol,
+     * pour toutes les compagnies, puis celles qui en ont d'autres. Chaque
+     * compagnie dont un chemin passe par le service, ou qu'une de ses équipes a
+     * cochée, a sa case, avec ou sans vol ; les autres n'ont pas d'armement (08/10). */
+    blocParCompagnie(s, classes) {
+      const k = (((this.etat.categories || {})[s.id]) || [])[0];
+      if (!k) return '';
+      const avec = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
+      const toutes = [...new Set((this.at.classes || []).map(c => c.cie))];
+      // Sans armement (08/10) : aucun chemin de la compagnie ne passe par ce service, aucune de ses équipes ne l'a cochée.
+      const hors = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Armée par une équipe seulement : aucun de ses chemins ne passe par le service.
+      const base = this.at.classes || [];
+      const parChemin = new Set(P.compagniesParService(base, P.routesDesClasses(base, this.etat))(s.id));
+      const parEquipe = avec.filter(c => !parChemin.has(c));
+      // Une case, mais aucun départ au programme (une compagnie ajoutée à la main).
+      const sansVol = avec.filter(cie => !classes.some(c => c.cie === cie && c.vols.length));
+      // Gardées en minutes, saisies et lues en heures par vol (08/10).
+      const champ = cie => `<td><input type="number" min="0" step="any" value="${P.versHeures(k.minutes[cie]) ?? ''}" placeholder="${cie === '*' ? '—' : P.heuresFr(k.minutes['*']) || '—'}"
+          data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Heures par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
+      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a d’armement : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
+      // Le travail dépend des vols de chaque compagnie (07/10) : heures par vol × ses départs du jour.
+      const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
+      const vols = cie => new Set(classes.filter(c => c.cie === cie).flatMap(c => (c.vols || []).map(v => v.id))).size;
+      const h = m => P.heuresFr(m, 2) + ' h';
+      let totalVols = 0, total = 0, manque = 0;
+      const ligne = cie => {
+        const n = vols(cie), v = lire(k.minutes[cie]) ?? lire(k.minutes['*']);
+        totalVols += n; if (v == null) manque++; else total += v * n;
+        return `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}<td class="mu-cat-vols">${n}</td>
+          <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${P.heuresFr(v)} h × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
+      };
+      const lignes = avec.map(ligne).join('');
+      return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-clavier data-mu-cat-service="${esc(s.id)}">
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
+        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
+        ${lignes}</tbody>
+        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
+        <p class="mini-note mu-cat-note">Le travail suit les vols : heures par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
+        + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — l’équipe est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
+        + (hors.length ? `<p class="mini-note mu-arm-hors">Sans armement : ${esc(hors.join(', '))}. ${hors.length > 1
+          ? 'Aucun de leurs chemins ne passe par ' + esc(s.nom) + ' et aucune équipe ne les a cochées : le handling charge leurs vols sans l’attendre.'
+          : 'Aucun de ses chemins ne passe par ' + esc(s.nom) + ' et aucune équipe ne l’a cochée : le handling charge ses vols sans l’attendre.'}</p>` : '')
+        + (parEquipe.length ? `<p class="mini-note mu-arm-equipe">${esc(parEquipe.join(', '))} : ${parEquipe.length > 1
+          ? 'armées parce qu’une équipe les a cochées, alors qu’aucun de leurs chemins ne passe par ' + esc(s.nom) + '. Si elles n’en ont pas, décochez-les.'
+          : 'armée parce qu’une équipe l’a cochée, alors qu’aucun de ses chemins ne passe par ' + esc(s.nom) + '. Si elle n’en a pas, décochez-la.'}</p>` : '');
+    }
+
+    /** Un service qui travaille en même temps qu'un autre (08/10), ou plus. */
+    parallele(service, x) {
+      let n = 0;
+      if (!this.at.changer(() => {
+        const st = this.at.state, par = { ...(st.paralleles || {}) };
+        if (x) { par[service] = x; n = PC.mettreEnParallele(st, service, x); } else delete par[service];
+        if (Object.keys(par).length) st.paralleles = par; else delete st.paralleles;
+      }, '')) return;
+      this.at.rendre(x ? this.nom(service) + ' travaille en même temps que ' + this.nom(x) + ' : '
+        + (n ? 'rangé à côté de lui dans ' + pl(n, 'chemin') : 'les chemins qui ont les deux l’ont déjà à côté') + ' ; l’étape d’après attend les deux. « Annuler » revient en arrière.'
+        : this.nom(service) + ' n’est plus en parallèle : les chemins restent tels quels.');
+    }
+
+    /** Changer le réglage d'un service par compagnie. */
+    changerCategories(service, fn, message) {
+      this.at.changer(() => {
+        const st = this.at.state;
+        st.categories = st.categories || {};
+        st.categories[service] = st.categories[service] || [];
+        fn(st.categories[service], st);
+      }, message);
+    }
+
+    /** Une équipe qui prépare : son heure, ses personnes, et sa grille. */
+    equipe(a, calc, classes, o = {}) {
+      const fin = calc && calc.fin != null ? P.hhmm(calc.fin) : null;
+      // Chaque jour par son nom : J-2 n'est pas « la veille » (retour d'usage du 01/10).
+      const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
+      const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${NOMS_JOURS[j]}</option>`).join('');
+      // Ce qui la lie à une autre : une étape faite à la chaîne, une ligne robot partagée.
+      const avec = a.type === 'manuel' && a.fusion && a.fusion !== a.service ? this.nom(a.fusion) : '';
+      // Une équipe qui ne travaille que certains jours (règle ⚡).
+      const cond = a.condition, etat = cond && this.at.etatCondition ? this.at.etatCondition(a) : null;
+      const ligne = a.type === 'robot' && this.at.robotsDeLigne ? this.at.robotsDeLigne(a).filter(x => x !== a) : [];
+      // Vue depuis l'étape qu'elle absorbe : on dit d'où elle vient.
+      const badges = (o.depuis ? `<span class="mu-badge chaine" title="Équipe du ${esc(this.nom(a.service))} : elle fait ${esc(avec)} + ${esc(this.nom(a.service))} d’un bloc. La modifier ici la modifie aussi au ${esc(this.nom(a.service))}.">${pic('chaine', 'ico-texte')} équipe du ${esc(this.nom(a.service))} · ${esc(avec)} + ${esc(this.nom(a.service))} à la chaîne</span>`
+          + ` <button type="button" class="lien-discret" data-mu-ouvrir="${esc(a.service)}">la voir au ${esc(this.nom(a.service))} →</button>`
+        : avec ? `<span class="mu-badge chaine" title="Cette équipe fait aussi ${esc(avec)}, d’un bloc, pour ses commandes">${pic('chaine', 'ico-texte')} + ${esc(avec)} à la chaîne</span>` : '')
+        + (ligne.length ? `<span class="mu-badge ligne" title="Une seule ligne robot : ces équipes ne tournent pas en même temps">${pic('echanger', 'ico-texte')} ligne partagée avec ${ligne.map(x => '« ' + esc(x.nom) + ' »').join(', ')}</span>` : '')
+        + (cond ? `<span class="mu-badge cond${etat && !etat.remplie ? ' off' : ''}" title="Elle ne travaille que certains jours, selon le nombre de vols">⚡ si ${esc(cond.cie === '*' ? 'toutes compagnies' : cond.cie)} ≥ ${cond.seuil} ${cond.mesure === 'repas' ? 'repas' : 'vols'}${etat ? (etat.remplie ? ' · travaille aujourd’hui' : ' · pas aujourd’hui') : ''}</span>` : '');
+      const fusion = a.type === 'manuel' && this.at.blocFusion ? this.at.blocFusion(a) : '';
+      // Une catégorie d'un service (« AF Trolleys bar ») n'a pas d'autre chemin que lui : pas de lien.
+      const ordre = a.lots.filter(l => l.length).map((l, i) => `<span class="mu-ordre-cmd"><b>${i + 1}</b>${l.map(c => String(c).includes('/@') ? `<span>${esc(PC.etiquette(c))}</span>`
+        : `<button type="button" data-mu-chemin="${esc(c)}" data-service="${esc(a.service)}" title="Voir le chemin de ${esc(PC.etiquette(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')}</span>`).join('');
+      return `<article class="mu-equipe${avec ? ' en-chaine' : ''}${etat && !etat.remplie ? ' au-repos' : ''}" data-at="${esc(a.id)}">
+        ${badges ? `<p class="mu-badges">${badges}</p>` : ''}
+        <div class="mu-equipe-tete">
+          <label class="mu-eq-nom">Équipe<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
+          <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Le<select data-at-champ="jour">${jours}</select></label>
+          ${this.at.champPersonnes(a, 'mu-eq-pers')}
+          ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
+          ${a.type === 'robot' ? `<label class="mu-eq-pers">Débit${avecUnite(`<input type="number" min="1" value="${a.debit}" data-at-champ="debit">`, 'pl/h')}</label>
+          <label class="mu-eq-pers" title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" max="99" value="${a.personnesMin ?? 1}" data-at-champ="personnesMin">`, 'pers.')}</label>
+          ${(+a.personnes || 0) < (a.personnesMin ?? 1) ? `<span class="mu-badge cond off" role="status">${pic('alerte', 'ico-texte')} à l’arrêt : ${+a.personnes || 0} pers. pour un minimum de ${a.personnesMin ?? 1}</span>` : ''}` : ''}
+          <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
+        </div>
+        <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
+        ${this.grille(a.service, a, classes, o)}
+        ${o.depuis ? '' : this.aucunFlux(a)}
+        ${this.questionHTML(a)}
+        ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
+        ${fusion ? `<div class="mu-chaine-reglage">${fusion}</div>` : ''}
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : certains jours ⚡, ordre, pauses, arrêts, heures propres…${reglesEquipe(a)}</summary>
+          ${this.at.blocCondition ? `<div class="mu-cond-reglage">${this.at.blocCondition(a)}</div>` : ''}
+          ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
+      </article>`;
+    }
+
+    /* Un seul atelier, pour certaines compagnies (07/10) : ses personnes, son heure,
+     * et une case par compagnie. Effectif constant : ses commandes passent dans ses
+     * heures de présence, sans heures par vol. */
+    atelierUnique(s, a, calc) {
+      if (!a) return `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="atelier">+ Mettre l’équipe en place</button></p>`;
+      const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
+      const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${NOMS_JOURS[j]}</option>`).join('');
+      const parCie = new Map();
+      for (const c of this.at.classes) if (!c.categorie) {
+        const k = String(c.cie).toUpperCase(), x = parCie.get(k) || { commandes: 0, vols: 0 };
+        x.commandes++; x.vols += c.vols.length; parCie.set(k, x);
+      }
+      const choisies = new Set(a.compagnies || []);
+      const cies = [...parCie.keys()].sort();
+      const v = calc.get ? calc.get(a.id) : null, fin = v && v.fin != null ? P.hhmm(v.fin) : null;
+      return `<article class="mu-equipe mu-atelier-unique" data-at="${esc(a.id)}">
+        <div class="mu-equipe-tete">
+          <label class="mu-eq-nom">Équipe<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
+          <label class="mu-eq-pers">Personnes${avecUnite(`<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes">`, 'pers.')}</label>
+          <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Le<select data-at-champ="jour">${jours}</select></label>
+          <span class="mu-eq-fin">${fin ? 'dernière commande à ' + esc(fin) : ''}</span>
+        </div>
+        <p class="mu-question">Les compagnies qu’il fait <small>toutes leurs commandes, dans l’ordre des départs ; effectif constant : elles passent dans ses heures de présence, sans heures par vol</small></p>
+        <div class="mu-atelier-cies">${cies.map(c => `<label class="chk"><input type="checkbox" data-mu-atelier-cie="${esc(c)}"${choisies.has(c) ? ' checked' : ''}>
+          <b>${esc(c)}</b> <small>${pl(parCie.get(c).commandes, 'commande')} · ${pl(parCie.get(c).vols, 'vol')}</small></label>`).join('') || '<span class="mini-note">Aucune compagnie dans le programme de vols.</span>'}</div>
+        ${cies.length ? `<p class="mu-atelier-gestes"><button class="btn btn-sm" type="button" data-mu-action="atelier-toutes">Toutes</button>
+          <button class="btn btn-sm" type="button" data-mu-action="atelier-aucune">Aucune</button>
+          <span class="mini-note">Cocher une compagnie fait passer ses chemins par ${esc(s.nom)} ; les autres compagnies y passent sans s’y arrêter.</span></p>` : ''}
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : pauses, arrêts…${reglesEquipe(a)}</summary>
+          ${this.at.carte(a, calc.get ? calc.get(a.id) : null, { cmd: null, compact: true })}</details>
+      </article>`;
+    }
+
+    /* Les compagnies de l'atelier unique : cochées, leurs flux passent par le service. */
+    compagniesAtelier(service, cies, oui) {
+      this.at.changer(() => {
+        const st = this.at.state, a = st.ateliers.find(x => x.service === service && x.parCompagnie); if (!a) return;
+        const set = new Set(a.compagnies || []);
+        for (const c of cies) { if (oui) set.add(c); else set.delete(c); }
+        a.compagnies = [...set].sort();
+        if (oui) {
+          // Les flux que suivent ses commandes passent par le service, à leur place.
+          const ids = new Set(this.at.classes.filter(c => !c.categorie && cies.includes(String(c.cie).toUpperCase())).map(c => c.id));
+          for (const t of PC.types(st)) {
+            if (P.servicesDuParcours(t).includes(service)) continue;
+            if (PC.commandesDuType(st, t.id, this.at.classes).some(c => ids.has(c.id))) PC.changerFlux(st, t.id, service, true, this.options());
+          }
+        }
+        a.lots = this.at.lotsAtelier(a);
+      }, this.nom(service) + ' : ' + (oui ? 'fait ' : 'ne fait plus ') + cies.join(', ') + '.');
+    }
+
+    /* Aucun flux ne passe par le service de l'équipe : toute sa grille est grisée
+     * (retour d'usage du 06/10 : « le frigo départ et le BOB, une équipe de nombre
+     * constant qui prépare des commandes… l'équipe ne prépare rien ? »). Ce n'est
+     * pas son effectif : c'est le chemin des commandes. On le dit là où l'on coche. */
+    aucunFlux(a) {
+      if (!a || !(a.type === 'manuel' || a.type === 'robot')) return '';
+      const types = PC.types(this.etat);
+      if (!types.length || types.some(t => P.servicesDuParcours(t).includes(a.service))) return '';
+      return `<div class="mu-q mu-aucun-flux" role="status"><p>Aucun chemin ne passe par <b>${esc(this.nom(a.service))}</b> : ses commandes ne se cochent pas
+        (la grille est grisée). Ce n’est pas son effectif : une commande ne se prépare que dans les services de son chemin.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="flux-tous">Faire passer tous les chemins par ${esc(this.nom(a.service))}</button>
+        <span class="mini-note">ou un seul : « + Faire passer un chemin par ici… », en haut de la fiche</span></div></div>`;
+    }
+
+    /** La grille compagnies × classes d'une équipe (ou, sans équipe, de qui passe par le service). */
+    grille(service, a, classes, o = {}) {
+      const parCategories = PC.natureService(this.etat, service) === 'categories';
+      if (!classes.length) return '<p class="mini-note">' + (parCategories ? 'Aucune équipe : aucun chemin ne passe par ce service (voir plus haut).'
+        : 'Aucune commande : importez d’abord vos vols (Vols).') + '</p>';
+      const g = PC.grille(this.etat, service, a ? a.id : null, classes);
+      const par = new Map(classes.map(c => [c.id, c]));
+      const cies = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
+      // Les colonnes : les classes des vols, ou les catégories du service (« Trolleys bar »).
+      const cabs = parCategories ? ((this.etat.categories || {})[service] || []).map(k => '@' + k.id).filter(c => classes.some(k => k.cabine === c))
+        : P.CABINES.filter(c => classes.some(k => k.cabine === c));
+      const coche = x => (a ? x.etat === 'ici' : x.etat === 'passe');
+      const titre = (c, x) => {
+        const lib = P.libelleClasse(c.id) + ' · ' + pl(c.vols.length, 'vol') + (Number.isFinite(c.echeance) ? ', prête avant ' + P.hhmm(c.echeance) : '');
+        if (x.horsFlux) return lib + ' — cochée ici, mais son chemin ne passe plus par ce service : décochez-la';
+        if (x.montageSeul) return lib + ' — son chemin ne passe pas par ' + this.nom(o.depuis) + ' : cette équipe n’en fait que ' + this.nom(a.service) + ' (cochez-la dans ' + this.nom(a.service) + ')';
+        if (a && a.fusion && x.etat === 'ici') return lib + ' — ' + (PC.passePar(this.etat, c.id, a.fusion)
+          ? 'préparée par cette équipe, à la chaîne : ' + this.nom(a.fusion) + ' + ' + this.nom(a.service)
+          : 'préparée par cette équipe : ' + this.nom(a.service) + ' seulement (son chemin ne passe pas par ' + this.nom(a.fusion) + ')');
+        return lib + ' — ' + ({ ici: 'préparée par cette équipe', ailleurs: 'préparée par « ' + (x.par && x.par.nom) + ' » (cocher la déplace ici)',
+          chaine: 'faite à la chaîne par « ' + (x.par && x.par.nom) + ' »', attendue: 'passe par ce service, personne ne la prépare encore',
+          passe: 'en a besoin', hors: a ? 'ne passe pas par ce service : son chemin ne le traverse pas (ajoutez ce service à son chemin pour la préparer ici)' : 'n’en a pas besoin' })[x.etat];
+      };
+      const cellule = (cie, cab) => {
+        const id = P.idClasse(cie, cab), c = par.get(id);
+        if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
+        let x = g.get(id);
+        // Une équipe à la chaîne, vue depuis l'étape qu'elle absorbe (la Prépa) : les
+        // commandes dont le flux ne passe pas par cette étape n'y sont pas (elle ne fait
+        // que le Montage pour elles) — ni cochées, ni cochables d'ici.
+        const seulementIci = a && a.fusion && !PC.passePar(this.etat, id, a.fusion);
+        if (o.depuis && seulementIci) x = { etat: 'hors', par: null, montageSeul: true };
+        // Vue de son service : deux maillons sur les commandes qu'elle fait à la chaîne.
+        const enChaine = !o.depuis && a && a.fusion && x.etat === 'ici' && !seulementIci;
+        const marque = enChaine ? `<i class="mu-chez mu-chez-chaine">${pic('chaine')}</i>` : x.horsFlux ? `<i class="mu-chez">${pic('alerte')}</i>` : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? `<i class="mu-chez">${pic('chaine')}</i>` : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
+        // Hors de son flux : pas cochable. Le flux décide par où passe une commande ;
+        // on y ajoute le service (« Faire passer un flux par ici »), puis on coche.
+        const bloquee = x.etat === 'chaine' || (a && x.etat === 'hors');
+        return `<td class="mu-c ${x.etat}${x.horsFlux ? ' hors-flux' : ''}"><label title="${esc(titre(c, x))}"><input type="checkbox" data-mu-cocher="${esc(id)}"${coche(x) ? ' checked' : ''}${bloquee ? ' disabled' : ''}
+          aria-label="${esc(titre(c, x))}">${marque}</label></td>`;
+      };
+      return `<div class="mu-grille-scroll"><table class="mu-grille"${a ? ` data-mu-equipe="${esc(a.id)}"` : ` data-mu-service="${esc(service)}"`}>
+        <thead><tr><th scope="col"><span class="sr-only">Compagnie</span></th>${cabs.map(c => `<th scope="col"><button type="button" class="mu-tout" data-mu-col="${c}"
+          title="Cocher ou décocher toute la colonne ${esc(P.nomCabine ? P.nomCabine(c) : c)}">${parCategories ? esc(P.nomCabine(c)) : `<span class="puce-classe" data-cab="${c}"></span>${c}`}</button></th>`).join('')}</tr></thead>
+        <tbody>${cies.map(cie => `<tr><th scope="row"><button type="button" class="mu-tout" data-mu-ligne="${esc(cie)}" title="Cocher ou décocher toute la ligne ${esc(cie)}">${esc(cie)}</button></th>${cabs.map(cab => cellule(cie, cab)).join('')}</tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+
+    /* ---- pas à pas ------------------------------------------------------ */
+
+    /** Ce qui reste à faire avant de simuler, dans l'ordre. Le registre des
+     *  problèmes (problemes.js) en reprend les étapes « à faire », par leur `id`. */
+    etapes() {
+      const classes = this.at.classes, r = this.at.resultat || {};
+      const vols = this.a.vols ? this.a.vols() : { departs: 0, importes: false };
+      const services = this.ordre(this.a.services());
+      const bilans = services.map(s => ({ s, b: this.bilanDuCalcul(s.id, classes, r) }));
+      const utilises = bilans.filter(x => x.b.etat !== 'libre');
+      const absentes = Object.values(r.parClasse || {}).filter(c => c.absente).map(c => c.id);
+      const corriger = (r.anomalies || []).filter(x => !CODES_JOURNEE.has(x.code) && !x.service && !x.atelier);
+      const out = [];
+      out.push({ id: 'vols', num: 1, titre: 'Les vols de la journée', etat: !vols.departs ? 'afaire' : vols.importes ? 'ok' : 'exemple',
+        texte: !vols.departs ? 'Aucun vol : importez votre programme.' : pl(vols.departs, 'départ') + ' · ' + pl(classes.length, 'commande') + ' (une par compagnie et par classe)'
+          + (vols.importes ? '' : ' — ce sont les vols d’exemple : importez les vôtres.'),
+        geste: { page: 'v-programme', texte: vols.importes ? 'Voir les vols' : 'Importer vos vols' } });
+      // Les flux de production : chaque commande passe quelque part.
+      const st = this.etat, types = PC.types(st);
+      const propres = classes.filter(c => PC.cheminDe(st, c.id)).length, sansFlux = classes.filter(c => !PC.fluxDe(st, c)).length;
+      const principaux = types.filter(t => !t.auto && PC.commandesDuType(st, t.id, classes).length), variantes = types.filter(t => t.auto);
+      out.push({ id: 'flux', num: 2, titre: 'Les chemins de production', etat: !types.length || sansFlux || propres ? 'afaire' : 'ok',
+        texte: !types.length ? 'Aucun chemin : dessinez par où passe chaque type de production (Économie, Business…).'
+          : propres ? pl(propres, 'commande a', 'commandes ont') + ' encore leur propre chemin : regroupez-les en chemins.'
+          : sansFlux ? pl(sansFlux, 'commande n’a', 'commandes n’ont') + ' pas de chemin : donnez-en un à leur classe.'
+          : pl(principaux.length, 'chemin', 'chemins') + ' : ' + principaux.map(t => t.nom).join(' · ') + (variantes.length ? ' — et ' + pl(variantes.length, 'variante') : ''),
+        geste: { page: 'mu-flux', texte: 'Ouvrir les chemins' } });
+      out.push({ id: 'services', num: 3, titre: 'Vos services et leurs équipes', etat: !utilises.length ? 'afaire' : utilises.some(x => x.b.etat === 'afaire') ? 'afaire' : 'ok',
+        texte: !utilises.length ? 'Aucun service n’a d’équipe : ouvrez un service, dites ce qu’il fait, ajoutez ses équipes.'
+          : pl(utilises.length, 'service utilisé', 'services utilisés') + ', ' + pl(utilises.reduce((n, x) => n + x.b.cases.length, 0), 'équipe'),
+        services: utilises.map(x => ({ id: x.s.id, nom: x.s.nom, etat: x.b.etat, points: x.b.points })),
+        geste: { page: 'mu-services', texte: 'Ouvrir les services' } });
+      const parCie = absentes.filter(id => String(id).includes('/@')), repas = absentes.filter(id => !String(id).includes('/@'));
+      out.push({ id: 'commandes', num: 4, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
+        // Les commandes des repas, puis les compagnies sans armement (« RAM/@ARM ») : deux choses, deux mots.
+        texte: absentes.length ? [repas.length ? pl(repas.length, 'commande n’est préparée', 'commandes ne sont préparées') + ' par aucune équipe' : '',
+          parCie.length ? pl(parCie.length, 'compagnie n’a', 'compagnies n’ont') + ' personne ' + [...new Set(parCie.map(id => (P.libelleClasse(id).split(' · ')[1] || 'service par compagnie')))].map(n => 'à l’« ' + n + ' »').join(', ') : '']
+            .filter(Boolean).join(', et ') + ' : cochez-les dans l’équipe qui les prépare.'
+          : 'Toutes les commandes sont préparées.',
+        commandes: absentes.slice(0, 16).map(id => PC.etiquette(id)).concat(absentes.length > 16 ? ['+ ' + (absentes.length - 16)] : []),
+        geste: absentes.length ? { page: 'mu-services', texte: 'Cocher dans un service' } : null });
+      if (corriger.length) out.push({ id: 'corriger', num: 5, titre: 'Autres points à corriger', etat: 'afaire',
+        texte: corriger.slice(0, 6).map(x => P.enClair ? P.enClair(x.message || x.code) : x.message).join(' · '),
+        geste: { page: 'at-chemins', texte: 'Voir le chemin des commandes' } });
+      const num = out.length + 1;
+      out.push({ id: 'reglages', num, titre: 'Les réglages de la simulation', etat: 'ok',
+        texte: 'Délai de chargement, retours à la plonge, rythme, pauses : des valeurs par défaut sont en place.',
+        geste: { page: 'rg-simulation', texte: 'Voir les réglages' } });
+      const pret = out.every(x => x.etat !== 'afaire');
+      out.push({ id: 'simuler', num: num + 1, titre: 'Simuler la journée', etat: pret ? 'ok' : 'attente',
+        texte: pret ? 'Tout est en place : la journée est calculée.' : 'La journée se calcule déjà ; elle sera juste quand les points ci-dessus seront faits.',
+        geste: { page: 'j-chiffres', texte: 'Voir les résultats' } });
+      return out;
+    }
+
+    rendrePas() {
+      const box = root.document.getElementById('mu-pas'); if (!box) return;
+      const l = this.etapes();
+      const mots = { ok: 'fait', afaire: 'à faire', exemple: 'exemple', attente: 'ensuite' };
+      // Deux services faits d'un bloc par une même équipe : dit dès le pas à pas.
+      const ch = PC.chaines(this.etat, null, null);
+      const lies = id => ch.filter(g => g.service === id).map(g => '+ ' + this.nom(g.avant)).concat(ch.filter(g => g.avant === id).map(g => 'avec ' + this.nom(g.service)));
+      this.poser(box, `<ol class="mu-pas-liste">${l.map(e => `<li class="mu-pas-etape ${e.etat}">
+        <span class="mu-pas-num" aria-hidden="true">${e.etat === 'ok' ? pic('check') : e.num}</span>
+        <div class="mu-pas-corps"><h3>${esc(e.titre)} <span class="mu-pas-etat ${e.etat}">${mots[e.etat]}</span></h3>
+          <p>${esc(e.texte)}</p>
+          ${e.commandes && e.commandes.length ? `<ul class="mu-pas-cmds">${e.commandes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+          ${e.services ? `<ul class="mu-pas-services">${e.services.map(x => `<li class="${x.etat}"><button type="button" class="lien-discret" data-mu-ouvrir="${esc(x.id)}">${esc(x.nom)}</button>
+            <span>${x.points.length ? esc(x.points.map(p => P.enClair ? P.enClair(p) : p).join(' · ')) : 'complet'}</span>${lies(x.id).length
+              ? `<i class="mu-svc-chaine">${pic('chaine', 'ico-texte')} ${esc(lies(x.id).join(' · '))} à la chaîne</i>` : ''}</li>`).join('')}</ul>` : ''}
+          ${e.geste ? `<button type="button" class="btn btn-sm${e.etat === 'afaire' ? ' btn-play' : ''}" data-page="${e.geste.page}">${esc(e.geste.texte)} →</button>` : ''}</div></li>`).join('')}</ol>`);
+    }
+
+    /* ---- gestes ----------------------------------------------------------- */
+
+    ouvrir(id) {
+      this.choisi = id;
+      try { localStorage.setItem(CLE, id); } catch (e) { /* stockage indisponible */ }
+      if (this.page() !== 'mu-services') this.a.page('mu-services'); else this.rendreServices();
+      const f = root.document.querySelector('#mu-services .mu-fiche'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' });
+    }
+
+    /** Ouvre un flux dans Flux de production (depuis le chemin d'une commande ou une fiche de service). */
+    ouvrirFlux(id) {
+      this.fluxChoisi = id; this.fluxSel = null;
+      if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
+    }
+
+    /** Ouvre le chemin d'une commande (Chemins › Chemin d’une commande), sur un service. */
+    chemin(cmd, service) { if (this.a.chemin) this.a.chemin(cmd, service); }
+
+    cocher(atelierId, cmds, oui) {
+      const a = this.etat.ateliers.find(x => x.id === atelierId); if (!a) return;
+      const noms = cmds.map(c => PC.etiquette(c)).join(', ');
+      let r = { n: 0, horsFlux: [], orphelines: [] };
+      this.question = null;
+      const o = this.options(), propres = this.at.classesDe(a.service);
+      if (propres) o.classes = propres;   // par catégories : l'ordre suit leurs vols
+      this.at.changer(() => { r = PC.cocher(this.at.state, atelierId, cmds, oui, o); },
+        oui ? '« ' + a.nom + ' » prépare ' + noms + '.' : '« ' + a.nom + ' » ne prépare plus ' + noms + '.');
+      // Le flux ne change pas tout seul : on demande (tout le flux, ou seulement ces commandes).
+      const liste = oui ? r.horsFlux : r.orphelines;
+      if (liste.length) { this.question = { atelier: a.id, service: a.service, oui, cmds: liste }; this.rendreServices(); }
+      return r.n;
+    }
+
+    /** La question sous la grille d'une équipe : que faire du flux de ces commandes ? */
+    questionHTML(a) {
+      const q = this.question; if (!q || q.atelier !== a.id) return '';
+      const st = this.etat, svc = this.nom(q.service);
+      const flux = new Map();
+      for (const c of q.cmds) {
+        const f = PC.fluxDe(st, c); if (!f) continue;
+        if (!flux.has(f.id)) flux.set(f.id, { f, cmds: [], propre: !f.type });
+        flux.get(f.id).cmds.push(c);
+      }
+      const partages = [...flux.values()].filter(x => !x.propre);
+      const lib = q.cmds.map(c => PC.etiquette(c)).join(', ');
+      const qui = (f) => pl(PC.commandesDuType(st, f.id, this.at.classes).length, 'commande');
+      const texte = q.oui
+        ? (q.cmds.length > 1 ? 'Le chemin de ' + lib + ' ne passe pas par ' : 'Le chemin de ' + lib + ' ne passe pas par ') + svc + '.'
+        : svc + ' reste sur le chemin de ' + lib + ', et plus personne ne l’y prépare.';
+      const tout = partages.length ? `<button class="btn btn-sm btn-play" type="button" data-mu-q="flux">${q.oui ? 'Ajouter ' + esc(svc) + ' à ' : 'Retirer ' + esc(svc) + ' de '}${
+        partages.map(x => '« ' + esc(x.f.nom) + ' » (' + qui(x.f) + ')').join(', ')}</button>` : '';
+      const seul = `<button class="btn btn-sm" type="button" data-mu-q="seul">${q.oui ? 'Seulement pour ' : 'Retirer seulement pour '}${esc(lib)}</button>`;
+      return `<div class="mu-q" role="alert"><p>${esc(texte)} ${q.oui ? 'Pour tout le chemin, ou seulement pour cette commande ?' : 'Que faire ?'}</p>
+        <div class="mu-q-gestes">${tout}${seul}<button class="btn btn-sm" type="button" data-mu-q="rien">${q.oui ? 'Annuler : ne pas la préparer ici' : 'Laisser : une autre équipe la prendra'}</button></div></div>`;
+    }
+
+    repondre(quoi) {
+      const q = this.question; this.question = null;
+      if (!q) return this.rendreServices();
+      // Cochée hors de son flux, puis « Annuler » : la case se décoche (on revient avant le clic).
+      if (quoi === 'rien') { if (q.oui) this.at.histoire(false); return this.rendreServices(); }
+      const st = this.at.state, o = this.options(), svc = this.nom(q.service);
+      if (quoi === 'flux') {
+        const faits = new Set();
+        this.at.changer(() => {
+          for (const c of q.cmds) {
+            const f = PC.fluxDe(st, c); if (!f) continue;
+            if (!f.type) PC.adapter(st, [c], q.service, q.oui, o);
+            else if (!faits.has(f.id)) { faits.add(f.id); PC.changerFlux(st, f.id, q.service, q.oui, o); }
+          }
+          // Sorti du flux : ses équipes lâchent aussi les autres commandes de ce flux.
+          if (!q.oui) PC.liberer(st, q.service, this.at.classes);
+        }, svc + (q.oui ? ' entre dans ' : ' sort de ') + (faits.size > 1 ? 'ces chemins.' : 'ce chemin, pour toutes ses commandes.'));
+      } else {
+        this.at.changer(() => { PC.adapter(st, q.cmds, q.service, q.oui, o); },
+          q.cmds.map(c => PC.etiquette(c)).join(', ') + (q.oui ? ' passe' : ' ne passe plus') + ' par ' + svc + ' : une variante de son chemin.');
+      }
+    }
+
+    /** Un service qui sert tout le monde : les flux qui passent par lui. */
+    besoinFlux(service, classes) {
+      const st = this.etat, types = PC.types(st);
+      if (!types.length) return '<p class="mini-note">Aucun chemin de production pour l’instant : dessinez-les dans Chemins › Chemins de production.</p>';
+      return `<ul class="mu-besoins">${types.map(t => {
+        const dedans = P.servicesDuParcours(t).includes(service), n = PC.commandesDuType(st, t.id, classes).length;
+        return `<li><label class="chk"><input type="checkbox" data-mu-besoin="${esc(t.id)}" data-service="${esc(service)}"${dedans ? ' checked' : ''}>
+          <b>${esc(t.nom)}</b> <small>${pl(n, 'commande')}</small></label></li>`;
+      }).join('')}</ul>`;
+    }
+
+    passer(service, typeIds, oui) {
+      this.at.changer(() => { PC.passerPar(this.at.state, service, typeIds, oui, this.options()); if (!oui) PC.liberer(this.at.state, service, this.at.classes); },
+        this.nom(service) + (oui ? ' sert maintenant ' : ' ne sert plus ') + (typeIds.length > 1 ? 'ces chemins.' : 'ce chemin.'));
+    }
+
+    /* Toute une ligne (une compagnie) ou toute une colonne (une classe). */
+    tout(table, cmds) {
+      const service = table.dataset.muService || this.etat.ateliers.find(x => x.id === table.dataset.muEquipe).service;
+      const g = PC.grille(this.etat, service, table.dataset.muEquipe || null, this.at.classesDe(service) || this.at.classes);
+      if (table.dataset.muEquipe) {
+        const ici = cmds.filter(c => g.get(c).etat === 'ici');
+        // Tout cocher ne prend rien aux autres équipes : on coche ce qui est libre.
+        const libres = cmds.filter(c => g.get(c).etat === 'hors' || g.get(c).etat === 'attendue');
+        if (libres.length) this.cocher(table.dataset.muEquipe, libres, true);
+        else if (ici.length) this.cocher(table.dataset.muEquipe, ici, false);
+      }
+    }
+
+    nature(service, v) {
+      const cases = this.etat.ateliers.filter(a => a.service === service);
+      const avant = PC.natureService(this.etat, service, this.nom(service));
+      // Changer de nature se fait tout de suite : la notification porte « Annuler » (08/10).
+      if (v === 'atelier' && avant !== 'atelier') {
+        delete this.natures[service];
+        return this.at.changer(() => {
+          const st = this.at.state;
+          if (st.categories) delete st.categories[service];
+          let a = cases.find(x => x.type === 'manuel') || cases[0];
+          a = a && st.ateliers.find(x => x.id === a.id);
+          if (!a) { a = PC.equipeNeuve(st, service, this.nom(service), 'manuel'); a.nom = this.nom(service); st.ateliers.push(a); }
+          if (a.type !== 'manuel') this.at.typer(a, 'manuel');
+          // Ses compagnies : celles qu'il préparait déjà.
+          const cies = [...new Set((a.lots || []).flat().filter(c => !String(c).includes('/@')).map(c => String(c).slice(0, String(c).lastIndexOf('/'))))].filter(Boolean);
+          Object.assign(a, { parCompagnie: true, effectif: 'fixe', compagnies: cies });
+          delete a.fusion; delete a.condition; delete a.minutes;
+          st.ateliers = st.ateliers.filter(x => x.service !== service || x === a);
+          a.lots = this.at.lotsAtelier(a);
+        }, this.nom(service) + ' : une seule équipe' + (cases.length > 1 ? ' (ses ' + cases.length + ' équipes n’en font plus qu’une, la première)' : '')
+          + '. Donnez ses personnes et son heure, puis cochez ses compagnies.');
+      }
+      if (avant === 'atelier' && v !== 'atelier') {
+        this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) { delete a.parCompagnie; delete a.compagnies; delete a.effectif; } }, '');
+        if (v === 'manuel') { this.natures[service] = v; return this.rendreServices(); }
+        return this.nature(service, v);
+      }
+      // Par catégories, ou plus par catégories : ses équipes repartent d'une grille vide.
+      if (v === 'categories' || avant === 'categories') {
+        // Vers « par compagnie », ses équipes gardent leurs compagnies ; dans l'autre sens, leur grille repart de zéro.
+        const efface = avant === 'categories' && cases.some(a => a.lots.some(l => l.length))
+          ? ' Ce que ses équipes préparaient est effacé : leur grille change de colonnes.' : '';
+        delete this.natures[service];
+        return this.at.changer(() => {
+          const st = this.at.state;
+          st.categories = st.categories || {};
+          // Une seule case par compagnie : un réglage, au nom du service (son code : « ARM »).
+          if (v === 'categories') st.categories[service] = (st.categories[service] || []).slice(0, 1).length ? st.categories[service].slice(0, 1)
+            : [{ id: root.OrlyEchanges ? root.OrlyEchanges.codeService(this.nom(service), st) : 'ARM', nom: this.nom(service), minutes: {} }];
+          else delete st.categories[service];
+          for (const a of st.ateliers) if (a.service === service) {
+            if (v === 'categories') { this.at.typer(a, 'manuel'); a.lots = a.lots || []; } else { if (v !== 'manuel') this.at.typer(a, v); a.lots = []; }
+          }
+          if (v === 'categories') {
+            // Ses cases par classe deviennent des cases par compagnie ; relié au seul handling dans
+            // les chemins qui passent par lui — dans tous s'il n'est encore dans aucun (08/10).
+            PC.versParCompagnie(st, service, st.categories[service][0].id);
+            PC.placerArmement(st, [service], this.handlings(st), this.at.classes);
+          } else {
+            for (const p of st.parcours || []) if (P.servicesDuParcours(p).includes(service)) PC.retirerService(p, service);
+            this.natures[service] = v;
+          }
+        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans ses chemins : donnez ses heures par vol, puis cochez les compagnies dans ses équipes.'
+          : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.' + efface);
+      }
+      if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
+      const N = NATURES.find(x => x.id === v);
+      this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) this.at.typer(a, v); },
+        this.nom(service) + ' : ' + N.nom.toLowerCase() + ' ; ' + (cases.length > 1 ? 'ses ' + pl(cases.length, 'équipe') + ' changent' : 'son équipe change') + ' de nature.');
+    }
+
+    ajouterEquipe(service) {
+      const nature = this.natures[service] || PC.natureService(this.etat, service, this.nom(service));
+      if (nature === 'lavage' && this.etat.ateliers.some(x => x.service === service && x.type === 'lavage')) return this.ajouterRelevePlonge(service);
+      let a;
+      this.at.changer(() => { a = PC.equipeNeuve(this.at.state, service, this.nom(service), nature); this.at.state.ateliers.push(a); },
+        preparent(nature) ? 'Équipe ajoutée : donnez son heure et ses personnes, puis cochez ce qu’elle prépare.' : 'C’est en place : réglez ses horaires.');
+      const el = a && root.document.querySelector(`[data-at="${CSS.escape(a.id)}"] input`);
+      if (el) el.focus();
+    }
+
+    /* Le bouton qui ajoute une équipe à la plonge : la première, ou une autre qui
+     * se relaie sur ses tunnels (15/10) — celle du matin, quand la première fait
+     * l'après-midi. Le geste attendu n'est le bouton principal que pour la première. */
+    ajoutPlonge(cases) {
+      const premiere = cases.find(a => a.type === 'lavage');
+      if (!premiere) return `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe de plonge</button></p>`;
+      return `<p class="mu-ajout"><button class="btn btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe de plonge</button>
+        <span class="mini-note">une autre équipe aux tunnels, celle du matin ou du soir : elle lave comme « ${esc(premiere.nom)} », à ses heures</span></p>`;
+    }
+
+    /* Une équipe de plonge en plus (15/10) : elle reprend la façon de laver de la
+     * première, et se place là où des retours arrivent sans personne pour les
+     * laver. Sa fiche s'ouvre, le curseur dans son heure : c'est ce qu'on règle. */
+    ajouterRelevePlonge(service) {
+      const st = this.at.state, r = this.at.a && this.at.a.reglages ? this.at.a.reglages() : {};
+      const vols = this.at.a && this.at.a.vols ? this.at.a.vols() : [];
+      const retours = P.retoursDeVols(vols, st.materiel || {}).map(x => x.t);
+      const modele = st.ateliers.find(x => x.service === service && x.type === 'lavage');
+      const a = PC.equipePlongeEnPlus(st, service, this.nom(service), { retours, regime: r.regime });
+      const t0 = a.jour * 1440 + P.minutes(a.debut), presence = P.normaliserRegime(a.regime, r.regime).presence;
+      const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
+      const ok = this.at.changer(() => { this.at.state.ateliers.push(a); },
+        '« ' + a.nom + ' » ajoutée, ' + (Number.isFinite(presence) ? 'de ' + quand(t0) + ' à ' + quand(t0 + presence) : 'à partir de ' + quand(t0))
+        + ' : elle lave comme « ' + modele.nom + ' » (mêmes tunnels, ' + (a.parVol ? 'mêmes temps par vol' : 'mêmes débits') + '). Réglez son heure et son effectif.');
+      if (!ok) return;
+      this.at.ouvert = a.id;
+      if (this.rendreServices) this.rendreServices(); else this.at.rendre();
+      // Sa fiche en haut de la page : la notification, en bas, ne cache pas son heure.
+      const carte = root.document.querySelector(`[data-at="${CSS.escape(a.id)}"]`), el = carte && carte.querySelector('[data-at-champ="debut"]');
+      if (el) { el.focus({ preventScroll: true }); if (el.select) el.select(); carte.scrollIntoView({ block: 'start' }); }
+    }
+
+    /* ---- flux de production (30/09) ---------------------------------------
+     * Un flux par type de production : par où il passe (un diagramme), et
+     * les commandes qui le suivent (une grille). Les variantes — une commande
+     * qui s'écarte du flux de sa classe — sont des flux comme les autres. */
+
+    rendreFlux() {
+      const box = root.document.getElementById('mu-flux'); if (!box) return;
+      const st = this.etat, classes = this.at.classes, types = PC.types(st);
+      if (!types.some(t => t.id === this.fluxChoisi)) {
+        const suivi = types.map(t => [t, PC.commandesDuType(st, t.id, classes).length]).sort((a, b) => b[1] - a[1])[0];
+        this.fluxChoisi = suivi ? suivi[0].id : null;
+      }
+      const propres = classes.filter(c => PC.cheminDe(st, c.id));
+      const nbPropres = new Set(propres.map(c => PC.signature(PC.cheminDe(st, c.id)))).size;
+      const regroupe = propres.length ? `<div class="mu-q mu-regrouper"><p><b>${pl(propres.length, 'commande a', 'commandes ont')} chacune ${propres.length > 1 ? 'leur' : 'son'} propre chemin</b>,
+        qui se ${nbPropres > 1 ? 'résument à ' + nbPropres + ' chemins différents' : 'résument à un seul chemin'}. Regroupez-les : chaque classe aura son chemin, et les commandes qui s’en écartent, leur variante.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-flux-action="regrouper">Regrouper en ${pl(nbPropres, 'chemin', 'chemins')}</button></div></div>` : '';
+      const defautDe = t => P.CABINES.filter(c => (st.parcoursCabine || {})[c] === t.id);
+      const I = root.OrlyIcones;
+      const ligne = t => {
+        const cmds = PC.commandesDuType(st, t.id, classes), n = cmds.length, cabs = defautDe(t);
+        // Deux de ses services faits d'un bloc par une même équipe : dit dès la liste.
+        const ch = PC.chaines(st, t, cmds.map(c => c.id)).map(g => this.nom(g.avant) + ' + ' + this.nom(g.service));
+        return `<button type="button" class="mu-svc ${n ? 'ok' : 'libre'}${ch.length ? ' en-chaine' : ''}${t.id === this.fluxChoisi ? ' actif' : ''}" data-mu-flux-choisir="${esc(t.id)}" aria-current="${t.id === this.fluxChoisi}">
+          <span class="mu-svc-ico" aria-hidden="true">${I ? I.ico('fleche') : ''}</span>
+          <span class="mu-svc-txt"><b>${esc(t.nom)}</b><small>${pl(n, 'commande')}${cabs.length ? ' · chemin des ' + cabs.map(c => (P.NOM_CABINE || {})[c] || c).join(', ') : t.auto ? ' · variante' : ''}</small>${ch.length
+            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">${pic('chaine', 'ico-texte')} ${esc(ch.join(' · '))} à la chaîne</i>` : ''}</span></button>`;
+      };
+      const principaux = types.filter(t => !t.auto), variantes = types.filter(t => t.auto);
+      const liste = `<nav class="mu-liste" aria-label="Les chemins de production">
+        ${principaux.length ? '<p class="mu-groupe">Chemin</p>' + principaux.map(ligne).join('') : ''}
+        ${variantes.length ? '<p class="mu-groupe">Variantes</p>' + variantes.map(ligne).join('') : ''}
+        <form class="mu-nouveau" data-mu-flux-nouveau><b>Nouveau chemin</b>
+          <label>Nom <input name="nom" maxlength="76" placeholder="ex. Économie robot" required></label>
+          <label>Partir de <select name="source"><option value="">rien (vide)</option>${types.map(t => `<option value="${esc(t.id)}"${t.id === this.fluxChoisi ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</select></label>
+          <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
+      </nav>`;
+      const t = types.find(x => x.id === this.fluxChoisi);
+      this.poser(box, regroupe + `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-flux-fiche="${esc(t ? t.id : '')}">${t ? this.ficheFlux(t, classes) : '<p class="mini-note">Aucun chemin de production : créez-en un (à gauche).</p>'}</div></div>`
+        + this.cheminsDesCommandes(classes));
+      const g = this.grapheFlux(); if (g && t) g.rendre();
+    }
+
+    /* ---- vue d'ensemble (05/10) ---------------------------------------------
+     * « Dès qu'on a beaucoup de services, cela devient incompréhensible » : tous
+     * les chemins d'un coup d'œil, comme un plan de métro. Une colonne par flux
+     * (puis les variantes, puis les chemins à part), une ligne par service,
+     * rangée par étape ; une pastille où le chemin passe, reliées par sa couleur.
+     * Une pastille ouvre le flux sur ce service ; une case vide l'y fait passer. */
+
+    colonnesCarte() {
+      const st = this.etat, classes = this.at.classes, types = PC.types(st), cols = [];
+      for (const t of types.filter(x => !x.auto)) cols.push({ p: t, genre: 'flux' });
+      for (const t of types.filter(x => x.auto)) cols.push({ p: t, genre: 'variante' });
+      for (const c of classes) {
+        const p = PC.cheminDe(st, c.id);
+        if (p && !cols.some(x => x.p === p)) cols.push({ p, genre: 'propre', cmd: c.id });
+      }
+      // La palette des données du design system, dans son ordre (deux colonnes
+      // voisines restent distinctes, daltoniens compris) ; un chemin propre à une
+      // commande, en gris (15/10 : plus de couleurs écrites en dur).
+      const PAL = [1, 2, 3, 4, 5, 6].map(n => 'var(--ds-d' + n + ')');
+      let i = 0;
+      for (const c of cols) {
+        c.couleur = c.genre === 'propre' ? 'var(--ds-trait-lien)' : PAL[i++ % PAL.length];
+        c.cmds = c.genre === 'propre' ? [classes.find(x => x.id === c.cmd)].filter(Boolean) : PC.commandesDuType(st, c.p.id, classes);
+        c.cabs = c.genre === 'flux' ? P.CABINES.filter(x => (st.parcoursCabine || {})[x] === c.p.id) : [];
+        c.services = P.servicesDuParcours(c.p);
+        c.arcs = P.arcsDuParcours(c.p);
+      }
+      return cols;
+    }
+
+    /** Les services des chemins, rangés par étape (comme le diagramme en étapes). */
+    lignesCarte(cols) {
+      const ids = [...new Set(cols.flatMap(c => c.services))];
+      const arcs = cols.flatMap(c => c.arcs.map(a => ({ de: a.from, vers: a.to })));
+      const G = root.OrlyGraphe, d = G ? G.disposer(ids.map(id => ({ id })), arcs, { sens: 'bas' }) : null;
+      const isoles = new Set(d ? d.isoles : []);
+      const rang = id => (d ? d.etape[id] : 0), x = id => (d && d[id] ? d[id].x : 0);
+      const lignes = ids.map(id => ({ id, rang: rang(id), isole: isoles.has(id) }))
+        .sort((a, b) => a.rang - b.rang || x(a.id) - x(b.id) || this.nom(a.id).localeCompare(this.nom(b.id), 'fr'));
+      const rangs = [...new Set(lignes.filter(l => !l.isole).map(l => l.rang))];
+      for (const l of lignes) l.etape = l.isole ? null : rangs.indexOf(l.rang) + 1;
+      return lignes;
+    }
+
+    rendreCarte() {
+      const box = root.document.getElementById('mu-carte'); if (!box) return;
+      const cols = this.colonnesCarte(), I = root.OrlyIcones;
+      if (!cols.length) {
+        this.poser(box, `<div class="mu-carte-vide"><p><b>Aucun chemin pour l’instant.</b> Créez un chemin de production : il dira par où passent les commandes.</p>
+          <button type="button" class="btn btn-play" data-page="mu-flux">Ouvrir les chemins de production →</button></div>`);
+        return;
+      }
+      const lignes = this.lignesCarte(cols);
+      const nb = g => cols.filter(c => c.genre === g).length;
+      const cab = c => (P.NOM_CABINE || {})[c] || c;
+      const tete = c => {
+        const qui = c.genre === 'propre' ? 'chemin à part' : c.cabs.length ? 'chemin des ' + c.cabs.map(cab).join(', ') : c.genre === 'variante' ? 'variante' : 'aucune classe';
+        const attr = c.genre === 'propre' ? `data-mu-carte-cmd="${esc(c.cmd)}"` : `data-mu-carte-flux="${esc(c.p.id)}"`;
+        return `<th scope="col" class="mu-ct-flux ${c.genre}" style="--fc:${c.couleur}">
+          <button type="button" ${attr} title="Ouvrir « ${esc(c.p.nom)} »"><span class="mu-ct-puce" aria-hidden="true"></span><b>${esc(c.genre === 'propre' ? PC.etiquette(c.cmd) : c.p.nom)}</b></button>
+          <small>${pl(c.cmds.length, 'commande')}</small><small class="mu-ct-qui">${esc(qui)}</small></th>`;
+      };
+      // Par étape : un en-tête de ligne qui couvre toutes les lignes de l'étape.
+      const combien = {};
+      for (const l of lignes) { const k = l.isole ? 'iso' : l.etape; combien[k] = (combien[k] || 0) + 1; }
+      const vu = new Set();
+      const corps = lignes.map(l => {
+        const k = l.isole ? 'iso' : l.etape, premiere = !vu.has(k); vu.add(k);
+        const etape = premiere ? `<th scope="rowgroup" rowspan="${combien[k]}" class="mu-ct-etape${l.isole ? ' sans-lien' : ''}">${l.isole ? 'Sans lien' : 'Étape ' + l.etape}</th>` : '';
+        const cases = cols.map(c => {
+          const i = c.services.indexOf(l.id), passe = i >= 0;
+          const rangs = c.services.map(s => lignes.findIndex(x => x.id === s)).filter(r => r >= 0);
+          const ici = lignes.indexOf(l), haut = Math.min(...rangs), bas = Math.max(...rangs);
+          const trait = ici >= haut && ici <= bas ? ' trait' + (ici === haut ? ' debut' : '') + (ici === bas ? ' fin' : '') : '';
+          const nomC = c.genre === 'propre' ? PC.etiquette(c.cmd) : c.p.nom, cle = esc(c.p.id + '|' + l.id);
+          if (passe) {
+            const avant = c.arcs.filter(a => a.to === l.id).map(a => this.nom(a.from)), apres = c.arcs.filter(a => a.from === l.id).map(a => this.nom(a.to));
+            const titre = '« ' + nomC + ' » passe par ' + this.nom(l.id) + (avant.length ? ' — après ' + avant.join(', ') : '') + (apres.length ? ' — avant ' + apres.join(', ') : '') + '. Cliquer pour l’ouvrir sur ce service.';
+            return `<td class="oui${trait}" style="--fc:${c.couleur}"><button type="button" class="mu-ct-arret" data-mu-carte-arret="${cle}" title="${esc(titre)}" aria-label="${esc(titre)}"></button></td>`;
+          }
+          return `<td class="${trait.trim()}" style="--fc:${c.couleur}"><button type="button" class="mu-ct-ajout" data-mu-carte-ajout="${cle}"
+            title="Faire passer « ${esc(nomC)} » par ${esc(this.nom(l.id))}" aria-label="Faire passer « ${esc(nomC)} » par ${esc(this.nom(l.id))}">+</button></td>`;
+        }).join('');
+        const n = cols.filter(c => c.services.includes(l.id)).length;
+        return `<tr class="${premiere ? 'mu-ct-nouvelle' : ''}" data-mu-carte-svc="${esc(l.id)}">${etape}
+          <th scope="row" class="mu-ct-svc"><button type="button" data-mu-ouvrir="${esc(l.id)}" title="Ouvrir la fiche de ${esc(this.nom(l.id))} (ses équipes)">
+            <span class="mu-ct-ico" aria-hidden="true">${I ? I.ico(I.icoService(l.id, this.nom(l.id))) : ''}</span><span>${esc(this.nom(l.id))}</span></button>
+            <small>${pl(n, 'chemin')}</small></th>${cases}</tr>`;
+      }).join('');
+      this.poser(box, `<div class="mu-carte-tete">
+          <p class="mu-carte-resume"><b>${pl(nb('flux'), 'chemin', 'chemins')}</b>${nb('variante') ? ' · ' + pl(nb('variante'), 'variante') : ''}${nb('propre') ? ' · ' + pl(nb('propre'), 'chemin à part', 'chemins à part') : ''}
+            · ${pl(lignes.length, 'service')}, rangés par étape, de haut en bas</p>
+          <p class="mini-note">Une colonne par chemin, une ligne par service. <span class="mu-ct-legende"><i class="mu-ct-l-arret"></i> il passe par ce service</span>
+            · une pastille ouvre le chemin sur ce service · une cellule vide (+) l’y fait passer · le nom d’un service ouvre sa fiche.</p></div>
+        <div class="mu-carte-cadre"><table class="mu-carte-table">
+          <thead><tr><th scope="col" class="mu-ct-etape"></th><th scope="col" class="mu-ct-svc">Service</th>${cols.map(tete).join('')}</tr></thead>
+          <tbody>${corps}</tbody></table></div>`);
+    }
+
+    /** Une pastille de la carte : le flux s'ouvre, ce service choisi (et sa chaîne éclairée). */
+    carteArret(cle) {
+      const [pid, svc] = cle.split('|'), st = this.etat;
+      const p = (st.parcours || []).find(x => x.id === pid); if (!p) return;
+      if (!p.type) { const cmd = PC.commandeDu(st, p.id); return cmd ? this.chemin(cmd, svc) : null; }
+      this.ouvrirFlux(pid);
+      const g = this.grapheFlux();
+      if (g) { g.selection = { type: 'noeud', id: svc }; this.fluxSel = g.selection; this.rendreFlux(); g.montrer(svc); }
+    }
+
+    /** Une case vide de la carte : faire passer ce chemin par ce service, à sa place. */
+    carteAjout(cle) {
+      const [pid, svc] = cle.split('|'), st = this.at.state, o = this.options();
+      const p = (st.parcours || []).find(x => x.id === pid); if (!p) return;
+      this.at.changer(() => { const x = st.parcours.find(q => q.id === pid); if (x) { x.liens = x.liens || []; x.noeuds = x.noeuds || []; PC.insererService(st, x, svc, o); } },
+        this.nom(svc) + ' entre dans « ' + p.nom + ' », à sa place (d’après les autres chemins) ; ouvrez-le pour ajuster les flèches.');
+    }
+
+    lierCarte() {
+      root.document.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('#mu-carte [data-mu-carte-flux], #mu-carte [data-mu-carte-cmd], #mu-carte [data-mu-carte-arret], #mu-carte [data-mu-carte-ajout]');
+        if (!b) return;
+        if (b.dataset.muCarteFlux) return this.ouvrirFlux(b.dataset.muCarteFlux);
+        if (b.dataset.muCarteCmd) return this.chemin(b.dataset.muCarteCmd);
+        if (b.dataset.muCarteArret) return this.carteArret(b.dataset.muCarteArret);
+        if (b.dataset.muCarteAjout) return this.carteAjout(b.dataset.muCarteAjout);
+      });
+    }
+
+    /* La plonge et l'arrivée des retours (retour d'usage du 05/10 : « c'est
+     * con de mettre le jour de départ, il faut le jour d'arrivée »). Le jour
+     * d'une équipe de plonge se compte depuis l'arrivée des retours (J) ; la
+     * frise les met face à face : les retours qui arrivent, heure par heure,
+     * et chaque équipe de plonge sur sa plage. On voit d'un coup d'œil ce
+     * qui arrive quand personne n'est là pour le laver. */
+    friseRetours(cases) {
+      const vols = this.at.a && this.at.a.vols ? this.at.a.vols() : [];
+      const mat = this.etat.materiel || {};
+      const source = P.sourceRetours(mat), delai = Number.isFinite(+mat.delaiRetour) ? +mat.delaiRetour : 30;
+      const dou = { programme: 'les vols retour du programme (atterrissage + ' + delai + ' min)',
+        j1: 'les départs de la veille, qui reviennent 24 h plus tard (+ ' + delai + ' min)',
+        planche: 'la planche retour du handling' }[source];
+      const retours = P.retoursDeVols(vols, mat).filter(r => Number.isFinite(r.t)).sort((x, y) => x.t - y.t);
+      const r = this.at.a && this.at.a.reglages ? this.at.a.reglages() : {};
+      // Une équipe sans fin de poste (pauses décochées) reste jusqu'au bout : c'est ce que fait le calcul.
+      // Une ligne par équipe, dans l'ordre des heures : c'est une frise.
+      const equipes = cases.filter(a => a.type === 'lavage').map(a => {
+        const t0 = (a.jour || 0) * 1440 + P.minutes(a.debut || '06:00'), reg = P.normaliserRegime(a.regime, r.regime);
+        return { a, t0, t1: t0 + reg.presence };
+      }).sort((p, q) => p.t0 - q.t0);
+      const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
+      const regle = '<p class="mini-note">Le jour d’une équipe de plonge se compte <b>depuis l’arrivée des retours</b> : '
+        + '<b>J</b> le jour où ils arrivent, <b>J+1</b> le lendemain, <b>J-1</b> la veille. D’où viennent les retours : '
+        + '<button type="button" class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>';
+      if (!retours.length) return `<div class="mu-retours"><h4>L’arrivée des retours</h4>
+        <p>Aucun retour à laver d’après ${esc(dou)}.</p>${regle}</div>`;
+      const dedans = t => equipes.some(e => t >= e.t0 && t < e.t1);
+      const seuls = retours.filter(x => !dedans(x.t));
+      const t0 = Math.floor(Math.min(retours[0].t, ...equipes.map(e => e.t0)) / 60) * 60;
+      const t1 = Math.ceil(Math.max(retours[retours.length - 1].t + 1, ...equipes.map(e => (Number.isFinite(e.t1) ? e.t1 : e.t0 + 60))) / 60) * 60;
+      const finDe = e => Math.min(e.t1, t1);
+      // Le dessin : une colonne par heure (les retours qui arrivent), puis une ligne par équipe.
+      const W = 1000, G = 150, D = 12, HH = 64, LH = 30, haut = 22 + HH + 10 + Math.max(1, equipes.length) * LH + 24;
+      const x = t => G + (t - t0) / (t1 - t0) * (W - G - D);
+      const parHeure = new Map();
+      for (const q of retours) { const h = Math.floor(q.t / 60) * 60; parHeure.set(h, (parHeure.get(h) || 0) + 1); }
+      const max = Math.max(...parHeure.values());
+      const pas = [60, 120, 180, 240, 360].find(k => (W - G - D) * k / (t1 - t0) >= 54) || 360;
+      let svg = '';
+      // Les jours : une bande pour le jour d'arrivée, un trait à chaque minuit.
+      for (let j = Math.floor(t0 / 1440); j * 1440 < t1; j++) {
+        const a = Math.max(t0, j * 1440), b = Math.min(t1, (j + 1) * 1440);
+        svg += `<rect class="mr-jour${j === 0 ? ' arrivee' : ''}" x="${x(a)}" y="16" width="${x(b) - x(a)}" height="${haut - 30}"/>`
+          + `<text class="mr-jour-nom" x="${x(a) + 6}" y="12">${j === 0 ? 'J · jour d’arrivée des retours' : jourEcrit(j) + (j > 0 ? ' · lendemain' : ' · veille')}</text>`;
+        if (j * 1440 > t0) svg += `<line class="mr-minuit" x1="${x(j * 1440)}" x2="${x(j * 1440)}" y1="16" y2="${haut - 14}"/>`;
+      }
+      for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas)
+        svg += `<text class="mr-heure" x="${x(t)}" y="${haut - 2}" text-anchor="middle">${P.hhmm(((t % 1440) + 1440) % 1440)}</text>`;
+      // Les retours, heure par heure : ceux qui arrivent sans équipe se voient, et se disent.
+      svg += `<text class="mr-lib" x="8" y="${22 + HH / 2 + 4}">Retours qui arrivent</text>`;
+      for (const [h, n] of parHeure) {
+        const hb = Math.max(4, n / max * HH), seulsIci = seuls.filter(q => Math.floor(q.t / 60) * 60 === h).length;
+        svg += `<rect class="mr-retour${seulsIci ? ' seul' : ''}" x="${x(h) + 1}" y="${22 + HH - hb}" width="${Math.max(2, x(h + 60) - x(h) - 2)}" height="${hb}" rx="2"`
+          + ` data-info="${esc(quand(h) + ' : ' + pl(n, 'retour') + (seulsIci ? '\n' + (seulsIci === n ? 'aucune équipe de plonge n’est là pour les laver' : seulsIci + ' sans équipe de plonge pour les laver') : ''))}"/>`;
+      }
+      // Les équipes de plonge, chacune sur sa plage.
+      const tunnelsDe = a => (Array.isArray(a.tunnels) && a.tunnels.length ? P.tunnelsQuiTournent(a).tournent.map(t => t.nom) : []);
+      equipes.forEach((e, i) => {
+        const y = 22 + HH + 10 + i * LH, fin = Number.isFinite(e.t1) ? quand(e.t1) : 'sans fin de poste', tun = tunnelsDe(e.a);
+        const info = e.a.nom + '\n' + quand(e.t0) + ' → ' + fin + ' · ' + pl(+e.a.personnes || 0, 'personne')
+          + '\n' + (tun.length ? pl(tun.length, 'tunnel tourne', 'tunnels tournent') + ' : ' + tun.join(', ') : 'aucun tunnel ne tourne') + (e.a.parVol ? ' · lave par vol' : ' · au débit');
+        svg += `<text class="mr-lib" x="8" y="${y + 17}" data-info="${esc(info)}">${esc(e.a.nom.length > 20 ? e.a.nom.slice(0, 19) + '…' : e.a.nom)}</text>`
+          + `<rect class="mr-equipe" x="${x(e.t0)}" y="${y + 4}" width="${Math.max(3, x(finDe(e)) - x(e.t0))}" height="${LH - 10}" rx="5" data-info="${esc(info)}"/>`
+          + `<text class="mr-plage" x="${x(e.t0) + 6}" y="${y + 18}">${quand(e.t0)} → ${esc(fin)}</text>`;
+      });
+      if (!equipes.length) svg += `<text class="mr-lib vide" x="${G}" y="${22 + HH + 27}">Aucune équipe de plonge : les retours attendent.</text>`;
+      const jours = [...new Set(retours.map(q => Math.floor(q.t / 1440)))];
+      const resume = `<b>${pl(retours.length, 'retour')}</b> à laver, ${jours.length === 1 && jours[0] === 0 ? 'le jour J, ' : ''}de <b>${quand(retours[0].t)}</b> à <b>${quand(retours[retours.length - 1].t)}</b> — d’après ${esc(dou)}.`;
+      // Ce qui arrive sans personne : l'équipe qui le reprend, ou personne.
+      const suivante = t => equipes.filter(e => e.t0 >= t).sort((p, q) => p.t0 - q.t0)[0];
+      const repris = seuls.filter(q => suivante(q.t)), perdus = seuls.filter(q => !suivante(q.t));
+      const liste = l => l.slice(0, 4).map(q => quand(q.t)).join(', ') + (l.length > 4 ? '…' : '');
+      const alerte = !equipes.length ? '' : !seuls.length
+        ? '<p class="mu-retours-ok">Chaque retour arrive pendant qu’une équipe de plonge est là.</p>'
+        : (repris.length ? `<p class="mu-retours-attente">${pl(repris.length, 'retour arrive', 'retours arrivent')} sans équipe de plonge (${liste(repris)}) : `
+            + `${repris.length > 1 ? 'ils attendent' : 'il attend'} ${[...new Set(repris.map(q => suivante(q.t)))].map(e => '« ' + esc(e.a.nom) + ' » (' + quand(e.t0) + ')').join(', ')}. `
+            + `Une autre équipe ${repris.length > 1 ? 'les' : 'le'} laverait plus tôt : « Ajouter une équipe de plonge », plus bas.</p>` : '')
+          + (perdus.length ? `<p class="mu-retours-alerte">${pl(perdus.length, 'retour arrive', 'retours arrivent')} après la dernière équipe (${liste(perdus)}) : `
+            + `${perdus.length > 1 ? 'ils restent' : 'il reste'} sale${perdus.length > 1 ? 's' : ''}. Ajoutez une équipe de plonge (plus bas), le soir, ou le lendemain de l’arrivée (J+1).</p>` : '');
+      // Deux équipes là en même temps (la relève, 15/10) : par vol, elles se passent les
+      // tunnels du même nom ; au débit, leurs débits s'additionnent.
+      const ensemble = [];
+      for (let i = 0; i < equipes.length; i++) for (let k = i + 1; k < equipes.length; k++) {
+        const p = equipes[i], q = equipes[k], de = Math.max(p.t0, q.t0), a = Math.min(p.t1, q.t1);
+        if (de < a) ensemble.push({ p, q, de, a });
+      }
+      const relais = ensemble.slice(0, 3).map(({ p, q, de, a }) => {
+        const cle = n => n.trim().toLowerCase().replace(/\s+/g, ' ');
+        const communs = tunnelsDe(p.a).filter(n => tunnelsDe(q.a).some(m => cle(m) === cle(n)));
+        const et = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : l.join('');
+        return `« ${esc(p.a.nom)} » et « ${esc(q.a.nom)} » sont là ensemble de ${quand(de)} à ${Number.isFinite(a) ? quand(a) : 'la fin'}`
+          + (p.a.parVol && q.a.parVol ? (communs.length ? ` : elles se passent ${communs.length > 1 ? 'les tunnels ' + esc(et(communs)) + ' ; chacun' : 'le tunnel ' + esc(communs[0]) + ' ; il'} ne lave qu’un vol à la fois.`
+            : ' : leurs tunnels n’ont pas les mêmes noms, ce sont d’autres machines.') : ' : au débit, leurs débits s’additionnent.');
+      }).map(t => `<p class="mu-retours-relais">${t}</p>`).join('');
+      return `<div class="mu-retours"><h4>L’arrivée des retours, face à la plonge</h4><p>${resume}</p>
+        <svg class="mu-retours-frise ds-graphique" viewBox="0 0 ${W} ${haut}" role="img" aria-label="Les retours qui arrivent, heure par heure, et les équipes de plonge">${svg}</svg>
+        ${alerte}${relais}${regle}</div>`;
+    }
+
+    /* Qui suit quel chemin (retour d'usage du 05/10) : toutes les commandes, par
+     * compagnie, chacune avec la liste de tous les chemins — un flux, une variante,
+     * ou un chemin créé de toutes pièces. */
+    cheminsDesCommandes(classes) {
+      const st = this.etat, cies = [];
+      for (const c of classes) if (!cies.includes(c.cie)) cies.push(c.cie);
+      const ordre = c => P.CABINES.indexOf(c.cabine);
+      return `<details class="mu-qui-suit panneau"${this.quiSuitOuvert === false ? '' : ' open'} data-mu-qui-suit><summary><b>Qui suit quel chemin</b>
+          <span class="mini-note">— chaque compagnie × classe, et le chemin qu’elle suit : à choisir dans la liste</span></summary>
+        <div class="mu-qui-suit-grille">${cies.map(cie => `<div class="mu-qs-cie"><p class="mu-qs-tete">${esc(cie)}</p>
+          ${classes.filter(c => c.cie === cie).sort((a, b) => ordre(a) - ordre(b)).map(c => `<div class="mu-qs-ligne">
+            <span class="mu-qs-classe"><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc((P.NOM_CABINE || {})[c.cabine] || c.cabine)}</span>
+            ${PC.selectChemin(st, c, 'data-mu-cmd-chemin')}
+            <button type="button" class="lien-discret" data-mu-chemin="${esc(c.id)}" title="Voir son chemin et ses équipes">voir</button></div>`).join('')}</div>`).join('')}</div>
+      </details>`;
+    }
+
+    ficheFlux(t, classes) {
+      const st = this.etat, dedans = P.servicesDuParcours(t);
+      const cabs = P.CABINES.filter(c => (st.parcoursCabine || {})[c] === t.id);
+      const n = PC.commandesDuType(st, t.id, classes).length;
+      const hors = this.a.services().filter(s => !dedans.includes(s.id));
+      const tete = `<div class="mu-tete">
+        <span class="mu-tete-ico mu-tete-flux" aria-hidden="true">${root.OrlyIcones ? root.OrlyIcones.ico('fleche') : ''}</span>
+        <label class="mu-nom">Nom du chemin<input data-mu-flux-nom="${esc(t.id)}" maxlength="76" value="${esc(t.nom)}"></label>
+        <span class="mu-tete-fin"></span>
+        <button class="btn btn-sm" type="button" data-mu-flux-action="dupliquer">Dupliquer</button>
+        <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="supprimer"${cabs.length ? ' disabled title="C’est le chemin d’une classe : donnez d’abord un autre chemin à la classe"' : ''}>Supprimer</button>
+      </div>`;
+      const sel = this.fluxSel;
+      const actionSel = !sel ? '<span class="mini-note">Cliquez un service ou un lien pour le modifier. Tirez le rond d’un service jusqu’à un autre pour dire qu’il le livre.</span>'
+        : sel.type === 'noeud' ? `<b>${esc(this.nom(sel.id))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(sel.id)}">Retirer du chemin</button>
+          <button class="btn btn-sm" type="button" data-mu-ouvrir-svc="${esc(sel.id)}">Ses équipes →</button>`
+        : `<b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-lien" data-lien="${esc(sel.id)}">Retirer ce lien</button>`;
+      // Ajouter un service et Réorganiser flottent sur le diagramme (refonte, étape 6) ;
+      // au-dessus, ce qui est choisi et ce qu'on peut en faire.
+      this.outilsFlux = `<label class="gr-outil-choix">Ajouter un service <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les services d’eux-mêmes, dans le sens du chemin">Réorganiser</button>`;
+      const diagramme = `<div class="mu-flux-outils${sel ? ' choisi' : ''}">
+          <span class="mu-flux-sel">${actionSel}</span>
+        </div>
+        <div class="pc-graphe mu-graphe" data-mu-graphe></div>`;
+      const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
+      return tete
+        + etape(1, 'Par où il passe', diagramme, 'un rond par service, une flèche pour « livre » ; un changement vaut pour toutes ses commandes')
+        + etape(2, 'Qui le suit', this.quiSuit(t, classes), pl(n, 'commande') + ' aujourd’hui');
+    }
+
+    /* Qui suit un flux : des classes entières, et quelques exceptions — tout
+     * se coche et se décoche, chaque exception se défait d'un clic. */
+    quiSuit(t, classes) {
+      if (!classes.length) return '<p class="mini-note">Aucune commande : importez d’abord vos vols (Vols).</p>';
+      const st = this.etat, nomCab = c => (P.NOM_CABINE || {})[c] || c;
+      const flux = id => (st.parcours || []).find(p => p.id === id);
+      const cabs = P.CABINES.filter(c => classes.some(k => k.cabine === c));
+      // 1. Les classes.
+      const puces = cabs.map(cab => {
+        const def = (st.parcoursCabine || {})[cab], ici = def === t.id, autre = def && !ici ? flux(def) : null;
+        const nb = classes.filter(c => c.cabine === cab && (PC.fluxDe(st, c) || {}).id === t.id).length;
+        const sous = ici ? pl(nb, 'commande') : autre ? 'suit « ' + autre.nom + ' »' : 'aucun chemin';
+        return `<label class="mu-classe${ici ? ' on' : ''}"><input type="checkbox" data-mu-flux-classe="${cab}"${ici ? ' checked' : ''}>
+          <span class="puce-classe" data-cab="${cab}"></span><b>${esc(nomCab(cab))}</b><small>${esc(sous)}</small></label>`;
+      }).join('');
+      // 2. Les exceptions.
+      const lib = c => P.libelleClasse(c.id);
+      const suitAussi = classes.filter(c => !PC.cheminDe(st, c.id) && (st.parcoursClasse || {})[c.id] === t.id && (st.parcoursCabine || {})[c.cabine] !== t.id);
+      const partent = classes.filter(c => (st.parcoursCabine || {})[c.cabine] === t.id && (PC.fluxDe(st, c) || {}).id !== t.id);
+      const ligneAussi = c => {
+        const def = flux((st.parcoursCabine || {})[c.cabine]);
+        return `<li><span><b>${esc(lib(c))}</b> suit ce chemin${def ? ', alors que les ' + esc(nomCab(c.cabine)) + ' suivent « ' + esc(def.nom) + ' »' : ''}.</span>
+          <button class="btn btn-sm" type="button" data-mu-flux-retour="${esc(c.id)}">${def ? 'La remettre sur le chemin de sa classe' : 'Retirer'}</button></li>`;
+      };
+      const lignePart = c => {
+        const f = PC.fluxDe(st, c), propre = f && !f.type;
+        return `<li><span><b>${esc(lib(c))}</b> ${propre ? 'a son propre chemin' : 'suit « ' + esc(f ? f.nom : '?') + ' »'}.</span>
+          ${f && f.type ? `<button class="btn btn-sm" type="button" data-mu-flux-choisir="${esc(f.id)}">Voir ce chemin</button>` : ''}
+          ${propre ? `<button class="btn btn-sm" type="button" data-mu-chemin="${esc(c.id)}">Voir son chemin</button>` : ''}
+          <button class="btn btn-sm" type="button" data-mu-flux-suivre="${esc(c.id)}">La remettre sur ce chemin</button></li>`;
+      };
+      const autres = classes.filter(c => (PC.fluxDe(st, c) || {}).id !== t.id);
+      const ajout = autres.length ? `<label class="mu-flux-ajout-cmd">Une autre commande suit ce chemin :
+        <select data-mu-flux-ajouter-cmd><option value="">choisir…</option>${autres.map(c => {
+          const f = PC.fluxDe(st, c);
+          return `<option value="${esc(c.id)}">${esc(lib(c))}${f ? ' — suit « ' + esc(f.nom) + ' »' : ' — sans chemin'}</option>`;
+        }).join('')}</select></label>` : '';
+      const suivent = classes.filter(c => (PC.fluxDe(st, c) || {}).id === t.id);
+      const voir = suivent.length ? `<label class="mu-flux-ajout-cmd">Voir le chemin d’une de ses commandes, avec ses équipes :
+        <select data-mu-flux-chemin><option value="">choisir…</option>${suivent.map(c => `<option value="${esc(c.id)}">${esc(lib(c))}</option>`).join('')}</select></label>` : '';
+      return `<p class="mu-sous-titre">Les classes qui le suivent <small>cochez une classe : toutes ses commandes suivent ce chemin</small></p>
+        <div class="mu-classes">${puces}</div>
+        <p class="mu-sous-titre">Les exceptions <small>une compagnie qui ne fait pas comme sa classe</small></p>
+        ${suitAussi.length || partent.length ? `<ul class="mu-exceptions">${suitAussi.map(ligneAussi).join('')}${partent.map(lignePart).join('')}</ul>`
+          : '<p class="mini-note">Aucune : chaque commande suit le chemin de sa classe.</p>'}
+        ${ajout}${voir}`;
+    }
+
+    /* Une commande revient au flux de sa classe (ou n'en a plus, si sa classe n'en a pas). */
+    revenirClasse(st, cmd) {
+      const cab = cmd.slice(cmd.lastIndexOf('/') + 1), def = (st.parcoursCabine || {})[cab];
+      if (def) PC.assignerType(st, cmd, def);
+      else {
+        const propre = PC.cheminDe(st, cmd);
+        delete st.parcoursClasse[cmd];
+        if (propre) st.parcours = st.parcours.filter(p => p !== propre);
+      }
+      PC.nettoyerTypes(st);
+    }
+
+    grapheFlux() {
+      if (this.graphe || !root.OrlyGraphe) return this.graphe;
+      const u = this;
+      const flux = () => PC.types(u.etat).find(x => x.id === u.fluxChoisi);
+      this.graphe = new root.OrlyGraphe.Diagramme({
+        hote: () => root.document.querySelector('#mu-flux [data-mu-graphe]'),
+        get cle() { return 'flux:' + (u.fluxChoisi || ''); },
+        titre: 'Le chemin de production : un nœud par service, une flèche par livraison',
+        noeuds: () => {
+          const t = flux(); if (!t) return [];
+          const I = root.OrlyIcones, cmds = PC.commandesDuType(u.etat, t.id, u.at.classes);
+          return P.servicesDuParcours(t).map(s => {
+            const eq = u.etat.ateliers.filter(a => a.service === s);
+            const fab = eq.filter(a => a.type === 'manuel' || a.type === 'robot');
+            const prep = fab.length ? cmds.filter(c => fab.some(a => a.lots.some(l => l.includes(c.id))) || PC.fusionneePar(u.etat, s, c.id)).length : null;
+            // L'armement (par compagnie, relié au handling) : ses compagnies cochées, pas les repas.
+            const propres = u.at.classesDe(s);
+            if (propres) {
+              const faites = new Set(fab.flatMap(a => a.lots.flat()));
+              const n = propres.filter(c => faites.has(c.id)).length;
+              return { id: s, nom: u.nom(s), ico: I ? I.icoService(s, u.nom(s)) : 'service', sous: n + '/' + pl(propres.length, 'compagnie'), ton: n < propres.length ? 'neutre' : 'ok' };
+            }
+            const sous = !eq.length ? 'aucune équipe' : fab.length ? prep + '/' + cmds.length + ' préparées' : eq[0].type === 'dispo' ? 'mise à disposition' : eq[0].type === 'lavage' ? 'plonge' : 'par vol';
+            return { id: s, nom: u.nom(s), ico: I ? I.icoService(s, u.nom(s)) : 'service', sous, ton: !eq.length || (fab.length && prep < cmds.length) ? 'neutre' : 'ok' };
+          });
+        },
+        // Deux étapes faites à la chaîne par une même équipe : un seul bloc.
+        groupes: () => {
+          const t = flux(); if (!t) return [];
+          const cmds = PC.commandesDuType(u.etat, t.id, u.at.classes).map(c => c.id);
+          return PC.chaines(u.etat, t, cmds).map(g => ({ id: g.id, ids: [g.avant, g.service],
+            etiquettes: { [g.avant]: 'à la chaîne → ' + u.nom(g.service), [g.service]: '+ ' + u.nom(g.avant) + ' à la chaîne · ' + g.commandes.length + '/' + cmds.length },
+            titre: g.equipes.map(a => '« ' + a.nom + ' »').join(', ') + ' : ' + u.nom(g.avant) + ' + ' + u.nom(g.service) + ' d’un bloc, pour '
+              + g.commandes.map(c => PC.etiquette(c)).join(', ') + '.' }));
+        },
+        liens: () => { const t = flux(); return t ? P.arcsDuParcours(t).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to, titre: u.nom(a.from) + ' livre ' + u.nom(a.to) })) : []; },
+        relier: (de, vers) => {
+          const t = flux(); if (!t) return 'Aucun chemin choisi.';
+          if (P.arcsDuParcours(t).some(a => a.from === de && a.to === vers)) return u.nom(de) + ' livre déjà ' + u.nom(vers) + '.';
+          if (PC.creeBoucle(t, de, vers)) return 'Impossible : ' + u.nom(vers) + ' livre déjà ' + u.nom(de) + ' (directement ou par d’autres services).';
+          u.changerFlux(x => { x.liens.push({ de, vers }); }, u.nom(de) + ' livre maintenant ' + u.nom(vers) + ', dans « ' + t.nom + ' ».');
+          return '';
+        },
+        retirerLien: id => { const [de, vers] = id.split('>'); u.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
+        choisir: sel => { u.fluxSel = sel; const b = root.document.querySelector('#mu-flux .mu-flux-sel'); if (b) { u.rendreFlux(); } },
+        outils: () => u.outilsFlux || '',
+        message: (t, o) => PC.annoncer(t, o)
+      });
+      return this.graphe;
+    }
+
+    /* Modifier le flux choisi (tout le flux : toutes ses commandes). */
+    changerFlux(fn, message) {
+      const id = this.fluxChoisi;
+      this.at.changer(() => { const x = this.at.state.parcours.find(p => p.id === id); if (x) { x.liens = x.liens || []; x.noeuds = x.noeuds || []; fn(x); } }, message);
+    }
+
+    actionFlux(quoi, el) {
+      const st = this.at.state, id = this.fluxChoisi, t = PC.types(st).find(x => x.id === id), o = this.options();
+      switch (quoi) {
+        case 'regrouper': {
+          let r;
+          this.at.changer(() => { r = PC.regrouper(st, this.at.classes, o.nomDe); }, '');
+          this.fluxChoisi = null;
+          PC.annoncer(r ? pl(r.commandes, 'commande') + ' regroupées : ' + pl(r.types, 'chemin créé', 'chemins créés') + '. Chaque classe a son chemin ; « Annuler » revient en arrière.' : '');
+          return this.rendreFlux();
+        }
+        case 'dupliquer': {
+          if (!t) return;
+          let n;
+          this.at.changer(() => { n = PC.nouveauType(st, t.nom + ' (copie)', t); }, 'Chemin dupliqué : donnez-lui ses commandes.');
+          this.fluxChoisi = n.id; return this.rendreFlux();
+        }
+        case 'supprimer': {
+          if (!t) return;
+          const cmds = PC.commandesDuType(st, t.id, this.at.classes);
+          this.at.changer(() => {
+            for (const c of cmds) delete st.parcoursClasse[c.id];
+            st.parcours = st.parcours.filter(p => p.id !== t.id);
+          }, 'Chemin « ' + t.nom + ' » supprimé.' + (cmds.length ? ' Ses ' + pl(cmds.length, 'commande') + ' reprennent le chemin de leur classe.' : ''));
+          this.fluxChoisi = null; return this.rendreFlux();
+        }
+        case 'retirer-service': {
+          this.fluxSel = null;
+          const svc = el.dataset.service; let parties = [];
+          this.changerFlux(x => { PC.retirerService(x, svc); parties = PC.liberer(this.at.state, svc, this.at.classes); },
+            this.nom(svc) + ' sort du chemin : ceux qui le livraient livrent ceux qu’il livrait.');
+          if (parties.length) this.at.rendre(this.nom(svc) + ' sort du chemin ; ses équipes ne préparent plus '
+            + (parties.length > 6 ? pl(parties.length, 'commande') : parties.map(c => PC.etiquette(c)).join(', ')) + '.');
+          return;
+        }
+        case 'retirer-lien': { this.fluxSel = null; const [de, vers] = el.dataset.lien.split('>'); return this.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); }
+        case 'reorganiser': if (this.graphe) this.graphe.reorganiser(); return;
+      }
+    }
+
+    lierFlux() {
+      const d = root.document, dans = el => el && el.closest && el.closest('#mu-flux');
+      d.addEventListener('click', e => {
+        if (!dans(e.target)) return;
+        const c = e.target.closest('[data-mu-flux-choisir]');
+        if (c) { this.fluxChoisi = c.dataset.muFluxChoisir; this.fluxSel = null; return this.rendreFlux(); }
+        const a = e.target.closest('[data-mu-flux-action]');
+        if (a) return this.actionFlux(a.dataset.muFluxAction, a);
+        const s = e.target.closest('[data-mu-ouvrir-svc]');
+        if (s) return this.ouvrir(s.dataset.muOuvrirSvc);
+        const st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi);
+        const r = e.target.closest('[data-mu-flux-retour]');
+        if (r && t) { const cmd = r.dataset.muFluxRetour; return this.at.changer(() => this.revenirClasse(st, cmd), PC.etiquette(cmd) + ' reprend le chemin de sa classe.'); }
+        const sv = e.target.closest('[data-mu-flux-suivre]');
+        if (sv && t) { const cmd = sv.dataset.muFluxSuivre; return this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit de nouveau « ' + t.nom + ' ».'); }
+      });
+      d.addEventListener('change', e => {
+        const el = e.target; if (!dans(el)) return;
+        const st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi);
+        if (el.dataset.muFluxClasse && t) {
+          const cab = el.dataset.muFluxClasse, nom = (P.NOM_CABINE || {})[cab] || cab;
+          if (el.checked) this.at.changer(() => {
+            st.parcoursCabine[cab] = t.id;
+            // Celles de la classe désignées une à une sur ce flux le suivent désormais par leur classe.
+            for (const [k, v] of Object.entries(st.parcoursClasse)) if (v === t.id && k.endsWith('/' + cab)) delete st.parcoursClasse[k];
+            PC.nettoyerTypes(st);
+          }, 'Les ' + nom + ' suivent maintenant « ' + t.nom + ' » (sauf leurs exceptions).');
+          else this.at.changer(() => { delete st.parcoursCabine[cab]; PC.nettoyerTypes(st); },
+            'Les ' + nom + ' ne suivent plus aucun chemin : ouvrez celui qu’elles doivent suivre (à gauche) et cochez « ' + nom + ' ».');
+        } else if (el.dataset.muCmdChemin !== undefined) {
+          // Qui suit quel chemin : le chemin de cette commande, choisi dans la liste.
+          const cmd = el.dataset.muCmdChemin, pid = el.value, q = (st.parcours || []).find(x => x.id === pid);
+          const avec = q && !q.type ? PC.commandeDu(st, q.id) : null;
+          this.quiSuitOuvert = true;
+          this.at.changer(() => { PC.choisirChemin(st, cmd, pid); },
+            PC.etiquette(cmd) + (q ? ' suit maintenant « ' + q.nom + ' ».' : ' suit de nouveau le chemin de sa classe.')
+            + (avec && avec !== cmd ? ' C’était le chemin à part de ' + PC.etiquette(avec) + ' : c’est maintenant un chemin partagé, le modifier change pour les deux.' : ''));
+        } else if (el.dataset.muFluxChemin !== undefined && el.value) {
+          this.chemin(el.value);
+        } else if (el.dataset.muFluxAjouterCmd !== undefined && el.value && t) {
+          const cmd = el.value;
+          this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit maintenant « ' + t.nom + ' ».');
+        } else if (el.dataset.muFluxAjout !== undefined && el.value && t) {
+          const s = el.value, o = this.options();
+          this.changerFlux(x => { PC.insererService(st, x, s, o); }, this.nom(s) + ' entre dans « ' + t.nom + ' », à sa place ; ajustez les flèches si besoin.');
+        } else if (el.dataset.muFluxNom && t) {
+          const v = el.value.trim();
+          if (!v) { const garde = el.defaultValue; el.value = garde; this.rendreFlux(); this.refuserAuChamp(el, 'Un chemin a besoin d’un nom : il garde « ' + garde + ' ».'); return; }
+          this.changerFlux(x => { x.nom = v.slice(0, 76); delete x.auto; }, 'Chemin renommé.');
+        }
+      });
+      d.addEventListener('submit', e => {
+        const f = e.target.closest && e.target.closest('[data-mu-flux-nouveau]'); if (!f) return;
+        e.preventDefault();
+        const st = this.at.state, src = PC.types(st).find(x => x.id === f.elements.source.value) || null;
+        let n;
+        this.at.changer(() => { n = PC.nouveauType(st, f.elements.nom.value.trim() || 'Chemin', src); }, 'Chemin créé : dessinez-le, puis cochez les commandes qui le suivent.');
+        this.fluxChoisi = n.id; this.rendreFlux();
+      });
+    }
+
+    lier() {
+      const d = root.document;
+      d.addEventListener('change', e => {
+        const el = e.target;
+        if (!el.closest || !el.closest('#mu-services')) return;
+        if (el.dataset.muCocher) {
+          const t = el.closest('table');
+          if (t.dataset.muEquipe) this.cocher(t.dataset.muEquipe, [el.dataset.muCocher], el.checked);
+        } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
+        else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
+        else if (el.dataset.muEffectif) this.at.regleEffectif(el.dataset.muEffectif, el.checked);
+        else if (el.dataset.muAtelierCie) this.compagniesAtelier(this.choisi, [el.dataset.muAtelierCie], el.checked);
+        else if (el.dataset.muImpose) this.at.regleImpose(el.dataset.muImpose, el.checked);
+        // Après l'événement : redessiner pendant qu'il court arracherait le champ qu'on quitte.
+        else if (el.dataset.muEncadrement) { const svc = el.dataset.muEncadrement, n = el.value; setTimeout(() => this.at.regleEncadrement(svc, n), 0); }
+        else if (el.dataset.muEncadrementPresence || el.dataset.muEncadrementContrat) {
+          // Le champ qu'on quitte, et l'autre tel qu'il est enregistré ; refusé, le champ reprend sa valeur et le refus se lit dessous.
+          const svc = el.dataset.muEncadrementPresence || el.dataset.muEncadrementContrat, box = el.closest('.mu-encadrement-horaires');
+          const lu = x => (x === el ? x.value : x.defaultValue), garde = el.defaultValue;
+          const p = lu(box.querySelector('[data-mu-encadrement-presence]')), c = lu(box.querySelector('[data-mu-encadrement-contrat]'));
+          if (this.at.regleEncadrementHoraires) setTimeout(() => { if (this.at.regleEncadrementHoraires(svc, p, c, el) === false) el.value = garde; }, 0);
+        }
+        else if (el.dataset.muCatMin) {
+          const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
+          const cie = el.dataset.cie, v = el.value.trim();
+          // Saisies en heures par vol (08/10), gardées en minutes.
+          const m = P.versMinutes(v);
+          setTimeout(() => this.changerCategories(service, l => {
+            const k = l.find(x => x.id === id); if (!k) return;
+            if (m === null) delete k.minutes[cie]; else k.minutes[cie] = Math.max(0, m);
+          }, 'Heures par vol enregistrées.'), 0);
+        }
+        // En même temps qu'un autre service (08/10) : rangé à côté de lui dans chaque chemin.
+        else if (el.dataset.muParallele !== undefined) {
+          const svc = el.dataset.muParallele, x = el.value;
+          setTimeout(() => this.parallele(svc, x), 0);
+        }
+        else if (el.dataset.muFluxIci) {
+          const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
+          this.at.changer(() => { PC.changerFlux(this.at.state, t.id, svc, true, this.options()); },
+            this.nom(svc) + ' entre dans « ' + t.nom + ' », à sa place : ses commandes se cochent maintenant ici.');
+        }
+        else if (el.dataset.muNom) {
+          const v = el.value.trim();
+          // Vide : refusé ; le champ reprend le nom gardé, et la raison se lit sous lui (étape 7).
+          if (!v) { const garde = el.defaultValue; el.value = garde; setTimeout(() => { this.rendreServices(); this.refuserAuChamp(el, 'Un service a besoin d’un nom : il garde « ' + garde + ' ».'); }, 0); return; }
+          const svc = el.dataset.muNom;
+          setTimeout(() => { this.a.renommer(svc, v); this.rendreServices(); }, 0);
+        }
+      });
+      d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.muNom) { e.preventDefault(); e.target.blur(); } });
+      d.addEventListener('toggle', e => {
+        const t = e.target;
+        // « Qui suit quel chemin » reste comme on l'a laissé, ouvert ou fermé.
+        if (t.dataset && t.dataset.muQuiSuit !== undefined) { this.quiSuitOuvert = t.open; return; }
+        if (t.dataset && t.dataset.muSection) { this.sections.set(t.dataset.muSection, t.open); return; }
+        if (!t.dataset || !t.dataset.muPlus) return;
+        this.ouvertes = this.ouvertes || new Set();
+        if (t.open) this.ouvertes.add(t.dataset.muPlus); else this.ouvertes.delete(t.dataset.muPlus);
+      }, true);
+      d.addEventListener('submit', e => {
+        const f = e.target.closest && e.target.closest('[data-mu-nouveau]'); if (!f) return;
+        e.preventDefault();
+        const nom = f.elements.nom.value.trim(); if (!nom) return;
+        if (this.a.services().some(x => x.nom.toLowerCase() === nom.toLowerCase())) { this.refuserAuChamp(f.elements.nom, '« ' + nom + ' » existe déjà : choisissez un autre nom.'); return; }
+        const id = this.a.creer(nom, f.elements.parent.value, !f.elements.genre || f.elements.genre.value !== 'salle');
+        if (id) { this.a.notify('Service « ' + nom + ' » créé : dites ce qu’il fait, puis ajoutez ses équipes.'); this.ouvrir(id); }
+      });
+      d.addEventListener('click', e => {
+        // Les passerelles entre Services, Flux et Une commande.
+        const pont = e.target.closest && e.target.closest('#mu-services [data-mu-voir-flux], #mu-services [data-mu-chemin], #mu-flux [data-mu-chemin]');
+        if (pont) return pont.dataset.muVoirFlux ? this.ouvrirFlux(pont.dataset.muVoirFlux) : this.chemin(pont.dataset.muChemin, pont.dataset.service);
+        const q = e.target.closest && e.target.closest('[data-mu-q]');
+        if (q) return this.repondre(q.dataset.muQ);
+        const t = e.target.closest && e.target.closest('[data-mu-choisir], [data-mu-ouvrir], [data-mu-action], [data-mu-ligne], [data-mu-col]');
+        if (!t || t.closest('#mu-flux')) return;
+        if (t.dataset.muChoisir) return this.ouvrir(t.dataset.muChoisir);
+        if (t.dataset.muOuvrir) return this.ouvrir(t.dataset.muOuvrir);
+        const table = t.closest('table');
+        if (t.dataset.muLigne || t.dataset.muCol) {
+          const cmds = [...table.querySelectorAll('[data-mu-cocher]:not(:disabled)')].map(x => x.dataset.muCocher)
+            .filter(c => (t.dataset.muLigne ? c.slice(0, c.lastIndexOf('/')) === t.dataset.muLigne : c.endsWith('/' + t.dataset.muCol)));
+          if (cmds.length) this.tout(table, cmds);
+          return;
+        }
+        const id = this.choisi;
+        switch (t.dataset.muAction) {
+          case 'equipe': return this.ajouterEquipe(id);
+          case 'atelier': return this.nature(id, 'atelier');
+          case 'atelier-toutes': case 'atelier-aucune': {
+            const a = this.etat.ateliers.find(x => x.service === id && x.parCompagnie); if (!a) return;
+            const toutes = [...new Set(this.at.classes.filter(c => !c.categorie).map(c => String(c.cie).toUpperCase()))];
+            return this.compagniesAtelier(id, t.dataset.muAction === 'atelier-toutes' ? toutes : (a.compagnies || []).slice(), t.dataset.muAction === 'atelier-toutes');
+          }
+          // Tous les flux passent par ce service, chacun à sa place.
+          case 'flux-tous': {
+            const ts = PC.types(this.etat).filter(x => !P.servicesDuParcours(x).includes(id));
+            if (!ts.length) return;
+            this.at.changer(() => { for (const x of ts) PC.changerFlux(this.at.state, x.id, id, true, this.options()); },
+              this.nom(id) + ' entre dans ' + ts.map(x => '« ' + x.nom + ' »').join(', ') + ', à sa place : ses commandes se cochent maintenant ici.');
+            return;
+          }
+          case 'appui': {
+            let a;
+            this.at.changer(() => { a = PC.equipeNeuve(this.at.state, id, this.nom(id), 'appui'); this.at.state.ateliers.push(a); },
+              'Équipe hors tunnel ajoutée : donnez son heure, puis ses personnes ou ses heures par vol.');
+            this.at.ouvert = a ? a.id : this.at.ouvert;
+            return this.rendreServices ? this.rendreServices() : this.at.rendre();
+          }
+          case 'par-compagnie': return this.nature(id, 'categories');
+          // L'armement n'a rien à faire dans les chemins des repas.
+          // L'armement en branche à part, relié seulement au handling : dans les chemins qui passent
+          // par lui ; dans tous s'il n'est encore dans aucun (08/10).
+          case 'integrer-armement': {
+            let n = 0;
+            this.at.changer(() => { n = PC.placerArmement(this.at.state, [id], this.handlings(this.at.state), this.at.classes); }, '');
+            return this.at.rendre(this.nom(id) + ' : relié seulement au handling dans ' + pl(n, 'chemin') + '. « Annuler » revient en arrière.');
+          }
+          case 'liberer': {
+            let parties = [];
+            this.at.changer(() => { parties = PC.liberer(this.at.state, id, this.at.classes); }, '');
+            return this.at.rendre(this.nom(id) + ' : ses équipes ne préparent plus ' + parties.map(c => PC.etiquette(c)).join(', ') + '.');
+          }
+          case 'voir': return this.a.voir(id);
+          case 'plan': return this.a.plan(id);
+          // Une question s'il porte des équipes : la réponse arrive plus tard (une promesse).
+          case 'supprimer':
+            Promise.resolve(this.a.supprimer(id)).then(fait => { if (fait) { this.choisi = null; this.rendreServices(); } });
+            return;
+        }
+      });
+    }
+  }
+
+  /* Ce que la journée montre (un retard, un poste trop court) n'est pas une
+   * erreur de saisie : la fiche d'un service ne le range pas dans « à faire ». */
+  const CODES_JOURNEE = new Set(['poste', 'materiel', 'bouchon', 'inacheve', 'plonge-fermee', 'plonge-vol',
+    'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs', 'sans-personne', 'robot-arret', 'plonge-arret',
+    // Une commande sans vol ce jour-là (banc d'essai de la version 1) : la journée le dit, ce n'est pas un réglage à corriger.
+    'commande-absente']);
+  // « hors-parcours » et « doublon » n'en sont plus (audit du 02/10) : depuis que les flux
+  // décident des chemins, une case cochée hors de son chemin, ou deux fois dans un service,
+  // est un réglage à corriger — on le dit dans la fiche du service et dans le pas à pas.
+  const initiales = nom => String(nom || '').split(/\s+/).filter(Boolean).map(m => m[0]).join('').slice(0, 3).toUpperCase();
+
+  root.OrlyUnite = { NATURES, MonUnite };
+})(typeof window !== 'undefined' ? window : globalThis);

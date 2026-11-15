@@ -1,0 +1,1890 @@
+/* ÉCRIT PAR outils/vocabulaire.cjs — ne pas modifier à la main. Les mots de la version 1 (évolution 19 a) : une copie de
+ * ../echanges.js, commun avec la version 2 et laissé tel quel, où seuls les mots affichés changent (outils/vocabulaire-regles.cjs). */
+/* ==========================================================================
+ *  ÉCHANGES AVEC EXCEL — trois classeurs, un format chacun
+ *
+ *  Le site se pilote depuis un tableur : on exporte, on modifie, on
+ *  réimporte. Trois classeurs, parce que trois personnes différentes les
+ *  tiennent souvent :
+ *
+ *    1. ATELIERS — les équipes, ce qu'elles fabriquent, dans quel ordre, les
+ *       compagnies × classes et leurs parcours ;
+ *    2. BARÈME   — les heures de travail par vol (gardées en minutes), par service et par compagnie ×
+ *       classe : l'étude de temps ;
+ *    3. VOLS     — le programme de départs et de retours.
+ *
+ *  Règles communes, dites aussi dans la feuille « Lisez-moi » de chacun :
+ *    • un service s'écrit par son NOM, comme sur le plan (« MONTAGE ») ou par
+ *      son identifiant (« prepa ») ; casse et accents indifférents ;
+ *    • une heure s'écrit HH:MM, ou comme Excel la range (une heure) ;
+ *    • une colonne marquée « (info) » est donnée pour lire : elle est
+ *      ignorée à l'import ;
+ *    • un import refusé ne change RIEN, et dit quelles lignes corriger.
+ *
+ *  Ce module ne touche ni au DOM ni au stockage : il convertit, dans les
+ *  deux sens, entre l'état du site et les feuilles d'un classeur.
+ * ==========================================================================*/
+(function (root) {
+  'use strict';
+
+  const enNode = typeof require === 'function' && typeof module !== 'undefined';
+  const P = enNode ? require('../moteur/production.js') : root.MoteurProduction;
+  const T = enNode ? require('../tableur.js') : root.OrlyTableur;
+  const PC = enNode ? require('../parcours.js') : root.OrlyParcours;
+  const UI = enNode ? require('../ui-model.js') : root.OrlyUI;
+
+  const INFO = ' (info)';
+  const hh = t => T.hhmm(t);
+
+  /** Rassemble les erreurs : on veut tout corriger d'un coup, pas une par une. */
+  class Erreurs {
+    constructor() { this.liste = []; }
+    ajouter(feuille, ligne, message) { this.liste.push((feuille ? feuille + ', ' : '') + (ligne ? 'ligne ' + ligne + ' : ' : '') + message); }
+    essayer(feuille, ligne, fn) { try { return fn(); } catch (e) { this.ajouter(feuille, ligne, e.message); return undefined; } }
+    lever() {
+      if (!this.liste.length) return;
+      const n = this.liste.length;
+      throw new Error(this.liste.slice(0, 12).join('\n') + (n > 12 ? '\n… et ' + (n - 12) + ' autre(s).' : '')
+        + '\nRien n’a été importé.');
+    }
+  }
+
+  const lisezMoi = (titre, lignes) => ({ nom: 'Lisez-moi', lignes: [[titre], ...lignes.map(l => [l])], largeurs: [110] });
+
+  /* Le nom d'une équipe n'est unique que dans son service (retour d'usage du
+   * 08/10 : l'équipe « CRL » de la Dotation, quand la Cuisine a aussi la
+   * sienne). Dans les classeurs, sa clé l'est toujours : le nom seul s'il
+   * n'appartient qu'à une équipe, sinon « nom · service ». Un nom seul que
+   * plusieurs équipes portent est ambigu : l'import le dit, avec la clé à écrire. */
+  const SEP_CLE = ' · ';
+  const nomServiceDe = services => id => ((services || []).find(s => s.id === id) || {}).nom || id;
+  function clesDesCases(ateliers, nomService) {
+    const compte = new Map();
+    for (const a of ateliers || []) { const k = T.cleEntete(a.nom); compte.set(k, (compte.get(k) || 0) + 1); }
+    const cle = a => (compte.get(T.cleEntete(a.nom)) > 1 ? a.nom + SEP_CLE + nomService(a.service) : a.nom);
+    const par = new Map(), doubles = new Map();
+    for (const a of ateliers || []) {
+      const k = T.cleEntete(a.nom);
+      par.set(T.cleEntete(cle(a)), a);
+      if (compte.get(k) > 1) doubles.set(k, (doubles.get(k) || []).concat([a]));
+    }
+    return {
+      cle,
+      trouver: v => par.get(T.cleEntete(v)) || null,
+      // Pourquoi une clé ne trouve rien : un nom en double, écrit sans son service.
+      pourquoi: v => {
+        const d = doubles.get(T.cleEntete(v));
+        return d ? ' — ' + d.length + ' équipes portent ce nom (' + d.map(a => nomService(a.service)).join(', ') + ') : écrivez par exemple « '
+          + String(v).trim() + SEP_CLE + nomService(d[0].service) + ' »' : '';
+      }
+    };
+  }
+
+  /* ======================================================================
+   *  1. BARÈME
+   * ====================================================================*/
+
+  // Le travail par vol s'écrit en heures (08/10) ; un classeur d'avant, en
+  // « Minutes par vol », se relit toujours. Au dix-millième d'heure : l'aller-
+  // retour par Excel retrouve les minutes du site au centième près.
+  const ENTETE_BAREME = ['Service', 'Compagnie', 'Classe', 'Heures par vol', 'Vols au programme' + INFO, 'Valeur appliquée' + INFO];
+  const enHeures = m => P.versHeures(m, 4);
+
+  /**
+   * @param etat  { bareme, rendement, regime }
+   * @param ctx   { services:[{id,nom}], classes:[classe], routes: Map classe → {services:Set},
+   *                sansBareme?: Set des services dont aucune équipe ne lit le barème }
+   */
+  function baremeVersClasseur(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const lignes = [ENTETE_BAREME];
+    const vus = new Set();
+    const ordre = services.map(s => s.id);
+    for (const id of Object.keys(etat.bareme)) if (!ordre.includes(id)) ordre.push(id);
+    // Compagnie par compagnie, puis dans l'ordre des classes : l'ordre d'une étude.
+    const classesTriees = (ctx.classes || []).slice().sort((x, y) =>
+      x.cie.localeCompare(y.cie) || P.CABINES.indexOf(x.cabine) - P.CABINES.indexOf(y.cabine));
+
+    for (const sid of ordre) {
+      const table = etat.bareme[sid] || {};
+      // Les services sans barème ni classe à travailler n'encombrent pas la
+      // feuille ; ceux dont les équipes ne lisent pas le barème (plonge au
+      // débit, mise à disposition, robot) non plus.
+      if (ctx.sansBareme && ctx.sansBareme.has(sid) && !Object.keys(table).length) continue;
+      const concerne = Object.keys(table).length
+        || (ctx.classes || []).some(c => { const r = ctx.routes && ctx.routes.get(c.id); return r && r.services.has(sid); });
+      if (!concerne) continue;
+      for (const cab of P.CABINES) {
+        const cle = P.cleBareme(P.TOUTES, cab); vus.add(sid + '|' + cle);
+        lignes.push([nomDe(sid), '*', cab, Number.isFinite(table[cle]) ? enHeures(table[cle]) : null, null, null]);
+      }
+      // Une ligne par compagnie × classe dont le parcours passe ici : c'est
+      // exactement ce que l'étude doit renseigner. Vide = la valeur commune.
+      for (const c of classesTriees) {
+        const r = ctx.routes && ctx.routes.get(c.id);
+        const cle = P.cleBareme(c.cie, c.cabine);
+        if (!(r ? r.services.has(sid) : Number.isFinite(table[cle]))) continue;
+        vus.add(sid + '|' + cle);
+        const propre = table[cle];
+        const applique = P.minutesParVol(table, c);
+        lignes.push([nomDe(sid), c.cie, c.cabine, Number.isFinite(propre) ? enHeures(propre) : null,
+          c.vols ? c.vols.length : null, applique == null ? 'non renseigné' : enHeures(applique)]);
+      }
+      // Les valeurs propres à une compagnie absente du programme restent : on ne perd rien.
+      for (const [cle, v] of Object.entries(table)) {
+        if (vus.has(sid + '|' + cle)) continue;
+        const i = cle.lastIndexOf('/');
+        lignes.push([nomDe(sid), cle.slice(0, i), cle.slice(i + 1), enHeures(v), 0, enHeures(v)]);
+      }
+    }
+
+    const reglages = [['Paramètre', 'Valeur'], ['Rendement', etat.rendement], ['Présence (min)', etat.regime.presence]];
+    etat.regime.seuils.forEach((s, i) => {
+      reglages.push(['Pause ' + (i + 1) + ' — après (min de travail)', s.apres]);
+      reglages.push(['Pause ' + (i + 1) + ' — durée (min)', s.duree]);
+    });
+
+    return [
+      { nom: 'Temps par vol', lignes },
+      { nom: 'Réglages', lignes: reglages },
+      lisezMoi('Temps par vol', [
+        'Une ligne = un service, une compagnie, une classe, et le temps que coûte UN VOL de cette compagnie dans cette classe,',
+        '   pour une personne (0,25 = un quart d’heure ; 1,5 = une heure et demie).',
+        'Compagnie « * » : la valeur commune à toutes les compagnies qui n’en ont pas de propre.',
+        'Heures par vol vide : pas de valeur propre, c’est la valeur commune qui s’applique.',
+        'Un ancien classeur avec une colonne « Minutes par vol » se relit toujours, en minutes.',
+        'Classe : BC, PC, YC, CREW (équipage) ou SPML (repas spéciaux).',
+        'Service : son nom sur le plan (ex. MONTAGE) ou son identifiant (ex. prepa).',
+        'Les lignes par compagnie sont proposées pour chaque service du PARCOURS de la classe.',
+        'Les colonnes « (info) » sont données pour lire : elles sont ignorées à l’import.',
+        'Travail d’une commande dans la journée = temps par vol × nombre de ses vols.',
+        'Durée d’un lot = travail ÷ personnes ÷ rendement.',
+        'L’import REMPLACE tous les temps par vol. Il est annulable. Une erreur, et rien n’est importé.'
+      ])
+    ];
+  }
+
+  /**
+   * @returns {{ bareme, rendement?, regime? }} — rendement et régime seulement
+   *   si la feuille « Réglages » est présente.
+   */
+  function classeurVersBareme(feuilles, ctx) {
+    const err = new Erreurs();
+    const f = T.feuille(feuilles, 'Temps par vol', 'Bareme') || (feuilles.length === 1 ? feuilles[0] : null);
+    if (!f) throw new Error('Feuille « Temps par vol » introuvable.');
+    const { entetes, objets } = T.enObjets(f.lignes);
+    for (const col of ['service', 'classe']) {
+      if (!entetes.includes(col)) err.ajouter(f.nom, null, 'colonne « ' + col.replace(/_/g, ' ') + ' » manquante.');
+    }
+    // En heures (08/10) ; un classeur d'avant, en minutes, se relit toujours.
+    const heures = entetes.includes('heures_par_vol');
+    if (!heures && !entetes.includes('minutes_par_vol')) err.ajouter(f.nom, null, 'colonne « heures par vol » manquante.');
+    err.lever();
+    const service = T.correspondance(ctx.services || []);
+    const bareme = {}, vus = new Map();
+    for (const o of objets) {
+      err.essayer(f.nom, o._ligne, () => {
+        const lu = T.nombreDe(heures ? o.heures_par_vol : o.minutes_par_vol, null);
+        if (lu === null) return;                         // vide : valeur commune
+        const minutes = heures ? lu * 60 : lu;
+        const sid = service(o.service);
+        if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
+        const cab = String(o.classe ?? '').trim().toUpperCase();
+        if (!P.CABINES.includes(cab)) throw new Error('classe inconnue « ' + (o.classe ?? '') + ' » (BC, PC, YC, CREW ou SPML)');
+        const brute = String(o.compagnie ?? '').trim();
+        const cie = !brute || brute === '*' || /^toutes?$/i.test(brute) ? P.TOUTES : brute;
+        if (cie !== P.TOUTES && (cie.includes('/') || cie.length > 40)) throw new Error('compagnie illisible « ' + brute + ' »');
+        if (!(minutes >= 0)) throw new Error((heures ? 'heures' : 'minutes') + ' par vol positives ou nulles');
+        const cle = P.cleBareme(cie, cab);
+        const k = sid + '|' + cle;
+        if (vus.has(k)) throw new Error('déjà renseigné ligne ' + vus.get(k) + ' (' + (o.service) + ', ' + cle + ')');
+        vus.set(k, o._ligne);
+        (bareme[sid] || (bareme[sid] = {}))[cle] = Math.round(minutes * 100) / 100;
+      });
+    }
+    const out = { bareme };
+    const g = T.feuille(feuilles, 'Réglages', 'Reglages');
+    if (g) {
+      const { objets: params } = T.enObjets(g.lignes);
+      const seuils = [];
+      for (const o of params) {
+        err.essayer(g.nom, o._ligne, () => {
+          const cle = T.cleEntete(o.parametre), v = T.nombreDe(o.valeur, null);
+          if (v === null) return;
+          if (cle === 'rendement') { if (!(v > 0 && v <= 2)) throw new Error('rendement entre 0 et 2'); out.rendement = v; return; }
+          if (cle === 'presence_min') { if (!(v >= 30 && v <= 1440)) throw new Error('présence entre 30 et 1440 min'); (out.regime || (out.regime = {})).presence = Math.round(v); return; }
+          const m = /^pause_(\d+)_(apres|duree)/.exec(cle);
+          if (!m) throw new Error('paramètre inconnu « ' + o.parametre + ' »');
+          const i = +m[1] - 1; seuils[i] = seuils[i] || {}; seuils[i][m[2]] = v;
+        });
+      }
+      const propres = seuils.filter(s => s && s.duree > 0).map(s => ({ apres: s.apres || 0, duree: s.duree }));
+      if (propres.length || out.regime) out.regime = { ...(out.regime || {}), seuils: propres };
+    }
+    err.lever();
+    return out;
+  }
+
+  /* ======================================================================
+   *  1 bis. RÉCAP DES MAN-MINUTES — tout le barème d'un coup d'œil
+   *
+   *  Une ligne par commande (compagnie × classe), une colonne par service.
+   *  Dans chaque case, les man-minutes d'UN VOL de cette commande dans ce
+   *  service, et d'où elles viennent :
+   *    propre  — la valeur de cette compagnie × classe dans le barème
+   *    commun  — la valeur « toutes compagnies » de sa classe
+   *    case    — fixée dans une case d'équipe (elle prime, pour cette case)
+   *    manque  — rien : elle y travaillerait en temps nul
+   *    hors    — son chemin ne passe pas par ce service
+   *  Sur la journée : par vol × nombre de ses vols.
+   * ====================================================================*/
+
+  /**
+   * @param ctx { bareme (complet), services:[{id,nom}], classes, routes: Map,
+   *              ateliers:[…], sansBareme?: Set, robotsCalcules?: Set (les robots dont
+   *              l'effectif se calcule d'après le barème : banc d'essai de la version 1, évolution 9) }
+   * @returns {{ colonnes:[{id,nom}], lignes:[{ classe, vols, cellules:{sid:{parVol,jour,source,atelier}}, parVol, jour }],
+   *             totaux:{ parVol:{sid}, jour:{sid}, jourTotal } }}
+   */
+  function recapManMinutes(ctx) {
+    const bareme = ctx.bareme || {}, classes = ctx.classes || [], routes = ctx.routes || new Map();
+    const sans = ctx.sansBareme || new Set(), ateliers = ctx.ateliers || [];
+    const passe = (c, sid) => { const r = routes.get(c.id); return !r || r.services.has(sid); };
+    // Un robot ne lit pas le barème, mais il a sa colonne : son débit par commande. Sauf un robot dont
+    // l'effectif se calcule d'après le barème (évolution 9) : ses heures par vol se lisent comme les autres.
+    const calcules = ctx.robotsCalcules || new Set();
+    const robots = new Set(ateliers.filter(a => a.type === 'robot' && !calcules.has(a.id)).map(a => a.service));
+    // Un service où aucune commande ne passe n'a rien à montrer : pas de colonne.
+    // Un service qui travaille par compagnie (l'armement, retour d'usage du 02/10 :
+    // « ses man-hours sont sur l'ensemble de la compagnie, pas sur les classes ») :
+    // sa colonne se remplit sur la ligne récap de chaque compagnie.
+    const parCie = ctx.parCompagnie || [];
+    const servicesCie = new Set(parCie.map(c => c.service));
+    const colonnes = (ctx.services || []).filter(sv => servicesCie.has(sv.id) || ((!sans.has(sv.id) || robots.has(sv.id))
+      && (Object.keys(bareme[sv.id] || {}).length || classes.some(c => routes.get(c.id) && routes.get(c.id).services.has(sv.id)))
+      && classes.some(c => passe(c, sv.id)))).map(sv => (servicesCie.has(sv.id) ? { ...sv, parCompagnie: true } : robots.has(sv.id) ? { ...sv, robot: true } : sv));
+    // L'équipe qui prépare une commande dans un service : son effectif se règle aussi dans le récap.
+    // Sinon, l'équipe qui la fait à la chaîne avec l'étape d'après (Prépa + Montage) :
+    // le calcul lui compte ces minutes, le tableau la nomme (audit du 02/10).
+    const equipeDe = (sid, id) => {
+      const fait = x => (x.lots || []).some(l => l.includes(id));
+      const eq = ateliers.find(x => x.service === sid && (x.type === 'manuel' || x.type === 'robot') && fait(x))
+        || ateliers.find(x => x.type === 'manuel' && x.fusion === sid && x.service !== sid && fait(x));
+      return eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type, commandes: new Set((eq.lots || []).flat()).size,
+        ...(eq.service !== sid ? { chaine: true } : {}) } : null;
+    };
+    const lignes = classes.map(c => {
+      const vols = (c.vols || []).length, cellules = {};
+      let parVol = 0, jour = 0;
+      for (const sv of colonnes) {
+        if (sv.parCompagnie) { cellules[sv.id] = { source: 'compagnie', parVol: null, jour: null }; continue; }
+        if (!passe(c, sv.id)) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
+        const equipe = equipeDe(sv.id, c.id);
+        const eq = equipe && ateliers.find(x => x.id === equipe.id);
+        // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
+        if (eq && eq.type === 'manuel' && ctx.constantes && ctx.constantes.has(eq.id)) { cellules[sv.id] = { source: 'constant', parVol: null, jour: null, equipe }; continue; }
+        if (eq && eq.type === 'robot' && !calcules.has(eq.id)) {
+          // Le robot : des plateaux à un débit, pas des man-minutes.
+          const debit = P.debitRobot(eq, c.id), parVolPax = vols ? c.pax / vols : c.pax;
+          cellules[sv.id] = { source: 'robot', parVol: null, jour: null, equipe, debit,
+            debitPropre: !!(eq.debits && Number.isFinite(+eq.debits[c.id])), debitRobot: eq.debit, personnesMin: eq.personnesMin,
+            pax: c.pax, duree: debit > 0 ? parVolPax / debit * 60 : null };
+          continue;
+        }
+        const a = eq && eq.type === 'manuel' && eq.minutes && Number.isFinite(eq.minutes[c.id]) ? eq : null;
+        const t = bareme[sv.id] || {};
+        const propre = t[P.cleBareme(c.cie, c.cabine)], commun = t[P.cleBareme(P.TOUTES, c.cabine)];
+        // Les man-minutes fixées dans une case valent pour TOUTE la journée de la
+        // commande (tous ses vols), comme le calcul les lit : ramenées ici à un vol.
+        const v = a ? (vols ? a.minutes[c.id] / vols : a.minutes[c.id]) : Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null;
+        const source = a ? 'case' : Number.isFinite(propre) ? 'propre' : Number.isFinite(commun) ? 'commun' : 'manque';
+        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : (a ? a.minutes[c.id] : v * vols), atelier: a ? a.nom : null, equipe,
+          // Ce que dure un vol dans cette équipe : man-minutes ÷ personnes.
+          duree: v != null && equipe && equipe.type === 'manuel' && equipe.personnes > 0 ? v / equipe.personnes : null,
+          bareme: Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null };
+        if (v != null) { parVol += v; jour += v * vols; }
+      }
+      return { classe: c, vols, cellules, parVol, jour };
+    });
+    // Une ligne récap par compagnie (retours d'usage du 02/10) : le total de ses
+    // classes, service par service ; et ses services par compagnie (l'armement),
+    // minutes par vol (les siennes, sinon « toutes les compagnies ») × ses départs.
+    const cies = [...new Set(classes.map(c => c.cie).concat(parCie.map(c => c.cie)))];
+    const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
+    const lignesCie = cies.map(cie => {
+      const siennes = lignes.filter(l => l.classe.cie === cie);
+      const cellules = {};
+      let parVol = 0, jour = 0, vols = Math.max(0, ...siennes.map(l => l.vols));
+      for (const sv of colonnes) {
+        if (!sv.parCompagnie) {
+          // La somme de ses classes qui passent par ce service (robot : pas de man-minutes).
+          const ici = siennes.map(l => l.cellules[sv.id]).filter(c => c && c.source !== 'hors' && c.source !== 'compagnie');
+          if (!ici.length || sv.robot) { cellules[sv.id] = { source: ici.length ? 'robot' : 'hors', parVol: null, jour: null }; continue; }
+          const pv = ici.reduce((n, c) => n + (c.parVol || 0), 0), j = ici.reduce((n, c) => n + (c.jour || 0), 0);
+          cellules[sv.id] = { source: 'somme', parVol: pv, jour: j, classes: ici.length, manque: ici.filter(c => c.source === 'manque').length };
+          parVol += pv; jour += j;
+          continue;
+        }
+        const k = parCie.find(c => c.service === sv.id && c.cie === cie);
+        if (!k) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
+        const min = ((((ctx.categories || {})[sv.id] || [])[0]) || {}).minutes || {};
+        const propre = lire(min[cie]), commun = lire(min[P.TOUTES]), n = k.vols.length;
+        const v = propre ?? commun, equipe = equipeDe(sv.id, k.id);
+        vols = Math.max(vols, n);
+        cellules[sv.id] = { source: propre != null ? 'propre' : commun != null ? 'commun' : 'manque', parVol: v, jour: v == null ? null : v * n,
+          commun, equipe, classe: k.id, vols: n, duree: v != null && equipe && equipe.personnes > 0 ? v / equipe.personnes : null };
+        if (v != null) { parVol += v; jour += v * n; }
+      }
+      return { compagnie: cie, vols, commandes: siennes.length, cellules, parVol, jour };
+    });
+    // Les totaux : les classes pour leurs services, les compagnies pour les services par compagnie.
+    // Le travail DEMANDÉ par les chemins ; dont celui qu'une équipe a dans ses cases
+    // (le « travail fourni » des Résultats en vient) et celui que personne ne prépare encore.
+    const totaux = { parVol: {}, jour: {}, jourTotal: 0, avecEquipe: 0, sansEquipe: 0 };
+    for (const sv of colonnes) {
+      const de = sv.parCompagnie ? lignesCie : lignes;
+      totaux.parVol[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
+      totaux.jour[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
+      totaux.jourTotal += totaux.jour[sv.id];
+      for (const l of de) { const c = l.cellules[sv.id]; if (c.jour) totaux[c.equipe ? 'avecEquipe' : 'sansEquipe'] += c.jour; }
+    }
+    return { colonnes, lignes, lignesCie, totaux };
+  }
+
+  /**
+   * Le fichier de paramétrage des heures de travail : le tableau de l'écran, à
+   * remplir dans Excel pour les grosses modifications, puis à réimporter.
+   *   « Heures par vol »    — une ligne par commande, une colonne par service
+   *   « Toutes compagnies » — la valeur commune de chaque classe, par service
+   * En heures (08/10) ; un fichier d'avant (« Man-minutes par vol ») se relit en minutes.
+   */
+  function recapVersClasseur(ctx) {
+    const r0 = recapManMinutes(ctx);
+    // Les robots ont leur feuille : leur colonne ne porte pas de man-minutes.
+    const r = { ...r0, colonnes: r0.colonnes.filter(sv => !sv.robot && !sv.parCompagnie) };
+    const noms = r.colonnes.map(sv => sv.nom);
+    const lignes = [['Compagnie', 'Classe', 'Vols' + INFO, ...noms]];
+    for (const l of r.lignes) {
+      lignes.push([l.classe.cie, l.classe.cabine, l.vols, ...r.colonnes.map(sv => {
+        const c = l.cellules[sv.id];
+        return c.source === 'hors' ? null : enHeures(c.bareme);     // le barème, pas la valeur fixée dans une case
+      })]);
+    }
+    const communs = [['Classe', ...noms]];
+    for (const cab of P.CABINES) communs.push([cab, ...r.colonnes.map(sv => { const v = ((ctx.bareme || {})[sv.id] || {})[P.cleBareme(P.TOUTES, cab)]; return Number.isFinite(v) ? enHeures(v) : null; })]);
+    // L'effectif de chaque équipe qui prépare ces commandes : une ligne par case
+    // (une case partagée n'apparaît qu'une fois, avec ses commandes).
+    const personnes = [['Équipe', 'Service' + INFO, 'Commandes' + INFO, 'Personnes']];
+    const nomSvc = new Map((ctx.services || []).map(sv => [sv.id, sv.nom]));
+    const cles = clesDesCases(ctx.ateliers, id => nomSvc.get(id) || id);
+    const vues = new Set(r.colonnes.map(sv => sv.id));
+    for (const a of (ctx.ateliers || [])) {
+      if (!vues.has(a.service) || (a.type !== 'manuel' && a.type !== 'robot') || !(a.lots || []).some(l => l.length)) continue;
+      const cmds = [...new Set(a.lots.flat())];
+      personnes.push([cles.cle(a), nomSvc.get(a.service) || a.service, cmds.slice(0, 8).join(', ') + (cmds.length > 8 ? '…' : ''), a.personnes]);
+    }
+    // Les robots : le débit de chaque commande (plateaux/h) ; « toutes » = celui du robot.
+    const robot = [['Équipe', 'Compagnie', 'Classe', 'Plateaux sur la journée' + INFO, 'Débit (plateaux/h)']];
+    for (const a of (ctx.ateliers || [])) {
+      if (a.type !== 'robot') continue;
+      robot.push([cles.cle(a), 'toutes', null, null, a.debit]);
+      for (const id of [...new Set((a.lots || []).flat())]) {
+        const c = (ctx.classes || []).find(x => x.id === id), i = id.lastIndexOf('/');
+        robot.push([cles.cle(a), id.slice(0, i), id.slice(i + 1), c ? c.pax : null, a.debits && Number.isFinite(+a.debits[id]) ? +a.debits[id] : null]);
+      }
+    }
+    return [
+      { nom: 'Heures par vol', lignes },
+      { nom: 'Toutes compagnies', lignes: communs },
+      { nom: 'Personnes', lignes: personnes },
+      { nom: 'Robot', lignes: robot },
+      lisezMoi('Temps par vol — fichier de paramétrage, à modifier dans Excel puis réimporter', [
+        'Heures par vol : une ligne par commande (compagnie × classe), une colonne par service.',
+        '   Chaque cellule : le temps d’UN vol de cette commande dans ce service, pour une personne (0,25 = un quart d’heure).',
+        '   Pour la journée, le calcul multiplie par le nombre de vols.',
+        '   Une cellule égale à la valeur « Toutes compagnies » de sa classe la suit ; une autre valeur devient propre à cette compagnie.',
+        '   Une cellule vidée revient à la valeur « Toutes compagnies ». Une cellule vide d’un service où la commande ne passe pas est ignorée.',
+        'Toutes compagnies : la valeur commune de chaque classe, par service, en heures par vol. Vide : aucune.',
+        'Personnes : l’effectif de chaque équipe qui prépare ces commandes. Le nom de l’équipe est la clé : ne le changez pas.',
+        'Robot : le débit du robot en plateaux par heure — ligne « toutes » — et celui de chaque commande. Vide : celui du robot.',
+        '   Durée d’une commande sur le robot = ses plateaux ÷ son débit. Le robot tourne s’il a son effectif minimum (Personnes).',
+        '   Une équipe partagée par plusieurs commandes n’a qu’une ligne : son effectif vaut pour toutes. Durée d’un vol = temps par vol ÷ personnes.',
+        'Les colonnes sont des services : ajoutez-en ou retirez-en, seules celles présentes sont modifiées.',
+        'Les heures fixées dans une équipe ne sont pas ici : elles se règlent dans sa fiche (ou dans le classeur des équipes).',
+        'Un fichier d’avant, en minutes (feuille « Man-minutes par vol »), se relit toujours.'
+      ])
+    ];
+  }
+
+  /**
+   * Relit le fichier de paramétrage. Seuls les services présents en colonne
+   * changent ; les autres gardent leur barème.
+   * @param bareme le barème en place (complet)
+   * @returns {{ bareme, changes:number, personnes:{ atelierId: n } }}
+   */
+  function classeurVersRecap(feuilles, bareme, ctx) {
+    const err = new Erreurs();
+    // En heures (08/10) ; un fichier d'avant, en minutes, se relit toujours.
+    const fh = T.feuille(feuilles, 'Heures par vol');
+    const f = fh || T.feuille(feuilles, 'Man-minutes par vol', 'Man minutes par vol');
+    if (!f) throw new Error('Feuille « Heures par vol » introuvable : exportez le fichier depuis le tableau des temps par vol.');
+    const heures = !!fh;
+    const service = T.correspondance(ctx.services || []);
+    const out = JSON.parse(JSON.stringify(bareme || {}));
+    const avant = JSON.stringify(out);
+    const colonnesDe = (feuille, depuis) => (feuille.lignes[0] || []).map((h, i) => {
+      if (i < depuis || h == null || String(h).trim() === '' || /\(info\)$/.test(String(h).trim())) return null;
+      const sid = service(String(h).trim());
+      if (!sid) err.ajouter(feuille.nom, 1, 'service inconnu en colonne : « ' + h + ' »');
+      return sid;
+    });
+    const nombre = (feuille, ligne, v) => {
+      if (v === null || v === undefined || String(v).trim() === '' || /^[—·-]$/.test(String(v).trim())) return null;
+      let n; try { n = T.nombreDe(v, NaN); } catch (e) { n = NaN; }
+      if (!(n >= 0)) { err.ajouter(feuille.nom, ligne, (heures ? 'heures' : 'man-minutes') + ' positives ou nulles attendues, pas « ' + v + ' »'); return undefined; }
+      return Math.round((heures ? n * 60 : n) * 100) / 100;
+    };
+    // 1. Les valeurs communes d'abord : une case égale à la sienne la suit.
+    const fc = T.feuille(feuilles, 'Toutes compagnies');
+    if (fc) {
+      const cols = colonnesDe(fc, 1);
+      fc.lignes.slice(1).forEach((row, k) => {
+        const cab = String(row[0] ?? '').trim().toUpperCase(); if (!cab) return;
+        if (!P.CABINES.includes(cab)) { err.ajouter(fc.nom, k + 2, 'classe inconnue « ' + row[0] + ' »'); return; }
+        cols.forEach((sid, i) => {
+          if (!sid) return;
+          const v = nombre(fc, k + 2, row[i]); if (v === undefined) return;
+          const t = out[sid] || (out[sid] = {}), cle = P.cleBareme(P.TOUTES, cab);
+          if (v === null) delete t[cle]; else t[cle] = v;
+        });
+      });
+    }
+    // 2. Les commandes : propre si elle diffère de la valeur commune.
+    const cols = colonnesDe(f, 2);
+    const routes = ctx.routes || new Map();
+    f.lignes.slice(1).forEach((row, k) => {
+      const cie = String(row[0] ?? '').trim().toUpperCase(), cab = String(row[1] ?? '').trim().toUpperCase();
+      if (!cie && !cab) return;
+      if (!cie || cie.includes('/') || cie.length > 40) { err.ajouter(f.nom, k + 2, 'compagnie illisible « ' + (row[0] ?? '') + ' »'); return; }
+      if (!P.CABINES.includes(cab)) { err.ajouter(f.nom, k + 2, 'classe inconnue « ' + (row[1] ?? '') + ' » (BC, PC, YC, CREW ou SPML)'); return; }
+      const r = routes.get(P.idClasse(cie, cab));
+      cols.forEach((sid, i) => {
+        if (!sid) return;
+        const v = nombre(f, k + 2, row[i]); if (v === undefined) return;
+        const t = out[sid] || (out[sid] = {}), cle = P.cleBareme(cie, cab), commun = t[P.cleBareme(P.TOUTES, cab)];
+        if (v === null) { if (!r || r.services.has(sid)) delete t[cle]; return; }
+        if (Number.isFinite(commun) && commun === v) delete t[cle]; else t[cle] = v;
+      });
+    });
+    // 3 bis. Les débits des robots : seulement ce qui change.
+    const debits = {};
+    const cles = clesDesCases(ctx.ateliers, nomServiceDe(ctx.services));
+    const fr = T.feuille(feuilles, 'Robot');
+    if (fr) {
+      const nouv = new Map();
+      for (const o of T.enObjets(fr.lignes).objets) {
+        err.essayer(fr.nom, o._ligne, () => {
+          const nom = String(o.case ?? '').trim(); if (!nom) return;
+          const a = cles.trouver(nom);
+          if (!a || a.type !== 'robot') throw new Error('robot inconnu « ' + nom + ' » : le nom de l’équipe est la clé' + cles.pourquoi(nom));
+          if (!nouv.has(a)) nouv.set(a, { debit: a.debit, debits: {} });
+          const n = nouv.get(a), v = T.nombreDe(o.debit_plateaux_h, null);
+          const cie = String(o.compagnie ?? '').trim();
+          if (v !== null && !(v > 0)) throw new Error(nom + ' : débit positif attendu, en plateaux par heure');
+          if (!cie || T.cleEntete(cie) === 'toutes') { if (v !== null) n.debit = v; return; }
+          const cab = String(o.classe ?? '').trim().toUpperCase();
+          if (!P.CABINES.includes(cab)) throw new Error('classe inconnue « ' + (o.classe ?? '') + ' »');
+          if (v !== null) n.debits[P.idClasse(cie, cab)] = v;
+        });
+      }
+      for (const [a, n] of nouv) {
+        const avant = JSON.stringify([a.debit, a.debits || {}]);
+        if (avant !== JSON.stringify([n.debit, n.debits])) debits[a.id] = n;
+      }
+    }
+    // 3. L'effectif des cases : seulement ce qui change.
+    const personnes = {};
+    const fp = T.feuille(feuilles, 'Personnes');
+    if (fp) {
+      const { objets } = T.enObjets(fp.lignes);
+      for (const o of objets) {
+        err.essayer(fp.nom, o._ligne, () => {
+          const nom = String(o.case ?? '').trim(); if (!nom) return;
+          const a = cles.trouver(nom);
+          if (!a) throw new Error('équipe inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(nom));
+          const v = T.nombreDe(o.personnes, null); if (v === null) return;
+          if (!Number.isInteger(v) || v < 0 || v > 999) throw new Error(nom + ' : nombre de personnes entier attendu (0 à 999)');
+          if (v !== a.personnes) personnes[a.id] = v;
+        });
+      }
+    }
+    err.lever();
+    for (const k of Object.keys(out)) if (!Object.keys(out[k]).length && !(bareme || {})[k]) delete out[k];
+    // Le nombre de valeurs qui changent, pour le dire avant de remplacer.
+    let changes = 0;
+    const a = JSON.parse(avant);
+    for (const sid of new Set([...Object.keys(a), ...Object.keys(out)])) {
+      for (const cle of new Set([...Object.keys(a[sid] || {}), ...Object.keys(out[sid] || {})])) if ((a[sid] || {})[cle] !== (out[sid] || {})[cle]) changes++;
+    }
+    return { bareme: out, changes: changes + Object.keys(personnes).length + Object.keys(debits).length, personnes, debits };
+  }
+
+  /* ======================================================================
+   *  1 ter. RÉCAP DES CASES — le fichier de paramétrage des cases
+   *
+   *  Une ligne par case : son jour, son heure de départ, ses personnes et ses
+   *  commandes dans l'ordre. « TX/BC → TX/PC + AF/PC » : TX BC d'abord, puis
+   *  TX PC et AF PC ensemble. Le nom de la case est la clé.
+   * ====================================================================*/
+
+  const TYPE_LU = { manuel: 'équipe', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling' };
+  const ecrireLots = lots => (lots || []).filter(l => l.length).map(l => l.join(' + ')).join(' → ');
+
+  /* Une mise à disposition ouverte comme une boutique s'écrit « ouvert 07:00-18:00 » dans la colonne Vagues. */
+  const RE_OUVERT = /^ouvert(?:e)?\s+(?:de\s+)?(\d{1,2}[:h]\d{2})\s*(?:-|–|—|à|a)\s*(\d{1,2}[:h]\d{2})$/i;
+  const ecrireOuverture = a => 'ouvert ' + a.ouverture.de + '-' + a.ouverture.a;
+  /** « ouvert 07:00-18:00 » → { de, a } ; autre chose → null. */
+  function lireOuverture(texte) {
+    const m = RE_OUVERT.exec(String(texte ?? '').trim()); if (!m) return null;
+    const hm = x => { const t = T.heureDe(x.replace('h', ':')); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+    return { de: hm(m[1]), a: hm(m[2]) };
+  }
+
+  function recapCasesVersClasseur(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const fins = new Map((((ctx.resultat || {}).ateliers) || []).map(a => [a.id, a.fin]));
+    // Les heures sup de la journée (banc d'essai de la version 1), en heures × personnes : la colonne n'existe que s'il y en a.
+    const sup = new Map((((ctx.resultat || {}).ateliers) || []).filter(a => a.heuresSupPersonnes > 0).map(a => [a.id, a.heuresSupPersonnes]));
+    const rang = new Map(services.map((s, i) => [s.id, i]));
+    const lignes = [['Équipe', 'Service' + INFO, 'Type' + INFO, 'Jour', 'Départ', 'Personnes', 'Commandes, dans l’ordre', 'Vagues', 'Fin prévue' + INFO,
+      ...(sup.size ? ['Heures sup (h × pers.)' + INFO] : [])]];
+    const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    const cles = clesDesCases(etat.ateliers, nomDe);
+    for (const a of [...etat.ateliers].sort((x, y) => (rang.get(x.service) ?? 999) - (rang.get(y.service) ?? 999) || debutDe(x) - debutDe(y))) {
+      const fabrique = a.type === 'manuel' || a.type === 'robot';
+      const fin = fins.get(a.id);
+      lignes.push([cles.cle(a), nomDe(a.service), TYPE_LU[a.type] || a.type,
+        a.type === 'dispo' ? null : jourEcrit(a.jour || 0), a.type === 'dispo' ? null : a.debut,
+        a.type === 'dispo' ? null : a.personnes,
+        fabrique ? ecrireLots(a.lots) || null : null,
+        a.type === 'dispo' ? (a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }]).map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ')
+          : a.ouverture ? ecrireOuverture(a) : 'permanente') : null,
+        Number.isFinite(fin) && a.type !== 'dispo' ? P.hhmm(fin) : null,
+        ...(sup.size ? [sup.has(a.id) ? Math.round(sup.get(a.id) / 60 * 100) / 100 : null] : [])]);
+    }
+    return [
+      { nom: 'Récap des équipes', lignes },
+      lisezMoi('Équipes — fichier de paramétrage, à modifier dans Excel puis réimporter', [
+        'Une ligne par équipe. Le nom de l’équipe est la clé : ne le changez pas (les colonnes « (info) » ne sont pas lues).',
+        'Jour : J le jour du départ des vols, J-1 la veille… Départ : l’heure d’arrivée de l’équipe (HH:MM). Personnes : son effectif.',
+        'Commandes, dans l’ordre : « TX/BC → TX/PC + AF/PC » = TX BC d’abord, puis TX PC et AF PC ensemble (elles sortent ensemble).',
+        '   Une commande ajoutée à une équipe quitte les autres équipes de ce service. Vide : l’équipe ne prépare plus rien.',
+        '   Seules les équipes et les robots ont des commandes : une plonge, une mise à disposition, un handling n’en ont pas.',
+        'Vagues : pour une mise à disposition, « ouvert 07:00-18:00 » (ouverte chaque jour à ces heures),',
+        '   « J-1 14:00; J 04:00 » (à heures fixes), ou « permanente » (toujours ouverte).',
+        'Le handling travaille le jour J des vols : son jour reste J.'
+      ])
+    ];
+  }
+
+  /**
+   * Relit le fichier de paramétrage des cases.
+   * @returns {{ etat, changes:[nom de case] }}
+   */
+  function classeurVersRecapCases(feuilles, etat, ctx) {
+    const err = new Erreurs();
+    const f = T.feuille(feuilles, 'Récap des équipes');
+    if (!f) throw new Error('Feuille « Récap des équipes » introuvable : exportez le fichier depuis le récap des équipes.');
+    const out = JSON.parse(JSON.stringify(etat));
+    const cles = clesDesCases(out.ateliers, nomServiceDe(ctx.services));
+    const connues = new Set((ctx.classes || []).map(c => c.id));
+    // Ce qui compte d'une case, tel que le calcul le lit : sans liste de vagues,
+    // une mise à disposition a une vague, à son heure.
+    const sig = a => JSON.stringify([a.jour || 0, a.debut, a.personnes, a.lots,
+      a.type === 'dispo' ? (a.permanent === false ? ((a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour || 0 }]).map(v => [v.debut, v.jour || 0]))
+        : a.ouverture ? [a.ouverture.de, a.ouverture.a] : 'permanente') : null]);
+    const avant = new Map(out.ateliers.map(a => [a.id, sig(a)]));
+    const nouveauxLots = new Map();
+    for (const o of T.enObjets(f.lignes).objets) {
+      err.essayer(f.nom, o._ligne, () => {
+        const nom = String(o.case ?? '').trim(); if (!nom) return;
+        const a = cles.trouver(nom);
+        if (!a) throw new Error('équipe inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(nom));
+        if (a.type !== 'dispo') {
+          if (o.jour !== undefined && o.jour !== null && String(o.jour).trim() !== '') {
+            a.jour = jourPermis(nom, a.type, jourDe(o.jour));
+          }
+          if (o.depart !== undefined && o.depart !== null && String(o.depart).trim() !== '') {
+            const t = T.heureDe(o.depart);
+            if (t === null || t >= 1440) throw new Error(nom + ' : heure de départ illisible « ' + o.depart + ' » (HH:MM)');
+            a.debut = hh(t);
+          }
+          const p = T.nombreDe(o.personnes, null);
+          if (p !== null) { if (!Number.isInteger(p) || p < 0 || p > 999) throw new Error(nom + ' : personnes, entier de 0 à 999'); a.personnes = p; }
+        }
+        if (a.type === 'manuel' || a.type === 'robot') {
+          const brut = String(o.commandes_dans_l_ordre ?? o.commandes ?? '').trim();
+          const lots = !brut ? [] : brut.split(SEP_ETAPES).filter(Boolean).map(l => [...new Set(l.split(/\s*\+\s*/).filter(Boolean).map(x => {
+            const m = /^(.+)\/([a-z]+)$/i.exec(x.trim());
+            if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error(nom + ' : commande illisible « ' + x + ' » (ex. TX/BC)');
+            const id = P.idClasse(m[1], m[2].toUpperCase());
+            if (connues.size && !connues.has(id)) throw new Error(nom + ' : commande inconnue « ' + id + ' » (absente du programme)');
+            return id;
+          }))]).filter(l => l.length);
+          nouveauxLots.set(a, lots);
+        } else if (a.type === 'dispo') {
+          const vv = String(o.vagues ?? '').trim();
+          const ouv = lireOuverture(vv);
+          if (ouv) { a.permanent = true; a.ouverture = ouv; }
+          else if (/^permanente?$/i.test(vv)) { a.permanent = true; delete a.ouverture; }
+          else if (vv) {
+            delete a.ouverture;
+            a.permanent = false;
+            a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
+              const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
+              if (!m) throw new Error(nom + ' : vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 », ou « ouvert 07:00-18:00 »)');
+              return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };
+            });
+          }
+        }
+      });
+    }
+    // Un service, une commande, une case. Une commande écrite dans deux cases
+    // du même service va à celle où elle est NOUVELLE — on l'a déplacée dans
+    // Excel sans l'effacer de l'ancienne ; nouvelle dans les deux, on ne choisit pas.
+    const lotsAvant = new Map(etat.ateliers.map(a => [a.id, new Set((a.lots || []).flat())]));
+    const tous = new Map();   // service|commande → [cases]
+    for (const [a, lots] of nouveauxLots) for (const id of new Set(lots.flat())) {
+      const k = a.service + '|' + id; if (!tous.has(k)) tous.set(k, []); tous.get(k).push(a);
+    }
+    for (const [k, cs] of tous) {
+      const id = k.slice(k.indexOf('|') + 1);
+      // Une case de ce service hors du fichier qui la prépare compte aussi.
+      const autres = out.ateliers.filter(b => !nouveauxLots.has(b) && b.service === cs[0].service && (b.lots || []).some(l => l.includes(id)));
+      if (cs.length + autres.length < 2) continue;
+      const neuves = cs.filter(a => !lotsAvant.get(a.id).has(id));
+      if (neuves.length !== 1) { err.ajouter(f.nom, null, id + ' est dans plusieurs équipes du même service (' + cs.concat(autres).map(a => '« ' + a.nom + ' »').join(', ') + ') : laissez-la dans une seule'); continue; }
+      for (const a of cs.concat(autres)) if (a !== neuves[0]) {
+        if (nouveauxLots.has(a)) nouveauxLots.set(a, nouveauxLots.get(a).map(l => l.filter(x => x !== id)).filter(l => l.length));
+        else a.lots = (a.lots || []).map(l => l.filter(x => x !== id)).filter(l => l.length);
+      }
+    }
+    for (const [a, lots] of nouveauxLots) a.lots = lots;
+    err.lever();
+    const changes = out.ateliers.filter(a => avant.get(a.id) !== sig(a)).map(a => a.nom);
+    return { etat: out, changes };
+  }
+
+  /* ======================================================================
+   *  2. VOLS
+   * ====================================================================*/
+
+  const COLS_VOLS = ['vol_id', 'compagnie', 'type_avion', 'sens', 'heure_std', 'heure_sta', 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML'];
+
+  function volsVersClasseur(vols) {
+    // L'arrivée estimée de l'avion d'un départ (heure_eta, banc d'essai de la version 1) : sa
+    // colonne n'existe que si un départ en a une ; la veille s'écrit à l'heure de l'horloge.
+    const eta = vols.some(v => v.sens === 'DEP' && Number.isFinite(v.eta));
+    // Les repas spéciaux par cabine (banc d'essai de la version 1) : leurs colonnes n'existent que si un vol les a.
+    const cab = vols.some(v => v.spmlParCabine), CAB_SPML = ['BC', 'PC', 'YC'];
+    // Le programme daté (banc d'essai de la version 1, évolution 10) : la date du vol, en première colonne, une vraie date Excel.
+    const datee = vols.some(v => v.date);
+    const ligne = (v, sens) => [...(datee ? [T.celluleDate(v.date)] : []), v.id, v.cie, v.avion && v.avion !== '—' ? v.avion : null,
+      sens === 'DEP' ? (Number.isFinite(v.std) ? hh(v.std) : null) : (Number.isFinite(v.sta) ? hh(v.sta) : null),
+      ...(eta && sens === 'DEP' ? [Number.isFinite(v.eta) ? hh(((v.eta % 1440) + 1440) % 1440) : null] : []),
+      v.bc || 0, v.pc || 0, v.yc || 0, v.crew || 0, v.spml || 0,
+      ...(cab ? CAB_SPML.map(c => (v.spmlParCabine && v.spmlParCabine[c] !== undefined ? v.spmlParCabine[c] : null)) : [])];
+    const tete = (h, e) => [...(datee ? ['date'] : []), 'vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML',
+      ...(cab ? CAB_SPML.map(c => 'nb_SPML_' + c) : [])];
+    return [
+      { nom: 'Départs', lignes: [tete('heure_std', eta), ...vols.filter(v => v.sens === 'DEP').map(v => ligne(v, 'DEP'))] },
+      { nom: 'Retours', lignes: [tete('heure_sta'), ...vols.filter(v => v.sens === 'RET').map(v => ligne(v, 'RET'))] },
+      lisezMoi('Programme de vols — départs et retours', [
+        'Feuille « Départs » : un vol qui part, avec son heure de départ (heure_std) et ses quantités par classe.',
+        ...(eta ? ['   heure_eta (facultative) : l’arrivée estimée de son avion ; plus tard que heure_std sur l’horloge, c’est la veille.'] : []),
+        'Feuille « Retours » : un vol qui revient, avec son heure d’arrivée (heure_sta). Il ramène du matériel à laver.',
+        ...(datee ? ['Colonne date (programme daté, version 1) : le jour du vol, celui de son heure_std pour un départ, de son heure_sta pour',
+          '   un retour ; AAAA-MM-JJ, JJ/MM/AAAA ou une date Excel. Remplie, chaque vol a la sienne ; sans elle, une seule journée.'] : []),
+        'Heures en HH:MM. Quantités entières. nb_CREW et nb_SPML sont facultatifs.',
+        ...(cab ? ['   nb_SPML_BC, nb_SPML_PC, nb_SPML_YC (facultatives) : les repas spéciaux de chaque cabine ; nb_SPML vide vaut leur somme.'] : []),
+        'Chaque départ crée ou nourrit une compagnie × classe (AF/BC, AF/YC…) : c’est l’unité fabriquée.',
+        'Une seule feuille avec une colonne « sens » (DEP / RET) est aussi acceptée : c’est le format CSV.',
+        'L’import REMPLACE le programme entier. Une erreur, et rien n’est importé.'
+      ])
+    ];
+  }
+
+  /** Les vols d'un classeur. `options` : celles de `parseFlightRows` (`eta` : lire heure_eta des départs ;
+   *  `spmlParCabine` : les repas spéciaux de chaque cabine ; `date` : la colonne date d'un programme daté). */
+  function classeurVersVols(feuilles, options) {
+    const dep = T.feuille(feuilles, 'Départs', 'Departs'), ret = T.feuille(feuilles, 'Retours');
+    if (dep || ret) {
+      // Deux feuilles : on reconstitue le format à une table, sens compris.
+      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : [], options && options.spmlParCabine ? ['nb_SPML_BC', 'nb_SPML_PC', 'nb_SPML_YC'] : [],
+        options && options.date ? ['date'] : []);
+      const lignes = [cols];
+      const err = new Erreurs();
+      for (const [f, sens, h] of [[dep, 'DEP', 'heure_std'], [ret, 'RET', 'heure_sta']]) {
+        if (!f) continue;
+        const { entetes, objets } = T.enObjets(f.lignes);
+        if (!entetes.includes(h)) { err.ajouter(f.nom, null, 'colonne « ' + h + ' » manquante.'); continue; }
+        for (const o of objets) {
+          const l = cols.map(c => {
+            const k = T.cleEntete(c);
+            if (c === 'sens') return sens;
+            if (c === (sens === 'DEP' ? 'heure_sta' : 'heure_std') || (c === 'heure_eta' && sens !== 'DEP')) return null;
+            const v = o[k];
+            return v === undefined ? null : v;
+          });
+          l.ligne = f.nom + ', ligne ' + o._ligne;
+          lignes.push(l);
+        }
+      }
+      err.lever();
+      return UI.parseFlightRows(lignes, options);
+    }
+    const f = T.feuille(feuilles, 'Vols') || feuilles[0];
+    return UI.parseFlightRows(f.lignes, options);
+  }
+
+  /* ======================================================================
+   *  3. ATELIERS, CLASSES ET PARCOURS
+   * ====================================================================*/
+
+  const TYPES_FR = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling', appui: 'hors tunnel' };
+  const typeDe = v => {
+    const k = T.cleEntete(v || 'manuel');
+    if (['manuel', 'equipe'].includes(k)) return 'manuel';
+    if (k === 'robot') return 'robot';
+    if (['plonge', 'lavage'].includes(k)) return 'lavage';
+    if (['mise_a_disposition', 'dispo', 'disposition'].includes(k)) return 'dispo';
+    if (['handling', 'chargement', 'par_vol'].includes(k)) return 'handling';
+    if (['hors_tunnel', 'hors_flux', 'appui'].includes(k)) return 'appui';
+    throw new Error('type inconnu « ' + v + ' » (manuel, robot, plonge, mise à disposition, handling ou hors tunnel)');
+  };
+  const SEP_CLASSES = /\s*[+,;]\s*/;
+  const SEP_ETAPES = /\s*(?:→|->|>)\s*/;
+
+  /* ---- Horaires : l'heure de début de chaque case ------------------------
+   * Une feuille à part, la seule à ouvrir pour décaler une équipe. Elle voyage
+   * seule (bouton « Horaires ») ou dans le classeur complet. */
+
+  /** « J-1 », « J », « J+1 », « -1 » ou 0 : le décalage en jours, de -7 à +1
+   *  (J+1 : une plonge qui lave le lendemain de l'arrivée des retours). */
+  function jourDe(v) {
+    if (v === null || v === undefined || v === '') return 0;
+    const t = String(v).trim().toUpperCase().replace(/\s+/g, '');
+    const m = /^(?:J)?([-−–+]\d+)?$/.exec(t) || /^(?:J)?(0)$/.exec(t);
+    const n = !m ? NaN : !m[1] || m[1] === '0' ? 0 : (m[1][0] === '+' ? 1 : -1) * Math.abs(parseInt(m[1].slice(1), 10));
+    if (!Number.isInteger(n) || n < -7 || n > 1) throw new Error('jour illisible « ' + v + ' » : J pour le jour du départ (ou de l’arrivée des retours, pour la plonge), J-1 la veille… jusqu’à J-7, J+1 le lendemain');
+    return n || 0;
+  }
+  const jourEcrit = j => (j > 0 ? 'J+' + j : j ? 'J' + j : 'J');
+  /** Le lendemain (J+1) ne vaut que pour la plonge : elle se règle sur
+   *  l'arrivée des retours ; les autres équipes travaillent avant le départ. */
+  function jourPermis(nom, type, j) {
+    if (type === 'handling' && j !== 0) throw new Error(nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(j));
+    if (j > 0 && type !== 'lavage') throw new Error(nom + ' : ' + jourEcrit(j) + ' ne vaut que pour la plonge (le lendemain de l’arrivée des retours) ; une équipe qui prépare travaille au plus tard le jour J du départ');
+    if (type === 'lavage' && j < -1) throw new Error(nom + ' : la plonge travaille de la veille (J-1) au lendemain (J+1) de l’arrivée des retours, pas ' + jourEcrit(j));
+    return j;
+  }
+
+  /**
+   * @param ctx { services, resultat? } — le résultat du moment, pour la fin (info).
+   */
+  function feuilleHoraires(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const fins = new Map((((ctx.resultat || {}).ateliers) || []).map(a => [a.id, a.fin]));
+    const lignes = [['Équipe', 'Jour', 'Début', 'Service' + INFO, 'Personnes' + INFO, 'Fin prévue' + INFO, 'Prépare' + INFO]];
+    // Dans l'ordre de la journée : de la première équipe arrivée à la dernière.
+    const ordre = services.map(s => s.id);
+    const rang = a => (ordre.includes(a.service) ? ordre.indexOf(a.service) : ordre.length);
+    const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    const cles = clesDesCases(etat.ateliers, nomDe);
+    const prepare = a => {
+      const ids = (a.lots || []).map(l => l.join(' + '));
+      return ids.length ? ids.slice(0, 8).join(', ') + (ids.length > 8 ? '… (' + ids.length + ')' : '') : null;
+    };
+    for (const a of [...etat.ateliers].sort((x, y) => debutDe(x) - debutDe(y) || rang(x) - rang(y))) {
+      const fin = fins.get(a.id);
+      lignes.push([cles.cle(a), jourEcrit(a.jour || 0), a.debut, nomDe(a.service), a.type === 'dispo' ? null : a.personnes,
+        Number.isFinite(fin) ? P.hhmm(fin) : null, prepare(a)]);
+    }
+    return { nom: 'Horaires', lignes };
+  }
+
+  /** Applique la feuille « Horaires » aux ateliers que `atelierNomme` retrouve. */
+  function lireHoraires(fH, atelierNomme, err) {
+    const vus = new Map(), changes = [];
+    for (const o of T.enObjets(fH.lignes).objets) {
+      const a = atelierNomme(o.atelier, fH.nom, o._ligne); if (!a) continue;
+      err.essayer(fH.nom, o._ligne, () => {
+        if (vus.has(a)) throw new Error('« ' + a.nom + ' » a déjà son horaire ligne ' + vus.get(a));
+        vus.set(a, o._ligne);
+        const t = T.heureDe(o.debut);
+        if (t === null) throw new Error(a.nom + ' : heure de début manquante (HH:MM)');
+        if (t >= 1440) throw new Error(a.nom + ' : ' + hh(t) + ' dépasse 23:59 — écrivez l’heure du jour et changez la colonne Jour');
+        const jour = jourPermis(a.nom, a.type, jourDe(o.jour));
+        if (a.debut !== hh(t) || (a.jour || 0) !== jour) changes.push(a);
+        a.debut = hh(t); a.jour = jour;
+        // Une mise à disposition par vagues : l'horaire est celui de sa première.
+        // (sauf si la colonne « Vagues » de la feuille Ateliers les donne : elle prime).
+        if (a.type === 'dispo' && Array.isArray(a.vagues) && a.vagues.length && !a._vaguesLues) a.vagues[0] = { debut: a.debut, jour };
+      });
+    }
+    return changes;
+  }
+
+  /** Le petit classeur des horaires : la feuille, et comment la remplir. */
+  function horairesVersClasseur(etat, ctx) {
+    return [feuilleHoraires(etat, ctx),
+      lisezMoi('Horaires des équipes — à modifier dans Excel puis réimporter', [
+        'Une ligne par équipe. Seules les colonnes Jour et Début sont lues ; celles marquées « (info) » sont là pour se repérer.',
+        'Début : l’heure d’arrivée de l’équipe, en HH:MM (ex. 04:30).',
+        'Jour : J le jour du départ des vols, J-1 la veille, J-2 l’avant-veille (jusqu’à J-7). Pour la plonge, le jour se compte depuis l’arrivée des retours : J-1, J ou J+1 (le lendemain).',
+        'Le nom de l’équipe est la clé : ne le changez pas ici. Une ligne retirée laisse son équipe à son heure.',
+        'Réimportez avec « Importer » : seules les heures changent, le reste de l’unité ne bouge pas. L’import est annulable.',
+        'Une erreur, et rien n’est importé.'
+      ])];
+  }
+
+  /** Le classeur ne porte que des horaires : pas de feuille « Ateliers ». */
+  const estClasseurHoraires = feuilles => !!T.feuille(feuilles, 'Horaires') && !T.feuille(feuilles, 'Équipes');
+
+  /**
+   * Seules les heures changent.
+   * @returns {{ etat, changes:[noms des ateliers décalés] }}
+   */
+  function classeurVersHoraires(feuilles, etat, ctx) {
+    const fH = T.feuille(feuilles, 'Horaires');
+    if (!fH) throw new Error('Feuille « Horaires » introuvable.');
+    const err = new Erreurs();
+    const out = JSON.parse(JSON.stringify(etat));
+    const cles = clesDesCases(out.ateliers, nomServiceDe((ctx || {}).services));
+    const atelierNomme = (v, ou, ligne) => {
+      const a = cles.trouver(v);
+      if (!a) err.ajouter(ou, ligne, 'équipe inconnue « ' + (v ?? '') + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(v));
+      return a;
+    };
+    const changes = lireHoraires(fH, atelierNomme, err);
+    err.lever();
+    return { etat: out, changes: changes.map(a => a.nom) };
+  }
+
+  /**
+   * @param etat l'état de l'onglet Ateliers
+   * @param ctx  { services:[{id,nom}], classes:[classe du moment], resultat? }
+   */
+  /** « AF/BC », ou « AF/@ARM » pour un service par compagnie (l'armement) ; null si illisible. */
+  function classeLue(x) {
+    const m = /^(.+)\/(@?[a-z0-9_-]+)$/i.exec(String(x ?? '').trim());
+    if (!m) return null;
+    const cab = m[2].toUpperCase();
+    return cab.startsWith('@') || P.CABINES.includes(cab) ? P.idClasse(m[1], cab) : null;
+  }
+
+  /** Le code court d'un service par compagnie (« ARMEMENT » → ARM), unique dans l'unité. */
+  function codeService(nom, etat) {
+    const pris = new Set(Object.values((etat && etat.categories) || {}).flat().map(k => k.id));
+    const mots = String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || ['SVC'];
+    const base = (mots.length > 1 ? mots.map(m => m[0]).join('') : mots[0].slice(0, 3)).slice(0, 6) || 'SVC';
+    let id = base; for (let i = 2; pris.has(id); i++) id = base + i;
+    return id;
+  }
+
+  /** Les réglages par compagnie du handling 24 h/24 (banc d'essai de la version 1), puis ses compagnies en VL. */
+  const CARTES_24H = ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl'];
+  const COLONNES_24H = [['escale_min', 'escale'], ['preparation_au_quai_min', 'quaiDepart'], ['dechargement_min', 'dechargement'], ['vidage_au_quai_min', 'quaiRetour']];
+  /** Ses tournées par vagues (banc d'essai de la version 1, évolution 8) : une colonne par réglage, écrite seulement si un handling l'a. */
+  const COLONNES_VAGUES = [['VL à partir de', 'vl_a_partir_de', 'vlDes', 'heure'], ['Vols par VL', 'vols_par_vl', 'volsVL', 'vols'],
+    ['Quai par vol en plus (min)', 'quai_par_vol_en_plus_min', 'quaiParVol', 'minutes'], ['Échange sur l’avion', 'echange_sur_l_avion', 'echange', 'liste'],
+    ['Minutes par vol en VL', 'minutes_par_vol_en_vl', 'dureesVL', 'minutes'], ['Déchargement en VL (min)', 'dechargement_en_vl_min', 'dechargementVL', 'minutes']];
+  /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
+  const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
+    'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL', ...COLONNES_VAGUES.map(c => c[2])];
+  /** La condition d'une plonge (banc d'essai de la version 1) : le sale à une heure, ou le retard que le matin n'absorbe pas. */
+  const surLeSale = k => k.mesure === 'sale' || k.mesure === 'absorbable';
+
+  function ateliersVersClasseur(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    // La clé de chaque case : son nom, ou « nom · service » quand un autre service a la même (08/10).
+    const cles = clesDesCases(etat.ateliers, nomDe);
+    const nomAtelier = id => { const x = etat.ateliers.find(y => y.id === id); return x ? cles.cle(x) : null; };
+    const ateliers = [['Équipe', 'Service', 'Type', 'Personnes', 'Pauses',
+      'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
+      'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
+      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
+      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
+      'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne',
+      'Ne travaille que si', 'Sinon, commandes à', 'Sinon, personnes à']];
+    // Les postes de travail d'une équipe (banc d'essai de la version 1, renforts) : la colonne n'existe que si une équipe en a.
+    const postes = etat.ateliers.some(a => Number.isInteger(a.personnesMax));
+    if (postes) ateliers[0].push('Postes de travail');
+    // L'ordre de ses lots (banc d'essai de la version 1, correction 6) : la colonne n'existe que si une équipe a le sien.
+    const ordre = etat.ateliers.some(a => typeof a.ordreSouple === 'boolean');
+    if (ordre) ateliers[0].push('Ordre des lots');
+    // Le handling 24 h/24 (banc d'essai de la version 1) : ses colonnes n'existent que s'il a des réglages par compagnie.
+    const h24 = etat.ateliers.some(a => a.type === 'handling' && CARTES_24H.some(k => a[k] && Object.keys(a[k]).length));
+    const vlCr = etat.ateliers.some(a => a.type === 'handling' && (a.creneaux || []).some(c => c.type === 'vl'));
+    const vagues = COLONNES_VAGUES.filter(c => etat.ateliers.some(a => a.type === 'handling' && a[c[2]] && Object.keys(a[c[2]]).length));
+    const handling = [['Équipe', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion',
+      ...(h24 ? ['Escale (min)', 'Préparation au quai (min)', 'Déchargement (min)', 'Vidage au quai (min)', 'Véhicule'] : []), ...vagues.map(c => c[0])]];
+    const chauffeurs = [['Équipe', 'Début', 'Fin', 'Chauffeurs', ...(vlCr ? ['Véhicule'] : [])]];
+    const plongeVol = [['Équipe', 'Compagnie', 'Minutes par vol']];
+    const fab = [['Équipe', 'Ordre', 'Compagnies × classes']];
+    // Les heures propres à une case, pour sa journée (en heures depuis le 08/10).
+    const mm = [['Équipe', 'Compagnie × classe', 'Heures pour la journée']];
+    const debitsRobot = [['Équipe', 'Compagnie × classe', 'Débit (plateaux/h)']];
+    const tunnels = [['Équipe', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif', 'Vitesse (×)']];
+    for (const a of etat.ateliers) {
+      ateliers.push([cles.cle(a), nomDe(a.service), TYPES_FR[a.type] || a.type,
+        a.type === 'dispo' ? null : a.personnes,
+        (a.pauses || []).map(p => p.de + '-' + p.a).join('; ') || null,
+        a.regime && a.regime.actif === false ? 'non' : 'oui',
+        a.regime && Number.isFinite(a.regime.presence) ? a.regime.presence : null,
+        a.materiel === 'consomme' ? 'oui' : 'non',
+        a.type === 'robot' ? a.debit : null, a.type === 'robot' ? a.personnesMin : null,
+        a.type === 'lavage' ? a.plafond || null : null,
+        a.type === 'dispo' ? (a.permanent === false ? 'non' : 'oui') : null,
+        a.id,
+        a.type === 'handling' ? a.simultanes || 1 : null,
+        a.type === 'handling' ? Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10 : null,
+        a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null,
+        a.type === 'dispo' && a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }])
+          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null,
+        a.type === 'handling' ? (a.chauffeurs || {}).long ?? 2 : null, a.type === 'handling' ? (a.chauffeurs || {}).court ?? 1 : null,
+        a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null,
+        a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null,
+        // Fait aussi l'étape d'avant, à la chaîne : le nom de ce service.
+        a.type === 'manuel' && a.fusion ? nomDe(a.fusion) : null,
+        // La ligne robot : partagée par les robots du service, ou propre ; ses arrêts.
+        a.type === 'robot' ? (a.lignePropre ? 'propre' : 'partagée') : null,
+        a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null,
+        // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent. Une plonge (banc d'essai
+        // de la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale ; « retard non absorbé
+        // (par Plonge matin) », que si l'équipe du matin ne peut pas absorber le retard.
+        a.condition && a.condition.mesure === 'sale' ? 'sale ≥ ' + (a.condition.seuil ?? 1) + (a.condition.a ? ' à ' + a.condition.a : '')
+          : a.condition && a.condition.mesure === 'absorbable' ? 'retard non absorbé' + (nomAtelier(a.condition.equipe) ? ' (par ' + nomAtelier(a.condition.equipe) + ')' : '')
+          : a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
+        a.condition && !surLeSale(a.condition) ? nomAtelier(a.condition.sinon) : null,
+        // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
+        a.condition && !surLeSale(a.condition) ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
+        ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : []),
+        ...(ordre ? [a.ordreSouple === true ? 'souple' : a.ordreSouple === false ? 'strict' : null] : [])]);
+      if (a.type === 'handling') {
+        // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
+        const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
+        const cartes = h24 ? CARTES_24H.slice(0, 4).map(k => a[k] || {}) : [], vl = new Set(h24 ? a.vl || [] : []);
+        // Une liste par compagnie (l'échange sur l'avion) s'écrit « oui » sur la ligne de la compagnie.
+        const parVague = vagues.map(c => (c[3] === 'liste' ? Object.fromEntries((a[c[2]] || []).map(k => [k, 'oui'])) : a[c[2]] || {}));
+        const plus = cie => (h24 ? [...cartes.map(m => m[cie] ?? null), cie === P.TOUTES ? null : vl.has(cie) ? 'VL' : 'camion'] : []).concat(parVague.map(m => m[cie] ?? null));
+        if ([d, al, re, ...cartes, ...parVague].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null, ...plus(P.TOUTES)]);
+        for (const cie of [...new Set([d, al, re, vc, ...cartes, ...parVague].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs], [...vl]))].sort())
+          handling.push([cles.cle(a), cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null, ...plus(cie)]);
+        for (const c of (a.creneaux || [])) chauffeurs.push([cles.cle(a), c.de, c.a, c.n, ...(vlCr ? [c.type === 'vl' ? 'VL' : 'camion'] : [])]);
+      }
+      if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([cles.cle(a), cie === P.TOUTES ? 'toutes' : cie, v]);
+      (a.lots || []).forEach((l, i) => fab.push([cles.cle(a), i + 1, l.join(' + ')]));
+      for (const [id, v] of Object.entries(a.minutes || {})) mm.push([cles.cle(a), id, enHeures(v)]);
+      for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([cles.cle(a), id, v]);
+      for (const t of (a.tunnels || [])) tunnels.push([cles.cle(a), t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui', t.vitesse || 1]);
+    }
+
+    const exclues = new Set(etat.exclues || []);
+    const ajoutees = new Set((etat.ajoutees || []).map(c => P.idClasse(c.cie, c.cabine)));
+    const nomParcours = id => ((etat.parcours || []).find(p => p.id === id) || {}).nom || null;
+    const classes = [['Compagnie', 'Classe', 'Parcours', 'Retirée', 'Au programme' + INFO, 'Vols' + INFO, 'Passagers' + INFO]];
+    const lues = new Set();
+    for (const c of (ctx.classes || [])) {
+      lues.add(c.id);
+      classes.push([c.cie, c.cabine, nomParcours((etat.parcoursClasse || {})[c.id]), exclues.has(c.id) ? 'oui' : 'non',
+        c.origine === 'ajoutee' ? 'non' : 'oui', c.vols ? c.vols.length : 0, c.pax || 0]);
+    }
+    for (const id of [...exclues, ...ajoutees]) {
+      if (lues.has(id)) continue; lues.add(id);
+      const i = id.lastIndexOf('/');
+      classes.push([id.slice(0, i), id.slice(i + 1), nomParcours((etat.parcoursClasse || {})[id]),
+        exclues.has(id) ? 'oui' : 'non', ajoutees.has(id) ? 'non' : 'oui', null, null]);
+    }
+
+    // Un parcours est un diagramme de nœuds : une ligne par lien, « De » livre
+    // « Vers ». Un nœud encore sans lien s'écrit seul, colonne « Vers » vide.
+    const parcours = [['Parcours', 'De', 'Vers']];
+    for (const p of (etat.parcours || [])) {
+      const arcs = P.arcsDuParcours(p), relies = new Set(arcs.flatMap(a => [a.from, a.to]));
+      for (const a of arcs) parcours.push([p.nom, nomDe(a.from), nomDe(a.to)]);
+      for (const s of P.servicesDuParcours(p)) if (!relies.has(s)) parcours.push([p.nom, nomDe(s), null]);
+      if (!P.servicesDuParcours(p).length) parcours.push([p.nom, null, null]);
+    }
+    const defauts = [['Classe', 'Parcours']];
+    for (const c of P.CABINES) defauts.push([c, nomParcours((etat.parcoursCabine || {})[c])]);
+
+    const m = etat.materiel || {};
+    const materiel = [['Paramètre', 'Valeur'], ['Boucle du matériel active', m.actif ? 'oui' : 'non'],
+      ['Stock propre à l’ouverture', m.stockInitial || 0], ['Délai après atterrissage (min)', m.delaiRetour ?? 30],
+      ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
+      ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0]),
+      // Le sale de la veille (banc d'essai de la version 1), quand c'est un nombre ; une liste de vols reste sur le site.
+      ...(typeof m.saleInitial === 'number' && m.saleInitial > 0 ? [['Sale de la veille (u)', m.saleInitial]] : [])];
+
+    // Un service qui travaille par compagnie (l'armement) : ses heures par vol.
+    const parCie = [['Service', 'Compagnie', 'Heures par vol']];
+    for (const [s, liste] of Object.entries(etat.categories || {})) {
+      const k = (liste || [])[0]; if (!k) continue;
+      const lignes = Object.entries(k.minutes || {}).sort((x, y) => (x[0] === '*' ? -1 : y[0] === '*' ? 1 : x[0].localeCompare(y[0])));
+      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null]);
+      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, enHeures(v)]);
+    }
+    return [
+      { nom: 'Équipes', lignes: ateliers },
+      feuilleHoraires(etat, ctx),
+      { nom: 'Fabrications', lignes: fab },
+      { nom: 'Par compagnie', lignes: parCie },
+      { nom: 'Heures propres', lignes: mm },
+      { nom: 'Débits robot', lignes: debitsRobot },
+      { nom: 'Tunnels', lignes: tunnels },
+      { nom: 'Handling', lignes: handling },
+      { nom: 'Chauffeurs', lignes: chauffeurs },
+      { nom: 'Plonge par vol', lignes: plongeVol },
+      { nom: 'Classes', lignes: classes },
+      { nom: 'Parcours', lignes: parcours },
+      { nom: 'Parcours par classe', lignes: defauts },
+      { nom: 'Matériel', lignes: materiel },
+      lisezMoi('Équipes — à modifier dans Excel puis réimporter', [
+        'Équipes : une ligne par équipe. Le nom est la clé : les autres feuilles s’y réfèrent.',
+        '   Type : manuel, robot, plonge ou mise à disposition.',
+        'Horaires : l’heure de début de chaque équipe, et son jour (J le jour du départ, J-1 la veille).',
+        '   Une équipe sans ligne ici garde son heure du site ; une nouvelle équipe commence à 06:00, jour J.',
+        '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
+        '   À la chaîne avec : une équipe qui fait AUSSI l’étape d’avant (ex. « PRÉPA » dans une équipe de Montage), pour ses',
+        '   commandes seulement : une personne dresse et passe le plat, l’autre monte. Seule, elle fait les deux ; à plusieurs,',
+        '   le poste le plus lent donne le rythme. Vide : chaque étape a son équipe.',
+        '   Ligne robot : « partagée » (défaut) — les robots d’un service tournent sur UNE ligne, un lot à la fois, matin et',
+        '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
+        'Fabrications : ce que fait chaque équipe, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
+        'Par compagnie : un service qui travaille par compagnie (l’armement : une équipe par compagnie, selon le chemin). Ses heures',
+        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Dans Fabrications, son équipe',
+        '   s’écrit « AF/@ARM » (la compagnie, puis @ et le code du service, tel qu’exporté). Une compagnie dont aucun chemin',
+        '   ne passe par lui et qu’aucune équipe n’a cochée n’a pas d’armement : le handling charge ses vols sans l’attendre.',
+        '   Pour ajouter une compagnie × classe à une équipe : ajoutez une ligne (Équipe, Ordre, ex. « AF/BC »).',
+        'Heures propres : les heures qu’une équipe fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols),',
+        '   à la place de ses temps par vol. Absente = ses temps par vol. Un classeur d’avant (feuille « Man-minutes », en minutes) se relit toujours.',
+        'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Équipes).',
+        'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient. Vitesse (×) : pour une plonge par vol,',
+        '   combien de fois plus vite qu’un tunnel normal (2 : deux fois plus vite) ; les temps par compagnie sont ceux d’un tunnel normal.',
+        'Vagues (Équipes) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',
+        '   « J-1 14:00; J 04:00 ». Chaque commande prend la vague qui précède son besoin. Permanent = oui : pas de vague.',
+        '   Ouverte de … à … : Permanent = oui et Vagues « ouvert 07:00-18:00 » ; fermée, l’étape d’après attend l’ouverture.',
+        'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
+        '   « toutes » pour les compagnies sans ligne. Dans Équipes : vols en même temps, pas avant (heures avant le départ),',
+        '   compagnies chargées (« toutes », ou « AF, TX »). Courrier : long ou court ; un vol long courrier prend',
+        '   « Chauffeurs long courrier » chauffeurs par camion (2 par défaut), un court « Chauffeurs court courrier » (1).',
+        '   Aller (min) : du quai à l’avion ; Minutes par vol : charger l’avion ; Retour (min) : revenir à l’unité. Le camion part',
+        '   avec ses chauffeurs pour tout le trajet. Vols par camion : en général 1 ; plus, il charge aussi les vols suivants',
+        '   de la même compagnie s’ils sont prêts. Feuille Équipes : pour toutes ; feuille Handling : propre à une compagnie.',
+        '   Camions disponibles : vide = pas de limite.',
+        ...(h24 ? ['   Handling 24 h/24 (version 1) : par compagnie, Escale (min) entre l’arrivée de l’avion et son départ (vide : pas de',
+          '   déchargement), Préparation au quai, Déchargement et Vidage au quai (min) ; Véhicule : « VL » (petit camion) ou « camion ».'] : []),
+        ...(vagues.some(c => c[2] === 'vlDes') ? ['   VL à partir de (handling 24 h/24, version 1) : HH:MM ; les départs de cette compagnie partent en VL à partir de',
+          '   cette heure, en gros camion avant.'] : []),
+        ...(vagues.some(c => c[2] === 'volsVL' || c[2] === 'quaiParVol') ? ['   Vols par VL (handling 24 h/24, version 1) : comme Vols par camion, pour une tournée en VL (vide : comme en camion) ;',
+          '   Quai par vol en plus (min) : la préparation au quai d’une tournée qui sert plusieurs vols, par vol de plus.'] : []),
+        ...(vagues.some(c => c[2] === 'dureesVL' || c[2] === 'dechargementVL') ? ['   Minutes par vol en VL, Déchargement en VL (min) (handling 24 h/24, version 1) : les durées d’un vol servi en VL',
+          '   (vide : celles de la compagnie).'] : []),
+        ...(vagues.some(c => c[2] === 'echange') ? ['   Échange sur l’avion (handling 24 h/24, version 1) : oui, chaque avion de la compagnie est déchargé puis chargé dans',
+          '   la même visite, quelle que soit son escale ; chargé au plus tard à départ − la marge d’escale courte.'] : []),
+        'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
+        '   Sans créneau : « Vols en même temps » (Équipes). Un créneau qui finit avant son début passe minuit.',
+        ...(vlCr ? ['   Véhicule (handling 24 h/24) : « VL » pour des chauffeurs de petit camion ; « camion » pour un gros.'] : []),
+        'Plonge par vol : Plonge par vol = oui (Équipes), puis une ligne par compagnie : le temps qu’un tunnel met à laver un de ses vols ;',
+        '   « toutes » pour les compagnies sans ligne. Chaque tunnel qui tourne lave un vol revenu à la fois, dans l’ordre des retours.',
+        'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
+        '   Une compagnie × classe absente du programme de vols est ajoutée : ses volumes viendront du prochain import des vols.',
+        'Parcours : une ligne par lien du diagramme. « De » livre « Vers » (ex. PLONGE → DOTATION).',
+        '   Un service qui reçoit plusieurs liens attend qu’ils aient tous livré. « Vers » vide : un service encore sans lien.',
+        '   L’ancienne écriture (Branche, Étapes « A > B > C ») est encore lue.',
+        'Parcours par classe : le parcours par défaut de BC, PC, YC, CREW et SPML.',
+        'Une feuille absente du fichier laisse la partie correspondante telle qu’elle est sur le site.',
+        'Services : leur nom sur le plan ou leur identifiant. Les colonnes « (info) » sont ignorées à l’import.',
+        'L’import remplace les équipes. Il est annulable. Une erreur, et rien n’est importé.'
+      ])
+    ];
+  }
+
+  /**
+   * @returns le nouvel état de l'onglet Ateliers, à valider par l'appelant.
+   */
+  function classeurVersAteliers(feuilles, etat, ctx) {
+    const err = new Erreurs();
+    const service = T.correspondance(ctx.services || []);
+    const nomService = nomServiceDe(ctx.services);
+    const out = JSON.parse(JSON.stringify(etat));
+    const fA = T.feuille(feuilles, 'Équipes');
+    if (!fA) throw new Error('Feuille « Équipes » introuvable : ce n’est pas un classeur d’équipes.');
+
+    // Parcours d'abord : les classes s'y réfèrent par leur nom.
+    const fP = T.feuille(feuilles, 'Parcours');
+    if (fP) {
+      const liste = [], parNom = new Map();
+      for (const o of T.enObjets(fP.lignes).objets) {
+        err.essayer(fP.nom, o._ligne, () => {
+          const nom = String(o.parcours ?? '').trim();
+          if (!nom) throw new Error('nom de parcours manquant');
+          let p = parNom.get(T.cleEntete(nom));
+          if (!p) {
+            const ancien = (etat.parcours || []).find(x => T.cleEntete(x.nom) === T.cleEntete(nom));
+            // Un chemin lu dans le classeur est pris tel quel : ses cases aussi.
+            // Sans la marque `cases`, une case retirée exprès reviendrait au rechargement.
+            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [], prepa: true, cases: true };
+            parNom.set(T.cleEntete(nom), p); liste.push(p);
+          }
+          const vide = v => v === null || v === undefined || v === '';
+          const sid = x => { const s = service(String(x).trim()); if (!s) throw new Error('service inconnu « ' + x + ' »'); return s; };
+          const noeud = s => { if (!p.noeuds.includes(s)) p.noeuds.push(s); return s; };
+          const lien = (de, vers) => {
+            if (de === vers) throw new Error('un service ne se livre pas lui-même');
+            if (!p.liens.some(l => l.de === de && l.vers === vers)) p.liens.push({ de, vers });
+          };
+          if (!vide(o.de)) {                       // l'écriture en liens
+            const de = noeud(sid(o.de));
+            if (!vide(o.vers)) lien(de, noeud(sid(o.vers)));
+            return;
+          }
+          if (vide(o.etapes)) return;              // l'ancienne écriture en branches
+          const etapes = String(o.etapes).split(SEP_ETAPES).filter(Boolean).map(sid);
+          if (etapes.length < 2) throw new Error('une branche relie au moins deux services');
+          etapes.forEach((s, i) => { noeud(s); if (i) lien(etapes[i - 1], s); });
+        });
+      }
+      out.parcours = liste;
+      // Un parcours disparu ne peut plus être désigné.
+      const ids = new Set(liste.map(p => p.id));
+      for (const c of Object.keys(out.parcoursCabine || {})) if (!ids.has(out.parcoursCabine[c])) delete out.parcoursCabine[c];
+      for (const c of Object.keys(out.parcoursClasse || {})) if (!ids.has(out.parcoursClasse[c])) delete out.parcoursClasse[c];
+    }
+    const parcoursNomme = (v, ou, ligne) => {
+      if (v === null || v === undefined || v === '') return null;
+      const p = (out.parcours || []).find(x => T.cleEntete(x.nom) === T.cleEntete(v));
+      if (!p) err.ajouter(ou, ligne, 'parcours inconnu « ' + v + ' »');
+      return p ? p.id : null;
+    };
+    const fD = T.feuille(feuilles, 'Parcours par classe');
+    if (fD) {
+      out.parcoursCabine = {};
+      for (const o of T.enObjets(fD.lignes).objets) {
+        const cab = String(o.classe ?? '').trim().toUpperCase();
+        if (!P.CABINES.includes(cab)) { err.ajouter(fD.nom, o._ligne, 'classe inconnue « ' + (o.classe ?? '') + ' »'); continue; }
+        const id = parcoursNomme(o.parcours, fD.nom, o._ligne);
+        if (id) out.parcoursCabine[cab] = id;
+      }
+    }
+
+    const fC = T.feuille(feuilles, 'Classes');
+    if (fC) {
+      const auProgramme = new Set((ctx.programme || []).map(c => c.id));
+      out.exclues = []; out.ajoutees = []; out.parcoursClasse = {};
+      const vues = new Set();
+      for (const o of T.enObjets(fC.lignes).objets) {
+        err.essayer(fC.nom, o._ligne, () => {
+          const cie = String(o.compagnie ?? '').trim().toUpperCase();
+          const cab = String(o.classe ?? '').trim().toUpperCase();
+          if (!cie || cie.includes('/') || cie.length > 40) throw new Error('compagnie illisible « ' + (o.compagnie ?? '') + ' »');
+          if (!P.CABINES.includes(cab)) throw new Error('classe inconnue « ' + (o.classe ?? '') + ' »');
+          const id = P.idClasse(cie, cab);
+          if (vues.has(id)) throw new Error(id + ' figure deux fois');
+          vues.add(id);
+          if (T.ouiNon(o.retiree, false)) out.exclues.push(id);
+          else if (!auProgramme.has(id)) out.ajoutees.push({ cie, cabine: cab });
+          const p = parcoursNomme(o.parcours, fC.nom, o._ligne);
+          if (p) out.parcoursClasse[id] = p;
+        });
+      }
+    }
+
+    // Les ateliers eux-mêmes.
+    const parNom = new Map(), ids = new Set();
+    const colonnePostes = (fA.lignes[0] || []).some(h => T.cleEntete(h) === 'postes_de_travail');
+    const colonneOrdre = (fA.lignes[0] || []).some(h => T.cleEntete(h) === 'ordre_des_lots');
+    out.ateliers = [];
+    for (const o of T.enObjets(fA.lignes).objets) {
+      err.essayer(fA.nom, o._ligne, () => {
+        const cellule = String(o.atelier ?? '').trim();
+        if (!cellule) throw new Error('nom d’équipe manquant');
+        const sid = service(o.service);
+        if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
+        // « CRL · Dotation » : la clé d'une équipe dont le nom est aussi celui d'une
+        // équipe d'un autre service (08/10). Son nom est « CRL ».
+        const i = cellule.lastIndexOf(SEP_CLE.trim());
+        const nom = i > 0 && [T.cleEntete(nomService(sid)), T.cleEntete(sid)].includes(T.cleEntete(cellule.slice(i + 1)))
+          ? cellule.slice(0, i).trim() : cellule;
+        const k = T.cleEntete(nom), ks = k + '|' + sid;
+        if (parNom.has(ks)) throw new Error('« ' + nom + ' » existe déjà dans ce service, ligne ' + parNom.get(ks)._ligne + ' : deux équipes d’un même service ne partagent pas un nom');
+        const type = typeDe(o.type);
+        // Les heures vivent dans la feuille « Horaires ». Un ancien classeur les
+        // porte encore ici : on les lit. Sinon, celles du site restent.
+        const avant = etat.ateliers.find(x => x.id === String(o.identifiant ?? '').trim())
+          || etat.ateliers.find(x => x.service === sid && T.cleEntete(x.nom) === k)
+          || etat.ateliers.find(x => T.cleEntete(x.nom) === k);
+        const debut = T.heureDe(o.debut ?? (avant ? avant.debut : '06:00'));
+        const jour = type === 'handling' ? 0 : jourPermis(nom, type, jourDe(o.jour ?? (avant ? avant.jour || 0 : 0)));
+        const personnes = T.nombreDe(o.personnes, type === 'dispo' ? 0 : 1);
+        if (!Number.isInteger(personnes) || personnes < 0) throw new Error('personnes : entier positif ou nul');
+        const pauses = String(o.pauses ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {
+          const m = /^(.+?)\s*[-–]\s*(.+)$/.exec(t);
+          if (!m) throw new Error('pause illisible « ' + t + ' » (ex. 10:00-10:15)');
+          return { de: hh(T.heureDe(m[1])), a: hh(T.heureDe(m[2])) };
+        });
+        const presence = T.nombreDe(o.presence_min, null);
+        let id = String(o.identifiant ?? '').trim();
+        if (!id || ids.has(id)) id = 'at-x' + (out.ateliers.length + 1) + '-' + k.slice(0, 24);
+        ids.add(id);
+        const a = { id, nom, service: sid, type, debut: hh(debut), jour, personnes, pauses, lots: [],
+          regime: { actif: T.ouiNon(o.poste_reglementaire, true), ...(presence !== null ? { presence } : {}) } };
+        if (T.ouiNon(o.emporte_du_materiel, false)) a.materiel = 'consomme';
+        // Ses postes de travail : sans la colonne, ceux du site restent ; vide, pas de limite.
+        if (colonnePostes) {
+          const pm = T.nombreDe(o.postes_de_travail, null);
+          if (pm !== null) {
+            if (type !== 'manuel' && type !== 'robot') throw new Error('postes de travail : pour une équipe qui prépare, à la main ou au robot');
+            if (!Number.isInteger(pm) || pm < 1) throw new Error('postes de travail : entier positif attendu');
+            a.personnesMax = pm;
+          }
+        } else if (avant && Number.isInteger(avant.personnesMax) && (type === 'manuel' || type === 'robot')) a.personnesMax = avant.personnesMax;
+        // L'ordre de ses lots : « souple », « strict » ; vide, la règle générale ; sans la colonne, celui du site.
+        if (colonneOrdre) {
+          const ordre = String(o.ordre_des_lots ?? '').trim();
+          if (ordre) {
+            if (type !== 'manuel' && type !== 'robot') throw new Error('ordre des lots : pour une équipe qui prépare, à la main ou au robot');
+            if (/^souple$/i.test(ordre)) a.ordreSouple = true;
+            else if (/^strict$/i.test(ordre)) a.ordreSouple = false;
+            else throw new Error('ordre des lots illisible « ' + ordre + ' » (souple, strict, ou vide : le réglage général)');
+          }
+        } else if (avant && typeof avant.ordreSouple === 'boolean' && (type === 'manuel' || type === 'robot')) a.ordreSouple = avant.ordreSouple;
+        // Sa présence au contrat (banc d'essai de la version 1, évolution 11 e) : le classeur ne la porte pas, celle du site reste.
+        if (avant && Number.isFinite(avant.presenceContrat)) a.presenceContrat = avant.presenceContrat;
+        // À la chaîne avec l'étape d'avant : un nom de service. Vide = chacune sa case.
+        const chaine = String(o.a_la_chaine_avec ?? '').trim();
+        if (chaine && !/^(non|aucun|aucune|-)$/i.test(chaine)) {
+          if (type !== 'manuel') throw new Error('« à la chaîne avec » : pour une équipe qui prépare seulement');
+          const f = service(chaine);
+          if (!f) throw new Error('« à la chaîne avec » : service inconnu « ' + chaine + ' »');
+          if (f === sid) throw new Error('« à la chaîne avec » : un autre service que le sien');
+          a.fusion = f;
+        }
+        if (type === 'robot') {
+          a.debit = T.nombreDe(o.debit_robot_plateaux_h, 320);
+          a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);
+          const lg = T.cleEntete(String(o.ligne_robot ?? ''));
+          if (lg && !/^(partagee|commune|propre|seule|a_part)$/.test(lg)) throw new Error('ligne robot : « partagée » ou « propre »');
+          if (/^(propre|seule|a_part)$/.test(lg)) a.lignePropre = true;
+          const arrets = String(o.arrets_de_la_ligne ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {
+            const m = /^(.+?)\s*[-–]\s*(.+)$/.exec(t);
+            if (!m) throw new Error('arrêt de ligne illisible « ' + t + ' » (ex. 12:15-13:00)');
+            return { de: hh(T.heureDe(m[1])), a: hh(T.heureDe(m[2])) };
+          });
+          if (arrets.length) a.arretsLigne = arrets;
+        }
+        if (type === 'lavage') {
+          a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = [];
+          const pv = String(o.plonge_par_vol ?? '').trim();
+          if (pv ? T.ouiNon(pv, false) : !!(avant && avant.parVol)) {
+            a.parVol = true;
+            a.durees = avant && avant.type === 'lavage' && avant.durees ? JSON.parse(JSON.stringify(avant.durees)) : { [P.TOUTES]: 30 };
+          }
+        }
+        if (type === 'dispo') {
+          a.permanent = T.ouiNon(o.permanent, true);
+          // « J-1 14:00; J 04:00 » : les vagues. Vide : celles du site, sinon son heure.
+          const vv = String(o.vagues ?? '').trim();
+          const ouv = lireOuverture(vv);
+          if (ouv) { a.permanent = true; a.ouverture = ouv; }
+          else if (!vv && a.permanent && avant && avant.type === 'dispo' && avant.ouverture) a.ouverture = { ...avant.ouverture };
+          if (vv && !ouv) a._vaguesLues = true;
+          if (vv && !ouv) a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
+            const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
+            if (!m) throw new Error('vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 »)');
+            return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };
+          });
+          else if (avant && avant.type === 'dispo' && avant.vagues) a.vagues = JSON.parse(JSON.stringify(avant.vagues));
+        }
+        if (type === 'handling') {
+          const av = T.nombreDe(o.pas_avant_depart_h, null);
+          const cies = String(o.compagnies_chargees ?? '').trim();
+          a.simultanes = Math.max(1, Math.round(T.nombreDe(o.vols_en_meme_temps, 1)) || 1);
+          a.avance = av === null ? (avant && avant.type === 'handling' ? avant.avance : P.AVANCE_HANDLING) : Math.max(0, Math.round(av * 60));
+          a.compagnies = !cies || T.cleEntete(cies) === 'toutes' ? [] : [...new Set(cies.split(/[\s,;+]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
+          a.durees = avant && avant.type === 'handling' ? JSON.parse(JSON.stringify(avant.durees || {})) : { [P.TOUTES]: 30 };
+          const ah = avant && avant.type === 'handling' ? avant : {};
+          // Les chauffeurs calculés (banc d'essai de la version 1) : sans colonne, ses réglages restent ceux du site.
+          a.chauffeurs = { long: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_long_courrier, (ah.chauffeurs || {}).long ?? 2)) || 2),
+            court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1),
+            ...Object.fromEntries(Object.entries(ah.chauffeurs || {}).filter(([k]) => k !== 'long' && k !== 'court').map(([k, v]) => [k, JSON.parse(JSON.stringify(v))])) };
+          a.longs = (ah.longs || []).slice();
+          a.creneaux = JSON.parse(JSON.stringify(ah.creneaux || []));
+          a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) }; a.volsCamion = { ...(ah.volsCamion || {}) };
+          a.volsParCamion = Math.max(1, Math.round(T.nombreDe(o.vols_par_camion, ah.volsParCamion ?? 1)) || 1);
+          a.camions = Math.max(0, Math.round(T.nombreDe(o.camions_disponibles, ah.camions ?? 0)) || 0);
+          for (const k of REGLAGES_24H) if (ah[k] !== undefined) a[k] = JSON.parse(JSON.stringify(ah[k]));
+        }
+        // « AF ≥ 6 vols » : ne travaille que ces jours-là. Les équipes nommées se lisent ensuite.
+        const si = String(o.ne_travaille_que_si ?? '').trim();
+        // Une plonge (banc d'essai, lu par la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale ;
+        // « retard non absorbé (par Plonge matin) », que si cette équipe (sans elle, la première du matin) ne l'absorbe pas.
+        const sale = ctx && ctx.banc && type === 'lavage' ? /^sale\s*(?:(?:≥|>=|>|:|au moins)?\s*(\d+(?:[.,]\d+)?))?(?:\s+[àa]\s+(\d{1,2}[:h]\d{2}))?$/i.exec(si) : null;
+        const retard = ctx && ctx.banc && type === 'lavage' ? /^retard\s+non\s+absorb[ée]e?(?:\s*\(\s*(?:par\s+)?(.*?)\s*\))?$/i.exec(si) : null;
+        if (sale) a.condition = { mesure: 'sale', ...(sale[2] ? { a: hh(T.heureDe(sale[2].replace('h', ':'))) } : {}), ...(sale[1] ? { seuil: +sale[1].replace(',', '.') } : {}) };
+        else if (retard) { a.condition = { mesure: 'absorbable' }; if (retard[1]) a._absorbePar = retard[1]; }
+        else if (si && !/^(non|toujours|-)$/i.test(si)) {
+          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes' + (ctx && ctx.banc && type === 'lavage' ? ' ; une plonge : « sale ≥ 1 à 22:00 » ou « retard non absorbé »' : ''));
+          const m = /^(.+?)\s*(?:≥|>=|>|:|au moins)?\s*(\d+)\s*(vols?|repas)?$/i.exec(si);
+          if (!m) throw new Error('« ne travaille que si » illisible « ' + si + ' » (ex. « AF ≥ 6 vols »)');
+          const cie = /^(toutes?|tout|\*)$/i.test(m[1].trim()) ? '*' : m[1].trim().toUpperCase();
+          a._cond = { cie, seuil: Math.max(1, +m[2]), mesure: /^repas$/i.test(m[3] || '') ? 'repas' : 'vols',
+            sinon: String(o.sinon_commandes_a ?? '').trim(), renfort: String(o.sinon_personnes_a ?? '').trim() };
+          if (/^(aucune?|personne|non|-|absorbe|absorbée?)$/i.test(a._cond.renfort)) { a._cond.renfort = ''; a._cond.absorbe = true; }
+          if (!a._cond.sinon) throw new Error('« ne travaille que si » : dites quelle équipe reprend ses commandes (« Sinon, commandes à »)');
+        }
+        a._ligne = o._ligne;
+        parNom.set(ks, a); out.ateliers.push(a);
+      });
+    }
+    // Les autres feuilles désignent une équipe par sa clé : son nom, ou « nom · service ».
+    const cles = clesDesCases(out.ateliers, nomService);
+    const atelierNomme = (v, ou, ligne) => {
+      const a = cles.trouver(v);
+      if (!a) err.ajouter(ou, ligne, 'équipe inconnue « ' + (v ?? '') + ' » (absent de la feuille Équipes)' + cles.pourquoi(v));
+      return a;
+    };
+
+    // Une plonge sur le retard : l'équipe qui doit l'absorber, par son nom — une autre équipe de la même plonge.
+    for (const a of out.ateliers) {
+      const nom = a._absorbePar; delete a._absorbePar; if (!nom) continue;
+      const d = atelierNomme(nom, fA.nom, a._ligne); if (!d) continue;
+      if (d === a || d.type !== 'lavage' || d.service !== a.service) { err.ajouter(fA.nom, a._ligne, '« retard non absorbé (par …) » : une autre équipe de la même plonge'); continue; }
+      a.condition.equipe = d.id;
+    }
+    // Les règles ⚡ : les équipes qui reprennent, par leur nom.
+    for (const a of out.ateliers) {
+      const c = a._cond; delete a._cond; if (!c) continue;
+      const sinon = atelierNomme(c.sinon, fA.nom, a._ligne);
+      const renfort = c.renfort ? atelierNomme(c.renfort, fA.nom, a._ligne) : null;
+      if (!sinon || (c.renfort && !renfort)) continue;
+      if (sinon === a || sinon.service !== a.service) { err.ajouter(fA.nom, a._ligne, '« Sinon, commandes à » : une autre équipe du même service'); continue; }
+      a.condition = { cie: c.cie, seuil: c.seuil, mesure: c.mesure, sinon: sinon.id,
+        ...(c.absorbe ? { absorbe: true } : renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
+    }
+
+    // Un service par compagnie (l'armement) : sans la feuille, le réglage du site reste.
+    const fCie = T.feuille(feuilles, 'Par compagnie');
+    if (fCie) {
+      const cats = {};
+      for (const o of T.enObjets(fCie.lignes).objets) {
+        err.essayer(fCie.nom, o._ligne, () => {
+          const sid = service(o.service);
+          if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
+          if (!cats[sid]) {
+            const avant = ((etat.categories || {})[sid] || [])[0];
+            const nom = (ctx.services || []).find(x => x.id === sid)?.nom || sid;
+            cats[sid] = [{ id: avant ? avant.id : codeService(nom, etat), nom: avant ? avant.nom : nom, minutes: {} }];
+          }
+          // En heures (08/10) ; un classeur d'avant, en minutes, se relit toujours.
+          const enH = o.heures_par_vol !== undefined, cie = String(o.compagnie ?? '').trim();
+          const v = T.nombreDe(enH ? o.heures_par_vol : o.minutes_par_vol, null);
+          if (!cie || v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error((enH ? 'heures' : 'minutes') + ' par vol : nombre positif attendu');
+          cats[sid][0].minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = enH ? Math.round(v * 60 * 100) / 100 : v;
+        });
+      }
+      if (Object.keys(cats).length) out.categories = cats; else delete out.categories;
+    }
+
+    const fH = T.feuille(feuilles, 'Horaires');
+    if (fH) lireHoraires(fH, atelierNomme, err);
+
+    const fF = T.feuille(feuilles, 'Fabrications');
+    const garder = !fF;   // sans la feuille, les fabrications restent celles du site
+    if (garder) {
+      for (const a of out.ateliers) {
+        const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
+        if (avant) a.lots = JSON.parse(JSON.stringify(avant.lots || []));
+      }
+    } else {
+      const parAtelier = new Map();
+      for (const o of T.enObjets(fF.lignes).objets) {
+        const a = atelierNomme(o.atelier, fF.nom, o._ligne); if (!a) continue;
+        err.essayer(fF.nom, o._ligne, () => {
+          if (a.type === 'lavage' || a.type === 'dispo') throw new Error(a.nom + ' : une ' + TYPES_FR[a.type] + ' ne fabrique pas de lot');
+          if (a.type === 'handling') throw new Error(a.nom + ' : un handling charge des vols, il n’a pas de liste de commandes');
+          const ordre = T.nombreDe(o.ordre, Infinity);
+          const cls = String(o.compagnies_classes ?? '').split(SEP_CLASSES).filter(Boolean).map(x => {
+            const id = classeLue(x);
+            if (!id) throw new Error('compagnie × classe illisible « ' + x + ' » (ex. AF/BC, ou AF/@ARM pour un service par compagnie)');
+            return id;
+          });
+          if (!cls.length) throw new Error('aucune compagnie × classe');
+          if (!parAtelier.has(a)) parAtelier.set(a, []);
+          parAtelier.get(a).push({ ordre, ligne: o._ligne, cls: [...new Set(cls)] });
+        });
+      }
+      for (const [a, lots] of parAtelier) {
+        lots.sort((x, y) => x.ordre - y.ordre || x.ligne - y.ligne);
+        a.lots = lots.map(l => l.cls);
+      }
+    }
+
+    // Les heures fixées dans une case : sans la feuille, celles du site restent.
+    // En heures (08/10) ; la feuille d'avant, « Man-minutes », se relit en minutes.
+    const fHP = T.feuille(feuilles, 'Heures propres');
+    const fMM = fHP || T.feuille(feuilles, 'Man-minutes');
+    for (const a of out.ateliers) {
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      if (!fMM && avant && avant.minutes) a.minutes = JSON.parse(JSON.stringify(avant.minutes));
+    }
+    if (fMM) {
+      for (const o of T.enObjets(fMM.lignes).objets) {
+        const a = atelierNomme(o.atelier, fMM.nom, o._ligne); if (!a) continue;
+        err.essayer(fMM.nom, o._ligne, () => {
+          const id = classeLue(o.compagnie_classe);
+          if (!id) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. AF/BC)');
+          const v = T.nombreDe(fHP ? o.heures_de_travail : o.man_minutes, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error((fHP ? 'temps par vol' : 'man-minutes') + ' : nombre positif attendu');
+          (a.minutes || (a.minutes = {}))[id] = fHP ? Math.round(v * 60 * 100) / 100 : v;
+        });
+      }
+    }
+
+    // Les débits d'un robot, commande par commande : sans la feuille, ceux du site restent.
+    const fDR = T.feuille(feuilles, 'Débits robot', 'Debits robot');
+    for (const a of out.ateliers) {
+      if (a.type !== 'robot') continue;
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      if (!fDR && avant && avant.debits) a.debits = JSON.parse(JSON.stringify(avant.debits));
+    }
+    if (fDR) {
+      for (const o of T.enObjets(fDR.lignes).objets) {
+        const a = atelierNomme(o.atelier, fDR.nom, o._ligne); if (!a) continue;
+        err.essayer(fDR.nom, o._ligne, () => {
+          if (a.type !== 'robot') throw new Error(a.nom + ' n’est pas un robot');
+          const m = /^(.+)\/([a-z]+)$/i.exec(String(o.compagnie_classe ?? '').trim());
+          if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. TX/YC)');
+          const v = T.nombreDe(o.debit_plateaux_h, null);
+          if (v === null) return;
+          if (!(v > 0)) throw new Error('débit positif attendu, en plateaux par heure');
+          (a.debits || (a.debits = {}))[P.idClasse(m[1], m[2].toUpperCase())] = v;
+        });
+      }
+    }
+
+    const fT = T.feuille(feuilles, 'Tunnels');
+    for (const a of out.ateliers) {
+      if (a.type !== 'lavage') continue;
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      a.tunnels = !fT && avant ? JSON.parse(JSON.stringify(avant.tunnels || [])) : [];
+    }
+    if (fT) {
+      for (const o of T.enObjets(fT.lignes).objets) {
+        const a = atelierNomme(o.atelier, fT.nom, o._ligne); if (!a) continue;
+        err.essayer(fT.nom, o._ligne, () => {
+          if (a.type !== 'lavage') throw new Error(a.nom + ' n’est pas une plonge');
+          a.tunnels.push({ nom: String(o.tunnel ?? '').trim() || 'Tunnel ' + (a.tunnels.length + 1),
+            debit: T.nombreDe(o.debit_u_h, 300), personnes: T.nombreDe(o.personnes, 1), actif: T.ouiNon(o.actif, true),
+            ...(T.nombreDe(o.vitesse, 1) > 0 && T.nombreDe(o.vitesse, 1) !== 1 ? { vitesse: T.nombreDe(o.vitesse, 1) } : {}) });
+        });
+      }
+    }
+    // Les durées du handling : sans la feuille, celles du site restent.
+    const fHa = T.feuille(feuilles, 'Handling');
+    if (fHa) {
+      const lus = new Set();
+      for (const o of T.enObjets(fHa.lignes).objets) {
+        const a = atelierNomme(o.atelier, fHa.nom, o._ligne); if (!a) continue;
+        err.essayer(fHa.nom, o._ligne, () => {
+          if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
+          const entetes = (fHa.lignes[0] || []).map(h => T.cleEntete(h));
+          if (!lus.has(a)) {
+            lus.add(a); a.durees = {};
+            if (entetes.includes('courrier')) a.longs = [];
+            if (entetes.includes('aller_min')) a.allers = {};
+            if (entetes.includes('retour_min')) a.retours = {};
+            if (entetes.includes('vols_par_camion')) a.volsCamion = {};
+            for (const [col, m] of COLONNES_24H) if (entetes.includes(col)) delete a[m];
+            if (entetes.includes('vehicule')) delete a.vl;
+            for (const [, col, m] of COLONNES_VAGUES) if (entetes.includes(col)) delete a[m];
+          }
+          const c = String(o.compagnie ?? '').trim();
+          const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
+          const courrier = T.cleEntete(o.courrier ?? '');
+          if (courrier && cie !== P.TOUTES) {
+            if (!['long', 'court'].includes(courrier)) throw new Error('courrier : « long » ou « court »');
+            if (courrier === 'long' && !a.longs.includes(cie)) a.longs.push(cie);
+          }
+          for (const [col, m] of [['aller_min', 'allers'], ['retour_min', 'retours']]) {
+            const x = T.nombreDe(o[col], null);
+            if (x === null) continue;
+            if (!Number.isFinite(x) || x < 0) throw new Error(col.replace('_min', '') + ' : nombre positif attendu');
+            a[m] = { ...(a[m] || {}), [cie]: x };
+          }
+          // Le handling 24 h/24 : l'escale, le quai, le déchargement ; le véhicule (« VL » : un petit camion).
+          for (const [col, m] of COLONNES_24H) {
+            const x = T.nombreDe(o[col], null);
+            if (x === null) continue;
+            if (!Number.isFinite(x) || x < 0) throw new Error(col.replace(/_min$/, '').replace(/_/g, ' ') + ' : nombre positif attendu');
+            a[m] = { ...(a[m] || {}), [cie]: x };
+          }
+          const vh = T.cleEntete(o.vehicule ?? '');
+          if (vh && cie !== P.TOUTES) {
+            if (!['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
+            if (vh === 'vl' && !(a.vl || []).includes(cie)) a.vl = (a.vl || []).concat([cie]);
+          }
+          // Les tournées par vagues : en VL à partir d'une heure (celle du départ), propre à une compagnie ; les vols
+          // d'une tournée en VL ; le quai en plus par vol de plus.
+          for (const [lib, col, m, sorte] of COLONNES_VAGUES) {
+            const x = o[col];
+            if (x === null || x === undefined || x === '') continue;
+            if (sorte === 'heure' || sorte === 'liste') {
+              if (cie === P.TOUTES) throw new Error(lib + ' : propre à une compagnie, pas sur la ligne « toutes »');
+              if (sorte === 'liste') { if (T.ouiNon(x, false)) a[m] = [...new Set((a[m] || []).concat([cie]))]; continue; }
+              const t = T.heureDe(x);
+              if (t >= 1440) throw new Error(lib + ' : une heure de 00:00 à 23:59');
+              a[m] = { ...(a[m] || {}), [cie]: hh(t) };
+            } else {
+              const n = T.nombreDe(x, null);
+              if (!Number.isFinite(n) || n < (sorte === 'vols' ? 1 : 0)) throw new Error(lib.replace(/ \(min\)$/, '') + ' : ' + (sorte === 'vols' ? '1 ou plus' : 'nombre positif attendu'));
+              a[m] = { ...(a[m] || {}), [cie]: sorte === 'vols' ? Math.round(n) : n };
+            }
+          }
+          const vc = T.nombreDe(o.vols_par_camion, null);
+          if (vc !== null) {
+            if (!Number.isFinite(vc) || vc < 1) throw new Error('vols par camion : 1 ou plus');
+            if (cie === P.TOUTES) a.volsParCamion = Math.round(vc); else a.volsCamion = { ...(a.volsCamion || {}), [cie]: Math.round(vc) };
+          }
+          const v = T.nombreDe(o.minutes_par_vol, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
+          a.durees[cie] = v;
+        });
+      }
+    }
+    // Les créneaux de chauffeurs du handling : sans la feuille, ceux du site restent.
+    const fCh = T.feuille(feuilles, 'Chauffeurs');
+    if (fCh) {
+      const lus = new Set();
+      for (const o of T.enObjets(fCh.lignes).objets) {
+        const a = atelierNomme(o.atelier, fCh.nom, o._ligne); if (!a) continue;
+        err.essayer(fCh.nom, o._ligne, () => {
+          if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
+          if (!lus.has(a)) { lus.add(a); a.creneaux = []; }
+          const n = T.nombreDe(o.chauffeurs, null);
+          if (n === null || !Number.isFinite(n) || n < 0) throw new Error('chauffeurs : nombre positif attendu');
+          const vh = T.cleEntete(o.vehicule ?? '');
+          if (vh && !['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
+          a.creneaux.push({ de: hh(T.heureDe(o.debut)), a: hh(T.heureDe(o.fin)), n: Math.round(n), ...(vh === 'vl' ? { type: 'vl' } : {}) });
+        });
+      }
+    }
+    // Le temps de lavage d'un vol, par compagnie, pour une plonge par vol.
+    const fPv = T.feuille(feuilles, 'Plonge par vol');
+    if (fPv) {
+      const lus = new Set();
+      for (const o of T.enObjets(fPv.lignes).objets) {
+        const a = atelierNomme(o.atelier, fPv.nom, o._ligne); if (!a) continue;
+        err.essayer(fPv.nom, o._ligne, () => {
+          if (a.type !== 'lavage') throw new Error(a.nom + ' n’est pas une plonge');
+          if (!lus.has(a)) { lus.add(a); a.durees = {}; a.parVol = true; }
+          const c = String(o.compagnie ?? '').trim();
+          const v = T.nombreDe(o.minutes_par_vol, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
+          a.durees[!c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase()] = v;
+        });
+      }
+    }
+    for (const a of out.ateliers) {
+      delete a._ligne; delete a._vaguesLues;
+      if (a.type === 'lavage' && !a.tunnels.length) a.tunnels = [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }];
+    }
+
+    const fM = T.feuille(feuilles, 'Matériel', 'Materiel');
+    if (fM) {
+      const m = JSON.parse(JSON.stringify(out.materiel || {}));
+      m.unites = P.unitesDe(m);
+      for (const o of T.enObjets(fM.lignes).objets) {
+        err.essayer(fM.nom, o._ligne, () => {
+          const k = T.cleEntete(o.parametre);
+          if (k === 'boucle_du_materiel_active') m.actif = T.ouiNon(o.valeur, false);
+          else if (k === 'stock_propre_a_l_ouverture') m.stockInitial = T.nombreDe(o.valeur, 0);
+          else if (k === 'delai_apres_atterrissage_min') m.delaiRetour = T.nombreDe(o.valeur, 30);
+          // Le sale de la veille (banc d'essai, lu par la version 1) : vide, rien.
+          else if (k === 'sale_de_la_veille_u' && ctx && ctx.banc) {
+            const n = T.nombreDe(o.valeur, null);
+            if (n === null || n === 0) delete m.saleInitial;
+            else if (!(n > 0)) throw new Error('sale de la veille : un nombre d’unités positif');
+            else m.saleInitial = n;
+          }
+          else if (k === 'retours_a_la_plonge') {
+            const v = T.cleEntete(o.valeur ?? '');
+            const src = !v ? 'programme' : /^(programme|ret|lignes_retour)/.test(v) ? 'programme' : /^(j_?[12]|24|48|lendemain)/.test(v) ? 'j1' : /^planche/.test(v) ? 'planche' : null;
+            if (!src) throw new Error('retours à la plonge : « programme », « J+1 » ou « planche »');
+            m.retours = src;
+          } else {
+            const u = /^unites_par_vol_([a-z]+)$/.exec(k);
+            if (!u || !P.CABINES.includes(u[1].toUpperCase())) throw new Error('paramètre inconnu « ' + o.parametre + ' »');
+            m.unites[u[1].toUpperCase()] = { parVol: T.nombreDe(o.valeur, 0) };
+          }
+        });
+      }
+      out.materiel = m;
+    }
+
+    // Une compagnie × classe tapée dans « Fabrications » sans être au programme
+    // ni dans « Classes » : c'est une classe qu'on ajoute. On la déclare, et on
+    // le dit. Une classe retirée mais encore fabriquée, elle, est une contradiction.
+    const notes = [];
+    const programme = new Set((ctx.programme || []).map(c => c.id));
+    const ajoutees = new Set((out.ajoutees || []).map(c => P.idClasse(c.cie, c.cabine)));
+    const exclues = new Set(out.exclues || []);
+    for (const a of out.ateliers) for (const l of a.lots) for (const id of l) {
+      if (exclues.has(id)) { err.ajouter(fF ? fF.nom : null, null, id + ' est retirée (feuille Classes) mais ' + a.nom + ' la fabrique encore'); continue; }
+      if (programme.has(id) || ajoutees.has(id)) continue;
+      if (id.includes('/@')) continue;   // la case d'un service par compagnie : elle vient du chemin, pas du programme
+      const i = id.lastIndexOf('/');
+      out.ajoutees = [...(out.ajoutees || []), { cie: id.slice(0, i), cabine: id.slice(i + 1) }];
+      ajoutees.add(id); notes.push(id);
+    }
+
+    err.lever();
+    // Un chemin que suit une classe, ou plusieurs commandes, est un flux partagé.
+    if (PC && PC.marquerTypes && Array.isArray(out.parcours)) PC.marquerTypes(out);
+    return { etat: out, ajouteesAuto: notes };
+  }
+
+  /* ---- Planche retour du handling ---------------------------------------
+   * Quand chaque vol revient à l'unité, pour la plonge (retour d'usage du
+   * 29/09). Une ligne par vol : Vol, Compagnie, Arrivée à l'unité, Jour, et,
+   * si on les connaît, les classes à bord (sinon, celles que la compagnie
+   * emporte au départ). */
+  const CLASSES_PLANCHE = [['bc', 'BC'], ['pc', 'PC'], ['yc', 'YC'], ['crew', 'CREW'], ['spml', 'SPML']];
+  const RETOURS_ECRITS = { programme: 'programme', j1: 'J+1', planche: 'planche' };
+  function plancheVersClasseur(planche) {
+    const lignes = [['Vol', 'Compagnie', 'Arrivée à l’unité', 'Jour', ...CLASSES_PLANCHE.map(([, c]) => c)]];
+    for (const l of planche || []) lignes.push([l.vol || null, l.cie || null, l.heure, jourEcrit(l.jour || 0), ...CLASSES_PLANCHE.map(([k]) => l[k] ?? null)]);
+    return [{ nom: 'Planche retour', lignes }, lisezMoi('Planche retour du handling — quand chaque vol revient à l’unité', [
+      'Une ligne par vol qui revient : son matériel sale arrive à la plonge à l’heure « Arrivée à l’unité » (HH:MM), sans délai ajouté.',
+      'Jour : J le jour simulé, J-1 la veille (un retour du soir d’avant, encore à laver).',
+      'BC, PC, YC, CREW, SPML : facultatif. Les passagers (ou 1) des classes à bord ; vide : les classes que la compagnie emporte au départ.',
+      'Pour que la simulation l’utilise : Simulation › Réglages de la simulation › « D’où viennent les retours ? » = la planche retour.'
+    ])];
+  }
+  function classeurVersPlanche(feuilles) {
+    const f = T.feuille(feuilles, 'Planche retour', 'Planche', 'Retours') || (feuilles || [])[0];
+    if (!f) throw new Error('aucune feuille « Planche retour »');
+    const err = new Erreurs(), out = [];
+    for (const o of T.enObjets(f.lignes).objets) {
+      err.essayer(f.nom, o._ligne, () => {
+        const brute = o.arrivee_a_l_unite ?? o.arrivee ?? o.heure ?? o.sta;
+        if (brute === undefined || brute === null || brute === '') throw new Error('heure d’arrivée manquante');
+        const l = { vol: String(o.vol ?? '').trim(), cie: String(o.compagnie ?? o.cie ?? '').trim().toUpperCase(),
+          heure: hh(T.heureDe(brute)), jour: jourDe(o.jour) };
+        if (!l.vol && !l.cie) throw new Error('ni vol ni compagnie');
+        if (l.jour < -3) throw new Error('jour : de J-3 à J');
+        for (const [k] of CLASSES_PLANCHE) { const v = T.nombreDe(o[k], null); if (v !== null && v > 0) l[k] = Math.round(v); }
+        out.push(l);
+      });
+    }
+    err.lever();
+    return out;
+  }
+
+  /* ----------------------------------------------------------------------
+   *  LA PÉRIODE (banc d'essai de la version 1, évolution 10) : les résultats
+   *  d'une période simulée en un classeur. La page (« Exporter les
+   *  résultats ») et l'outil (outils/simuler-periode.cjs --xlsx) l'écrivent
+   *  par ce seul code. Les jours et les heures sont de vraies dates Excel (la
+   *  veille d'une journée de vols comprise) ; chaque feuille a sa ligne
+   *  d'en-tête, des filtres, ses premières colonnes figées.
+   * --------------------------------------------------------------------*/
+  const MESURES_PERIODE = [
+    ['personnes', 'Personnes', 'l’effectif des équipes'],
+    ['besoin', 'Besoin exact (pers.)', 'homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon (non arrondi)'],
+    // L'arrondi au service (banc d'essai de la version 1, évolution 11 a).
+    ['charge', 'Charge (ETP)', 'la charge des équipes, non arrondie : le besoin exact d’une équipe calculée ; pour un robot ou une plonge à effectif saisi, les homme-minutes de ses lots ÷ son poste ; sinon personnes × présence ÷ présence générale'],
+    ['personnesService', 'Personnes du service', '⌈charge⌉ : la charge du service arrondie une fois, au service'],
+    ['surplusArrondi', 'Surplus d’arrondi', 'personnes − personnes du service : ce que coûte l’arrondi équipe par équipe, avec le sous-emploi d’un effectif saisi ; négatif quand des présences dépassent la présence générale'],
+    ['hommeMinutes', 'Homme-minutes', 'le travail fait : la somme des homme-minutes des lots'],
+    ['heuresSup', 'Heures sup (min × pers.)', 'les heures supplémentaires en minutes × personnes, renforts en heures sup compris'],
+    ['heuresSupOffice', 'Heures sup d’office (min × pers.)', 'une présence plus longue que la présence au contrat, chaque jour, pour chaque personne (banc d’essai, évolution 11 e)'],
+    ['renfortsPretes', 'Renforts prêtés (min)', 'les minutes prêtées à un autre service'],
+    ['renfortsRecus', 'Renforts reçus (min)', 'les minutes reçues d’un autre service'],
+    ['lots', 'Lots', 'les lots préparés'],
+    ['lotsEnRetard', 'Lots en retard', 'les lots finis après leur échéance'],
+    ['commandesEnRetard', 'Commandes en retard', 'les commandes finies après leur échéance, une fois par service'],
+    ['retardMax', 'Retard max (min)', 'le retard le plus long ; en moyenne, celle des retards max de chaque jour'],
+    ['volsCharges', 'Vols chargés', 'le handling : les vols chargés'],
+    ['volsEnRetard', 'Vols en retard', 'le handling : les vols chargés après leur limite'],
+    ['chauffeursCamion', 'Chauffeurs camion', 'le plan des chauffeurs du handling'],
+    ['chauffeursVL', 'Chauffeurs VL', 'le plan des chauffeurs du handling'],
+    ['borneBasse', 'Borne basse chauffeurs', 'le moins de chauffeurs possible'],
+    ['heuresSupChauffeurs', 'Heures sup chauffeurs (min)', 'les heures sup des chauffeurs'],
+    ['volsLaves', 'Vols lavés', 'la plonge : les vols lavés'],
+    ['encadrement', 'Encadrement', 'l’encadrement saisi du service, une fois par jour'],
+    ['chargeEncadrement', 'Charge de l’encadrement (ETP)', 'l’encadrement saisi du service, à la présence générale (ses personnes), à part de la charge des équipes'],
+    ['heuresSupOfficeEncadrement', 'Heures sup d’office de l’encadrement (min × pers.)', 'sa présence au-delà de sa présence au contrat, chaque jour']
+  ];
+  /** Les heures sup d'office (banc d'essai, évolution 11 e) : leurs colonnes ne paraissent que si la période en a. */
+  const MESURES_OFFICE = ['heuresSupOffice', 'heuresSupOfficeEncadrement'];
+  const avecHeuresSupOffice = b => !!b && (b.joursTravail || []).some(w => MESURES_OFFICE.some(k => (w.total && w.total[k]) > 0));
+  const SEMAINE = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const jourSemaine = d => SEMAINE[new Date(d + 'T12:00:00Z').getUTCDay()];
+  const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
+  const decalerJour = (d, k) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + k)).toISOString().slice(0, 10);
+  const n2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 100) / 100);
+  /** Une heure d'une journée de vols (minutes depuis son 00:00, négatives : la veille) : une vraie date Excel, jour et heure. */
+  const instantDe = (d, t) => (Number.isFinite(t) ? T.celluleDate(d, t) : null);
+
+  /**
+   * Le classeur d'une période. `p` : { periode, bilan, journees } — chaque
+   * journée avec sa `date`, ses `departs`, ses `retours` et son `extrait`
+   * (moteur/periode.js). `ctx` : { sauvegarde, vols (les noms des fichiers),
+   * reglages ({ delaiChargement, decalage, … }), calculeLe (une date) }.
+   */
+  function periodeVersClasseur(p, ctx = {}) {
+    const b = p.bilan, journees = p.journees || [], d = p.periode;
+    const nomService = new Map(b.services.map(x => [x.id, x.nom]));
+    const ns = id => nomService.get(id) || id;
+    const complet = new Map(b.joursTravail.map(w => [w.date, w.complet]));
+    const ouiNon = x => (x ? 'oui' : 'non');
+    // Sans heures sup d'office, les colonnes d'avant (évolution 11 e) ; un encadrement à sa propre présence le dit.
+    const office = avecHeuresSupOffice(b), presenceEncadrement = (b.joursTravail || []).some(w => Object.values(w.services || {})
+      .some(x => x.encadrement && Math.abs((x.chargeEncadrement || 0) - x.encadrement) > 1e-9));
+    const MP = MESURES_PERIODE.filter(([k]) => office || !MESURES_OFFICE.includes(k)).map(m => (m[0] === 'chargeEncadrement' && presenceEncadrement
+      ? [m[0], m[1], 'l’encadrement saisi du service × sa présence ÷ la présence générale (sans présence propre : ses personnes), à part de la charge des équipes'] : m));
+    const mesures = m => MP.map(([k]) => n2(m ? m[k] : null));
+
+    // Période : jour de travail × service, puis, chaque mois et sur la période, totaux et moyennes par jour (jours complets).
+    // Avec une politique d'effectif (banc d'essai de la version 1, évolution 11 d) : le prévu calé de chaque ligne et de l'unité, sa bande.
+    const prevu = ctx.prevu || null, colsPrevu = prevu ? ['Simulé de la ligne (ETP)', 'Prévu calé (ETP)', 'P10 (ETP)', 'P90 (ETP)'] : [];
+    const vides = MP.map(() => null);
+    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MP.map(m => m[1]), ...colsPrevu]];
+    const services = w => b.services.filter(x => w.services[x.id]);
+    const cumul = (ligne, mois, c, moyenne) => {
+      const m = moyenne ? c.moyenne : c.total;
+      for (const x of b.services) if (m.services[x.id]) periode.push([ligne, null, null, mois, null, null, c.jours, x.nom, ...mesures(m.services[x.id])]);
+      periode.push([ligne, null, null, mois, null, null, c.jours, 'Toute l’unité', ...mesures(m)]);
+    };
+    for (const mo of b.mois) {
+      for (const w of b.joursTravail.filter(x => x.date.startsWith(mo.mois))) {
+        const tete = ['jour', T.celluleDate(w.date), jourSemaine(w.date), w.date.slice(0, 7), ouiNon(w.complet), w.manque.map(dateFr).join(', ') || null, null];
+        for (const x of services(w)) periode.push([...tete, x.nom, ...mesures(w.services[x.id])]);
+        periode.push([...tete, 'Toute l’unité', ...mesures(w.total)]);
+        if (prevu) {
+          const i = b.joursTravail.indexOf(w), cale = j => [n2(j.simule), n2(j.prevu), n2(j.p10), n2(j.p90)];
+          for (const l of prevu.lignes) periode.push([...tete, 'Ligne : ' + l.nom, ...vides, ...cale(l.jours[i])]);
+          periode.push([...tete, 'Toute l’unité (prévu calé)', ...vides, ...cale(prevu.unite[i])]);
+        }
+      }
+      cumul('total du mois', mo.mois, mo, false);
+      cumul('moyenne par jour du mois', mo.mois, mo, true);
+    }
+    cumul('total de la période', null, b.periode, false);
+    cumul('moyenne par jour de la période', null, b.periode, true);
+
+    // Équipes : jour de travail × équipe (chaque équipe au jour des vols + son jour).
+    const equipes = [['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes', 'Homme-minutes', 'Besoin exact (pers.)', 'Charge (ETP)',
+      'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)', 'Heures sup (min × pers.)', ...(office ? ['Heures sup d’office (min × pers.)'] : []),
+      'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard', 'Commandes en retard', 'Retard max (min)']];
+    const lignesEquipes = [];
+    for (const j of journees) for (const e of j.extrait.equipes) {
+      const w = decalerJour(j.date, e.jour || 0);
+      lignesEquipes.push({ cle: [w, ns(e.service), e.nom, j.date], l: [T.celluleDate(w), T.celluleDate(j.date), ouiNon(complet.get(w)), ns(e.service), e.nom, TYPES_FR[e.type] || e.type,
+        e.calcule ? 'calculé' : 'saisi', e.personnes, n2(e.hommeMinutes), n2(e.besoin), n2(e.charge), instantDe(j.date, e.debutPoste), instantDe(j.date, e.finPresence), instantDe(j.date, e.fin),
+        n2(e.travail), n2(e.attente), n2(e.pauses), n2(e.heuresSup), ...(office ? [n2(e.heuresSupOffice || 0)] : []), n2(e.renfortsPretes), n2(e.renfortsRecus), e.lots, e.lotsEnRetard, e.commandesEnRetard.length, n2(e.retardMax)] });
+    }
+    const parCle = (x, y) => x.cle.reduce((r, v, i) => r || String(v).localeCompare(String(y.cle[i])), 0);
+    equipes.push(...lignesEquipes.sort(parCle).map(x => x.l));
+
+    // Compagnies : jour de travail × service × compagnie.
+    const compagnies = [['Jour de travail', 'Jour complet', 'Service', 'Compagnie', 'Commandes', 'Vols', 'Passagers', 'Homme-minutes', 'Retard max (min)']];
+    for (const w of b.joursTravail) for (const x of services(w)) for (const [cie, c] of Object.entries(w.services[x.id].compagnies || {}).sort((u, v) => u[0].localeCompare(v[0])))
+      compagnies.push([T.celluleDate(w.date), ouiNon(w.complet), x.nom, cie, c.commandes, c.vols, c.pax, n2(c.hommeMinutes), n2(c.retardMax)]);
+
+    // Lots, Vols, Plonge, Jours : chaque journée de vols, dans l'ordre.
+    const lots = [['Journée de vols', 'Jour de travail', 'Service', 'Équipe', 'Commande', 'Début', 'Fin', 'Durée (min)', 'Attente (min)', 'Homme-minutes', 'Échéance', 'Marge (min)']];
+    const vols = [['Journée de vols', 'Vol', 'Compagnie', 'Équipe', 'Départ', 'Commandes prêtes', 'Arrivée de l’avion', 'Début du déchargement', 'Fin du déchargement',
+      'Début du chargement', 'Fin du chargement', 'Véhicule', 'Tournée', 'Limite', 'Retard (min)', 'À l’heure', 'Cause']];
+    const plonge = [['Journée de vols', 'Vol', 'Compagnie', 'Arrivée du sale', 'Équipe', 'Tunnel', 'Début', 'Fin', 'Attente (min)']];
+    const jours = [['Journée de vols', 'Jour', 'Départs', 'Retours', 'Calcul abouti', 'Anomalies', 'Commandes', 'Commandes à l’heure', 'Commandes en retard', 'Commandes pas finies',
+      'Retard max (min)', 'Vols suivis', 'Vols chargés', 'Vols à l’heure', 'Retard vol max (min)', 'Homme-minutes', 'Sale de la veille (u)', 'Sale restant le soir (u)',
+      'Stock propre initial (u)', 'Stock propre le soir (u)', 'Plonge de nuit', 'Chauffeurs camion', 'Chauffeurs VL', 'Borne basse chauffeurs', 'Heures sup chauffeurs (min)']];
+    for (const j of journees) {
+      const x = j.extrait, eq = new Map(x.equipes.map(e => [e.id, e])), D = T.celluleDate(j.date);
+      const nomEq = id => (eq.get(id) || {}).nom || id;
+      for (const l of x.lots) {
+        const e = eq.get(l.equipe) || {};
+        lots.push([D, T.celluleDate(decalerJour(j.date, e.jour || 0)), ns(l.service), nomEq(l.equipe), l.commande, instantDe(j.date, l.debut), instantDe(j.date, l.fin),
+          n2(l.duree), n2(l.attente), n2(l.hommeMinutes), instantDe(j.date, l.echeance), n2(l.marge)]);
+      }
+      for (const v of x.vols) vols.push([D, v.id, v.cie, v.atelier ? nomEq(v.atelier) : null, instantDe(j.date, v.depart), instantDe(j.date, v.pret), instantDe(j.date, v.arrivee),
+        instantDe(j.date, v.dechargementDebut), instantDe(j.date, v.dechargementFin), instantDe(j.date, v.debut), instantDe(j.date, v.fin), v.vehicule, v.tournee,
+        instantDe(j.date, v.limite), n2(v.retard), ouiNon(v.aHeure), v.cause]);
+      for (const l of x.plonge) plonge.push([D, String(l.vol), l.cie, instantDe(j.date, l.arrivee), nomEq(l.equipe), l.tunnel, instantDe(j.date, l.debut), instantDe(j.date, l.fin), n2(l.attente)]);
+      const k = x.indicateurs, ch = x.chauffeurs, somme = f => (ch.length ? ch.reduce((n, c) => n + (+f(c) || 0), 0) : null);
+      jours.push([D, jourSemaine(j.date), j.departs, j.retours, ouiNon(x.ok), x.anomalies, k.commandes, k.aHeure, k.enRetard, k.pasFinies, n2(k.retardMax), k.vols, k.volsCharges,
+        k.volsAHeure, n2(k.retardVolMax), n2(k.hommeMinutes), n2(x.saleInitial), n2(x.saleFinal), n2(x.stockInitial), n2(x.stockPropre),
+        x.nuits.map(n => nomEq(n.equipe) + ' : ' + (n.ouverte ? 'ouverte' : 'fermée')).join(' ; ') || null,
+        somme(c => c.camion), somme(c => c.vl), somme(c => c.borneBasse), somme(c => c.heuresSup)]);
+    }
+
+    // Lisez-moi : la période, la sauvegarde, les réglages, la date du calcul, les définitions, l'avertissement.
+    const r = ctx.reglages || {}, { delaiChargement, decalage, ...autres } = r;
+    const le = ctx.calculeLe ? new Date(ctx.calculeLe) : null, deux = x => String(x).padStart(2, '0');
+    const liste = l => (l.length ? l.map(dateFr).join(', ') : 'aucun');
+    const lisez = lisezMoi('Période simulée du ' + dateFr(d.debut) + ' au ' + dateFr(d.fin) + ' — résultats (prototype)', [
+      'Période : ' + d.jours + (d.jours > 1 ? ' journées' : ' journée') + ' de vols, du ' + dateFr(d.debut) + ' au ' + dateFr(d.fin) + ' ; jours sans aucun vol : ' + liste(d.joursSansVol || []) + '.',
+      'Jours de travail incomplets (montrés, hors des totaux et des moyennes) : ' + liste(d.joursIncomplets || []) + '.',
+      'Sauvegarde : ' + (ctx.sauvegarde || '—') + ' ; programme de vols : ' + (ctx.vols || '—') + '.',
+      'Réglages : délai de chargement ' + (delaiChargement ?? 45) + ' min, décalage des horaires ' + (+decalage || 0) + ' min'
+        + (Object.keys(autres).length ? ', options ' + JSON.stringify(autres) : '') + '.',
+      'Calculée le ' + (le && !isNaN(le) ? deux(le.getDate()) + '/' + deux(le.getMonth() + 1) + '/' + le.getFullYear() + ' à ' + deux(le.getHours()) + ':' + deux(le.getMinutes()) : '—') + '.',
+      '',
+      'Les feuilles :',
+      '   Période — chaque jour de travail × service, les mesures du bilan, « Toute l’unité » ; chaque mois et sur la période, les totaux et les moyennes par jour.',
+      '   Équipes — chaque jour de travail × équipe : effectif, travail, horaires, heures sup, renforts, lots.',
+      '   Compagnies — chaque jour de travail × service × compagnie : commandes, vols, passagers, homme-minutes, retard max.',
+      '   Lots — chaque lot de chaque journée de vols : son équipe, sa commande, ses heures, son échéance et sa marge.',
+      '   Vols — chaque vol avec son chargement : commandes prêtes, arrivée de l’avion, déchargement, chargement, véhicule, tournée, retard.',
+      '   Plonge — chaque vol lavé : l’arrivée du sale, l’équipe, le tunnel, le début, la fin, l’attente.',
+      '   Jours — les indicateurs de chaque journée de vols : commandes à l’heure, retards, nuit de plonge, sale restant, plan des chauffeurs.',
+      '',
+      'Définitions :',
+      '   Journée de vols : le jour des vols. Jour de travail : le jour où l’équipe travaille, le jour des vols + son jour (la cuisine à J−2 des vols du 12',
+      '   travaille le 10). Un jour de travail est incomplet quand une de ses journées de vols manque (avant le premier jour, en fin de période).',
+      '   Les jours et les heures sont de vraies dates Excel : une heure de la veille d’une journée de vols porte la date de la veille.',
+      '   Totaux et moyennes : sur les jours de travail complets ; une moyenne est le total ÷ les jours complets.',
+      ...MP.map(([, nom, sens]) => '   ' + nom + ' : ' + sens + '.'),
+      ...(prevu ? ['   Ligne : … — avec une politique d’effectif (un calage gardé) : le simulé de la ligne, son prévu calé (le modèle appliqué au simulé)',
+        '   et sa bande P10–P90 ; « Toute l’unité (prévu calé) » : toutes les lignes (sans calage : leur simulé), sa bande à σ = √Σσ².',
+        '   Le calage : du ' + ((prevu.calage && prevu.calage.date) || '?').slice(0, 10) + (prevu.calage && prevu.calage.periode
+          ? ', appris du ' + prevu.calage.periode.debut + ' au ' + prevu.calage.periode.fin : '') + ' (à refaire si les temps par vol, les équipes ou la correspondance ont changé depuis).'] : []),
+      '   Marge (min) : l’échéance moins la fin (négative : en retard). Effectif : calculé d’après le travail, ou saisi.',
+      '   Passent d’un jour au suivant : le sale non lavé, le stock propre (boucle du matériel), et en « J+1 » les départs de la veille ;',
+      '   pas encore les lots non finis, les retards ni les préparations d’avance.',
+      '',
+      'PROTOTYPE — temps par vol non calibrés : résultats de simulation, à lire comme un ordre de grandeur, pas comme une mesure.'
+    ]);
+    const feuille = (nom, lignes, figer) => ({ nom, lignes, filtres: true, figerColonnes: figer });
+    return [lisez, feuille('Période', periode, 2), feuille('Équipes', equipes, 2), feuille('Compagnies', compagnies, 1), feuille('Lots', lots, 1),
+      feuille('Vols', vols, 2), feuille('Plonge', plonge, 2), feuille('Jours', jours, 1)];
+  }
+
+  const api = { codeService, plancheVersClasseur, classeurVersPlanche, baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
+    recapCasesVersClasseur, classeurVersRecapCases, volsVersClasseur, classeurVersVols,
+    ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe, periodeVersClasseur, MESURES_PERIODE };
+  if (enNode && module.exports) module.exports = api;
+  else root.OrlyEchanges = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

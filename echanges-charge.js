@@ -108,7 +108,7 @@
     '   disponible = homme-minutes de ses lots ÷ disponible : ni l’un ni l’autre ne dépasse 100 %. Débit = unités terminées ÷ heures au travail',
     '   (au handling, ÷ heures de chargement).',
     '   File la plus longue : le plus de lots en file à un instant, et ce premier instant. Les renforts comptent dans les totaux, pas dans les créneaux.',
-    '   Sans objet (case vide, raison dans la colonne) : une mise à disposition et une équipe d’appui n’ont ni occupation, ni travail, ni file ;',
+    '   Sans objet (cellule vide, raison dans la colonne) : une mise à disposition et une équipe d’appui n’ont ni occupation, ni travail, ni file ;',
     '   le handling n’a ni occupation ni travail par créneau. Un créneau où rien ne se passe n’a pas de ligne.',
     '   Limites : la plonge ne prend pas de pause dans le moteur (ses tunnels lavent sans arrêt) ; une pause du réglage que l’équipe n’a pas',
     '   atteinte reste disponible, « sans travail » ; un pic d’une minute se lit atténué sur 15 minutes.'
@@ -141,7 +141,7 @@
       ['Sauvegarde : ' + (ctx.sauvegarde || '—') + ' ; vols : ' + (ctx.vols || '—') + '.'],
       ['Calculée le ' + deux(le.getDate()) + '/' + deux(le.getMonth() + 1) + '/' + le.getFullYear() + ' à ' + deux(le.getHours()) + ':' + deux(le.getMinutes()) + '.'],
       [''], ['Les feuilles :'], ...FEUILLES.map(l => [l]), [''], ...DEFINITIONS.map(l => [l]),
-      [''], ['PROTOTYPE — barème non calibré : résultats de simulation, à lire comme un ordre de grandeur, pas comme une mesure.']] };
+      [''], ['PROTOTYPE — temps par vol non calibrés : résultats de simulation, à lire comme un ordre de grandeur, pas comme une mesure.']] };
     return [lisez, feuille('Charge', charge, 4), feuille('Créneaux', creneaux, 3)];
   }
 

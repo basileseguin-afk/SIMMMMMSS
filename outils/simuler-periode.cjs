@@ -31,7 +31,8 @@ const PE = require('../moteur/periode.js');
 const T = require('../tableur.js');
 // Le classeur compressé (correction 16 c) : le même contenu, bien plus léger.
 const Z = require('../classeur-compresse.js');
-const E = require('../echanges.js');
+// Le classeur de la période dit les mots de la version 1 (évolution 19 a) : la copie du module commun, la même que la page.
+const E = require('../mots/echanges.js');
 const EC = require('../echanges-charge.js');
 const ECal = require('../echanges-calage.js');
 const { lireJson } = require('./simuler-journee.cjs');

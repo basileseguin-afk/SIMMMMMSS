@@ -346,7 +346,7 @@ const CLE='ory-calage-v1';
   await page.locator(`${B} [data-cal=appliquer-travail][data-nom="Cuisinier"]`).click();await attendre(400);
   const apresTravail=await etatTravail();
   for(const [c,v] of Object.entries(avantTravail2.complet.cuisine))assert.equal(apresTravail.bareme.cuisine[c],Math.round(v*1.1*100)/100,'travail × 1,1, '+c);
-  assert.match(await page.locator(`${B} [data-cal-application="Cuisinier"]`).last().innerText(),/travail × 1,1 au barème \(calage du travail\)/);
+  assert.match(await page.locator(`${B} [data-cal-application="Cuisinier"]`).last().innerText(),/travail × 1,1 aux temps par vol \(calage du travail\)/);
   assert.equal((await reglages()).applications.at(-1).source,'travail');
   const iTravail=(await reglages()).applications.length-1;
   await page.locator(`${B} [data-cal=annuler-application][data-i="${iTravail}"]`).click();await attendre(400);

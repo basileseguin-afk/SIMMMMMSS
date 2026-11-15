@@ -18,6 +18,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const suit=cmd=>page.evaluate(cmd=>{const st=Sim.ateliers.state,p=OrlyParcours.fluxDe(st,cmd);return p?p.nom:null;},cmd);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
+   // Évolution 19 (a) : la version 1 dit « chemin » ; la version 2, gelée, dit encore « flux ».
+   const mot=version==='v1'?'chemin':'flux';
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    // Un flux créé de toutes pièces, dans Flux de production.
@@ -32,7 +34,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const liste=page.locator('[data-mu-cmd-chemin="AF/YC"]');
    assert.equal(await page.locator('[data-mu-qui-suit]').evaluate(d=>d.open),true,version+' : ouvert');
    assert.equal(await page.locator('[data-mu-cmd-chemin]').count(),await page.evaluate(()=>Sim.ateliers.classes.length),'une liste par commande');
-   assert.match(await liste.locator('option[value=""]').innerText(),/« Sans cuisine » · flux de sa classe/);
+   assert.match(await liste.locator('option[value=""]').innerText(),new RegExp('« Sans cuisine » · '+mot+' de sa classe'));
    assert.ok((await liste.locator('option').allInnerTexts()).includes('Économie robot'),version+' : le flux créé est proposé');
    await liste.selectOption(robot);await attendre();
    assert.equal(await suit('AF/YC'),'Économie robot',version+' : AF Économie suit le flux créé');
@@ -46,7 +48,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 2. Une commande : « Chemin suivi », la même liste.
    await page.evaluate(()=>Sim.ateliers.parcours.ouvrir('TX/BC'));await attendre();
    const s2=page.locator('[data-pc-suit="TX/BC"]');
-   assert.match(await s2.locator('option:checked').innerText(),/« Complet » · flux de sa classe/);
+   assert.match(await s2.locator('option:checked').innerText(),new RegExp('« Complet » · '+mot+' de sa classe'));
    await s2.selectOption(robot);await attendre();
    assert.equal(await suit('TX/BC'),'Économie robot',version+' : choisi depuis Une commande');
    assert.match(await page.locator('#at-status').innerText(),/TX · Business suit maintenant « Économie robot »/);
@@ -60,7 +62,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await l3.selectOption(apart);await attendre();
    assert.equal(await suit('CRL/BC'),'Chemin de FWI');assert.equal(await suit('FWI/BC'),'Chemin de FWI');
    assert.equal(await page.evaluate(id=>!!Sim.ateliers.state.parcours.find(p=>p.id===id).type,apart),true,version+' : devenu un flux');
-   assert.match(await page.locator('#at-status').innerText(),/c’est maintenant un flux partagé, le modifier change pour les deux/);
+   assert.match(await page.locator('#at-status').innerText(),new RegExp('c’est maintenant un '+mot+' partagé, le modifier change pour les deux'));
    // Il apparaît maintenant parmi les flux.
    assert.ok(await page.locator('#mu-flux .mu-liste').innerText().then(t=>t.includes('Chemin de FWI')),version+' : dans la liste des flux');
   }

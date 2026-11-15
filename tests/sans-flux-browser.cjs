@@ -24,7 +24,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await page.locator(`${M} [data-mu-choisir=${s}]`).click();await attendre();
     await page.locator(`${M} [data-mu-action=equipe]`).first().click();await attendre();
     assert.equal(await page.locator(`${M} .mu-equipe [data-mu-cocher]:not(:disabled)`).count(),0,version+' '+s+' : grille grisée');
-    assert.match(await page.locator(`${M} .mu-aucun-flux`).innerText(),/Aucun flux ne passe par[\s\S]*Ce n’est pas son effectif/,version+' '+s+' : le site dit pourquoi');
+    assert.match(await page.locator(`${M} .mu-aucun-flux`).innerText(),/Aucun (flux|chemin) ne passe par[\s\S]*Ce n’est pas son effectif/,version+' '+s+' : le site dit pourquoi');
     await page.locator(`${M} .mu-aucun-flux [data-mu-action=flux-tous]`).click();await attendre();
     assert.equal(await page.locator(`${M} .mu-aucun-flux`).count(),0,'plus de message');
     assert.ok(await page.evaluate(s=>Sim.ateliers.state.parcours.every(p=>p.noeuds.includes(s)),s),version+' '+s+' : dans tous les flux');

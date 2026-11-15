@@ -81,7 +81,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 3. « Constant (saisi) » : son effectif saisi revient ; « comme le service » : calculé à nouveau.
   await fiche(id);
   const choix=page.locator(`[data-at="${id}"] [data-at-champ=effectif]`).first();
-  assert.match(await choix.locator('option[value=""]').innerText(),/Comme le service \(calculé s’il a des heures par vol au barème\)/);
+  assert.match(await choix.locator('option[value=""]').innerText(),/Comme le service \(calculé s’il a des temps par vol\)/);
   await choix.selectOption('fixe');await attendre();
   a=await robot();
   assert.deepEqual([a.effectif,a.personnes,a.personnesSaisies],['fixe',5,undefined],'constant : ses 5 personnes saisies');

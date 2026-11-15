@@ -39,18 +39,19 @@
     ateliers: [
       { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
       { id: 'mu-carte', nom: 'Vue d’ensemble', ico: 'reseau' },
-      { id: 'mu-flux', nom: 'Flux de production', ico: 'fleche' },
+      // Évolution 19 (a) : un seul mot par chose — « chemin », « temps par vol ». Les anciens noms se cherchent toujours (« Aller à… »).
+      { id: 'mu-flux', nom: 'Chemins de production', ancien: 'Flux de production', ico: 'fleche' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-chemins', nom: 'Chemin d’une commande', ico: 'fleche' },
-      { id: 'at-equipes', nom: 'Équipes une par une', ico: 'service' },
+      { id: 'at-equipes', nom: 'Équipes une par une', ancien: 'Les cases · Ateliers de travail', ico: 'service' },
       { id: 'at-grille', nom: 'Étapes de chaque commande', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
       { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' },
       { id: 'at-recap', nom: 'Horaires des équipes', ico: 'journee' }
     ],
     reglages: [
-      { id: 'rg-minutes', nom: 'Barème par service', ico: 'chrono' },
-      { id: 'rg-recap', nom: 'Heures de travail', ico: 'chrono' },
+      { id: 'rg-minutes', nom: 'Temps par vol par service', ancien: 'Barème par service', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Temps par vol', ancien: 'Heures de travail', ico: 'chrono' },
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -89,8 +90,8 @@
     { id: 'chemins', nom: 'Chemins', ico: 'fleche', couleur: 'var(--c-chemins)',
       resume: 'Par où passe chaque commande',
       pages: [
-        { id: 'mu-carte', intro: 'Tous les chemins d’un coup d’œil : une colonne par flux, une ligne par service, rangée par étape.' },
-        { id: 'mu-flux', intro: 'Les flux de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
+        { id: 'mu-carte', intro: 'Tous les chemins d’un coup d’œil : une colonne par chemin, une ligne par service, rangée par étape.' },
+        { id: 'mu-flux', intro: 'Les chemins de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
         { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
         // Un réglage (évolution 15 c) : elle quitte les Résultats pour les Chemins.
         { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
@@ -99,13 +100,13 @@
     { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, en combien de temps',
       pages: [
-        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses heures de travail.' },
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
         { id: 'at-recap', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
-        { id: 'rg-recap', intro: 'Toutes les heures de travail par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
+        { id: 'rg-recap', intro: 'Tous les temps par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
         { id: 'u-plan', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' },
         { id: 'u-services', plus: true, intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
         { id: 'at-equipes', plus: true, intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
-        { id: 'rg-minutes', plus: true, intro: 'Le barème, service par service, et son classeur Excel (importer, exporter, chiffres d’exemple).' }
+        { id: 'rg-minutes', plus: true, intro: 'Les temps par vol, service par service, et leur classeur Excel (importer, exporter, chiffres d’exemple).' }
       ] },
     { id: 'reglages', nom: 'Simulation', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Vérifier, régler, lancer',

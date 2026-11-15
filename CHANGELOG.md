@@ -5,6 +5,55 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-15 — Évolution 19 (a) : un seul mot par chose
+
+Première partie du nettoyage de l'interface de la version 1 (étape A d'un
+audit de l'interface). Aucun calcul ne change ; le moteur et la version 2 ne
+sont pas touchés.
+
+- **Les mots.** Dans tout ce qui s'affiche (titres, menus, libellés, bulles,
+  messages, avis, boutons) : « équipe », jamais « case » ni « atelier » ;
+  « chemin », jamais « flux » pour le chemin d'une commande (« flux » reste
+  pour ce qui circule sur le plan, dans « Liens entre services ») ; « temps
+  par vol », jamais « barème », « heures de travail » ni « temps de
+  travail » ; « mise à disposition », « toujours ouverte » ou « ouverte de …
+  à … », jamais « boutique » ni « sert tout le monde ». Les pages « Chemins
+  de production », « Temps par vol par service » et « Temps par vol »
+  remplacent « Flux de production », « Barème par service » et « Heures de
+  travail » ; « Aller à… » trouve encore les anciens noms.
+- **Les classeurs** écrivent les nouveaux mots et relisent les anciens : les
+  feuilles « Temps par vol » (« Barème »), « Récap des équipes » (« Cases »),
+  « Équipes » (« Ateliers ») ; les colonnes « Équipe » (« Case »,
+  « Atelier ») et « Heures pour la journée » (« Heures de travail »). Un
+  classeur d'avant s'importe tel quel.
+- **Sans toucher aux fichiers communs.** Dix modules de la page sont communs
+  avec la version 2, gelée : la version 1 charge à leur place une copie
+  rangée dans `mots/`, où seul le texte affiché change. `node
+  outils/vocabulaire.cjs` écrit ces copies d'après les règles de
+  `outils/vocabulaire-regles.cjs` ; un test refuse une copie dont le code
+  s'écarte du module commun, ou qui a vieilli. `classeurs-anciens.js`
+  enveloppe la lecture des classeurs ; `mots-moteur.js` réécrit à l'affichage
+  (et dans le classeur du calage) les messages du moteur qui disent encore
+  « atelier », « case », « barème ».
+- **Ce qui ne change pas** : les identifiants du code, les clés de la
+  sauvegarde, les noms de fichiers ; le résultat d'une journée et d'une
+  période, les indicateurs, les réponses, le JSON des outils et l'export JSON
+  de la journée. Dans les classeurs des résultats, quatre phrases changent de
+  mots (deux dans « Lisez-moi », deux remarques dans « Réponses »), aucun
+  chiffre.
+
+Fichiers : `outils/vocabulaire.cjs`, `outils/vocabulaire-regles.cjs`,
+`mots/*.js`, `classeurs-anciens.js`, `mots-moteur.js` (nouveaux),
+`index.html`, `ateliers.js`, `sim.js`, `onglets.js`, `demarrage.js`,
+`calage-vue.js`, `calage-nuage.js`, `synthese-vue.js`, `resultats-vue.js`, `comparer-vue.js`,
+`site-reglages.js`, `direct-vue.js`, `echanges-charge.js`,
+`echanges-calage.js`, `echanges-reponses.js`, `outils/simuler-periode.cjs`,
+`tests/vocabulaire.test.cjs` et `tests/vocabulaire-browser.cjs` (nouveaux),
+les tests qui lisaient les anciens mots, `README.md`,
+`docs/CAHIER_DES_CHARGES.md`, `docs/FORMATS_EXCEL.md`.
+
+---
+
 ## 2026-11-15 — Évolution 16, retouches : la scène d'abord, des étiquettes discrètes, des personnes qui tombent juste
 
 Trois retouches de la vue en direct, vues sur un portable (1 366 × 768) avec

@@ -5,7 +5,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const CV = require('../comparer-vue.js');
-const C = require('../comparaison.js');
+// La page charge la copie du module commun, avec les mots de la version 1 (évolution 19 a) : le test aussi.
+const C = require('../mots/comparaison.js');
 const R = require('../moteur/reponses.js');
 const F = require('./plan-rejoue-fictif.cjs');
 
@@ -41,7 +42,7 @@ test('les rubriques, dans l’ordre du contrat ; chaque ligne de comparaison.js 
   for (const l of g.flatMap(x => x.lignes)) for (const t of [l.a, l.b, l.ecart && l.ecart.texte]) {
     for (const m of String(t ?? '').matchAll(/(\d+) min\b/g)) assert.ok(+m[1] < 60, l.lib + ' : ' + t);
   }
-  assert.doesNotMatch(g[3].lignes.find(l => l.lib === 'Heures de travail').a, /,\d h/);
+  assert.doesNotMatch(g[3].lignes.find(l => l.lib === 'Heures travaillées').a, /,\d h/);
 });
 
 test('sans les réponses des essais : les lignes de comparaison.js seules, rangées', () => {
@@ -53,7 +54,7 @@ test('sans les réponses des essais : les lignes de comparaison.js seules, rang�
 });
 
 test('les heures de travail, en heures entières : l’écart et le verdict se lisent sur les nombres affichés', () => {
-  const l = (a, b, verdict, texte) => ({ groupe: 'Ce que ça donne', lib: 'Heures de travail', a, b, diff: a !== b, verdict, ecart: { fleche: '▲', texte } });
+  const l = (a, b, verdict, texte) => ({ groupe: 'Ce que ça donne', lib: 'Heures travaillées', a, b, diff: a !== b, verdict, ecart: { fleche: '▲', texte } });
   const pareil = CV.reecrire(l('68,9 h', '69,2 h', 'moins bien', '+0,3 h'));
   assert.deepEqual([pareil.a, pareil.b, pareil.diff, pareil.verdict, pareil.ecart], ['69 h', '69 h', false, '', null], '69 h des deux côtés : pas d’écart');
   const plus = CV.reecrire(l('68,4 h', '69,6 h', 'moins bien', '+1,2 h'));

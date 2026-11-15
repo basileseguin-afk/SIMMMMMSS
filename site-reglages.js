@@ -25,10 +25,10 @@
    */
   /** Ce que le champ explique : la règle par défaut, et la place que le service occupe aujourd'hui. */
   function explication(part, zone) {
-    const ou = part === null ? 'Ce service n’a pas d’atelier : il n’a pas de zone.'
+    const ou = part === null ? 'Ce service n’a pas d’équipe : il n’a pas de zone.'
       : (zone ? 'Avec la zone ' + zone + ', il' : 'Il') + ' occupe aujourd’hui ' + fr(part) + ' % du site.';
     return 'La place du service dans « En direct ». Vide : la part par défaut (le magasin, la production et l’armement un cinquième chacun, les autres '
-      + 'services le reste, selon leurs personnes) ; les parts se ramènent à 100 %, et aucune ne descend sous la place de ses ateliers. ' + ou + ' Ce réglage ne change aucun calcul.';
+      + 'services le reste, selon leurs personnes) ; les parts se ramènent à 100 %, et aucune ne descend sous la place de ses équipes. ' + ou + ' Ce réglage ne change aucun calcul.';
   }
 
   function champ(service, reglee, part, zone) {

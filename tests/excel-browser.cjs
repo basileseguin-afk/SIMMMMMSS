@@ -62,7 +62,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Une commande qui suit le flux de sa classe peut avoir sa variante, copiée du flux.
   await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
-  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/suit le flux « Sans cuisine »/);
+  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/suit le chemin « Sans cuisine »/);
   await page.locator('[data-pc-action=flux-variante]').click();await attendre();
   const propre=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Sans cuisine · AF YC');
@@ -101,12 +101,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');
   assert.match(nomAt,/^ory-ateliers-.*\.xlsx$/);
   const feuilles=await T.lireClasseur(fs.readFileSync(fAt));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Horaires','Fabrications','Par compagnie','Heures propres','Débits robot','Tunnels','Handling','Chauffeurs','Plonge par vol','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Équipes','Horaires','Fabrications','Par compagnie','Heures propres','Débits robot','Tunnels','Handling','Chauffeurs','Plonge par vol','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
   const fab=T.feuille(feuilles,'Fabrications');
   assert.deepEqual(fab.lignes.slice(1).map(l=>l.join('|')),['Cuisine|1|AF/BC','Dotation|1|AF/YC','Dotation|2|AF/BC','Montage|1|AF/YC','Montage|2|AF/BC']);
   // Dans Excel : deux personnes en cuisine, une compagnie × classe de plus,
   // et une nouvelle branche au parcours complet.
-  const at=T.feuille(feuilles,'Ateliers');
+  const at=T.feuille(feuilles,'Équipes');
   const col=at.lignes[0].indexOf('Personnes');
   at.lignes.find(l=>l[0]==='Cuisine')[col]=2;
   fab.lignes.push(['Cuisine',2,'FWI/BC']);
@@ -120,7 +120,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(cuisine.personnes,2);
   assert.deepEqual(cuisine.lots,[['AF/BC'],['FWI/BC']]);
   assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
-  assert.match(await page.locator('#at-status').textContent(),/Cases importées/);
+  assert.match(await page.locator('#at-status').textContent(),/Équipes importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
   const nAvant=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
   at.lignes.push(['Fantaisie','GARAGE','manuel',1]);
@@ -138,7 +138,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const hor=await T.lireClasseur(fs.readFileSync(fH));
   assert.deepEqual(hor.map(f=>f.nom),['Horaires','Lisez-moi']);
   const h=T.feuille(hor,'Horaires');
-  assert.deepEqual(h.lignes[0].slice(0,3),['Atelier','Jour','Début']);
+  assert.deepEqual(h.lignes[0].slice(0,3),['Équipe','Jour','Début']);
   const ligneCuisine=h.lignes.find(l=>l[0]==='Cuisine');
   assert.deepEqual(ligneCuisine.slice(1,3),['J','05:00']);
   assert.match(String(ligneCuisine[5]),/^\d\d:\d\d$/,'la fin prévue, pour se repérer');
@@ -150,7 +150,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const cu=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine'));
   assert.deepEqual([cu.debut,cu.jour],['21:30',-1]);
   assert.equal(await page.evaluate(()=>JSON.stringify(Sim.ateliers.state.ateliers.map(({debut,jour,...a})=>a))),avantH,'rien d’autre ne change');
-  assert.match(await page.locator('#at-status').textContent(),/Horaires importés : 1 case décalée \(Cuisine\)/);
+  assert.match(await page.locator('#at-status').textContent(),/Horaires importés : 1 équipe décalée \(Cuisine\)/);
   assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.service==='cuisine').debut),-150,'la journée est recalculée : la cuisine part la veille à 21:30');
   assert.notEqual(finAvant,-150);
   await page.locator('#btn-annuler').click();await attendre();

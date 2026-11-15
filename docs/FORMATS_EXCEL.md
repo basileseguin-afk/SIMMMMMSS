@@ -18,6 +18,35 @@ Pour convertir des exports Winrest dans ces formats avec Claude, voir
 réimporter.** Chaque classeur porte une feuille « Lisez-moi » qui redit ses
 règles.
 
+## Les mots des classeurs (version 1, évolution 19 a)
+
+Depuis l'évolution 19 (a), la version 1 dit un seul mot par chose, et ses
+classeurs aussi : ils **écrivent les nouveaux mots** et **relisent encore les
+anciens** — un classeur exporté avant se réimporte tel quel. La version 2,
+gelée, écrit toujours les anciens.
+
+| Où | Avant (et en version 2) | Aujourd'hui (version 1) |
+|---|---|---|
+| nom de feuille | `Barème` | `Temps par vol` |
+| nom de feuille | `Cases` | `Récap des équipes` |
+| nom de feuille | `Ateliers` | `Équipes` |
+| en-tête de colonne | `Case` | `Équipe` |
+| en-tête de colonne | `Atelier` | `Équipe` |
+| en-tête de colonne | `Heures de travail` (feuille « Heures propres ») | `Heures pour la journée` |
+
+Dans la suite de ce document, « la feuille Ateliers », « la colonne Atelier »
+ou « le classeur du barème » désignent la même feuille, la même colonne, le
+même classeur sous leur nom d'avant. Ce qui ne change pas : les autres
+feuilles et les autres en-têtes ; **les données** (le nom d'une équipe, même
+si elle s'appelle « Atelier ») ; la façon d'écrire une valeur (`permanente`
+pour une mise à disposition toujours ouverte, `ouvert 07:00-18:00` pour une
+mise à disposition ouverte de 7 h à 18 h) ; les fichiers CSV des vols. Le
+« Lisez-moi » de chaque classeur est écrit avec les nouveaux mots.
+
+Une feuille d'avant n'est renommée à la lecture que si son nouveau nom est
+libre dans le classeur ; si les deux en-têtes (l'ancien et le nouveau) sont
+présents dans une feuille, l'ancien est lu.
+
 ## Règles communes
 
 - **Un service** s'écrit par son **nom sur le plan** (`MONTAGE`,

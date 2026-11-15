@@ -16,7 +16,7 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const P = () => (enNode ? require('./moteur/production.js') : root.MoteurProduction);
   const REP = () => (enNode ? require('./moteur/reponses.js') : root.OrlyReponses);
-  const C = () => (enNode ? require('./comparaison.js') : root.OrlyComparaison);
+  const C = () => (enNode ? require('./mots/comparaison.js') : root.OrlyComparaison);
   const EPS = 1e-9;
 
   /** Les cinq rubriques, dans l'ordre du contrat ; le scénario d'abord (ce qui change). */
@@ -25,7 +25,7 @@
   /** Où va chaque ligne de comparaison.js. */
   const RANGEMENT = Object.freeze({
     'Temps passé à attendre': 2, 'Attente de matériel propre': 2, 'Plus longue attente à la plonge': 2,
-    'Dernière commande prête': 3, 'Heures de travail': 3, 'Sale non lavé en fin de journée': 3, 'Matériel revenu des vols': 3,
+    'Dernière commande prête': 3, 'Heures travaillées': 3, 'Sale non lavé en fin de journée': 3, 'Matériel revenu des vols': 3,
     'Vols chargés à l’heure (handling)': 4, 'Commandes prêtes à l’heure': 4, 'Retard moyen': 4, 'Retard le plus long': 4, 'Commandes sans équipe': 4
   });
 
@@ -96,7 +96,7 @@
     // L'écart est toujours calculé (jamais un texte importé) : il se réécrit partout (« Dernière commande prête » : « +1 h 05 »).
     const ecart = l.ecart ? { ...l.ecart, texte: ecrireTemps(l.ecart.texte) } : null;
     if (EN_MINUTES.includes(l.lib)) return { ...l, a: ecrireTemps(l.a), b: ecrireTemps(l.b), ecart };
-    if (l.lib !== 'Heures de travail') return { ...l, ecart };
+    if (l.lib !== 'Heures travaillées') return { ...l, ecart };
     const a = ecrireTemps(l.a, true), b = ecrireTemps(l.b, true), x = parseInt(a, 10), y = parseInt(b, 10);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return { ...l, a, b };
     const d = y - x;

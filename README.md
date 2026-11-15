@@ -198,7 +198,7 @@ le rouge ne sert qu’aux retards.
      Le service ou le lien choisi s’affiche au-dessus, avec ce qu’on peut en
      faire ; dans *Chemin d’une commande*, la case d’un service s’ouvre à
      droite, comme l’inspecteur du plan.
-   - *Flux de production* : un flux par type de production (Économie,
+   - *Chemins de production* (« Flux de production » avant l’évolution 19) : un flux par type de production (Économie,
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
      on tire une flèche d’un service à l’autre, on ajoute ou retire un service)
@@ -212,7 +212,7 @@ le rouge ne sert qu’aux retards.
    - *Chemin d’une commande* : son chemin de bout en bout. Si elle suit un
      flux partagé, un bandeau le dit (« AF · Business suit le flux
      « Complet », comme 12 autres commandes ») avec deux gestes : **Modifier
-     ce flux** (ouvre Flux de production, pour toutes ses commandes) ou
+     ce flux** (ouvre Chemins de production, pour toutes ses commandes) ou
      **lui faire sa variante** (une copie à elle, modifiable sur place). Le
      diagramme montre, sur chaque service, l’équipe qui la prépare ; un clic
      sur un service, puis « Ouvrir le service → », mène à sa fiche. Le
@@ -309,9 +309,9 @@ le rouge ne sert qu’aux retards.
      changer ; le service se place alors entre ceux qui le livrent et ceux
      qu’il livre (d’après les autres flux, les modèles types, puis les liens
      de l’unité ; une salle annexe se place comme son service).
-   - *Horaires des équipes* et *Heures de travail* : toutes les équipes (et
+   - *Horaires des équipes* et *Temps par vol* (« Heures de travail » avant) : toutes les équipes (et
      leurs horaires), tout le travail par vol, d’un coup d’œil, modifiables sur place
-     ou dans Excel. *Flux de production › Qui suit quel chemin* : chaque
+     ou dans Excel. *Chemins de production › Qui suit quel chemin* : chaque
      compagnie × classe et la liste de tous les chemins (flux, variantes,
      chemins créés de toutes pièces) ; la même liste « Chemin suivi » en tête
      de *Chemin d’une commande*. *Heures de travail* se lit par compagnie : un bloc
@@ -369,7 +369,7 @@ le rouge ne sert qu’aux retards.
      camions et VL par compagnie) ; voir [le banc d’essai](docs/BANC_ESSAI.md), § 3. Ses chauffeurs
      peuvent y être **calculés au plus juste** (le plus petit plan de vacations qui sert tous les
      avions à l’heure, avec sa borne basse) plutôt que saisis par créneaux (§ 4).
-   - **Plus ›** *Barème par service* : les minutes d’un vol, service par service et classe
+   - **Plus ›** *Temps par vol par service* (« Barème par service » avant) : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
 4. **Simulation** — vérifier, régler, lancer.
@@ -1237,6 +1237,68 @@ les composants, les règles de la couleur, du mouvement, du clavier et de la
 latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a posé :
 [docs/REFONTE_UX.md](docs/REFONTE_UX.md)).
 
+## Les mots de l’interface (évolution 19)
+
+L’évolution 19 nettoie l’interface de la version 1 sans déplacer les pages.
+Aucun calcul ne change : le résultat d’une journée et d’une période, les
+indicateurs et les réponses restent identiques, champ par champ ; une
+sauvegarde d’avant se relit et se réécrit sans rien perdre.
+
+### Un seul mot par chose (évolution 19 a)
+
+Dans tout ce qui s’affiche (titres, menus, libellés, bulles, messages, avis,
+boutons), la version 1 dit :
+
+| La chose | Le mot retenu | Les mots qui ne s’affichent plus |
+|---|---|---|
+| ceux qui travaillent ensemble, à une heure, dans un service | **équipe** | « case », « atelier » |
+| par où passe une commande | **chemin** | « flux » (qui reste pour ce qui circule sur le plan : la page « Liens entre services », les liens du plan) |
+| le temps qu’un vol demande à un service | **temps par vol** | « barème », « heures de travail », « temps de travail » |
+| un service où l’on vient se servir | **mise à disposition**, « toujours ouverte » ou « ouverte de … à … » | « boutique », « sert tout le monde », « disponible en permanence » |
+| ce qui se prépare (une compagnie dans une classe) | **commande** | — (« classe » ne dit que la classe de voyage) |
+
+Les pages renommées : « Chemins de production » (« Flux de production »),
+« Temps par vol par service » (« Barème par service »), « Temps par vol »
+(« Heures de travail »). **« Aller à… » trouve encore les anciens noms.** Le
+total d’une journée se dit « heures travaillées » (ce n’est pas un temps par
+vol) ; ce qu’une équipe fixe pour toute sa journée, « heures pour la
+journée » ; une cellule de tableau, « cellule » ; une option à cocher,
+« option ».
+
+**Ce qui ne change pas** : les identifiants du code, les clés de la
+sauvegarde, les noms de fichiers ; le moteur et ce que rendent les outils en
+ligne de commande ; l’export JSON de la journée (son avis et ses anomalies
+gardent le texte du moteur). La version 2, gelée, garde ses mots.
+
+**Les classeurs** écrivent les nouveaux mots et relisent ceux d’avant
+([docs/FORMATS_EXCEL.md](docs/FORMATS_EXCEL.md)) : les feuilles « Temps par
+vol » (« Barème »), « Récap des équipes » (« Cases »), « Équipes »
+(« Ateliers ») ; les colonnes « Équipe » (« Case », « Atelier ») et « Heures
+pour la journée » (« Heures de travail »). Les données et la façon d’écrire
+une valeur (« permanente », « ouvert 07:00-18:00 ») ne changent pas.
+
+**Comment c’est fait.** Plusieurs modules de la page sont communs avec la
+version 2 et ne doivent pas changer (`tests/parite.test.cjs`). La version 1
+charge donc, à leur place, une **copie** rangée dans `mots/`, où seul le
+texte affiché change :
+
+- `node outils/vocabulaire.cjs` écrit `mots/*.js` à partir des modules
+  communs et des règles de `outils/vocabulaire-regles.cjs` (à relancer après
+  toute retouche d’un module commun, avant `node outils/empreinte.cjs` ;
+  `--verifier` sort en erreur si une copie a vieilli). L’outil découpe la
+  source et ne réécrit que le texte d’une chaîne : jamais un identifiant, un
+  commentaire, une expression régulière, le nom d’une classe CSS ou la valeur
+  d’un attribut de données. `tests/vocabulaire.test.cjs` refuse une copie
+  dont le code s’écarte du module commun, une copie qui a vieilli, une règle
+  qui ne sert pas.
+- `classeurs-anciens.js` enveloppe la lecture de `tableur.js` : une feuille
+  d’avant prend son nouveau nom, un nouvel en-tête se lit sous sa clé
+  d’avant.
+- `mots-moteur.js` réécrit, au moment d’afficher, les quelques messages du
+  moteur qui disent encore « atelier », « case » ou « barème » (des
+  anomalies, les formules et les statuts du calage), dans la page et dans le
+  classeur du calage ; le résultat du moteur n’est pas modifié.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -1244,7 +1306,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
 | `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10, deuxième passe du 15/10 pour le thème clair : navigation bleu nuit, fond pierre (gris à peine chaud), cartes posées avec une ombre douce, titre de page avec sa partie en surtitre, indicateurs à voyant, palette des données validée pour les daltoniens) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, état du calcul, « Aller à… », Annuler / Rétablir), titre de la page ; la palette et la fiche des raccourcis ; les mouvements (180 ms au plus), coupés quand les animations sont réduites |
-| `unite.js` / `unite.css` | Prêt à simuler ?, Flux de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
+| `unite.js` / `unite.css` | Prêt à simuler ?, Chemins de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | `stockage.js` | Plusieurs onglets ne s’écrasent plus (correction 14) : chargé avant les autres scripts, un garde à la place de `localStorage` ; les données du site portent un numéro de révision, un onglet en retard n’écrit rien et le dit par un bandeau (« Recharger »), averti aussi par l’événement `storage` |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
@@ -1285,6 +1347,10 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `vols-demo.js` | Programme de vols **fictif** de démonstration, sans QR ni DL ; il reçoit des vols d’essai pour chaque compagnie que l’unité prépare ou a ajoutée sans départ au programme (jamais un programme importé) |
 | `parcours.js` | Chemins des repas : validation, chemins types, tableau « Qui prépare quoi », suivi d’un repas dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
+| `mots/*.js` | Les mots de la version 1 (évolution 19 a) : les copies des modules communs que la page charge à leur place (`unite.js`, `parcours.js`, `reglages.js`, `echanges.js`, `flow-center.js`, `plan-editor.js`, `temps.js`, `comparaison.js`, `simulation.js`, `problemes.js`), où seul le texte affiché change. **Écrites par `outils/vocabulaire.cjs`, jamais à la main** |
+| `outils/vocabulaire.cjs` / `outils/vocabulaire-regles.cjs` | L’outil qui écrit `mots/*.js` (`--verifier` : sort en erreur si une copie a vieilli) et ses règles : par fichier (un extrait exact), puis générales (« case » → « équipe », « flux » → « chemin », « barème » → « temps par vol »…) |
+| `classeurs-anciens.js` | Les classeurs d’avant se relisent (v1, évolution 19 a) : enveloppe la lecture de `tableur.js` — le nom d’une feuille d’avant, la clé d’un nouvel en-tête |
+| `mots-moteur.js` | Les messages du moteur avec les mots de la page (v1, évolution 19 a) : les anomalies d’une journée, les formules et les statuts du calage, réécrits à l’affichage et dans le classeur du calage ; le résultat du moteur et l’export de la journée inchangés |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions ; le classeur des résultats d’une période (v1, en lecture) |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV et échappement, testables |
@@ -1472,6 +1538,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/latence-browser.cjs` | La latence d’un changement, sans chronomètre (v1 et v2) : un bilan par service au plus pendant un changement ; aucun sur une page qui n’en a pas besoin, le registre des problèmes refait juste après et son compte suivi ; le menu jamais mesuré quand il ne change pas |
 | `tests/graphiques-browser.cjs` | Le planning, la frise des vols et les stocks (v1 et v2) : la palette des données, une barre par lot à l’heure de son lot ; l’étiquette quand elle tient, et seulement alors ; la bulle tout de suite au survol, plus de `<title>` natif ; le trait « maintenant » absent avant le rejeu, à l’heure rejouée ensuite (planning, frise, plonge), qui suit la lecture, sans repère d’axe dessous, et s’en va au début ; la valeur d’une courbe de stock à l’heure survolée, d’après le calcul |
 | `tests/accueil-browser.cjs` | La page d’entrée (`accueil.html`) : les jetons, la police et les deux thèmes du design system, sans la grille de l’application (elle défile, rien ne déborde à 390 px) ; les deux applications au clavier avec l’anneau de focus ; rien n’est écrit |
+| `tests/vocabulaire.test.cjs` | Un seul mot par chose (v1, évolution 19 a) : l’outil ne réécrit que le texte d’une chaîne (ni identifiant, ni commentaire, ni expression régulière, ni classe CSS) ; chaque copie de `mots/` est à jour, sans règle inutile, au même code que le module commun, sans mot banni ; la page et Node chargent les copies ; les classeurs écrivent les nouveaux mots, et un classeur d’avant se relit comme un classeur d’aujourd’hui, tel quel puis modifié ; les messages du moteur à l’affichage |
+| `tests/vocabulaire-browser.cjs` | Dans la page (v1, évolution 19 a), sur l’unité fictive de 15 services : toutes les pages du menu sont parcourues (la vue en direct en relief et à plat, le panneau des problèmes) sans aucun mot banni dans le texte, les bulles, les libellés lus ni les exemples des champs ; « Aller à… » trouve une page par son ancien nom et y mène ; un classeur d’équipes d’avant (ses feuilles, ses en-têtes) s’importe et donne le même état que celui d’aujourd’hui. `VOCABULAIRE_RAPPORT=1` liste les écarts |
 | `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
@@ -1485,7 +1553,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/recap-browser.cjs` | Équipes › Minutes de travail : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
 | `tests/recap-compagnie-browser.cjs` | Minutes de travail et armement (v1 et v2) : un bloc par compagnie, sa ligne total en tête (somme de ses classes), classes repliables, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
 | `tests/chemin-choisi.test.cjs` | Choisir le chemin d’une commande (v1 et v2) : liste des chemins, flux choisi, retour au flux de sa classe, chemin à part qui devient partagé |
-| `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
+| `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Chemins de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
 | `tests/vue-ensemble-browser.cjs` | Chemins lisibles avec beaucoup de services (v1 et v2) : Vue d’ensemble (une colonne par flux, une ligne par service par étape, pastilles, case vide qui fait passer un flux puis Annuler, pastille qui ouvre le flux sur ce service), diagramme en étapes (de haut en bas, bandes, sans défilement de côté), chaîne éclairée au survol, « En ligne » retenu pour tous les diagrammes |
 | `tests/defilement-browser.cjs` | La page entière ne défile jamais, seule la vue (v1 et v2) : fiche Plonge avec son équipe, molette sur la fiche puis sur l’en-tête (qui reste en place), jamais bloqué en bas : descendu sur la fiche, on remonte la souris sur la liste de gauche (Services et équipes, Chemin d’une commande), la Liste des services et chaque service de Services et équipes, aucun « piège à molette » (zone qui garde la molette dans une zone qui défile, bloquant sous Firefox et Safari), le tableau des Minutes de travail qui garde sa place quand on valide un temps, toutes les pages du menu, chaque fiche de service |
 | `tests/plonge-equipes-browser.cjs` | Une équipe de plonge en plus (v1 et v2) : le bouton reste quand la plonge a son équipe ; « Plonge matin » au premier retour sans équipe, qui lave comme la première ; sa fiche en haut, le curseur dans son heure, la notification avec « Annuler » ; le matin lave les retours du matin, chaque vol une fois, un tunnel un vol à la fois ; la frise aux règles des graphiques (ds-graphique, data-info, d1, attente) ; l’heure au clavier ; le mode de lavage pour toute la plonge ; rien d’autre n’est écrit |

@@ -63,7 +63,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await attendre();
   await nav.aller(page,'u-services');
   const fantomes=page.locator('[data-svc-fantomes]');
-  assert.match(await fantomes.innerText(),/Armement \(supprimé\)[\s\S]*1 case · 1 chemin/,'la page des services le montre en tête');
+  assert.match(await fantomes.innerText(),/Armement \(supprimé\)[\s\S]*1 équipe · 1 chemin/,'la page des services le montre en tête');
   await nav.aller(page,'at-equipes');
   const points=await page.locator('#at-anomalies').innerText();
   assert.match(points,/« Armement \(supprimé\) » n’existe plus dans l’unité/);

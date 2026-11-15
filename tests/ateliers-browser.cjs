@@ -57,7 +57,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne de droite s’efface');
   assert.equal(await page.locator('#view-plan').isVisible(),false,'le plan n’est plus la vue des ateliers');
   await onglet('at-equipes');
-  assert.match(await page.locator('.at-vide').textContent(),/Aucune case/);
+  assert.match(await page.locator('.at-vide').textContent(),/Aucune équipe/);
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   await onglet('at-repas');
@@ -275,7 +275,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption(`${fiche} [data-at-champ=mode-dispo]`,'boutique');await attendre();
   assert.deepEqual(await page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return [a.permanent,a.ouverture];},mag),[true,{de:'07:00',a:'18:00'}]);
   await page.fill(`${fiche} [data-at-champ=ouverture-a]`,'17:30');await page.locator(`${fiche} [data-at-champ=ouverture-a]`).dispatchEvent('change');await attendre();
-  assert.match(await page.locator(`${fiche} .at-carte-tete span`).first().textContent(),/ouvert de 07:00 à 17:30, chaque jour/);
+  assert.match(await page.locator(`${fiche} .at-carte-tete span`).first().textContent(),/ouverte de 07:00 à 17:30/);
   await page.selectOption(`${fiche} [data-at-champ=mode-dispo]`,'toujours');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(x=>x.id===id).ouverture,mag),undefined,'toujours ouverte : plus d’heures');
 

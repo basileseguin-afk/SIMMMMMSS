@@ -60,7 +60,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 3. Une ancienne saisie (le flux changé avant ce correctif) : signalée, retirée en un clic.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='cu').lots.push(['AF/YC'],['TX/YC']);},''));await attendre();
    assert.match(await classe('AF/YC'),/hors-flux/);
-   assert.match(await page.locator('.mu-hors-flux').innerText(),/2 commandes sont encore cochées ici \(AF YC, TX YC\), mais leur flux ne passe plus par CUISINE/i);
+   assert.match(await page.locator('.mu-hors-flux').innerText(),/2 commandes sont encore cochées ici \(AF YC, TX YC\), mais leur (flux|chemin) ne passe plus par CUISINE/i);
    await page.locator('.mu-hors-flux [data-mu-action=liberer]').click();await attendre();
    assert.deepEqual(await lots(),['AF/BC']);
    assert.equal(await page.locator('.mu-hors-flux').count(),0);

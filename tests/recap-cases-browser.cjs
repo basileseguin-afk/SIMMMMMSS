@@ -54,7 +54,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#rc-export').click()]);
   const fichier=path.join(os.tmpdir(),'cases-'+process.pid+'.xlsx');await dl.saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
-  const g=feuilles.find(f=>f.nom==='Cases').lignes;
+  const g=feuilles.find(f=>f.nom==='Récap des équipes').lignes;
   const r=g.find(l=>l[0]==='Dotation matin');
   assert.equal(r[6],'AF/BC → TX/BC');
   r[4]='01:45';r[5]=5;r[6]='TX/BC → AF/BC + FWI/BC';

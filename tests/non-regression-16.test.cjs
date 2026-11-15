@@ -11,11 +11,16 @@
  *     retard) et sur la même sans retard : le résultat du moteur, les
  *     indicateurs de charge, et les réponses du module à deux jeux de seuils
  *     (la partie e a remanié moteur/reponses.js sans en changer une réponse).
+ * Depuis l'évolution 19 (a), les classeurs écrivent les nouveaux mots (« temps
+ * par vol », « cellule », « mise à disposition ») : quatre phrases, aucun
+ * chiffre ; chaque feuille est comparée à son empreinte d'avant avec ses mots
+ * d'avant remis (`avecLesMotsDAvant`) ; tests/vocabulaire.test.cjs vérifie
+ * les nouveaux mots.
  * Aucune donnée de l'unité : tout est fictif. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { empreintes, empreintesDuDirect } = require('./empreintes-resultats.cjs');
+const { empreintes, empreintesDuDirect, avecLesMotsDAvant } = require('./empreintes-resultats.cjs');
 
 const AVANT = {
   journee: '6c61da23e4dcd9ffdf36116c10fe531360240c3d5bc6087a93caf10ef04ae67f',
@@ -56,7 +61,7 @@ const AVANT = {
 const RACINE = path.join(__dirname, '..');
 
 test('le JSON des outils d’une journée et d’une période, et leurs classeurs feuille par feuille : ceux d’avant l’évolution 16', async () => {
-  const e = await empreintes(RACINE);
+  const e = await empreintes(RACINE, avecLesMotsDAvant);
   assert.equal(e.journee, AVANT.journee, 'simuler-journee');
   assert.equal(e.periode, AVANT.periode, 'simuler-periode');
   // Les mêmes feuilles, dans le même ordre, chacune identique — la feuille « Réponses » comprise.

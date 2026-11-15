@@ -179,7 +179,7 @@
   function caseBesoin(l) {
     if (l.fixe) return '<td class="num sy-fixe" title="Un poste fixe : pas de besoin calculé depuis une charge, pas d’écart ; il ne compte pas dans « Il faut ».">fixe</td>';
     // Toutes ses équipes ont un besoin qui ne se mesure pas (pas de travail au barème) : « non mesuré », sans écart (correction 18 a).
-    if (l.nonMesure) return '<td class="num sy-fixe" title="Un besoin qui ne se mesure pas : aucun travail au barème pour ses équipes ; il ne compte pas dans « Il faut ».">non mesuré</td>';
+    if (l.nonMesure) return '<td class="num sy-fixe" title="Un besoin qui ne se mesure pas : aucun temps par vol pour ses équipes ; il ne compte pas dans « Il faut ».">non mesuré</td>';
     const nm = l.nonMesures > EPS, fx = l.fixes - (l.nonMesures || 0) > EPS, s = l.fixes >= 2;
     const mots = nm && fx ? ' fixes ou non mesurés' : nm ? (s ? ' non mesurés' : ' non mesuré') : (s ? ' fixes' : ' fixe');
     return '<td class="num">' + esc(nombre(l.besoin)) + (l.fixes > EPS ? '<small>+ ' + esc(nombre(l.fixes)) + mots + '</small>' : '') + '</td>';
@@ -261,7 +261,7 @@
       + '<th scope="col" class="num" title="Les heures (personnes × heures) sans travail, et leur part de la présence">Personnes sans travail</th>'
       + '<th scope="col" title="Un arrivage : les lots livrés ensemble. Son attente va de sa livraison au début de son premier lot">Attente d’un arrivage</th><th scope="col" title="La fin du dernier lot ; dessous, l’horaire des équipes qui travaillent ce jour-là (ou l’équipe qui le dépasse), puis les heures sup, en personnes × heures">Fin et heures sup</th>'
       + '</tr></thead><tbody>' + ls.map(ligne).join('') + '</tbody></table></div>'
-      + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; « fixe » : un service permanent, d’appui ou un handling, '
+      + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; « fixe » : une mise à disposition, un service d’appui ou un handling, '
       + 'sans besoin calculé (il ne compte pas dans « Il faut »). Présents en équivalents temps plein. Matin et après-midi : au travail au plus / présents. '
       + 'Personnes sans travail : les heures (personnes × heures) et leur part de la présence ; au survol, avant le premier lot, entre deux lots, après le dernier. '
       + 'Un arrivage : les lots livrés ensemble ; il attend de sa livraison au début de son premier lot — les lots suivants sont à faire, dans l’ordre de travail. '
@@ -270,7 +270,7 @@
       // Évolution 18, correction 19 (b) : le reste du lendemain d'une plonge — la note le dit quand il y en a un.
       + (ls.some(l => l.coince && l.coince.lendemain) ? ' Reste à laver le lendemain : personne ne reste en heures sup, les vols du soir sont lavés le lendemain, d’abord — le fonctionnement ordinaire, sans couleur ; signalé seulement s’il y en a '
         + PLUS_QUE_LE_MATIN + '.' : '') + '</p>'
-      + '<p class="mini-note sy-explique-occ">Occupation : la part du temps de présence couverte par le travail du barème. Elle dépend des temps par vol et des effectifs réglés.</p>'
+      + '<p class="mini-note sy-explique-occ">Occupation : la part du temps de présence couverte par le travail compté aux temps par vol. Elle dépend des temps par vol et des effectifs réglés.</p>'
       + horsCompte(ls).map(n => '<p class="mini-note sy-note">' + esc(n) + '</p>').join('');
   }
 

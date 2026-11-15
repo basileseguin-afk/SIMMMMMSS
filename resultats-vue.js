@@ -39,7 +39,7 @@
       ton: !suivies ? 'neutre' : k.aHeure === suivies ? 'ok' : 'retard', compte: true, page: 'at-repas' });
     cles.push({ q: 'Commande la plus en retard', v: k.retardMax ? P().dureeLisible(k.retardMax) : suivies ? 'aucune' : '—',
       sur: k.retardMax ? 'après l’heure de son chargement' : '', ton: k.retardMax > 0 ? 'retard' : suivies ? 'ok' : 'neutre', page: 'at-repas' });
-    cles.push({ q: 'Travail fourni', v: (k.hommeHeures || 0).toFixed(1).replace('.', ','), sur: 'heures de travail', ton: 'travail', page: 'at-planning' });
+    cles.push({ q: 'Travail fourni', v: (k.hommeHeures || 0).toFixed(1).replace('.', ','), sur: 'heures travaillées', ton: 'travail', page: 'at-planning' });
     const groupes = [];
     if (k.volsSuivis) {
       const non = k.volsSuivis - k.volsCharges;

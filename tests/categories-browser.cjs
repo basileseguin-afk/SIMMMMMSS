@@ -18,6 +18,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const fiche=sel=>page.locator('#mu-services .mu-fiche '+sel);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
+   // Évolution 19 (a) : la version 1 dit « équipe » ; la version 2, gelée, dit encore « case ».
+   const mot=version==='v1'?'équipe':'case';
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    // La version servie se lit sous la marque, en haut de la barre latérale (02/10, 08/10).
@@ -32,7 +34,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 1. La fiche de l'armement le propose, à la vue — même réglé en « sert tout le monde ».
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'ad',nom:'Armement',service:'armement',type:'dispo',debut:'06:00',jour:0,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});},''));await attendre();
    await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.match(await fiche('.mu-par-cie').innerText(),/une case par compagnie/);
+   assert.match(await fiche('.mu-par-cie').innerText(),new RegExp('une '+mot+' par compagnie'));
    await fiche('[data-mu-action=par-compagnie]').click();await attendre();
    assert.deepEqual(await reglage(),[{id:'ARM',nom:'Armement',minutes:{}}],version+' : un seul réglage, au nom du service');
    assert.equal(await fiche('.mu-par-cie').count(),0);

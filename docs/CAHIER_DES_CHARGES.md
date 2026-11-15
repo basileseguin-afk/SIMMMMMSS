@@ -366,6 +366,27 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
 | E21 | **Le poste ne dépend pas forcément des vols** : le choix équipe par équipe, pas seulement par service | 06/10 | ✅ | « Effectif » dans la fiche de chaque équipe : comme le service, dépend des vols, constant (saisi) ; constante, elle retrouve son effectif saisi |
 | E20 | **Des équipes qui ne dépendent pas du tunnel** à la plonge, avec le choix, comme ailleurs, d'un effectif qui dépend des vols ou non | 06/10 | ✅ | « + Ajouter une équipe hors tunnel » ; case « Effectif constant » dans la fiche de la plonge ; calculée : minutes par vol × vols qui reviennent ÷ poste. Type « hors tunnel » utilisable dans tout service (là : départs du jour). Les minutes par vol ne passent pas encore par le classeur Excel |
 
+### Le vocabulaire retenu (version 1, évolution 19 a)
+
+Un seul mot par chose, dans tout ce qui s'affiche — titres, menus, libellés,
+bulles, messages, avis, boutons — et dans les classeurs :
+
+| La chose | Le mot | Ne s'affiche plus |
+|---|---|---|
+| ceux qui travaillent ensemble, à une heure, dans un service | **équipe** | « case », « atelier » |
+| par où passe une commande | **chemin** | « flux » — gardé pour ce qui circule sur le plan (« Liens entre services ») |
+| le temps qu'un vol demande à un service | **temps par vol** | « barème », « heures de travail », « temps de travail » |
+| un service où l'on vient se servir | **mise à disposition** : « toujours ouverte » ou « ouverte de … à … » | « boutique », « sert tout le monde » |
+| ce qui se prépare | **commande** (une compagnie dans une classe) | « classe » ne dit que la classe de voyage |
+
+Les identifiants du code, les clés de la sauvegarde et les noms de fichiers
+ne changent pas ; « Aller à… » trouve encore les anciens noms des pages ; les
+classeurs écrivent les nouveaux mots et relisent les anciens
+(`docs/FORMATS_EXCEL.md`). Contrôlé par `tests/vocabulaire-browser.cjs`, qui
+parcourt toutes les pages sur une unité fictive, et `tests/vocabulaire.test.cjs`.
+Dans ce cahier, les exigences gardent les mots du jour où elles ont été
+dites (« atelier », « barème ») : ce sont des citations.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

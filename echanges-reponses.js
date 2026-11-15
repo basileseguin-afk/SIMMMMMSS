@@ -69,7 +69,7 @@
       // Sans besoin : un poste fixe, ou des équipes dont le besoin ne se mesure pas (correction 18 a).
       const sans = s.fixe || s.nonMesure, pourquoi = s.fixe ? 'poste fixe' : 'besoin non mesuré';
       out.push(ligne(0, s.nom, j, 'Il faut', s.besoin, 'personnes', null, null, s.fixe ? 'poste fixe : pas de besoin calculé depuis une charge'
-          : s.nonMesure ? 'besoin non mesuré : aucun travail au barème pour ses équipes' : 'la charge du jour : ' + r2(s.charge) + ' ETP'),
+          : s.nonMesure ? 'besoin non mesuré : aucun temps par vol pour ses équipes' : 'la charge du jour : ' + r2(s.charge) + ' ETP'),
         ligne(0, s.nom, j, 'Présentes (ETP)', r2(s.presents), 'ETP', null, null, present),
         ligne(0, s.nom, j, 'Écart (présentes − il faut)', r2(s.ecart), 'personnes', S.ecartPersonnes, sans ? null : ouiNon(s.signale),
           sans ? pourquoi + ' : pas d’écart' : s.sens === 'sous' ? 'il manque du monde' : s.sens === 'sur' ? 'du monde en trop (pas une alerte)' : null),
@@ -81,7 +81,7 @@
     return out.concat([ligne(0, 'Toute l’unité', null, 'Il faut', t.besoin, 'personnes', null, null, 'hors postes fixes et besoins non mesurés'),
       ligne(0, 'Toute l’unité', null, 'Présentes (ETP)', r2(t.presents), 'ETP'),
       ligne(0, 'Toute l’unité', null, 'Dont postes fixes (ETP)', r2(t.fixes), 'ETP', null, null,
-        'permanents, appui, handling : sans besoin calculé' + (t.nonMesures > 0 ? ' ; dont ' + r2(t.nonMesures) + ' au besoin non mesuré' : '')),
+        'mises à disposition, appui, handling : sans besoin calculé' + (t.nonMesures > 0 ? ' ; dont ' + r2(t.nonMesures) + ' au besoin non mesuré' : '')),
       ligne(0, 'Toute l’unité', null, 'Écart (présentes hors postes fixes − il faut)', r2(t.ecart), 'personnes')]);
   }
 

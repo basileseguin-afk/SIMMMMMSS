@@ -377,7 +377,7 @@ test('la Synthèse : « Personnes sans travail » et « Attente d’un arrivage 
   assert.match(rang('cuisine'), /class="sy-arrivage"[^>]*>[\s\S]*1 arrivage[\s\S]*<small>—<\/small>/);
   assert.doesNotMatch(rang('cuisine').split('class="sy-arrivage"')[1].split('</td>')[0], /data-ton/);
   // Sous le tableau, l'occupation s'explique.
-  assert.match(html, /Occupation : la part du temps de présence couverte par le travail du barème\. Elle dépend des temps par vol et des effectifs réglés\./);
+  assert.match(html, /Occupation : la part du temps de présence couverte par le travail compté aux temps par vol\. Elle dépend des temps par vol et des effectifs réglés\./);
   // Les mots : jamais « attente » seul, jamais « un lot attend » pour un lot qui est simplement à faire.
   const texte = (html + SV.carteCoince(rep).corps + SV.phrases(rep).join(' ')).replace(/<[^>]+>/g, ' ');
   assert.doesNotMatch(texte, /un lot (y )?attend/);
