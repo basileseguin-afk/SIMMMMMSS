@@ -56,7 +56,10 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
     for(const q of e.personnes)assert.equal(q.ton,q.enChemin?'neutre':{auTravail:'travail',sansTravail:'attente',enAppui:'neutre',enPause:'neutre'}[q.etat],q.atelier+' : '+q.etat);
     // L'étiquette du service dit la même chose que la scène.
     const food=e.etiquettes.find(l=>l.id==='food'),dansFood=e.personnes.filter(q=>!q.hors&&['preparation','prepa'].includes(regles.find(a=>a.id===q.atelier).service));
-    if(food)assert.equal(food.lignes[0],dansFood.filter(q=>q.etat==='auTravail').length+' au travail / '+dansFood.length+(dansFood.length>1?' présents':' présent'),'FOOD à '+t);
+    // (Sa ligne de chiffres : après la phrase du goulot quand la zone coince ; absente quand il n'y a personne ni rien à faire.)
+    const chiffres=food&&food.lignes.find(l=>/au travail/.test(l));
+    if(chiffres)assert.equal(chiffres,dansFood.filter(q=>q.etat==='auTravail').length+' au travail / '+dansFood.length+(dansFood.length>1?' présents':' présent'),'FOOD à '+t);
+    else if(food)assert.equal(dansFood.length,0,'FOOD à '+t+' : sans chiffres, personne n’y est');
   }
   const midi=await aLHeure(190);
   assert.ok(midi.personnes.filter(q=>q.etat==='auTravail').length>=10&&midi.personnes.some(q=>q.etat==='sansTravail'),'à 03:10 : des personnes au travail, d’autres sans travail');

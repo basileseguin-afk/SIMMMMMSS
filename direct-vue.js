@@ -22,7 +22,7 @@
 (function (root) {
   'use strict';
 
-  const C = () => root.OrlyDirectCamera, D = () => root.OrlyDirectScene, G = () => root.OrlyDirectDessin, E = () => root.OrlyDirectEtat;
+  const C = () => root.OrlyDirectCamera, D = () => root.OrlyDirectScene, G = () => root.OrlyDirectDessin, E = () => root.OrlyDirectEtat, LIRE = () => root.OrlyDirectLire;
 
   /** Les bandes de la toile gardées libres : en haut pour les étiquettes du fond, en bas pour les commandes. */
   const BANDES = { haut: 44, bas: 48, gauche: 0, droite: 0 };
@@ -34,18 +34,26 @@
   const ZOOM_NOMS = 30;
   /** Ce qui s'anime pendant la lecture : la vague d'un tunnel qui lave (rad/s, rad/m), les plateaux d'une ligne robotisée (m/s, un tous les 0,9 m). */
   const VAGUE = { temps: 5, espace: 1.6 }, PLATEAUX = { vitesse: 0.6, pas: 0.9, taille: 0.5 };
+  /** La teinte du sol d'une zone (son voile sur le sol) ; le contour du goulot du moment, qui pulse (px, rad/s) ; ce qui n'est pas du vol suivi pâlit. */
+  const TEINTE = { avertissement: ['attente', 0.2], critique: ['critique', 0.22] }, POULS = { fin: 2, gros: 5, vitesse: 4.2, pause: 50 }, PALE = 0.2;
+  /** Ce que dit la teinte d'une zone, en un mot dans son étiquette : jamais la couleur seule. */
+  const MOT_DE_TEINTE = { avertissement: 'à surveiller', critique: 'coince' };
+  /** La phrase du goulot, dans son étiquette, se replie en lignes d'au plus 40 caractères. */
+  const PHRASE = 40;
 
   /**
-   * Crée la vue dans `hote` (qui contient le canvas et les boutons). `a` : { lire, choisir, enLecture, dire } —
-   * `lire()` rend { site, journee, t, selection } ; `choisir(service)` choisit un service (un clic sur sa zone) ;
-   * `enLecture()` dit si la journée se rejoue (ce qui travaille s'anime) ; `dire({ tranche })` reçoit ce que la légende
-   * doit dire (« un chariot = N repas »).
+   * Crée la vue dans `hote` (qui contient le canvas et les boutons). `a` : { lire, choisir, suivre, annuler, enLecture, dire } —
+   * `lire()` rend { site, journee, t, selection, lu, suivi } (`lu` : la lecture de la journée, direct-lire.js ; `suivi` : le
+   * vol suivi) ; `choisir(service)` choisit un service (un clic sur sa zone) ; `suivre(vol)` suit un vol (un clic sur un
+   * chariot ou un avion) ; `annuler()` (Échap) ; `enLecture()` dit si la journée se rejoue (ce qui travaille s'anime) ;
+   * `dire({ tranche })` reçoit ce que la légende doit dire (« un chariot = N repas »).
    */
   function creer(hote, a) {
     const toile = hote.querySelector('canvas'), ctx = toile.getContext('2d');
     const v = { cam: C().camera(), ajustee: true, site: null, decor: null, ilots: [], aire: null, places: null, tranche: null, circule: null, journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], marques: [], extras: null,
+      lu: null, suivi: null, tons: {}, goulot: null,
       stats: { images: 0, ms: 0, dernier: 0 } };
-    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null, circuleDe = null;
+    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null, circuleDe = null, battement = 0;
     const largeurs = new Map(), pointeurs = new Map();
     let geste = null;
 
@@ -131,18 +139,30 @@
       }
       if (x.journee !== v.journee || x.t !== v.t) { v.journee = x.journee || null; v.t = x.t; v.etat = v.journee && Number.isFinite(x.t) ? E().etatA(v.journee, x.t) : null; }
       v.selection = x.selection || null; v.lecture = !!x.lecture;
+      // Ce que la journée dit à cette heure (direct-lire.js) : la teinte de chaque service, le goulot du moment ; le vol suivi.
+      v.lu = x.lu || null; v.suivi = x.suivi || null;
+      v.tons = v.lu && LIRE() ? LIRE().tonsA(v.lu, v.journee, v.t) : {};
+      v.goulot = v.lu && LIRE() ? LIRE().goulotA(v.lu, v.t) : null;
     }
 
     /* ---- le dessin ------------------------------------------------------------ */
 
     function objet(o, p, devant, pal, anime) {
+      // Un vol est suivi : ses lots, sa tournée et son avion restent nets ; les autres pâlissent (les personnes, un peu moins).
+      if (anime.suivi && (o.quoi === 'chariot' || o.quoi === 'vehicule' || o.quoi === 'avion' || o.quoi === 'personne')) {
+        const sien = o.quoi !== 'personne' && LIRE().estDuVol(anime.suivi, o);
+        if (!sien) { ctx.globalAlpha = (o.quoi === 'personne' ? 2.2 : 1) * PALE * (o.quoi === 'avion' && o.alpha < 1 ? Math.max(0, o.alpha) : 1); trace(o, p, devant, pal, anime, true); ctx.globalAlpha = 1; return; }
+      }
+      trace(o, p, devant, pal, anime, false);
+    }
+    function trace(o, p, devant, pal, anime, pale) {
       if (o.quoi === 'personne') G().personne(ctx, p, o.x, o.y, pal.c(o.ton), pal.ton(o.ton, 0.35), pal.c('peau'), pal.voile('texte', 0.16), o.bob);
       else if (o.quoi === 'chariot') G().chariot(ctx, p, devant, o.x, o.y, pal.boite(o.ton));
       else if (o.quoi === 'vehicule') G().vehicule(ctx, p, devant, o.x, o.y, o.phase === 'retour' ? -1 : 1, o.type === 'vl', pal.boite('vehicule'), pal.boite('travail'));
       else if (o.quoi === 'avion') {
-        if (o.alpha < 1) ctx.globalAlpha = Math.max(0, o.alpha);
+        if (!pale && o.alpha < 1) ctx.globalAlpha = Math.max(0, o.alpha);
         G().avion(ctx, p, devant, o.x, o.y, D().AVION.long, o.dz, pal.boite('avion'), pal.boite('avion'), pal.boite(o.enRetard ? 'critique' : 'travail'));
-        ctx.globalAlpha = 1;
+        if (!pale) ctx.globalAlpha = 1;
       } else if (o.quoi === 'tunnel' && anime.tunnels.has(o.nom)) {
         // Un tunnel qui lave, et seulement lui : son dessus s'éclaire ; pendant la lecture, une vague le parcourt.
         G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
@@ -170,7 +190,8 @@
       if (!visible()) return;
       if (!v.pal) v.pal = G().palette(hote);
       taille();
-      if (perime) relire();
+      // Revenue à l'écran, la vue relit la journée ; la page en profite pour remettre à l'heure ce qui l'entoure.
+      if (perime) { relire(); if (a.revenue) a.revenue(); }
       if (anim) {
         const k = Math.min(1, (ts - anim.t0) / DUREE);
         if (k >= 1 || !(k >= 0)) { v.cam = anim.a; anim = null; } else { v.cam = C().entre(anim.de, anim.a, 1 - Math.pow(1 - k, 3)); demander(); }
@@ -187,8 +208,23 @@
       }
       const p = C().projecteur(v.cam, ecran), devant = C().facesDevant(v.cam), fond = C().mursDuFond(v.cam);
       for (const s of v.decor.sols) G().sol(ctx, p, s.x, s.y, s.w, s.d, pal.c(TON_SOL[s.ton]), s.ton === 'zone' || s.ton === 'pause' ? pal.c('bordure') : null, 1);
+      // Le sol de chaque zone se teinte selon ce que disent les réponses : avertissement, critique ; sinon rien.
+      const pouls = !immobile() ? ts / 1000 : null, zoneGoulot = v.goulot ? D().zoneDuService(v.site, v.goulot.service) : null;
+      v.teintes = {};
+      for (const z of v.site.zones) {
+        const x = LIRE() ? LIRE().tonDeZone(v.tons, z) : { ton: 'neutre' }, teinte = TEINTE[x.ton];
+        v.teintes[z.id] = x.ton;
+        if (teinte) G().sol(ctx, p, z.x, z.y, z.w, z.h, pal.voile(teinte[0], teinte[1]), null, 0);
+      }
       const choisie = v.selection ? D().zoneDuService(v.site, v.selection) : null;
       if (choisie) G().sol(ctx, p, choisie.x, choisie.y, choisie.w, choisie.h, pal.voile('choisi', 0.12), pal.c('choisi'), 2);
+      // Le goulot du moment porte un contour qui pulse (fixe avec « réduire les animations »).
+      if (zoneGoulot) {
+        const k = pouls == null ? 0.5 : 0.5 + 0.5 * Math.sin(pouls * POULS.vitesse);
+        G().sol(ctx, p, zoneGoulot.x, zoneGoulot.y, zoneGoulot.w, zoneGoulot.h, null, pal.c('critique'), POULS.fin + (POULS.gros - POULS.fin) * k);
+        // Seul le contour bouge (la journée est en pause, la caméra au repos) : vingt images par seconde lui suffisent.
+        if (pouls != null && !battement) battement = root.setTimeout(() => { battement = 0; demander(); }, POULS.pause);
+      }
       const cle = [fond.x0, fond.x1, fond.y0, fond.y1].map(Number).join('');
       if (!boites || cle !== cleBoites) { boites = D().boitesDe(v.decor, fond, C().decouper); cleBoites = cle; }
       // Les personnes : celles des indicateurs, à leur poste. Au travail, elles bougent légèrement pendant la lecture.
@@ -202,19 +238,20 @@
         circuleDe = { journee: v.journee, t: v.t, ilots: v.ilots };
       }
       const c = v.circule, zoneFood = c.lignes.length ? v.site.zones.find(z => (z.lignes || []).length) : null;
-      const anime = { h: bouge ? ts / 1000 : null, tunnels: new Set(c.tunnels), lignes: new Set(c.lignes.map(l => l.ligne)), ligneDe: o => zoneFood.lignes[o.ref] };
+      const anime = { h: bouge ? ts / 1000 : null, tunnels: new Set(c.tunnels), lignes: new Set(c.lignes.map(l => l.ligne)), ligneDe: o => zoneFood.lignes[o.ref], suivi: v.suivi && LIRE() ? v.suivi : null };
       const extras = v.extras ? v.extras(v) : null;
       const mobiles = [].concat(v.personnes, c.pousseurs, c.chariots, c.vehicules, c.avions, extras || []);
       for (const o of C().ordre(v.cam, mobiles.length ? boites.concat(mobiles) : boites)) objet(o, p, devant, pal, anime);
-      // Les mots posés dans la scène : « arrêté » devant un tunnel, la cadence d'une ligne robotisée.
-      v.marques = [];
-      for (const m of c.marques) {
-        const X = p.x(m.x, m.y), Y = p.y(m.x, m.y, m.z);
-        if (X < 0 || X > ecran.w || Y < 0 || Y > ecran.h) continue;
-        v.marques.push({ ...G().marque(ctx, X, Y, m.texte, pal.c('etiquette'), pal.c(m.ton), pal.c('texte')), texte: m.texte, ton: m.ton });
-      }
-      // Les étiquettes : celles des services et celles des avions, posées ensemble, sans se recouvrir.
-      v.poses = D().poserEtiquettes(D().etiquettes(v.site, v.etat, fond).concat(D().etiquettesDesVols(c.avions)), v.cam, ecran, mesure);
+      // Les étiquettes : celles des services, celles des avions et les mots posés dans la scène (« arrêté » devant un
+      // tunnel, la cadence d'une ligne robotisée), posés ensemble, sans se recouvrir.
+      // L'étiquette du goulot du moment reprend la phrase de la Synthèse, en critique.
+      const deZones = D().etiquettes(v.site, v.etat, fond);
+      // Une zone teintée le dit aussi en un mot (« à surveiller », « coince »), cernée de sa couleur.
+      for (const e of deZones) { const mot = MOT_DE_TEINTE[v.teintes[e.id]]; if (!mot || (zoneGoulot && e.id === zoneGoulot.id)) continue; e.lignes = [mot, ...e.lignes]; e.ton = v.teintes[e.id] === 'critique' ? 'critique' : 'attente'; delete e.compacte; }
+      if (zoneGoulot) { const e = deZones.find(x => x.id === zoneGoulot.id); if (e) { e.lignes = [...D().replier(v.goulot.phrase, PHRASE), ...e.lignes]; e.ton = 'critique'; e.avant = 1; delete e.compacte; } }
+      const deMarques = c.marques.map((m, i) => ({ id: 'marque:' + i, marque: true, x: m.x, y: m.y, z: m.z, titre: m.texte, lignes: [], compacte: true, ton: m.ton }));
+      v.poses = D().poserEtiquettes(deZones.concat(D().etiquettesDesVols(c.avions), deMarques), v.cam, ecran, mesure);
+      v.marques = v.poses.filter(e => e.marque).map(e => ({ x: e.x, y: e.y, w: e.w, h: e.h, texte: e.titre, ton: e.ton }));
       // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit ; jamais sur un autre nom ni sur une étiquette.
       v.noms = [];
       if (v.cam.zoom >= ZOOM_NOMS) {
@@ -235,7 +272,9 @@
       const styleChoisi = { ...style, bordure: pal.c('choisi'), epaisseur: 2 };
       // Un vol chargé en retard : son étiquette prend la couleur critique.
       const styleCritique = { ...style, fond: pal.melange('etiquette', 'critique', 0.16), bordure: pal.c('critique'), texte: pal.c('texte'), epaisseur: 2 };
-      for (const e of v.poses) G().etiquette(ctx, e, e.ton === 'critique' ? styleCritique : choisie && e.id === choisie.id ? styleChoisi : style, e.compacte ? D().COMPACTE : D().ETIQUETTE);
+      // Un mot posé dans la scène est cerné de sa couleur : l'avertissement pour « arrêté », l'accent pour une cadence.
+      const styleMarque = { attente: { ...style, bordure: pal.c('attente'), epaisseur: 2 }, travail: { ...style, bordure: pal.c('travail'), epaisseur: 2 } };
+      for (const e of v.poses) G().etiquette(ctx, e, e.ton === 'critique' ? styleCritique : styleMarque[e.ton] || (choisie && e.id === choisie.id ? styleChoisi : style), e.compacte ? D().COMPACTE : D().ETIQUETTE);
       const ms = root.performance.now() - t0, s = v.stats;
       s.images++; s.ms = s.ms ? s.ms * 0.9 + ms * 0.1 : ms; s.dernier = ms;
     }
@@ -279,9 +318,23 @@
       if (!geste) return;
       const clic = e.type === 'pointerup' && geste.mode !== 'pince' && geste.bouge < 4 && q && !(geste.souris && e.button !== 0);
       if (!pointeurs.size) geste = null; else if (geste.mode === 'pince') { const r = [...pointeurs.values()][0]; geste = { mode: 'deplacer', x: r.x, y: r.y, bouge: 99 }; }
-      // Un clic sans glisser sur une zone choisit son service.
-      if (clic && v.site && a.choisir) { const z = D().zoneSous(v.site, C().auSol(v.cam, ecran, q.x, q.y)); if (z) a.choisir(z.services.includes(v.selection) ? v.selection : z.services[0] || z.id); }
+      if (!clic || !v.site) return;
+      // Un clic sans glisser sur un chariot, un véhicule ou un avion suit son vol ; sur une zone, il choisit son service.
+      const o = sous(q.x, q.y), vol = o && LIRE() ? LIRE().volDe(v.journee, o) : null;
+      if (vol != null && a.suivre) { a.suivre(vol); return; }
+      if (a.choisir) { const z = D().zoneSous(v.site, C().auSol(v.cam, ecran, q.x, q.y)); if (z) a.choisir(z.services.includes(v.selection) ? v.selection : z.services[0] || z.id); }
     };
+    /** L'objet qui circule sous un point de l'écran : le plus proche parmi les avions, les véhicules et les chariots ; sinon null. */
+    function sous(X, Y) {
+      const c = v.circule; if (!c) return null;
+      const z = v.cam.zoom, pr = C().projecteur(v.cam, ecran);
+      let mieux = null;
+      const voir = (o, haut, rayon) => { const d = Math.hypot(pr.x(o.x, o.y) - X, pr.y(o.x, o.y, haut) - Y); if (d <= rayon && (!mieux || d / rayon < mieux.d)) mieux = { o, d: d / rayon }; };
+      for (const o of c.avions) if (!(o.decolle > 0)) voir(o, 0.6, Math.max(12, D().AVION.long * 0.45 * z));
+      for (const o of c.vehicules) voir(o, 0.8, Math.max(10, 1.3 * z));
+      for (const o of c.chariots) voir(o, 0.5, Math.max(7, 0.5 * z));
+      return mieux ? mieux.o : null;
+    }
     toile.addEventListener('pointerup', lacher);
     toile.addEventListener('pointercancel', lacher);
     toile.addEventListener('contextmenu', e => e.preventDefault());
@@ -299,6 +352,7 @@
     };
     toile.addEventListener('keydown', e => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Escape' && a.annuler) { if (a.annuler()) { e.preventDefault(); e.stopPropagation(); } return; }
       const f = TOUCHES[e.key] || TOUCHES[String(e.key).toLowerCase()];
       if (!f) return;
       e.preventDefault(); e.stopPropagation(); f();
@@ -318,13 +372,15 @@
       const b = v.site ? boite() : null, c = v.circule;
       return { camera: { ...v.cam }, ecran: { ...ecran }, ajustee: v.ajustee, enMouvement: !!anim, zones: v.site ? v.site.zones.map(z => z.id) : [], selection: v.selection, t: v.t,
         emprise: b ? C().emprise(v.cam, ecran, b) : null, tient: b ? C().tient(v.cam, ecran, b) : false, murs: C().mursDuFond(v.cam),
-        etiquettes: v.poses.filter(e => e.vol == null).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice() })),
+        etiquettes: v.poses.filter(e => e.vol == null && !e.marque).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ...(e.ton ? { ton: e.ton } : {}) })),
         vols: v.poses.filter(e => e.vol != null).map(e => ({ vol: e.vol, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ton: e.ton || null })),
         circule: c ? { tranche: c.tranche, pousseurs: c.pousseurs.length, tunnels: c.tunnels.slice(), lignes: c.lignes.map(l => ({ ...l })), marques: v.marques.map(m => ({ ...m })),
           chariots: c.chariots.map(o => ({ etat: o.etat, ton: o.ton, service: o.service, atelier: o.atelier ?? null, vol: o.vol ?? null, classe: o.classe ?? null, tunnel: o.tunnel ?? null, enChemin: !!o.enChemin, x: o.x, y: o.y })),
           vehicules: c.vehicules.map(o => ({ cle: o.cle, camion: o.camion, type: o.type, phase: o.phase, vols: o.vols.slice(), avance: o.avance, x: o.x, y: o.y })),
           avions: c.avions.map(o => ({ id: o.id, depart: o.depart, enRetard: o.enRetard, retard: o.retard, decolle: o.decolle, x: o.x, y: o.y })) } : null,
         aire: v.aire ? { x: v.aire.x, y: v.aire.y, w: v.aire.w, h: v.aire.h, places: v.aire.places.length } : null,
+        teintes: { ...(v.teintes || {}) }, goulot: v.goulot ? { service: v.goulot.service, jour: v.goulot.jour, phrase: v.goulot.phrase, zone: (D().zoneDuService(v.site, v.goulot.service) || {}).id || null } : null,
+        suivi: v.suivi ? { vol: v.suivi.vol, phrase: v.suivi.phrase, nets: c ? c.chariots.filter(o => LIRE().estDuVol(v.suivi, o)).length : 0, pales: c ? c.chariots.filter(o => !LIRE().estDuVol(v.suivi, o)).length : 0 } : null,
         ilots: v.ilots.map(i => ({ atelier: i.atelier, service: i.service, zone: i.zone, poste: i.poste, tables: i.tables.length, places: i.places.length, echelle: i.echelle })),
         personnes: v.personnes.map(q => ({ atelier: q.atelier, etat: q.etat, ton: q.ton, hors: !!q.hors, enChemin: !!q.enChemin, x: q.x, y: q.y })), noms: v.noms.map(n => n.nom),
         recouvrements: C().recouvrements(v.poses), images: v.stats.images, msDessin: v.stats.ms, couleurs: v.pal ? { fond: G().css(v.pal.base.fond), zone: G().css(v.pal.base.zone), texte: G().css(v.pal.base.texte), critique: G().css(v.pal.base.critique), repas: G().css(v.pal.base.repas),
@@ -333,7 +389,7 @@
     /** Où est un point de la scène à l'écran (pour le contrôle) : [X, Y] en pixels de la toile. */
     const ecranDe = (x, y, z) => C().projeter(v.cam, ecran, x, y, z || 0);
 
-    Object.assign(v, { rendre, demander, tourner, incliner, zoomer, deplacer, toutVoir, cadrer, etatVue: etat, ecranDe, toile });
+    Object.assign(v, { rendre, demander, tourner, incliner, zoomer, deplacer, toutVoir, cadrer, etatVue: etat, ecranDe, sous, toile });
     return v;
   }
 

@@ -54,15 +54,17 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    assert.deepEqual([e0.camera.cap,Math.round(e0.camera.site*100)/100,e0.ajustee],[45,35.26,true],V+'l’angle de la maquette');
    assert.deepEqual([e0.ecran.w,e0.ecran.h],[Math.round(cadre.width),Math.round(cadre.height)]);
    tient(e0,V+'à l’ouverture');
-   // Une zone par service qui a un atelier ; une étiquette par zone, avec « n au travail / n présents ».
+   // Une zone par service qui a un atelier ; une étiquette par zone, avec « n au travail / n présents » ; une zone où il
+   // n'y a personne et rien à faire ne dit que son nom ; celle du goulot du moment dit d'abord sa phrase (évolution 16 e).
    assert.ok(e0.zones.length>=6&&e0.zones.includes('food')&&e0.zones.includes('plonge'),V+e0.zones.join(' '));
    assert.deepEqual(e0.etiquettes.map(l=>l.id),e0.zones);
-   for(const l of e0.etiquettes)assert.match(l.lignes[0],/^\d+ au travail \/ \d+ présents?$/,V+l.titre);
-   assert.ok(e0.etiquettes.some(l=>/^\d+ lots? à faire$/.test(l.lignes[1]||'')),V+'des lots à faire devant un service');
+   const chiffres=l=>l.lignes.find(x=>/^\d+ au travail \/ \d+ présents?$/.test(x))||null;
+   for(const l of e0.etiquettes)assert.ok(l.lignes.length===0||chiffres(l),V+l.titre+' : '+l.lignes.join(' | '));
+   assert.ok(e0.etiquettes.some(l=>l.lignes.some(x=>/^\d+ lots? à faire$/.test(x))),V+'des lots à faire devant un service');
    assert.deepEqual(e0.recouvrements,[],V+'aucune étiquette n’en recouvre une autre');
    // Les chiffres des étiquettes sont ceux de la journée à l'heure rejouée (direct-etat.js, les indicateurs).
-   const lus=await page.evaluate(()=>{const v=Sim.direct,e=OrlyDirectEtat.etatA(v.journee,v.t);return v.site.zones.map(z=>{const n=z.services.reduce((s,id)=>{const x=e.services[id]||{auTravail:0,presents:0};return [s[0]+x.auTravail,s[1]+x.presents];},[0,0]);return n[0]+' au travail / '+n[1]+(n[1]>1?' présents':' présent');});});
-   assert.deepEqual(e0.etiquettes.map(l=>l.lignes[0]),lus);
+   const lus=await page.evaluate(()=>{const v=Sim.direct,e=OrlyDirectEtat.etatA(v.journee,v.t);return v.site.zones.map(z=>{const n=z.services.reduce((s,id)=>{const x=e.services[id]||{auTravail:0,presents:0,lots:0};return [s[0]+x.auTravail,s[1]+x.presents,s[2]+x.lots];},[0,0,0]);return n[1]||n[2]?n[0]+' au travail / '+n[1]+(n[1]>1?' présents':' présent'):null;});});
+   assert.deepEqual(e0.etiquettes.map(chiffres),lus);
 
    // 2. Les murs dessinés sont ceux du fond : à l'écran, plus haut que le milieu de leur zone.
    const mursDerriere=async(e,mot)=>{
@@ -137,15 +139,19 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    const cuisine=await page.evaluate(()=>{const v=Sim.direct,z=v.site.zones.find(x=>x.id==='cuisine');return {ecran:v.ecranDe(z.x+z.w/2,z.y+z.h/2,0),boite:OrlyDirectScene.boiteDeZone(z)};});
    await page.mouse.click(cadre.x+cuisine.ecran[0],cadre.y+cuisine.ecran[1]);
    await page.waitForFunction(()=>Sim.direct.etatVue().selection==='cuisine');
-   assert.equal(await page.locator('#zone-picker').inputValue(),'cuisine',V+'le service choisi est celui de « Voir un service »');
+   await page.waitForFunction(()=>!!document.querySelector('#direct-panneau-corps .dp-detail[data-service="cuisine"]'));
+   assert.equal(await page.locator('#zone-picker').inputValue(),'cuisine',V+'le service choisi est celui de la page (le panneau ouvre son détail)');
    const cadree=await bouton('cadrer'),zb=await page.evaluate(b=>{const e=Sim.direct.etatVue();return OrlyDirectCamera.emprise(e.camera,e.ecran,b);},cuisine.boite);
    assert.deepEqual([cadree.camera.cap,cadree.ajustee],[75,false],V+'« Cadrer » garde l’angle');
    assert.ok(cadree.camera.zoom>tout.camera.zoom*1.5,V+'« Cadrer » s’approche');
    assert.ok(zb.x0>=MARGE-0.6&&zb.y0>=cadree.ecran.haut+MARGE-0.6&&zb.x1<=cadree.ecran.w-MARGE+0.6&&zb.y1<=cadree.ecran.h-cadree.ecran.bas-MARGE+0.6,V+'la zone cadrée tient à 24 px des bords');
-   // Choisir dans la liste « Voir un service » choisit aussi dans la scène ; sans service choisi, « Cadrer » montre tout.
-   await page.locator('#zone-picker').selectOption('plonge');
+   // Choisir dans la liste des services du panneau choisit aussi dans la scène (en relief, elle remplace « Voir un
+   // service », évolution 16 e) ; sans service choisi, « Cadrer » montre tout.
+   await page.locator('#direct-panneau-corps [data-direct-retour]').click();
+   await page.waitForFunction(()=>Sim.direct.etatVue().selection===null);
+   await page.locator('#direct-panneau-corps [data-direct-service="plonge"]').click();
    await page.waitForFunction(()=>Sim.direct.etatVue().selection==='plonge');
-   await page.locator('#zone-picker').selectOption('');
+   await page.locator('#direct-panneau-corps [data-direct-retour]').click();
    await page.waitForFunction(()=>Sim.direct.etatVue().selection===null);
    const sans=await bouton('cadrer');
    assert.deepEqual([sans.camera.cap,sans.ajustee],[45,true]);tient(sans,V+'« Cadrer » sans service choisi');

@@ -386,13 +386,20 @@
       + (autres.length ? '<p class="sy-aussi">Coincent aussi :</p><ul class="sy-exceptions">' + autres.map(ligne).join('') + '</ul>' : '')
       + (reste > 0 ? '<p class="mini-note">Et ' + esc(pluriel(reste, 'autre service', 'autres services')) + '.</p>' : '') };
   }
-  /** Une exception, en une ligne : quoi, de combien, pourquoi. */
-  function exception(x) {
+  /**
+   * Les mots d'une exception : { nom, quoi, mot, phrase } — quoi, de combien, pourquoi (`mot` et `phrase` : sa cause, ou
+   * null). La carte de la Synthèse et la vue en direct (le vol suivi) disent les mêmes.
+   */
+  function motsDeLException(x) {
     const quoi = { 'sans-equipe': 'sans équipe', 'vol-pas-charge': 'pas chargé', 'vol-pas-pret': 'pas prêt', 'vol-en-retard': 'chargé ' + duree(x.retard) + ' après sa limite',
       'commande-en-retard': 'prête ' + duree(x.retard) + ' après sa limite' }[x.type];
-    const nom = x.type === 'commande-en-retard' ? x.libelle : 'Vol ' + x.id;
-    return '<li><b>' + esc(nom) + '</b> ' + esc(quoi) + (x.cause && x.cause.mot && x.type !== 'sans-equipe' && x.type !== 'vol-pas-charge' ? ' — ' + esc(x.cause.mot) : '')
-      + (x.cause && x.cause.phrase ? '<small>' + esc(x.cause.phrase) + '</small>' : '') + '</li>';
+    return { nom: x.type === 'commande-en-retard' ? x.libelle : 'Vol ' + x.id, quoi,
+      mot: x.cause && x.cause.mot && x.type !== 'sans-equipe' && x.type !== 'vol-pas-charge' ? x.cause.mot : null, phrase: (x.cause && x.cause.phrase) || null };
+  }
+  /** Une exception, en une ligne : quoi, de combien, pourquoi. */
+  function exception(x) {
+    const m = motsDeLException(x);
+    return '<li><b>' + esc(m.nom) + '</b> ' + esc(m.quoi) + (m.mot ? ' — ' + esc(m.mot) : '') + (m.phrase ? '<small>' + esc(m.phrase) + '</small>' : '') + '</li>';
   }
   /**
    * Les comptes de la journée en mots (évolution 15 c), les mêmes sur la Synthèse et dans « Détails » : chacun dit son
@@ -506,7 +513,7 @@
     });
   }
 
-  const api = { nombre, motDuJour, motsDeLAttendu, motsDeLaCause, phrases, compteRetards, motsDesComptes, listeDesComptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
+  const api = { nombre, motDuJour, motsDeLAttendu, motsDeLaCause, motsDeLEquipe, consequences, motsDeLException, heure, duree, pluriel, phrases, compteRetards, motsDesComptes, listeDesComptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
     carteCoince, carteRetard, carteEssai, rendre };
   if (enNode) module.exports = api;
   else root.OrlySyntheseVue = api;

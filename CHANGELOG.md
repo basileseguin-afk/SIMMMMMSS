@@ -5,6 +5,50 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (e) : la vue en direct — lire et agir
+
+La scène dit où regarder, et répond quand on la touche.
+
+- **Le sol d'une zone se teinte** selon le module des réponses
+  (`direct-lire.js`) : avertissement quand un arrivage y attend au-delà du
+  seuil d'attente ou que des personnes y travaillent après leur horaire ;
+  critique quand le service est un goulot du jour, dans le moment où il
+  coince. **Le goulot du moment** porte un contour qui pulse et la phrase de
+  la Synthèse.
+- **À l'ouverture**, l'heure rejouée est le moment où le premier goulot du
+  jour commence à coincer ; sans goulot, le pic de travail.
+- **La barre du temps** (`direct-temps.js`) : les personnes au travail, les
+  arrivages en attente, un repère par départ de vol, les jours ; l'heure s'y
+  déplace à la souris, au doigt, aux flèches. **« Point suivant »** saute au
+  prochain moment à regarder ; la barre d'espace lit et met en pause.
+- **Un clic sur un service** ouvre son détail dans le panneau
+  (`direct-panneau.js`) : ses équipes, ses personnes par état, ses lots à
+  faire, ses arrivages en attente, ses personnes sans travail, sa courbe de
+  charge. La liste des services est une liste de boutons. Un service choisi
+  qui n'a aucune équipe n'est pas dans la scène : le panneau le dit et
+  propose d'en ajouter une, comme celui du plan dessiné ; sans journée à
+  rejouer, il mène à la description de l'unité.
+- **Un clic sur un chariot ou un avion suit ce vol** : ses lots restent nets,
+  le reste pâlit, la phrase qui explique son retard s'affiche. Échap annule.
+- En relief, l'en-tête du plan dessiné et sa bande de chiffres laissent leur
+  place à la scène ; une zone où il n'y a personne et rien à faire ne dit que
+  son nom ; les mots posés dans la scène se placent avec les étiquettes.
+
+Ce qui ne change pas : aucun calcul. `moteur/reponses.js` gagne `quand` — le
+détail des arrivages qui attendent et des lots en retard, lu par les mêmes
+fonctions que ses réponses, identiques octet pour octet. Aucune règle ni aucun
+seuil n'est ajouté. La version 2 n'est pas touchée.
+
+Fichiers : `direct-lire.js`, `direct-temps.js`, `direct-panneau.js`
+(nouveaux), `moteur/reponses.js` (`quand`), `synthese-vue.js` (ses mots,
+exportés), `direct-vue.js`, `direct-scene.js`, `direct-camera.js`,
+`direct-dessin.js`, `direct.css`, `sim.js`, `index.html`,
+`tests/direct-lire.test.cjs` et `tests/direct-lire-browser.cjs` (nouveaux),
+`tests/plan-rejoue-fictif.cjs`, les tests relus (l'heure d'ouverture, les
+étiquettes, le service sans équipe), `README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (d) : la vue en direct — ce qui circule
 
 La scène montre ce que la journée déplace, lu dans son résultat.

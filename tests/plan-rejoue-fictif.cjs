@@ -57,6 +57,17 @@ function heureDuPicAttendue(sauvegarde, csv) {
   return { t: p.debut, personnes: p.personnes, resultat: r, args, k };
 }
 
+/**
+ * L'heure que la page doit ouvrir (évolution 16 e), calculée hors de la page : le moment où le premier goulot du jour
+ * commence à coincer ; sans goulot, le pic de travail. Rend aussi `pic` (l'heure du pic), `goulot` (le premier, ou null)
+ * et `lu` (la lecture de la journée, direct-lire.js).
+ */
+function heureDOuvertureAttendue(sauvegarde, csv) {
+  const R = require('../moteur/reponses.js'), L = require('../direct-lire.js'), p = heureDuPicAttendue(sauvegarde, csv);
+  const reponses = R.reponses(p.resultat, p.args, { k: p.k }), lu = L.lire({ r: p.resultat, args: p.args, k: p.k, reponses });
+  return { ...p, pic: p.t, t: lu.ouverture ?? p.t, goulot: lu.goulots[0] || null, lu, reponses };
+}
+
 /** Restaurer la sauvegarde fictive dans la page, puis importer les vols : la page s'ouvre sur `pageId`. */
 async function charger(page, nav, url, { sauvegarde = sauvegardeFictive(), csv = volsCsv(), pageId = 'j-plan', relief = false } = {}) {
   const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'ory-plan-rejoue-'));
@@ -112,4 +123,4 @@ async function remettreEquipes(page, equipes) {
   await page.waitForFunction(() => { const r = Sim.ateliers.resultat; return !!r && (r.ateliers || []).some(a => a.type === 'lavage'); });
 }
 
-module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };
+module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, heureDOuvertureAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };

@@ -790,6 +790,62 @@ des lots, les séjours en stock, les vols, les tournées :
   heures et les états, eux, sont ceux du résultat : rien ne circule quand rien
   n'attend.
 
+### En relief : lire et agir (évolution 16 e)
+
+La scène dit où regarder, et répond quand on la touche. Rien n'y est décidé :
+tout vient du module des réponses (`moteur/reponses.js`), sans règle ni seuil
+nouveau.
+
+- **Le sol d'une zone se teinte** : neutre ; **avertissement** quand un
+  arrivage y attend au-delà du seuil d'attente des réglages (« Attente d'un
+  arrivage »), ou que des personnes y travaillent après leur horaire ;
+  **critique** quand le service est un goulot du jour et que l'heure rejouée
+  est dans le moment où il coince — après la fin d'horaire de l'équipe qui
+  dépasse, jusqu'à sa fin ; ou autour de chaque lot par lequel une commande ou
+  un vol part en retard, de son début à sa fin. Une zone teintée le dit aussi en
+  un mot dans son étiquette (« à surveiller », « coince ») : jamais la couleur
+  seule.
+- **Le goulot du moment** porte un contour qui pulse (fixe avec « réduire les
+  animations ») et son étiquette reprend la phrase de la Synthèse :
+  « Montage : l'équipe … finit à hh:mm pour hh:mm », ou « Montage : 12
+  commandes ou vols partent en retard par ses lots ».
+- **À l'ouverture**, l'heure rejouée est le moment où le premier goulot du
+  jour commence à coincer ; sans goulot, le pic de travail.
+- **Sous la scène, la barre du temps** : les personnes au travail (une aire),
+  dessous les arrivages en attente (une ligne), un repère par départ de vol
+  (plus haut et critique s'il est en retard), les jours marqués (« J−1 »,
+  « J »…). On y déplace l'heure à la souris, au doigt, ou aux flèches (un quart
+  d'heure ; avec Maj, une heure ; Début et Fin).
+- **Les commandes** : lecture et pause (la barre d'espace), la vitesse, « Pas
+  à pas », et **« Point suivant »**, qui saute au prochain moment à regarder —
+  le début d'un goulot, un chargement en retard — et l'annonce.
+- **Un clic sur un service** (sa zone, ou son bouton dans le panneau) ouvre
+  son détail : ses personnes par état, ses équipes et leur horaire, ses lots à
+  faire, ses arrivages en attente avec leur attente, ses personnes sans
+  travail et ce qu'elles attendent, sa courbe de charge. Un service qui n'a
+  aucune équipe n'est pas dans la scène (« Voir sur le plan », depuis la liste
+  des services, peut en choisir un) : le panneau le dit et propose, comme
+  celui du plan dessiné, d'ajouter une équipe ou d'ouvrir le service. Sans
+  journée à rejouer, il le dit et mène à la description de l'unité.
+- **Un clic sur un chariot ou un avion suit ce vol** : ses lots, sa tournée et
+  son avion restent nets partout, le reste pâlit, et la phrase qui explique
+  son retard s'affiche — celle de la Synthèse (« Vol NO101 (06:10) chargé
+  4 h 02 après sa limite — commande pas prête. … »). **Échap annule** : le vol
+  suivi d'abord, puis le détail du service.
+- **Tout se fait au clavier** : la liste des services du panneau est une liste
+  de boutons ; les flèches déplacent l'heure sur la barre du temps, la caméra
+  sur la scène.
+- Pour laisser sa place à la scène, la vue en relief ne montre plus l'en-tête
+  du plan dessiné (« Voir un service ») ni sa bande de chiffres : le panneau
+  les remplace. Une zone où il n'y a personne et rien à faire ne dit que son
+  nom.
+
+La lecture est dans `direct-lire.js` (sans navigateur) ; la barre du temps dans
+`direct-temps.js` ; le panneau dans `direct-panneau.js`. Le module des réponses
+gagne `quand(r, args, o)` : le détail de « où et quand ça coince » — les
+arrivages qui attendent, les lots par lesquels quelque chose part en retard —
+lu par les mêmes fonctions que ses réponses, qui ne changent pas.
+
 **Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
@@ -798,7 +854,8 @@ sont à des coordonnées négatives (à gauche des services) n'est plus coupé.
 ## Lire le plan rejoué et le planning
 
 **Le plan rejoué** (Résultats › Le plan rejoué) montre la journée calculée à
-l'heure rejouée — à l'ouverture, le créneau où le plus de personnes sont au
+l'heure rejouée — à l'ouverture, le moment où le premier goulot du jour
+commence à coincer ; sans goulot, le créneau où le plus de personnes sont au
 travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
 indicateurs. Ce qui suit décrit sa vue **« À plat »** (le plan dessiné) ; la
 vue « En relief » est décrite plus haut.
@@ -1212,6 +1269,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/direct-ateliers-browser.cjs` | Les ateliers et les personnes dans la page (v1, évolution 16 c) : un îlot par atelier réglé ; à six heures de la journée, les personnages égaux aux présents des indicateurs, à leur couleur ; la pause dans l’aire de pause ; la légende et la phrase sous elle ; le poste de travail réglé dans la fiche de l’équipe, gardé, sans effet sur la journée ; un atelier ajouté, un îlot de plus ; les noms au zoom ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux défauts ; la version 2 sans rien de cela |
 | `tests/direct-circulation.test.cjs` | Ce qui circule dans la vue en direct (v1, évolution 16 d), sans navigateur, sur l’unité fictive : un chariot par tranche de repas, un au moins par lot, la tranche doublée au-delà de 500 chariots ; une couleur par nature ; à chaque heure de la journée, les chariots en file devant un service égaux aux stocks du résultat, dans sa zone ; la file en rangs depuis le couloir, qui s’étale puis s’entasse ; un lot en cours dans l’îlot de son atelier (au bout d’une table, sur son trolley) ; le convoi de deux minutes et son pousseur ; un véhicule pendant son trajet et seulement là, du quai à l’avion de son vol, camion ou véhicule léger ; un avion par vol, sa place, son décollage ; un vol chargé en retard au critique, avec son retard ; une unité sans handling ; les retours sales, le tunnel qui lave et lui seul, le relais, l’arrêt marqué « arrêté », le reste du soir ; la cadence de la ligne robotisée ; rien ne circule quand rien n’attend ; la lecture ne touche à rien. |
 | `tests/direct-circulation-browser.cjs` | Ce qui circule, dans la page (v1, évolution 16 d) : la légende (une couleur par nature, « un chariot = 50 repas ») aux couleurs de la scène ; à sept heures de la journée, les chariots en file égaux aux stocks du résultat, les lots en cours dans l’îlot de leur atelier, un véhicule par tournée en route ; l’étiquette d’un vol chargé en retard teintée de critique, avec son retard ; « Tout voir » avec l’aire des avions ; seul le tunnel qui lave est éclairé ; la cadence de la ligne robotisée ; la lecture et la pause ; le thème sombre ; rien à plat ni en version 2. |
+| `tests/direct-lire.test.cjs` | Lire la vue en direct (v1, évolution 16 e), sans navigateur, sur l’unité fictive : `quand` du module des réponses égal à ce que ses goulots et ses lignes résument, sans changer ses réponses ; les moments où un goulot coince (autour de ses lots en retard ; après la fin d’horaire de l’équipe qui dépasse) et sa phrase, celle de la Synthèse ; la teinte critique dans ces moments et seulement là ; l’avertissement pour un arrivage au-delà du seuil réglé, et pour des personnes après leur horaire ; « Point suivant » et l’heure d’ouverture ; la barre du temps (les personnes au travail, les arrivages en attente, les départs, les jours, sa géométrie) ; le détail d’un service ; le vol suivi ; le panneau en liste de boutons, tout texte de l’unité échappé ; les étiquettes des zones vides, la phrase repliée ; un service choisi sans équipe : le panneau le dit et propose d’en ajouter une. |
+| `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
@@ -1316,7 +1375,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/partage-browser.cjs` | Légumerie partagée : une case pour toutes les commandes, « Besoin de légumerie ? » sur le chemin, vagues dans le tableau, fusion des cases d’avant |
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
 | `tests/handling-browser.cjs` | Le handling dans l’interface : une case partagée posée depuis un chemin, sa fiche, les départs « chargé à », la synthèse |
-| `tests/services-browser.cjs` | Équipes › Liste des services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
+| `tests/services-browser.cjs` | Équipes › Liste des services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan — en relief dans le panneau de la scène, à plat dans celui du plan dessiné), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) ; attendre que le site ait démarré, recharger, attendre qu’une donnée soit enregistrée (correction 18 c : un état attendu plutôt qu’un délai) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |

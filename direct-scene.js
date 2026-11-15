@@ -547,9 +547,11 @@
 
   /**
    * Les étiquettes des services : une par zone, au-dessus d'elle ({ id, x, y, z, titre, lignes }). Le nom ; « n au travail /
-   * n présents » ; « n lots à faire » s'il y en a (ce qui attend devant le service). `etat` : la journée à l'heure rejouée
-   * (direct-etat.js) ; sans elle, le nom seul. `fond` : les côtés du fond pour l'angle de la caméra (direct-camera.js) —
-   * l'étiquette se tient alors au-dessus du fond de sa zone, pour ne pas cacher ses ateliers ; sans lui, au-dessus de son centre.
+   * n présents » ; « n lots à faire » s'il y en a (ce qui attend devant le service). Une zone où il n'y a personne et rien
+   * à faire ne dit que son nom, en étiquette compacte : la scène reste lisible (évolution 16 e). `etat` : la journée à
+   * l'heure rejouée (direct-etat.js) ; sans elle, le nom seul. `fond` : les côtés du fond pour l'angle de la caméra
+   * (direct-camera.js) — l'étiquette se tient alors au-dessus du fond de sa zone, pour ne pas cacher ses ateliers ; sans
+   * lui, au-dessus de son centre.
    */
   function etiquettes(site, etat, fond) {
     const dx = fond ? (fond.x0 ? -1 : fond.x1 ? 1 : 0) : 0, dy = fond ? (fond.y0 ? -1 : fond.y1 ? 1 : 0) : 0;
@@ -558,10 +560,10 @@
       if (etat) {
         const n = { auTravail: 0, presents: 0, lots: 0 };
         for (const s of z.services) { const x = etat.services[s]; if (x) { n.auTravail += x.auTravail; n.presents += x.presents; n.lots += x.lots; } }
-        lignes.push(n.auTravail + ' au travail / ' + pluriel(n.presents, 'présent', 'présents'));
+        if (n.presents > 0 || n.lots > 0) lignes.push(n.auTravail + ' au travail / ' + pluriel(n.presents, 'présent', 'présents'));
         if (n.lots > 0) lignes.push(pluriel(n.lots, 'lot à faire', 'lots à faire'));
       }
-      return { id: z.id, x: z.x + z.w * (0.5 + 0.3 * dx), y: z.y + z.h * (0.5 + 0.3 * dy), z: H.etiquette, titre: z.nom, lignes };
+      return { id: z.id, x: z.x + z.w * (0.5 + 0.3 * dx), y: z.y + z.h * (0.5 + 0.3 * dy), z: H.etiquette, titre: z.nom, lignes, ...(etat && !lignes.length ? { compacte: true } : {}) };
     });
   }
 
@@ -583,6 +585,12 @@
   const ETIQUETTE = { titre: 12.5, ligne: 11.5, marge: 7, interligne: 15 };
   /** Une étiquette compacte (un avion) : une ligne de 11 px, dans une pastille de 18 px. */
   const COMPACTE = { titre: 11, ligne: 11, marge: 5, interligne: 11, h: 18 };
+  /** Une phrase repliée en lignes d'au plus `n` caractères, coupée aux espaces : l'étiquette du goulot reste étroite. */
+  function replier(texte, n) {
+    const lignes = [];
+    for (const mot of String(texte).split(' ')) { const d = lignes[lignes.length - 1]; if (d !== undefined && (d + ' ' + mot).length <= n) lignes[lignes.length - 1] = d + ' ' + mot; else lignes.push(mot); }
+    return lignes;
+  }
   /** Sans navigateur, la largeur d'un texte s'estime (pour les tests) ; dans la page, la vue donne la vraie (`mesure`). */
   const estimer = (texte, gras) => String(texte).length * (gras ? 7.3 : 6.3);
   /** La taille d'une étiquette à l'écran : son titre, ses lignes, sa marge. */
@@ -600,11 +608,11 @@
   function poserEtiquettes(liste, cam, ecran, mesure) {
     const p = CAM().projecteur(cam, ecran);
     const vues = liste.map(e => ({ e, ax: p.x(e.x, e.y), ay: p.y(e.x, e.y, e.z) })).filter(a => a.ax >= 0 && a.ax <= ecran.w && a.ay >= 0 && a.ay <= ecran.h);
-    const ancres = vues.map(a => ({ id: a.e.id, ax: a.ax, ay: a.ay, ...tailleEtiquette(a.e, mesure) }));
-    return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes, ...(vues[i].e.ton ? { ton: vues[i].e.ton } : {}), ...(vues[i].e.vol != null ? { vol: vues[i].e.vol } : {}), ...(vues[i].e.compacte ? { compacte: true } : {}) }));
+    const ancres = vues.map(a => ({ id: a.e.id, ax: a.ax, ay: a.ay, ...tailleEtiquette(a.e, mesure), ...(a.e.avant ? { avant: a.e.avant } : {}) }));
+    return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes, ...(vues[i].e.ton ? { ton: vues[i].e.ton } : {}), ...(vues[i].e.vol != null ? { vol: vues[i].e.vol } : {}), ...(vues[i].e.compacte ? { compacte: true } : {}), ...(vues[i].e.marque ? { marque: true } : {}) }));
   }
 
-  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, tailleEtiquette, poserEtiquettes, pluriel,
+  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, tailleEtiquette, poserEtiquettes, pluriel,
     ROUTE, AVION, PAS_FILE, aireDe, bandeDeFile, placesDeFile, placesDansIlot, circulation, etiquettesDesVols, avanceDuConvoi,
     posteParDefaut, posteDe, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

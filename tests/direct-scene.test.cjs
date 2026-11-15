@@ -144,12 +144,14 @@ test('les boîtes à dessiner pour un angle : les murs du fond seulement, les bo
   }
 });
 
-test('les étiquettes : le nom, « n au travail / n présents », « n lots à faire » s’il y en a', () => {
+test('les étiquettes : le nom, « n au travail / n présents », « n lots à faire » s’il y en a ; une zone vide, son nom seul', () => {
   const etat = E.etatA(journee, J.t), l = D.etiquettes(SITE, etat);
   assert.deepEqual(l.map(e => e.id), SITE.zones.map(z => z.id));
   for (const [i, z] of SITE.zones.entries()) {
     const n = z.services.reduce((s, id) => { const x = etat.services[id] || { auTravail: 0, presents: 0, lots: 0 }; return { a: s.a + x.auTravail, p: s.p + x.presents, l: s.l + x.lots }; }, { a: 0, p: 0, l: 0 });
     assert.equal(l[i].titre, z.nom);
+    // Une zone où il n'y a personne et rien à faire ne dit que son nom (évolution 16 e) ; les autres, leurs chiffres.
+    if (n.p === 0 && n.l === 0) { assert.deepEqual(l[i].lignes, [], z.nom + ' : son nom seul'); assert.equal(l[i].compacte, true); continue; }
     assert.equal(l[i].lignes[0], n.a + ' au travail / ' + n.p + (n.p > 1 ? ' présents' : ' présent'));
     assert.deepEqual(l[i].lignes.slice(1), n.l ? [n.l + (n.l > 1 ? ' lots à faire' : ' lot à faire')] : []);
     assert.deepEqual([l[i].x, l[i].y, l[i].z], [z.x + z.w / 2, z.y + z.h / 2, D.H.etiquette], 'au-dessus de sa zone');

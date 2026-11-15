@@ -25,6 +25,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
 const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),CSV2=F.volsCsv(-120);
 const pic=F.heureDuPicAttendue(sauvegarde,CSV),pic2=F.heureDuPicAttendue(sauvegarde,CSV2);
+const ouverture=F.heureDOuvertureAttendue(sauvegarde,CSV),ouverture2=F.heureDOuvertureAttendue(sauvegarde,CSV2);
 
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
@@ -37,9 +38,12 @@ const pic=F.heureDuPicAttendue(sauvegarde,CSV),pic2=F.heureDuPicAttendue(sauvega
    const attendre=(ms=200)=>page.waitForTimeout(ms);
    const ch=await F.charger(page,nav,url('index.html'),{sauvegarde,csv:CSV});
    try{
-    // 1. L'heure d'ouverture : le pic de travail.
+    // 1. L'heure d'ouverture : le moment où le premier goulot du jour commence à coincer (évolution 16 e) ; sans goulot,
+    //    le pic de travail. La suite se lit au pic de travail, comme avant.
     assert.ok(pic.personnes>0&&pic2.t!==pic.t,'deux programmes, deux pics');
-    assert.equal(await page.evaluate(()=>Sim.vue.t),pic.t,V+'à l’ouverture, le créneau où le plus de personnes sont au travail');
+    assert.ok(ouverture.goulot&&ouverture2.goulot&&ouverture2.t!==ouverture.t,'deux programmes, deux débuts de goulot');
+    assert.equal(await page.evaluate(()=>Sim.vue.t),ouverture.t,V+'à l’ouverture, le moment où le premier goulot commence à coincer');
+    await page.evaluate(t=>Sim.vue.allerA(t),pic.t);await attendre(100);
 
     // Le plan entier tient, à 24 px des bords.
     const geometrie=()=>page.evaluate(()=>{
@@ -142,7 +146,7 @@ const pic=F.heureDuPicAttendue(sauvegarde,CSV),pic2=F.heureDuPicAttendue(sauvega
     await page.evaluate(()=>Sim.ateliers.rendre());await attendre();
     assert.equal(await page.evaluate(()=>Sim.vue.t),choisie,V+'un recalcul de la même journée garde l’heure');
     await F.importerVols(page,nav,ch.fichier,'vols-plus-tard.csv',CSV2);await nav.aller(page,'j-plan');await attendre(300);
-    assert.equal(await page.evaluate(()=>Sim.vue.t),pic2.t,V+'un autre programme : son propre pic');
+    assert.equal(await page.evaluate(()=>Sim.vue.t),ouverture2.t,V+'un autre programme : le début de son propre goulot');
     await tientTout('après un autre programme');
 
     // 6. « Fond de plan » : seulement s'il y a un fond.

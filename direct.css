@@ -82,6 +82,8 @@
 /* En relief, la légende a sa propre ligne sous les chiffres, et passe à la ligne plutôt que de se couper. */
 body[data-direct="relief"] .plan-bande{flex-wrap:wrap}
 body[data-direct="relief"] .plan-bande .direct-legende{flex:1 1 100%;flex-wrap:wrap}
+/* Trop étroite pour une ligne, la légende se coupe entre les personnes et les chariots. */
+@container bande (max-width:800px){.direct-legende .dl-sep{flex:0 0 100%;height:0;margin:0;background:none}}
 .direct-note{margin:0;padding:1px var(--ds-e-4) 3px;min-height:18px;font-size:var(--ds-t-11);line-height:14px;color:var(--ds-texte-3);background:var(--ds-surface-1)}
 body:not([data-direct="relief"]) .direct-legende,body:not([data-direct="relief"]) .direct-note{display:none!important}
 
@@ -94,3 +96,99 @@ body[data-direct="relief"][data-sous="j-plan"] .lecteur .zoom-ctrl,
 body[data-direct="relief"][data-sous="j-plan"] #plan-circule-note,
 body[data-direct="relief"][data-sous="j-plan"] #legende-plan{display:none!important}
 body:not([data-direct="relief"]) .col-plan>.direct{display:none!important}
+
+/* ==========================================================================
+ *  Lire et agir (évolution 16 e) : la barre du temps, « Point suivant », le
+ *  panneau (les services, le détail d'un service), le vol suivi.
+ * ==========================================================================*/
+
+/* Ce qui n'existe qu'en relief. */
+body:not([data-direct="relief"]) .direct-temps,body:not([data-direct="relief"]) .direct-seul,
+body:not([data-direct="relief"]) #direct-panneau,body:not([data-sous="j-plan"]) #direct-panneau{display:none!important}
+/* En relief, la barre du temps remplace le curseur du lecteur ; le panneau de la scène remplace celui du plan dessiné. */
+body[data-direct="relief"][data-sous="j-plan"] .lecteur .pr-temps,
+body[data-direct="relief"][data-sous="j-plan"] #panel-suivi{display:none!important}
+/* En relief, les services se choisissent dans la scène ou dans le panneau, qui dit aussi leurs chiffres : l'en-tête du
+ * plan dessiné (« Voir un service ») et sa bande de chiffres laissent leur place à la scène. La légende reste. */
+body[data-direct="relief"][data-sous="j-plan"] .plan-tete,
+body[data-direct="relief"][data-sous="j-plan"] #plan-bande-texte,
+body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important}
+
+/* La barre du temps : une piste qu'on parcourt à la souris, au doigt ou aux flèches. */
+.direct-temps{position:relative;flex:none;height:66px;background:var(--ds-surface-1);border-top:1px solid var(--ds-bordure);outline:0;touch-action:none;user-select:none;-webkit-user-select:none}
+.direct-temps:focus-visible{box-shadow:inset var(--ds-focus)}
+.direct-temps .dt-piste{position:relative;height:66px;cursor:ew-resize;overflow:hidden}
+.dt-svg{position:absolute;left:0;top:0;display:block}
+.dt-svg text{font-family:inherit;font-size:10.5px;font-weight:var(--ds-g-moyen)}
+.dt-jour-fond{fill:color-mix(in srgb,var(--ds-texte-1) 5%,transparent)}
+.dt-jour-trait{stroke:var(--ds-bordure-forte);stroke-width:1}
+.dt-jour{fill:var(--ds-texte-3)}
+.dt-base{stroke:var(--ds-bordure);stroke-width:1}
+.dt-aire{fill:color-mix(in srgb,var(--ds-accent) 32%,transparent);stroke:var(--ds-accent);stroke-width:1.25;stroke-linejoin:round}
+.dt-ligne{fill:none;stroke:var(--ds-attente);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dt-vol{stroke:var(--ds-texte-3);stroke-width:1.5}
+.dt-vol-retard{stroke:var(--ds-retard);stroke-width:2.5}
+.dt-legende{fill:var(--ds-texte-2)}
+.dt-max{fill:var(--ds-texte-3);font-variant-numeric:tabular-nums}
+.dt-curseur{position:absolute;left:-1px;top:0;bottom:0;width:2px;background:var(--ds-texte-1);pointer-events:none;will-change:transform}
+.dt-curseur::before{content:"";position:absolute;left:-4px;top:-2px;width:10px;height:10px;border-radius:50%;background:var(--ds-texte-1)}
+.dt-bulle{position:absolute;left:0;top:14px;z-index:1;margin:0;padding:2px 8px;border-radius:var(--ds-r-2);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant);
+  font-size:var(--ds-t-11);line-height:16px;color:var(--ds-texte-1);white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+.direct-annonce{flex:0 1 auto;min-width:0;font-size:var(--ds-t-12);line-height:1.35;color:var(--ds-texte-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;order:5}
+.direct-annonce:empty{display:none}
+
+/* Le vol suivi : sa phrase, posée sur la scène. */
+.direct-suivi{position:absolute;left:var(--ds-e-3);top:var(--ds-e-3);z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;max-width:min(620px,calc(100% - 2*var(--ds-e-3)));
+  padding:8px 10px;border-radius:var(--ds-r-2);border-left:4px solid var(--ds-accent);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant);font-size:var(--ds-t-12);line-height:1.4;color:var(--ds-texte-1)}
+.direct-suivi[hidden]{display:none}
+.direct-suivi.dp-critique{border-left-color:var(--ds-retard)}
+.direct-suivi span{flex:1 1 240px;color:var(--ds-texte-2)}
+
+/* Le panneau : la liste des services (des boutons), le détail d'un service. */
+.dp-corps h3{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-14)}
+.dp-corps h3 small{font-weight:var(--ds-g-moyen);color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+.dp-corps h4{margin:var(--ds-e-4) 0 var(--ds-e-1);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2)}
+.dp-services{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.dp-service{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:2px 8px;width:100%;margin:0;padding:8px 10px;text-align:left;font:inherit;color:var(--ds-texte-1);cursor:pointer;
+  border:1px solid var(--ds-bordure);border-left:4px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2);background:var(--ds-surface-2)}
+.dp-service:hover{background:var(--ds-survol)}
+.dp-service:focus-visible{outline:0;box-shadow:var(--ds-focus)}
+.dp-service[aria-pressed="true"]{border-color:var(--ds-accent);background:var(--ds-accent-pale)}
+.dp-service.dp-avertissement{border-left-color:var(--ds-attente)}
+.dp-service.dp-critique{border-left-color:var(--ds-retard)}
+.dp-nom{font-weight:var(--ds-g-fort);font-size:var(--ds-t-12)}
+.dp-ton{padding:1px 7px;border-radius:999px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);white-space:nowrap}
+.dp-avertissement .dp-ton{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.dp-critique .dp-ton{background:var(--ds-retard-doux);color:var(--ds-retard-texte)}
+.dp-chiffres{grid-column:1/-1;font-size:var(--ds-t-12);color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+.dp-retour{margin:0 0 var(--ds-e-2)}
+.dp-raison{margin:0 0 var(--ds-e-2);padding:6px 8px;border-radius:var(--ds-r-2);font-size:var(--ds-t-12);line-height:1.4}
+.dp-raison.dp-avertissement{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.dp-raison.dp-critique{background:var(--ds-retard-doux);color:var(--ds-retard-texte)}
+.dp-etats,.dp-sans{margin:0;font-size:var(--ds-t-12);line-height:1.5;color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+.dp-etats b{color:var(--ds-texte-1)}
+.dp-table{width:100%;border-collapse:collapse;font-size:var(--ds-t-12);font-variant-numeric:tabular-nums}
+.dp-table th,.dp-table td{padding:3px 4px;text-align:left;border-bottom:1px solid var(--ds-bordure);font-weight:var(--ds-g-moyen);vertical-align:baseline}
+.dp-table thead th{color:var(--ds-texte-3);font-size:var(--ds-t-11)}
+.dp-table .num{text-align:right}
+.dp-apres{display:inline-block;padding:0 6px;border-radius:999px;background:var(--ds-attente-doux);color:var(--ds-attente-texte);font-size:var(--ds-t-11);white-space:nowrap}
+.dp-liste{list-style:none;margin:0;padding:0;font-size:var(--ds-t-12);line-height:1.4}
+.dp-liste li{padding:3px 0;border-bottom:1px solid var(--ds-bordure)}
+.dp-liste b{font-weight:var(--ds-g-fort)}
+.dp-liste small{display:block;color:var(--ds-texte-3);font-size:var(--ds-t-11)}
+.dp-liste .dp-au-dela small{color:var(--ds-attente-texte)}
+.dp-courbe{margin:0}
+.dp-courbe svg{display:block;width:100%;height:auto}
+.dp-courbe text{font-family:inherit;font-size:10px;fill:var(--ds-texte-3)}
+.dp-courbe .dp-fin{text-anchor:end}
+.dp-axe{stroke:var(--ds-bordure-forte);stroke-width:1}
+.dp-aire{fill:color-mix(in srgb,var(--ds-accent) 30%,transparent);stroke:var(--ds-accent);stroke-width:1.25;stroke-linejoin:round}
+.dp-presents{fill:none;stroke:var(--ds-texte-3);stroke-width:1.5;stroke-linejoin:round}
+.dp-maintenant{stroke:var(--ds-texte-1);stroke-width:1.5}
+.dp-courbe figcaption{margin-top:2px;font-size:var(--ds-t-11);color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+.dp-cle{display:inline-block;width:12px;height:8px;margin:0 4px 0 0;vertical-align:baseline}
+.dp-cle-travail{background:color-mix(in srgb,var(--ds-accent) 30%,transparent);border-top:2px solid var(--ds-accent)}
+.dp-cle-presents{margin-left:10px;height:0;border-top:2px solid var(--ds-texte-3);vertical-align:middle}
+.dp-suivi{margin:0 0 var(--ds-e-4);padding:8px 10px;border-radius:var(--ds-r-2);border-left:4px solid var(--ds-accent);background:var(--ds-surface-2);font-size:var(--ds-t-12);line-height:1.45}
+.dp-suivi.dp-critique{border-left-color:var(--ds-retard)}
+.dp-suivi p{margin:0 0 var(--ds-e-1)}

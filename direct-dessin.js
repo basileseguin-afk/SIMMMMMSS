@@ -136,18 +136,6 @@
     aileA(devant.y1 ? 1 : -1);
   }
 
-  /** Une marque posée dans la scène : un mot dans une pastille, centré en (X, Y), cerné de sa couleur. Rend son rectangle. */
-  function marque(ctx, X, Y, texte, fond, trait, encre) {
-    ctx.font = police(11, true);
-    const w = Math.ceil(ctx.measureText(texte).width) + 12, h = 18, x = Math.round(X - w / 2), y = Math.round(Y - h / 2);
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, 9); else ctx.rect(x + 0.5, y + 0.5, w - 1, h - 1);
-    ctx.fillStyle = fond; ctx.fill(); ctx.strokeStyle = trait; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = encre; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(texte, x + w / 2, y + h / 2 + 0.5);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    return { x, y, w, h };
-  }
-
   /** La police d'un texte de la scène. */
   const police = (taille, gras) => (gras ? '600 ' : '500 ') + taille + 'px Inter, "Inter Variable", system-ui, sans-serif';
 
@@ -171,7 +159,7 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
-  const api = { JETONS, OMBRES, rvb, css, melange, palette, poly, sol, boite, personne, chariot, vehicule, avion, marque, police, etiquette };
+  const api = { JETONS, OMBRES, rvb, css, melange, palette, poly, sol, boite, personne, chariot, vehicule, avion, police, etiquette };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDirectDessin = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

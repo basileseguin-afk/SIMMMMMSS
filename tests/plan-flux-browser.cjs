@@ -26,7 +26,7 @@ const I=require('../moteur/indicateurs.js');
 const {siteSansPlan}=require('./plan-fictif.cjs');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 
-const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),pic=F.heureDuPicAttendue(sauvegarde,CSV),R=pic.resultat,SEJOURS=R.stocks.sejours;
+const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),pic=F.heureDuPicAttendue(sauvegarde,CSV),R=pic.resultat,SEJOURS=R.stocks.sejours,ouverture=F.heureDOuvertureAttendue(sauvegarde,CSV);
 /* Les créneaux de chaque service sur l'horloge du jour J, comme charge-vue.js : décalés de leur jour, additionnés. */
 const decale=g=>{const c=g.creneaux;if(c.debut===null)return c;const d=g.jour*1440,o={debut:c.debut+d};for(const m of I.MESURES)o[m]=c[m]?{debut:c[m].debut+d,valeurs:c[m].valeurs}:null;return o;};
 const groupes=new Map();for(const g of pic.k.services){if(!groupes.has(g.service))groupes.set(g.service,[]);groupes.get(g.service).push(g);}
@@ -51,7 +51,10 @@ const plat=s=>String(s).replace(/[\s  ]+/g,' ').trim();
    const ch=await F.charger(page,nav,site.url('index.html'),{sauvegarde,csv:CSV});
    try{
     if(theme==='sombre'){await page.evaluate(()=>{document.documentElement.dataset.theme='sombre';});await attendre(200);}
-    assert.equal(await page.evaluate(()=>Sim.vue.t),pic.t,V+'l’ouverture, au pic de travail');
+    // À l'ouverture : le moment où le premier goulot du jour commence à coincer (évolution 16 e ; sans goulot, le pic de
+    // travail). La suite se lit au pic de travail, comme avant.
+    assert.equal(await page.evaluate(()=>Sim.vue.t),ouverture.t,V+'l’ouverture, au début du premier goulot');
+    await page.evaluate(t=>Sim.vue.allerA(t),pic.t);await attendre(100);
 
     // 1. Les quatre états : un remplissage franc, ses contrastes ; la légende a les mêmes couleurs.
     const etats=await page.evaluate(TOKENS=>{

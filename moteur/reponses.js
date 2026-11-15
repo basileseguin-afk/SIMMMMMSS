@@ -285,29 +285,37 @@
     return parts.materiel > EPS ? 'materiel' : null;
   }
   /**
+   * Les lots d'une ligne (ses équipes) par lesquels quelque chose part en retard, un par lot et par ce qu'il porte : une
+   * commande prête après sa limite ou pas finie ; au handling, un vol chargé après sa limite ou pas chargé. Rend
+   * [{ atelier, lot, debut, fin, quoi: 'commande' | 'vol', id, cle, apres, retard }] dans l'ordre du journal — `apres` : le
+   * lot finit lui-même après la limite, ou ne finit pas (sinon, la commande prend son retard en aval) ; `retard` : celui de
+   * ce qu'il porte, en minutes (Infinity : pas fini). Le compte de `retardsDe` et le détail de `quand` en sortent tous deux.
+   */
+  function lotsEnRetard(equipes, r, seuils) {
+    const ids = new Set(equipes.map(v => v.id)), par = r.parClasse || {}, out = [];
+    const tard = c => c && !c.absente && (c.fin == null || (c.fin > c.echeance + EPS && c.fin - c.echeance >= seuils.retard - EPS));
+    const base = l => ({ atelier: l.atelier, lot: l.nom, debut: fini(l.debut) ? l.debut : null, fin: fini(l.fin) ? l.fin : null });
+    for (const l of r.lots || []) {
+      if (!ids.has(l.atelier) || l.dispo) continue;
+      if (l.handling) {
+        if (l.fin == null || (l.aHeure === false && (+l.retard || 0) >= seuils.retard - EPS)) {
+          out.push({ ...base(l), quoi: 'vol', id: l.vol, cle: 'vol ' + l.vol, apres: true, retard: l.fin == null ? Infinity : +l.retard || 0 });
+        }
+      } else for (const c of l.classes || []) if (tard(par[c])) {
+        out.push({ ...base(l), quoi: 'commande', id: c, cle: c, apres: l.fin == null || l.fin > par[c].echeance + EPS, retard: par[c].fin == null ? Infinity : par[c].fin - par[c].echeance });
+      }
+    }
+    return out;
+  }
+  /**
    * Ce qui part en retard par les lots d'une ligne (ses équipes) : les commandes prêtes après leur limite ou pas finies
    * qu'ils portent ; au handling, les vols chargés après leur limite ou pas chargés. Rend leur nombre (`n`) ; parmi elles,
    * celles que le lot de la ligne finit lui-même après la limite, ou ne finit pas (`apres` : les autres prennent leur retard
    * en aval) ; et le plus grand de ces retards, en minutes (`retardMax` : Infinity pour une commande pas finie).
    */
   function retardsDe(equipes, r, seuils) {
-    const ids = new Set(equipes.map(v => v.id)), par = r.parClasse || {}, vus = new Set(), apres = new Set();
-    const tard = c => c && !c.absente && (c.fin == null || (c.fin > c.echeance + EPS && c.fin - c.echeance >= seuils.retard - EPS));
-    let retardMax = 0;
-    for (const l of r.lots || []) {
-      if (!ids.has(l.atelier) || l.dispo) continue;
-      if (l.handling) {
-        if (l.fin == null || (l.aHeure === false && (+l.retard || 0) >= seuils.retard - EPS)) {
-          vus.add('vol ' + l.vol); apres.add('vol ' + l.vol);
-          retardMax = Math.max(retardMax, l.fin == null ? Infinity : +l.retard || 0);
-        }
-      } else for (const c of l.classes || []) if (tard(par[c])) {
-        vus.add(c);
-        if (l.fin == null || l.fin > par[c].echeance + EPS) apres.add(c);
-        retardMax = Math.max(retardMax, par[c].fin == null ? Infinity : par[c].fin - par[c].echeance);
-      }
-    }
-    return { n: vus.size, apres: apres.size, retardMax };
+    const lots = lotsEnRetard(equipes, r, seuils);
+    return { n: new Set(lots.map(x => x.cle)).size, apres: new Set(lots.filter(x => x.apres).map(x => x.cle)).size, retardMax: lots.reduce((m, x) => Math.max(m, x.retard), 0) };
   }
 
   /* ----------------------------------------------------------------------
@@ -673,6 +681,29 @@
   }
 
   /**
+   * « Où et quand ça coince », dans le détail (évolution 16 e) : ce que `coince` résume, lu par les mêmes fonctions, sans
+   * rien y ajouter — ni règle, ni seuil. Par ligne (service, jour de travail) des indicateurs :
+   *  - `arrivages` : les arrivages de ses équipes qui attendent, [{ service, jour, equipe, lot, lots, de, a, minutes }] —
+   *    de l'instant où l'arrivage est prêt (`de`) au début de son premier lot (`a`) ;
+   *  - `enRetard` : les lots par lesquels une commande ou un vol part en retard, [{ service, jour, atelier, lot, debut, fin,
+   *    quoi, id, apres, retard }] (`fin` null : pas fini ; `retard` null : ce qu'il porte n'est pas fini).
+   * Mêmes arguments que `reponses` ; rien n'est modifié.
+   */
+  function quand(r, args, o = {}) {
+    if (!r || r.ok === false) return null;
+    const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a), ke = new Map(k.equipes.map(e => [e.id, e]));
+    const arrivages = [], enRetard = [];
+    for (const s of k.services) {
+      const eqs = equipesDe(r, s);
+      for (const v of eqs) for (const x of arrivagesDe(v, ke.get(v.id)) || []) {
+        if (x.minutes > EPS) arrivages.push({ service: s.service, jour: s.jour, equipe: x.equipe, lot: x.lot.nom, lots: x.lots, de: x.de, a: x.a, minutes: x.minutes });
+      }
+      for (const { cle, ...x } of lotsEnRetard(eqs, r, seuils)) enRetard.push({ service: s.service, jour: s.jour, ...x, retard: fini(x.retard) ? net(x.retard) : null });
+    }
+    return { arrivages, enRetard };
+  }
+
+  /**
    * Les vols qu'une plonge par vol laisse à laver le lendemain (évolution 18), lot par lot : ses lots non lavés (un lavage
    * arrêté à une fin de présence, un vol que personne n'a commencé) dont le vol est dans `saleFinal`, chacun avec son temps
    * de lavage, en minutes d'un tunnel normal — la durée restante d'un lavage arrêté ; pour un vol pas commencé, la durée
@@ -774,7 +805,7 @@
   }
 
   const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, DEPASSEMENT_MIN, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
-    reponses, comparer, comptes, equipement, motDuJour, motDeLaLigne, lotsTenus, lendemainDeLEquipe };
+    reponses, quand, comparer, comptes, equipement, motDuJour, motDeLaLigne, lotsTenus, lendemainDeLEquipe };
   if (enNode) module.exports = api;
   else root.OrlyReponses = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

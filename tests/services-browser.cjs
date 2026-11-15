@@ -62,12 +62,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='armement').nom),'Armement EZY/AF','nom vide refusé');
 
   // 6. « Voir sur le plan » : le plan rejoué, le service choisi. Sans équipe,
-  //    son panneau propose d'en ajouter une.
+  //    son panneau propose d'en ajouter une. La page s'ouvre en relief (évolution 16) : un service sans équipe n'est pas
+  //    dans la scène, et le panneau de la scène le dit, avec la même action ; à plat, c'est le panneau du plan dessiné.
   await ligne('armement').locator('[data-svc-action=voir]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-plan');
   assert.equal(await page.locator('#zone-picker').inputValue(),'armement');
   assert.match(await page.locator('#goulot-info').textContent(),/Aucune équipe ici/);
-  await page.locator('#goulot-info [data-svc-action=equipe][data-svc=armement]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.direct),'relief','la page s’ouvre en relief');
+  const visibles=page.locator('#en-ce-moment [data-svc-action=equipe][data-svc=armement]:visible');
+  assert.equal(await visibles.count(),1,'en relief : une seule action « ajouter une équipe » à l’écran');
+  assert.match(await page.locator('#direct-panneau-corps').innerText(),/Armement EZY\/AF[\s\S]*Aucune équipe ici/,'le panneau de la scène dit le service et qu’il n’a pas d’équipe');
+  await page.locator('#direct-choix [data-direct-mode=plat]').click();await attendre();
+  assert.ok(await page.locator('#goulot-info [data-svc-action=equipe][data-svc=armement]').isVisible(),'à plat : le panneau du plan dessiné');
+  await page.locator('#direct-choix [data-direct-mode=relief]').click();await attendre();
+  // Sans service choisi ni journée à rejouer (aucune commande n'a d'équipe) : le panneau de la scène le dit et mène à la
+  // description de l'unité, comme celui du plan dessiné.
+  await page.locator('#direct-panneau-corps [data-direct-retour]').click();await attendre();
+  assert.match(await page.locator('#direct-panneau-corps').innerText(),/Pas encore de journée à rejouer/);
+  assert.ok(await page.locator('#direct-panneau-corps [data-page="mu-pas"]').isVisible(),'« Décrire votre unité → » dans le panneau de la scène');
+  await nav.aller(page,'u-services');await ligne('armement').locator('[data-svc-action=voir]').click();await attendre();
+  await visibles.click();await attendre();
   assert.equal((await cases('armement')).length,1,'depuis le plan aussi');
 
   // 7. « Modifier le plan de l'unité » ouvre l'édition du plan.

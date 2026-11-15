@@ -1419,7 +1419,7 @@ function selectionner(id) {
   if(Sim.editor)Sim.editor.showService(selection);
   document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
   majGoulotInfo();
-  if(Sim.direct)Sim.direct.rendre();
+  rendreDirect();
 }
 
 /* ==========================================================================
@@ -1797,7 +1797,7 @@ function peindreInstant(i) {
   majGoulotInfo();
   peindreBande(i);
   peindrePlanFlux(i.t);
-  if (Sim.direct) Sim.direct.rendre();
+  rendreDirect();
 }
 /* Évolution 14 (a) : la bande au-dessus du plan (les chiffres cumulés jusqu'à l'heure rejouée) et les repères du
  * curseur du temps (les jours, les départs des vols du jour relu). */
@@ -2198,22 +2198,129 @@ function choisirVueDirect(mode) {
   const relief = mode !== 'plat';
   document.body.dataset.direct = relief ? 'relief' : 'plat';
   document.querySelectorAll('#direct-choix [data-direct-mode]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.directMode === 'relief') === relief)));
-  if (relief && Sim.direct) Sim.direct.rendre();
+  if (relief) rendreDirect();
 }
 function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
   Sim.direct = OrlyDirectVue.creer(hote, {
-    lire: () => ({ site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
+    lire: () => { const x = lectureDirecte(); return { site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
-      ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, lecture: !!(Sim.vue && Sim.vue.enMarche) }),
-    choisir: id => selectionner(id),
+      ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, lecture: !!(Sim.vue && Sim.vue.enMarche),
+      // Ce que la journée dit à cette heure (la teinte des zones, le goulot du moment) ; le vol suivi.
+      lu: x ? x.lu : null, suivi: suiviDirect() }; },
+    choisir: id => choisirServiceDirect(id), suivre: vol => suivreVol(vol), annuler: () => annulerDirect(), revenue: () => rendreDirect(),
     // Ce qui travaille s'anime pendant la lecture ; la légende dit la tranche d'un chariot (50 repas, plus si la journée en compterait trop).
     enLecture: () => !!(Sim.vue && Sim.vue.enMarche),
     dire: x => { const el = document.getElementById('direct-tranche'); if (el) el.textContent = 'un chariot = ' + (x.tranche || OrlyDirectEtat.TRANCHE) + ' repas'; }
   });
   if (choix) choix.addEventListener('click', e => { const b = e.target.closest('[data-direct-mode]'); if (b) choisirVueDirect(b.dataset.directMode); });
+  initLireDirect();
   choisirVueDirect('relief');
+}
+
+/* ---- La vue en direct : lire et agir (évolution 16 e) ----------------------------------------------------------
+ *  La page ne calcule rien : direct-lire.js lit la journée (le résultat, les indicateurs, les réponses) ; la scène, la
+ *  barre du temps et le panneau montrent la même lecture, à la même heure.
+ * ---------------------------------------------------------------------------------------------------------------- */
+let lectureGardee = null, volSuivi = null, annonceDirecte = null;
+/** La lecture de la journée pour la vue en direct : gardée tant que la journée et les bornes du rejeu ne changent pas. */
+function lectureDirecte() {
+  const j = journeeLue(), v = Sim.vue;
+  if (!j || !v || v.vide || !window.OrlyDirectLire) return null;
+  if (lectureGardee && lectureGardee.j === j && lectureGardee.de === v.debut && lectureGardee.a === v.fin) return lectureGardee;
+  const lu = OrlyDirectLire.lire(j, { de: v.debut, a: v.fin });
+  lectureGardee = { j, de: v.debut, a: v.fin, lu, frise: OrlyDirectLire.frise(j, lu, v.debut, v.fin), suivis: new Map() };
+  return lectureGardee;
+}
+/** Le vol suivi, lu dans la journée ; un vol qui n'y est plus n'est plus suivi. */
+function suiviDirect() {
+  const x = lectureDirecte();
+  if (!x || volSuivi == null) return null;
+  if (!x.suivis.has(volSuivi)) x.suivis.set(volSuivi, OrlyDirectLire.suivi(x.j, volSuivi));
+  const s = x.suivis.get(volSuivi);
+  if (!s) volSuivi = null;
+  return s;
+}
+/** Un clic sur un chariot ou un avion suit son vol ; un second clic sur le même ne le suit plus. */
+function suivreVol(vol) { volSuivi = vol === volSuivi ? null : vol; rendreDirect(); }
+/** Un clic sur un service ouvre son détail dans le panneau : replié, le panneau se déplie. */
+/** Le service choisi, s'il n'a aucune équipe ({ service, nom }) : il n'est pas dans la scène. Sinon null. */
+function serviceSansEquipe() {
+  if (!selection || ((Sim.ateliers && Sim.ateliers.state.ateliers) || []).some(a => a.service === selection)) return null;
+  const z = servicesDisponibles().find(s => s.id === selection);
+  return { service: selection, nom: z ? nomLisible(z.nom) : selection };
+}
+function choisirServiceDirect(id) {
+  selectionner(id);
+  if (selection && document.body.classList.contains('sans-en-ce-moment')) appliquerEnCeMoment(true);
+}
+/** Échap : ne plus suivre le vol ; sinon, fermer le détail du service. Dit si quelque chose a été annulé. */
+function annulerDirect() {
+  if (volSuivi != null) { volSuivi = null; rendreDirect(); return true; }
+  if (selection) { selectionner(selection); return true; }
+  return false;
+}
+/** « Point suivant » : le prochain moment à regarder après l'heure rejouée — le début d'un goulot, un chargement en retard. */
+function allerAuPointSuivant() {
+  const x = lectureDirecte(), v = Sim.vue; if (!x || !v) return;
+  const p = OrlyDirectLire.pointSuivant(x.lu, v.t); if (!p) return;
+  v.pause(); v.allerA(p.t);
+  const tous = [p, ...p.avec];
+  annonceDirecte = { t: v.t, texte: OrlyDirectTemps.quand(p.t) + ' — ' + tous.slice(0, 2).map(q => q.texte).join(' ; ') + (tous.length > 2 ? ' ; et ' + (tous.length - 2) + (tous.length > 3 ? ' autres' : ' autre') : '') };
+  rendreDirect();
+}
+/** La scène, la barre du temps, le panneau, le vol suivi et « Point suivant » : tous à l'heure rejouée. */
+function rendreDirect() {
+  if (Sim.direct) Sim.direct.rendre();
+  if (document.body.dataset.direct !== 'relief') return;
+  if (Sim.directTemps) Sim.directTemps.rendre();
+  if (Sim.directPanneau) Sim.directPanneau.rendre();
+  const x = lectureDirecte(), v = Sim.vue, t = v && !v.vide ? v.t : null;
+  // « Point suivant » : sans moment à regarder après cette heure, le bouton se grise et le dit.
+  const b = document.getElementById('direct-point');
+  if (b) {
+    const p = x && t != null ? OrlyDirectLire.pointSuivant(x.lu, t) : null, titre = p ? 'Aller à ' + OrlyDirectTemps.quand(p.t) + ' : ' + p.texte : 'Plus de moment à regarder après cette heure';
+    if (b.disabled !== !p) b.disabled = !p;
+    if (b.title !== titre) b.title = titre;
+  }
+  // L'annonce du point où l'on vient d'arriver : elle s'efface dès que l'heure bouge.
+  const a = document.getElementById('direct-annonce');
+  if (a) { if (annonceDirecte && annonceDirecte.t !== t) annonceDirecte = null; const texte = annonceDirecte ? annonceDirecte.texte : ''; if (a.textContent !== texte) a.textContent = texte; }
+  // Le vol suivi : sa phrase reste sur la scène, même panneau replié.
+  const bandeau = document.getElementById('direct-suivi'), suivi = suiviDirect();
+  if (bandeau) {
+    const html = suivi ? '<b>Vol suivi : ' + escDirect(suivi.vol) + '</b><span>' + escDirect(suivi.phrase) + '</span><button type="button" class="btn btn-mini" data-direct-nesuivre>Ne plus suivre (Échap)</button>' : '';
+    if (bandeau.dataset.html !== html) { bandeau.dataset.html = html; bandeau.innerHTML = html; bandeau.hidden = !suivi; bandeau.classList.toggle('dp-critique', !!(suivi && suivi.enRetard)); }
+  }
+}
+/** Un texte venu de l'unité (un numéro de vol, un nom de service), échappé avant d'entrer dans la page. */
+const escDirect = x => String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function initLireDirect() {
+  const temps = document.getElementById('direct-temps'), panneau = document.getElementById('direct-panneau-corps'), point = document.getElementById('direct-point'), bandeau = document.getElementById('direct-suivi');
+  const heure = () => (Sim.vue && !Sim.vue.vide ? Sim.vue.t : null);
+  if (temps && window.OrlyDirectTemps) Sim.directTemps = OrlyDirectTemps.creer(temps, {
+    lire: () => { const x = lectureDirecte(); return { frise: x ? x.frise : null, t: heure() }; },
+    allerA: t => { if (Sim.vue) { Sim.vue.pause(); Sim.vue.allerA(t); } }
+  });
+  if (panneau && window.OrlyDirectPanneau) Sim.directPanneau = OrlyDirectPanneau.creer(panneau, {
+    lire: () => {
+      // Un service choisi sans aucune équipe n'est pas dans la scène : le panneau le dit, même sans journée à rejouer.
+      const x = lectureDirecte(), t = heure(), sansEquipe = serviceSansEquipe(); if (!x || t == null) return sansEquipe ? { sansEquipe } : null;
+      const noms = Object.fromEntries(servicesDisponibles().map(z => [z.id, nomLisible(z.nom)]));
+      return { site: siteDeLaVue(), etat: OrlyDirectEtat.etatA(x.j, t), tons: OrlyDirectLire.tonsA(x.lu, x.j, t), noms, selection,
+        detail: selection ? OrlyDirectLire.detail(x.lu, { ...x.j, args: { ...x.j.args, noms: { ...(x.j.args.noms || {}), ...noms } } }, selection, t) : null, sansEquipe, suivi: suiviDirect() };
+    },
+    choisir: id => choisirServiceDirect(id), retour: () => { if (selection) selectionner(selection); }, neSuivrePlus: () => { volSuivi = null; rendreDirect(); },
+    enLecture: () => !!(Sim.vue && Sim.vue.enMarche)
+  });
+  if (point) point.addEventListener('click', allerAuPointSuivant);
+  if (bandeau) bandeau.addEventListener('click', e => { if (e.target.closest('[data-direct-nesuivre]')) { volSuivi = null; rendreDirect(); } });
+  // Échap annule : le vol suivi d'abord, puis le détail du service — hors d'un champ, d'une fenêtre.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || e.defaultPrevented || document.body.dataset.sous !== 'j-plan' || document.body.dataset.direct !== 'relief' || editMode || saisieTexte(e.target) || document.querySelector('dialog[open]')) return;
+    if (annulerDirect()) e.preventDefault();
+  });
 }
 
 let journeeRelue = null;
@@ -2223,7 +2330,9 @@ function placerAuPic() {
   if (journeeRelue && journeeRelue[0] === cle[0] && journeeRelue[1] === cle[1]) return;
   journeeRelue = cle;
   if (!v || v.vide || !r || !r.ok || !window.OrlyIndicateurs || !window.OrlyChargeVue) return;
-  const t = OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
+  // À l'ouverture : le moment où le premier goulot du jour commence à coincer ; sans goulot, le pic de travail (évolution 16 e).
+  const x = lectureDirecte(), goulot = x ? x.lu.ouverture : null;
+  const t = goulot != null && goulot >= v.debut && goulot <= v.fin ? goulot : OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
   if (t != null && t >= v.debut && t <= v.fin) v.allerA(t);
 }
 

@@ -14,7 +14,7 @@ const F=require('./plan-rejoue-fictif.cjs');
 const {siteSansPlan}=require('./plan-fictif.cjs');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 
-const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),pic=F.heureDuPicAttendue(sauvegarde,CSV);
+const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),pic=F.heureDuPicAttendue(sauvegarde,CSV),ouverture=F.heureDOuvertureAttendue(sauvegarde,CSV);
 const dossier=process.env.ORY_CAPTURES?path.resolve(process.env.ORY_CAPTURES):fs.mkdtempSync(path.join(os.tmpdir(),'ory-captures-'));
 fs.mkdirSync(dossier,{recursive:true});
 /** La largeur et la hauteur d'un PNG, lues dans son en-tête (IHDR). */
@@ -40,11 +40,13 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     assert.equal(fond,theme==='sombre'?'rgb(17, 20, 24)':'rgb(255, 255, 255)',V+'le thème');
 
     // Le plan rejoué : à l'ouverture.
-    assert.equal(await page.evaluate(()=>Sim.vue.t),pic.t,V+'l’ouverture, au pic');
+    // (Depuis l'évolution 16 e : au moment où le premier goulot du jour commence à coincer ; sans goulot, au pic de travail.)
+    assert.equal(await page.evaluate(()=>Sim.vue.t),ouverture.t,V+'l’ouverture, au début du premier goulot');
     assert.ok(await page.locator('#plan .zone.s-travail').count()>0,V+'des services au travail');
     assert.ok(await page.locator('#plan-circule .pc-trait').count()>0,V+'ce qui circule');
     await capturer('plan-1-ouverture');
     // Au pic, sur le service où le plus de personnes sont au travail.
+    await page.evaluate(t=>Sim.vue.allerA(t),pic.t);await attendre();
     const plusCharge=await page.evaluate(()=>[...document.querySelectorAll('#plan .zone[data-au-travail]')].sort((a,b)=>b.dataset.auTravail-a.dataset.auTravail)[0].dataset.id);
     await page.locator('#zone-picker').selectOption(plusCharge);await page.locator('#zoom-fit').click();await attendre(400);
     assert.match(await page.locator(`#plan .zone[data-id="${plusCharge}"] .zone-charge`).getAttribute('aria-label'),/^\d+ au travail \/ \d+ présents?$/,V+'au centre, au travail / présents');

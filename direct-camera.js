@@ -170,8 +170,9 @@
     const o = options || {}, jeu = o.jeu ?? 4, pas = o.pas ?? 6, v = visible(ecran), poses = [], out = new Map();
     const dedans = r => r.x >= v.x0 && r.y >= v.y0 && r.x + r.w <= v.x1 && r.y + r.h <= v.y1;
     const libre = r => poses.every(p => !seTouchent(r, p, jeu));
-    // Les plus hautes à l'écran d'abord (puis de gauche à droite, puis l'ordre donné) : toujours le même résultat.
-    const rang = etiquettes.map((e, i) => ({ e, i })).sort((p, q) => p.e.ay - q.e.ay || p.e.ax - q.e.ax || p.i - q.i);
+    // Celles qui passent avant les autres (`avant` : le goulot du moment) prennent leur place d'abord ; puis les plus hautes
+    // à l'écran (puis de gauche à droite, puis l'ordre donné) : toujours le même résultat.
+    const rang = etiquettes.map((e, i) => ({ e, i })).sort((p, q) => (q.e.avant || 0) - (p.e.avant || 0) || p.e.ay - q.e.ay || p.e.ax - q.e.ax || p.i - q.i);
     for (const { e } of rang) {
       const base = { x: borne(e.ax - e.w / 2, v.x0, Math.max(v.x0, v.x1 - e.w)), y: borne(e.ay - e.h, v.y0, Math.max(v.y0, v.y1 - e.h)), w: e.w, h: e.h };
       let pose = null;
