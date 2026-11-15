@@ -38,7 +38,8 @@ const hh=t=>{const m=((Math.round(t)%1440)+1440)%1440;return String(Math.floor(m
    return null;},id);
  /** Les coordonnées d'un point de la toile, dans la page. */
  const surLaToile=async p=>{const b=await page.locator('#direct-toile').boundingBox();return {x:b.x+p.X,y:b.y+p.Y};};
- const panneau=()=>page.evaluate(()=>{const c=document.getElementById('direct-panneau-corps');return {texte:c.innerText,visible:c.offsetParent!==null,services:[...c.querySelectorAll('[data-direct-service]')].map(b=>({id:b.dataset.directService,texte:b.innerText.replace(/\s+/g,' ').trim(),presse:b.getAttribute('aria-pressed'),balise:b.tagName,type:b.type})),
+ const panneau=()=>page.evaluate(()=>{const c=document.getElementById('direct-panneau-corps');return {texte:c.innerText,visible:c.offsetParent!==null,services:[...c.querySelectorAll('.dq-personnes [data-direct-service]')].map(b=>({id:b.dataset.directService,texte:b.closest('tr').innerText.replace(/\s+/g,' ').trim(),presse:b.getAttribute('aria-pressed'),balise:b.tagName,type:b.type,
+     n:Object.fromEntries([...b.closest('tr').querySelectorAll('td[data-etat]')].map(td=>[td.dataset.etat,+td.textContent]))})),
    rubriques:[...c.querySelectorAll('h4')].map(h=>h.textContent),titre:(c.querySelector('.dp-titre')||{}).textContent||null,detail:(c.querySelector('.dp-detail')||{dataset:{}}).dataset.service||null,lignes:c.querySelectorAll('.dp-table tbody tr').length,
    focus:document.activeElement&&c.contains(document.activeElement)?(document.activeElement.dataset.directService||(document.activeElement.hasAttribute('data-direct-retour')?'retour':'autre')):null};});
  try{
@@ -71,7 +72,8 @@ const hh=t=>{const m=((Math.round(t)%1440)+1440)%1440;return String(Math.floor(m
   // Le contour pulse : la scène se redessine sans qu'on y touche.
   const i1=(await etat()).images;await page.waitForFunction(i=>Sim.direct.etatVue().images>i+10,i1);
 
-  // 2. Le panneau : la liste des services est une liste de boutons ; le goulot y « coince », en toutes lettres.
+  // 2. Le panneau : la liste des services est une liste de boutons (le nom de chaque service, dans la première des cinq
+  //    réponses — évolution 16 f) ; le goulot y « coince », en toutes lettres.
   const p0=await panneau();
   assert.ok(p0.visible,'le panneau de la scène est là');
   assert.deepEqual(p0.services.map(s=>s.id),await page.evaluate(()=>Sim.direct.site.zones.flatMap(z=>z.services)),'un bouton par service, dans l’ordre des zones');
@@ -80,7 +82,7 @@ const hh=t=>{const m=((Math.round(t)%1440)+1440)%1440;return String(Math.floor(m
   assert.equal(await page.evaluate(()=>document.getElementById('panel-suivi').offsetParent),null,'le panneau du plan dessiné laisse sa place');
   // Ses chiffres sont ceux de la scène.
   const lus=await page.evaluate(()=>OrlyDirectEtat.etatA(Sim.direct.journee,Sim.vue.t).services);
-  for(const s of p0.services){const n=lus[s.id]||{auTravail:0,presents:0,lots:0};assert.ok(s.texte.includes(n.auTravail+' au travail / '+n.presents+(n.presents>=2?' présents':' présent')),s.id+' : '+s.texte);}
+  for(const s of p0.services){const n=lus[s.id]||{auTravail:0,presents:0};assert.deepEqual([s.n.auTravail,s.n.presents],[n.auTravail,n.presents],s.id+' : au travail, présents');}
 
   // 3. « Point suivant » mène au début du goulot.
   await aLHeure(G.debut-10);
@@ -125,7 +127,7 @@ const hh=t=>{const m=((Math.round(t)%1440)+1440)%1440;return String(Math.floor(m
   await page.waitForFunction(()=>!document.querySelector('#direct-panneau-corps .dp-detail'));
   assert.equal((await etat()).selection,null);
   // Au clavier : la liste est faite de boutons ; Entrée ouvre le détail, le clavier le suit ; Échap revient au bouton.
-  await page.locator(`[data-direct-service="${G.service}"]`).focus();
+  await page.locator(`#direct-panneau-corps .dq-personnes [data-direct-service="${G.service}"]`).focus();
   await page.keyboard.press('Enter');
   await page.waitForFunction(s=>!!document.querySelector('#direct-panneau-corps .dp-detail[data-service="'+s+'"]'),G.service);
   const p5=await panneau();

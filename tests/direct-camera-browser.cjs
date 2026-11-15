@@ -149,7 +149,7 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    // service », évolution 16 e) ; sans service choisi, « Cadrer » montre tout.
    await page.locator('#direct-panneau-corps [data-direct-retour]').click();
    await page.waitForFunction(()=>Sim.direct.etatVue().selection===null);
-   await page.locator('#direct-panneau-corps [data-direct-service="plonge"]').click();
+   await page.locator('#direct-panneau-corps .dq-personnes [data-direct-service="plonge"]').click();
    await page.waitForFunction(()=>Sim.direct.etatVue().selection==='plonge');
    await page.locator('#direct-panneau-corps [data-direct-retour]').click();
    await page.waitForFunction(()=>Sim.direct.etatVue().selection===null);

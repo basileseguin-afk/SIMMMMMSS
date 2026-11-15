@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (f) : la vue en direct — les cinq réponses, à côté de la scène
+
+À droite de la scène (dessous sur un écran étroit), le panneau répond aux cinq
+questions de l'évolution 15, lues dans son module, à l'heure rejouée.
+
+- **1. Les personnes** par service à cette heure : au travail, en pause, sans
+  travail, présents ; l'unité ; la réponse de la journée. Le nom d'un service
+  ouvre son détail.
+- **2. Où ça coince** à cette heure, et sur la journée. **3. La fin de chaque
+  service** et ses heures sup. **4. Ce qui part en retard**, avec la cause.
+- **5. Ce que change l'essai**, s'il y en a deux, avec le choix **« Référence
+  / Essai »** : la scène rejoue l'un ou l'autre à la même heure, et le dit.
+- Sur un écran de moins de 1 100 px, le panneau passe sous la scène, qui
+  garde toute la largeur.
+- D'un site à l'autre de même emprise (un autre essai, un réglage qui ne
+  change pas le site), la caméra reste où on l'a mise.
+
+Ce qui ne change pas : aucun calcul. Les réponses sont celles du module, dans
+les mots de la Synthèse ; les personnes à l'heure rejouée, celles des
+indicateurs. Un essai retenu garde sa journée telle qu'elle était. La
+version 2 n'est pas touchée.
+
+Fichiers : `direct-questions.js` (nouveau), `direct-panneau.js`,
+`direct-vue.js`, `direct.css`, `sim.js`, `index.html`,
+`tests/direct-questions.test.cjs` et `tests/direct-questions-browser.cjs`
+(nouveaux), `tests/direct-lire-browser.cjs` et
+`tests/direct-camera-browser.cjs` (le panneau, relus), `README.md`,
+`CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (e) : la vue en direct — lire et agir
 
 La scène dit où regarder, et répond quand on la touche.

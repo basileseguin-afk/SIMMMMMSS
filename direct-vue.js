@@ -118,8 +118,11 @@
     function relire() {
       perime = false;
       const x = a.lire() || {};
-      const nouveauSite = x.site !== v.site, r = x.journee && x.journee.r, avant = v.journee && v.journee.r;
-      if (nouveauSite || r !== avant || x.ateliers !== ateliers) {
+      // Un site nouveau se cadre en entier — sauf s'il a la même emprise que celui d'avant (un autre essai de la même
+      // unité, un réglage qui ne change pas le site) : la caméra reste alors où on l'a mise.
+      const memeEmprise = !!(v.site && x.site && JSON.stringify(v.site.emprise) === JSON.stringify(x.site.emprise));
+      const autreSite = x.site !== v.site, nouveauSite = autreSite && !memeEmprise, r = x.journee && x.journee.r, avant = v.journee && v.journee.r;
+      if (autreSite || r !== avant || x.ateliers !== ateliers) {
         // Les îlots : un par atelier réglé, avec ses personnes (celles de la journée calculée, sinon celles du réglage).
         ateliers = x.ateliers || null; v.site = x.site || null;
         const parId = new Map(((r && r.ateliers) || []).map(e => [e.id, e.personnes]));

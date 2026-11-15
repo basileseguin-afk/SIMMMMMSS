@@ -2204,9 +2204,9 @@ function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
   Sim.direct = OrlyDirectVue.creer(hote, {
-    lire: () => { const x = lectureDirecte(); return { site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
+    lire: () => { const x = lectureDirecte(), m = journeeMontree(); return { site: m.site, journee: m.j, t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
-      ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, lecture: !!(Sim.vue && Sim.vue.enMarche),
+      ateliers: m.ateliers, lecture: !!(Sim.vue && Sim.vue.enMarche),
       // Ce que la journée dit à cette heure (la teinte des zones, le goulot du moment) ; le vol suivi.
       lu: x ? x.lu : null, suivi: suiviDirect() }; },
     choisir: id => choisirServiceDirect(id), suivre: vol => suivreVol(vol), annuler: () => annulerDirect(), revenue: () => rendreDirect(),
@@ -2223,10 +2223,29 @@ function initDirect() {
  *  La page ne calcule rien : direct-lire.js lit la journée (le résultat, les indicateurs, les réponses) ; la scène, la
  *  barre du temps et le panneau montrent la même lecture, à la même heure.
  * ---------------------------------------------------------------------------------------------------------------- */
-let lectureGardee = null, volSuivi = null, annonceDirecte = null;
-/** La lecture de la journée pour la vue en direct : gardée tant que la journée et les bornes du rejeu ne changent pas. */
+let lectureGardee = null, volSuivi = null, annonceDirecte = null, essaiMontre = null;
+/** Le nom de chaque service, comme la page l'écrit. */
+const nomsDesServices = () => Object.fromEntries(servicesDisponibles().map(z => [z.id, nomLisible(z.nom)]));
+/**
+ * La journée que rejoue la scène (évolution 16 f) : la journée en cours ; ou, quand on a choisi « Référence » ou « Essai »,
+ * celle de l'essai retenu — sa journée lue, son site, ses ateliers, tels qu'ils étaient quand on l'a retenu.
+ * Rend { j, site, ateliers, noms, essai } (`essai` : « A », « B », ou null).
+ */
+function journeeMontree() {
+  const d = essaiMontre && snaps[essaiMontre] && snaps[essaiMontre].direct;
+  if (d) return { ...d, essai: essaiMontre };
+  if (essaiMontre) essaiMontre = null;
+  return { j: journeeLue(), site: siteDeLaVue(), ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, noms: nomsDesServices(), essai: null };
+}
+/** « Référence » (l'essai A) ou « Essai » (l'essai B) : la scène rejoue l'un ou l'autre, à la même heure ; le même choix revient à la journée en cours. */
+function montrerEssai(cle) {
+  essaiMontre = cle && cle !== essaiMontre && snaps[cle] && snaps[cle].direct ? cle : null;
+  volSuivi = null;
+  rendreDirect();
+}
+/** La lecture de la journée rejouée pour la vue en direct : gardée tant que la journée et les bornes du rejeu ne changent pas. */
 function lectureDirecte() {
-  const j = journeeLue(), v = Sim.vue;
+  const j = journeeMontree().j, v = Sim.vue;
   if (!j || !v || v.vide || !window.OrlyDirectLire) return null;
   if (lectureGardee && lectureGardee.j === j && lectureGardee.de === v.debut && lectureGardee.a === v.fin) return lectureGardee;
   const lu = OrlyDirectLire.lire(j, { de: v.debut, a: v.fin });
@@ -2287,6 +2306,12 @@ function rendreDirect() {
   // L'annonce du point où l'on vient d'arriver : elle s'efface dès que l'heure bouge.
   const a = document.getElementById('direct-annonce');
   if (a) { if (annonceDirecte && annonceDirecte.t !== t) annonceDirecte = null; const texte = annonceDirecte ? annonceDirecte.texte : ''; if (a.textContent !== texte) a.textContent = texte; }
+  // L'essai que rejoue la scène : dit sur la scène, avec de quoi revenir à la journée en cours.
+  const essai = document.getElementById('direct-essai'), montre = journeeMontree().essai;
+  if (essai && essai.dataset.essai !== String(montre)) {
+    essai.dataset.essai = String(montre); essai.hidden = !montre;
+    essai.innerHTML = montre ? '<span>La scène rejoue ' + (montre === 'A' ? 'la référence (l’essai A)' : 'l’essai (l’essai B)') + '.</span><button type="button" class="btn btn-mini" data-direct-essai="">Journée en cours</button>' : '';
+  }
   // Le vol suivi : sa phrase reste sur la scène, même panneau replié.
   const bandeau = document.getElementById('direct-suivi'), suivi = suiviDirect();
   if (bandeau) {
@@ -2307,15 +2332,21 @@ function initLireDirect() {
     lire: () => {
       // Un service choisi sans aucune équipe n'est pas dans la scène : le panneau le dit, même sans journée à rejouer.
       const x = lectureDirecte(), t = heure(), sansEquipe = serviceSansEquipe(); if (!x || t == null) return sansEquipe ? { sansEquipe } : null;
-      const noms = Object.fromEntries(servicesDisponibles().map(z => [z.id, nomLisible(z.nom)]));
-      return { site: siteDeLaVue(), etat: OrlyDirectEtat.etatA(x.j, t), tons: OrlyDirectLire.tonsA(x.lu, x.j, t), noms, selection,
-        detail: selection ? OrlyDirectLire.detail(x.lu, { ...x.j, args: { ...x.j.args, noms: { ...(x.j.args.noms || {}), ...noms } } }, selection, t) : null, sansEquipe, suivi: suiviDirect() };
+      const m = journeeMontree(), noms = m.noms, etat = OrlyDirectEtat.etatA(x.j, t), tons = OrlyDirectLire.tonsA(x.lu, x.j, t);
+      const detail = selection ? OrlyDirectLire.detail(x.lu, { ...x.j, args: { ...x.j.args, noms: { ...(x.j.args.noms || {}), ...noms } } }, selection, t) : null;
+      // Sans service choisi : les cinq réponses, à l'heure rejouée (évolution 16 f).
+      const questions = !detail && window.OrlyDirectQuestions
+        ? OrlyDirectQuestions.rendu({ site: m.site, noms, etat, tons, selection, t, lu: x.lu, reponses: x.j.reponses, essais: essaisRetenus(), montre: m.essai }) : null;
+      return { site: m.site, etat, tons, noms, selection, detail, sansEquipe, questions, suivi: suiviDirect() };
     },
     choisir: id => choisirServiceDirect(id), retour: () => { if (selection) selectionner(selection); }, neSuivrePlus: () => { volSuivi = null; rendreDirect(); },
+    essai: cle => montrerEssai(cle),
     enLecture: () => !!(Sim.vue && Sim.vue.enMarche)
   });
   if (point) point.addEventListener('click', allerAuPointSuivant);
   if (bandeau) bandeau.addEventListener('click', e => { if (e.target.closest('[data-direct-nesuivre]')) { volSuivi = null; rendreDirect(); } });
+  const essai = document.getElementById('direct-essai');
+  if (essai) essai.addEventListener('click', e => { if (e.target.closest('[data-direct-essai]')) montrerEssai(null); });
   // Échap annule : le vol suivi d'abord, puis le détail du service — hors d'un champ, d'une fenêtre.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || e.defaultPrevented || document.body.dataset.sous !== 'j-plan' || document.body.dataset.direct !== 'relief' || editMode || saisieTexte(e.target) || document.querySelector('dialog[open]')) return;
@@ -2331,7 +2362,7 @@ function placerAuPic() {
   journeeRelue = cle;
   if (!v || v.vide || !r || !r.ok || !window.OrlyIndicateurs || !window.OrlyChargeVue) return;
   // À l'ouverture : le moment où le premier goulot du jour commence à coincer ; sans goulot, le pic de travail (évolution 16 e).
-  const x = lectureDirecte(), goulot = x ? x.lu.ouverture : null;
+  const lue = journeeLue(), goulot = lue && window.OrlyDirectLire ? OrlyDirectLire.lire(lue, { de: v.debut, a: v.fin }).ouverture : null;
   const t = goulot != null && goulot >= v.debut && goulot <= v.fin ? goulot : OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
   if (t != null && t >= v.debut && t <= v.fin) v.allerA(t);
 }
@@ -2649,7 +2680,7 @@ function initControles() {
   document.getElementById('btn-export').addEventListener('click', exporterResultats);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
-  document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
+  document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); rendreDirect(); });
   // « Comparer J+1 et planche retour » : ici, dans les réglages et sur la planche.
   document.addEventListener('click', e => { if (e.target.closest('[data-comparer-retours]')) comparerRetours(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
@@ -2690,6 +2721,9 @@ function capturer(slot, silencieux) {
   });
   // Évolution 15 b : les réponses de l'essai, pour « Ce que change l'essai » dans la Synthèse.
   snaps[slot].reponses = reponsesDuJour();
+  // Évolution 16 f : de quoi rejouer l'essai dans la vue en direct — sa journée lue, son site, ses ateliers, les noms.
+  const lue = journeeLue();
+  snaps[slot].direct = lue ? { j: lue, site: siteDeLaVue(), ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)), noms: nomsDesServices() } : null;
   if (silencieux) return;
   majCompare();
   toast('Scénario ' + slot + ' capturé');

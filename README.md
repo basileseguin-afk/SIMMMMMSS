@@ -846,6 +846,34 @@ gagne `quand(r, args, o)` : le détail de « où et quand ça coince » — les
 arrivages qui attendent, les lots par lesquels quelque chose part en retard —
 lu par les mêmes fonctions que ses réponses, qui ne changent pas.
 
+### En relief : les cinq réponses, à côté de la scène (évolution 16 f)
+
+À droite de la scène — dessous sur un écran étroit (moins de 1 100 px) —, le
+panneau « En ce moment » répond aux cinq questions de l'évolution 15, dans
+leur ordre, lues dans son module (`moteur/reponses.js`) et dites dans les mots
+de la Synthèse :
+
+1. **Les personnes**, par service, à l'heure rejouée : au travail, en pause,
+   sans travail, présents — celles des indicateurs de charge, entières, comme
+   dans la scène ; l'unité en dernière ligne ; dessous, la réponse de la
+   journée (« Il faut … personnes, … sont présentes »). Le nom de chaque
+   service est un bouton : il ouvre son détail.
+2. **Où ça coince** : à cette heure — les goulots du jour qui coincent
+   maintenant, avec leur phrase, et les services à surveiller — puis sur la
+   journée, la carte de la Synthèse.
+3. **La fin de chaque service** et ses heures sup : une ligne par service et
+   jour de travail, sa fin contre son horaire.
+4. **Ce qui part en retard**, avec la cause : les exceptions de la Synthèse.
+5. **Ce que change l'essai**, s'il y en a deux (Résultats › Comparer deux
+   essais) : la carte de la Synthèse, et le choix **« Référence / Essai »** —
+   la scène rejoue l'un ou l'autre à la même heure, avec ses ateliers, ses
+   personnes et ses réponses tels qu'ils étaient quand on l'a retenu. Le même
+   choix une seconde fois, ou « Journée en cours » sur la scène, revient à la
+   journée en cours.
+
+La mise en page des cinq réponses est dans `direct-questions.js` (sans
+navigateur). La vue à plat montre toujours la journée en cours.
+
 **Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
@@ -1271,6 +1299,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/direct-circulation-browser.cjs` | Ce qui circule, dans la page (v1, évolution 16 d) : la légende (une couleur par nature, « un chariot = 50 repas ») aux couleurs de la scène ; à sept heures de la journée, les chariots en file égaux aux stocks du résultat, les lots en cours dans l’îlot de leur atelier, un véhicule par tournée en route ; l’étiquette d’un vol chargé en retard teintée de critique, avec son retard ; « Tout voir » avec l’aire des avions ; seul le tunnel qui lave est éclairé ; la cadence de la ligne robotisée ; la lecture et la pause ; le thème sombre ; rien à plat ni en version 2. |
 | `tests/direct-lire.test.cjs` | Lire la vue en direct (v1, évolution 16 e), sans navigateur, sur l’unité fictive : `quand` du module des réponses égal à ce que ses goulots et ses lignes résument, sans changer ses réponses ; les moments où un goulot coince (autour de ses lots en retard ; après la fin d’horaire de l’équipe qui dépasse) et sa phrase, celle de la Synthèse ; la teinte critique dans ces moments et seulement là ; l’avertissement pour un arrivage au-delà du seuil réglé, et pour des personnes après leur horaire ; « Point suivant » et l’heure d’ouverture ; la barre du temps (les personnes au travail, les arrivages en attente, les départs, les jours, sa géométrie) ; le détail d’un service ; le vol suivi ; le panneau en liste de boutons, tout texte de l’unité échappé ; les étiquettes des zones vides, la phrase repliée ; un service choisi sans équipe : le panneau le dit et propose d’en ajouter une. |
 | `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
+| `tests/direct-questions.test.cjs` | Les cinq réponses à côté de la scène (v1, évolution 16 f), sans navigateur, sur l’unité fictive : les cinq questions dans l’ordre ; à huit heures de la journée, les personnes par service et par état égales à celles des indicateurs, l’unité leur somme ; ce qui coince à cette heure (les goulots du moment, leur phrase) et sur la journée (la carte de la Synthèse) ; la fin, l’horaire et les heures sup de chaque ligne du module ; les exceptions et leur cause ; le choix « Référence / Essai » ; dans le panneau, les cinq réponses ou le détail du service ; tout texte de l’unité échappé. |
+| `tests/direct-questions-browser.cjs` | Les cinq réponses, dans la page (v1, évolution 16 f) : à six heures de la journée, les chiffres du panneau égaux à ceux du module ; le nom d’un service ouvre son détail ; avec deux essais retenus, « Référence » et « Essai » rejouent l’un ou l’autre à la même heure (ses ateliers, ses personnes, ses réponses), en lecture aussi ; la scène dit quelle journée elle rejoue ; les essais effacés, la journée en cours ; sur un écran étroit, le panneau sous la scène ; rien à plat ni en version 2. |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |

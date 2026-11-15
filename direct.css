@@ -192,3 +192,56 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 .dp-suivi{margin:0 0 var(--ds-e-4);padding:8px 10px;border-radius:var(--ds-r-2);border-left:4px solid var(--ds-accent);background:var(--ds-surface-2);font-size:var(--ds-t-12);line-height:1.45}
 .dp-suivi.dp-critique{border-left-color:var(--ds-retard)}
 .dp-suivi p{margin:0 0 var(--ds-e-1)}
+
+/* ==========================================================================
+ *  Les cinq réponses, à côté de la scène (évolution 16 f) : le panneau répond
+ *  aux cinq questions, à l'heure rejouée ; « Référence / Essai » choisit la
+ *  journée que rejoue la scène.
+ * ==========================================================================*/
+.dq-question{margin:0 0 var(--ds-e-5);padding:0}
+.dq-question+.dq-question{padding-top:var(--ds-e-4);border-top:1px solid var(--ds-bordure)}
+.dq-question h3{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-14)}
+.dq-question h4{margin:var(--ds-e-3) 0 var(--ds-e-1);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2)}
+.dq-table{width:100%;border-collapse:collapse;font-size:var(--ds-t-12);font-variant-numeric:tabular-nums}
+.dq-table th,.dq-table td{padding:3px 4px;text-align:left;border-bottom:1px solid var(--ds-bordure);font-weight:var(--ds-g-moyen);vertical-align:baseline}
+.dq-table thead th{color:var(--ds-texte-3);font-size:var(--ds-t-11);line-height:1.2;vertical-align:bottom}
+.dq-table tfoot th,.dq-table tfoot td{border-bottom:0;font-weight:var(--ds-g-fort)}
+.dq-table .num{text-align:right;white-space:nowrap}
+.dq-table tr.dq-avertissement>th{box-shadow:inset 3px 0 0 var(--ds-attente);padding-left:8px}
+.dq-table tr.dq-critique>th{box-shadow:inset 3px 0 0 var(--ds-retard);padding-left:8px}
+.dq-service{margin:0;padding:1px 2px;border:0;border-radius:var(--ds-r-1,4px);background:none;font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-accent-texte);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:2px}
+.dq-service:hover{text-decoration-color:currentColor}
+.dq-service:focus-visible{outline:0;box-shadow:var(--ds-focus)}
+.dq-service[aria-pressed="true"]{background:var(--ds-accent-pale)}
+.dq-ton{display:inline-block;padding:0 6px;border-radius:999px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);white-space:nowrap}
+.dq-avertissement .dq-ton{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.dq-critique .dq-ton{background:var(--ds-retard-doux);color:var(--ds-retard-texte)}
+.dq-jour,.dq-montre{margin:var(--ds-e-2) 0 0}
+.dq-liste{list-style:none;margin:0 0 var(--ds-e-1);padding:0;font-size:var(--ds-t-12);line-height:1.4}
+.dq-liste li{padding:4px 8px;margin:0 0 4px;border-radius:var(--ds-r-2)}
+.dq-liste.dq-critique li{background:var(--ds-retard-doux)}
+.dq-liste.dq-critique .dq-service{color:var(--ds-retard-texte)}
+.dq-liste.dq-avertissement li{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.dq-rien{margin:0;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.dq-apres{display:inline-block;padding:0 5px;border-radius:999px;background:var(--ds-attente-doux);color:var(--ds-attente-texte);font-size:var(--ds-t-11)}
+.dq-carte{font-size:var(--ds-t-12);line-height:1.45}
+.dq-carte p{margin:0 0 var(--ds-e-1)}
+.dq-carte .sy-grand{font-size:var(--ds-t-14)}
+.dq-carte .sy-exceptions,.dq-carte .sy-essai{font-size:var(--ds-t-12)}
+.dq-essais{display:inline-flex;gap:0;margin:0 0 var(--ds-e-1);border:1px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2);overflow:hidden}
+.dq-essais .btn{border:0;border-radius:0;box-shadow:none;background:var(--ds-surface-2);color:var(--ds-texte-2)}
+.dq-essais .btn+.btn{border-left:1px solid var(--ds-bordure)}
+.dq-essais .btn[aria-pressed="true"]{background:var(--ds-accent-pale);color:var(--ds-accent-texte);font-weight:var(--ds-g-moyen)}
+.dq-essais .btn:focus-visible{box-shadow:inset var(--ds-focus)}
+
+/* L'essai que rejoue la scène : dit sur la scène, en haut à droite. */
+.direct-essai{position:absolute;right:var(--ds-e-3);top:var(--ds-e-3);z-index:2;display:flex;align-items:center;gap:8px;max-width:calc(100% - 2*var(--ds-e-3));padding:6px 10px;border-radius:var(--ds-r-2);
+  border-left:4px solid var(--ds-accent);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant);font-size:var(--ds-t-12);color:var(--ds-texte-1)}
+.direct-essai[hidden]{display:none}
+
+/* Sur un écran étroit, le panneau passe sous la scène : la scène garde toute la largeur, la page défile. */
+@media(max-width:1100px){
+  body[data-direct="relief"][data-sous="j-plan"]:not(.editing) .app{display:block;overflow-y:auto}
+  body[data-direct="relief"][data-sous="j-plan"]:not(.editing) .app>.col-plan{height:100%}
+  body[data-direct="relief"][data-sous="j-plan"]:not(.editing) .app>.workbench{border-left:0;border-top:1px solid var(--ds-bordure);overflow:visible}
+}

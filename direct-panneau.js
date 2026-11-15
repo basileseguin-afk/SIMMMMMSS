@@ -105,17 +105,20 @@
       + '<p class="mini-note">Ses lots, sa tournée et son avion restent nets ; le reste pâlit.</p><button type="button" class="btn btn-mini" data-direct-nesuivre>Ne plus suivre (Échap)</button></div>';
   }
 
-  /** Le corps du panneau : le détail du service choisi, sinon la liste des services ; sans journée à rejouer (`x` nul), de quoi décrire l'unité. */
-  const corps = x => (!x ? VIDE : x.detail ? detail(x.detail) : x.sansEquipe ? sansEquipe(x.sansEquipe) : services(x.site, x.etat, x.tons, x.noms, x.selection));
-  /** Le panneau : le vol suivi s'il y en a un, puis son corps. `x` : { site, etat, tons, noms, selection, detail, suivi }. */
+  /**
+   * Le corps du panneau : le détail du service choisi ; sinon les cinq réponses (`x.questions`, mises en page par
+   * direct-questions.js, évolution 16 f) ; à défaut, la liste des services.
+   */
+  const corps = x => (!x ? VIDE : x.detail ? detail(x.detail) : x.sansEquipe ? sansEquipe(x.sansEquipe) : x.questions || services(x.site, x.etat, x.tons, x.noms, x.selection));
+  /** Le panneau : le vol suivi s'il y en a un, puis son corps. `x` : { site, etat, tons, noms, selection, detail, questions, suivi }. */
   function rendu(x) { return suivi(x.suivi) + corps(x); }
 
   /** Pendant la lecture, le panneau se réécrit au plus toutes les 250 ms : un bouton reste là le temps d'un clic. */
   const CADENCE = 250;
 
   /**
-   * Branche le panneau dans `hote`. `a` : { lire, choisir, retour, neSuivrePlus, enLecture } — `lire()` rend ce que `rendu`
-   * attend ; `enLecture()` dit si la journée se rejoue. Le vol suivi et le corps du panneau se réécrivent chacun seulement
+   * Branche le panneau dans `hote`. `a` : { lire, choisir, retour, neSuivrePlus, essai, enLecture } — `lire()` rend ce que
+   * `rendu` attend ; `essai(cle)` choisit l'essai que rejoue la scène ; `enLecture()` dit si la journée se rejoue. Le vol suivi et le corps du panneau se réécrivent chacun seulement
    * quand leur contenu change ; pendant la lecture, quatre fois par seconde au plus, et jamais sous un doigt ou un bouton
    * de souris appuyé (le clic aboutit) ; le bouton qui avait le clavier le garde.
    */
@@ -134,7 +137,8 @@
       if (suiviNeuf !== vu.suivi) { vu.suivi = suiviNeuf; zoneSuivi.innerHTML = suiviNeuf; }
       if (corpsNeuf === vu.corps) return;
       const actif = zoneCorps.contains(root.document.activeElement) ? root.document.activeElement : null;
-      const cle = actif ? (actif.dataset.directService ? '[data-direct-service="' + root.CSS.escape(actif.dataset.directService) + '"]' : actif.hasAttribute('data-direct-retour') ? '[data-direct-retour]' : null) : null;
+      const cle = actif ? (actif.dataset.directService ? '[data-direct-service="' + root.CSS.escape(actif.dataset.directService) + '"]' : actif.hasAttribute('data-direct-retour') ? '[data-direct-retour]'
+        : actif.dataset.directEssai ? '[data-direct-essai="' + root.CSS.escape(actif.dataset.directEssai) + '"]' : null) : null;
       const service = x && x.detail ? x.detail.service : null, ouvre = service !== dernierService;
       vu.corps = corpsNeuf; zoneCorps.innerHTML = corpsNeuf;
       // Le clavier suit : le détail qui s'ouvre prend le focus s'il venait du panneau ; revenu à la liste, le bouton du service le reprend.
@@ -151,6 +155,7 @@
       if (b.dataset.directService) a.choisir(b.dataset.directService);
       else if (b.hasAttribute('data-direct-retour')) a.retour();
       else if (b.hasAttribute('data-direct-nesuivre')) a.neSuivrePlus();
+      else if (b.dataset.directEssai && a.essai) a.essai(b.dataset.directEssai);
     });
     // Sur la courbe de charge : ce que valent ses deux séries sous le pointeur.
     hote.addEventListener('pointermove', e => {
