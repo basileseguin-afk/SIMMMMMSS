@@ -39,6 +39,22 @@ async function empreintes(racine) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-module.exports = { empreintes, LE };
+/**
+ * Évolution 16 (g) — les empreintes de la journée fictive du plan rejoué (tests/plan-rejoue-fictif.cjs : des goulots, des
+ * vols chargés en retard), avec les modules de `racine` : pour ses vols et pour ses vols sans retard, le résultat du moteur,
+ * les indicateurs de charge, et les réponses du module (moteur/reponses.js) aux seuils par défaut puis à d'autres seuils.
+ */
+function empreintesDuDirect(racine) {
+  const F = require(path.join(racine, 'tests/plan-rejoue-fictif.cjs')), R = require(path.join(racine, 'moteur/reponses.js'));
+  const out = {};
+  for (const [nom, csv] of [['retards', F.volsCsv()], ['sansRetard', F.volsSansRetardCsv()]]) {
+    const p = F.heureDuPicAttendue(F.sauvegardeFictive(), csv);
+    out[nom] = { resultat: empreinte(p.resultat), indicateurs: empreinte(p.k), reponses: empreinte(R.reponses(p.resultat, p.args, { k: p.k })),
+      reponsesAutresSeuils: empreinte(R.reponses(p.resultat, p.args, { k: p.k, seuils: { attenteLot: 60, retard: 30 } })) };
+  }
+  return out;
+}
+
+module.exports = { empreintes, empreintesDuDirect, LE };
 
 if (require.main === module) empreintes(path.resolve(process.argv[2] || path.join(__dirname, '..'))).then(e => console.log(JSON.stringify(e, null, 2)));

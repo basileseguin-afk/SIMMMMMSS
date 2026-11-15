@@ -277,7 +277,9 @@
       const styleCritique = { ...style, fond: pal.melange('etiquette', 'critique', 0.16), bordure: pal.c('critique'), texte: pal.c('texte'), epaisseur: 2 };
       // Un mot posé dans la scène est cerné de sa couleur : l'avertissement pour « arrêté », l'accent pour une cadence.
       const styleMarque = { attente: { ...style, bordure: pal.c('attente'), epaisseur: 2 }, travail: { ...style, bordure: pal.c('travail'), epaisseur: 2 } };
-      for (const e of v.poses) G().etiquette(ctx, e, e.ton === 'critique' ? styleCritique : styleMarque[e.ton] || (choisie && e.id === choisie.id ? styleChoisi : style), e.compacte ? D().COMPACTE : D().ETIQUETTE);
+      // Tous les traits d'abord, puis tous les cartouches : aucun trait ne passe sur une étiquette (évolution 16 g).
+      const styleDe = e => (e.ton === 'critique' ? styleCritique : styleMarque[e.ton] || (choisie && e.id === choisie.id ? styleChoisi : style));
+      for (const passe of ['trait', 'cartouche']) for (const e of v.poses) G().etiquette(ctx, e, styleDe(e), e.compacte ? D().COMPACTE : D().ETIQUETTE, passe);
       const ms = root.performance.now() - t0, s = v.stats;
       s.images++; s.ms = s.ms ? s.ms * 0.9 + ms * 0.1 : ms; s.dernier = ms;
     }

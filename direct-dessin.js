@@ -142,12 +142,15 @@
   /**
    * Une étiquette posée ({ x, y, w, h, ax, ay, titre, lignes }) : un cartouche droit, de taille fixe, relié à son ancre
    * par un trait fin. `style` : { fond, bordure, titre, texte, epaisseur }, `mesures` : { titre, ligne, marge, interligne }.
+   * `passe` : « trait » (le trait seul) ou « cartouche » (le cartouche seul), sinon les deux — la scène trace tous les
+   * traits, puis tous les cartouches : aucun trait ne passe sur une étiquette.
    */
-  function etiquette(ctx, e, style, mesures) {
+  function etiquette(ctx, e, style, mesures, passe) {
     const cx = e.x + e.w / 2, bas = e.y + e.h;
-    if (Math.abs(e.ay - bas) > 2 || Math.abs(e.ax - cx) > 2) {
+    if (passe !== 'cartouche' && (Math.abs(e.ay - bas) > 2 || Math.abs(e.ax - cx) > 2)) {
       ctx.strokeStyle = style.bordure; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, bas); ctx.lineTo(e.ax, e.ay); ctx.stroke();
     }
+    if (passe === 'trait') return;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(e.x + 0.5, e.y + 0.5, e.w - 1, e.h - 1, 6); else ctx.rect(e.x + 0.5, e.y + 0.5, e.w - 1, e.h - 1);
     ctx.fillStyle = style.fond; ctx.fill(); ctx.strokeStyle = style.bordure; ctx.lineWidth = style.epaisseur || 1; ctx.stroke();

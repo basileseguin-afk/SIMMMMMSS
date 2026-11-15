@@ -28,7 +28,7 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
  const ch=await F.charger(page,nav,site.url('index.html'),{pageId:'j-chiffres'});
  try{
   // 1. Le menu des Résultats et les onglets de « Détails ».
-  assert.deepEqual(await page.locator('#sous-onglets [data-sous-onglet]').allTextContents(),['Synthèse','Le plan rejoué','Planning des équipes','Détails','Comparer deux essais']);
+  assert.deepEqual(await page.locator('#sous-onglets [data-sous-onglet]').allTextContents(),['Synthèse','En direct','Planning des équipes','Détails','Comparer deux essais']);
   await page.locator('#sous-onglets [data-sous-onglet]').filter({hasText:'Détails'}).click();await attendre();
   assert.equal(await sous(),'at-repas','« Détails » s’ouvre sur les commandes');
   assert.equal(await page.locator('#view-title').textContent(),'Détails');

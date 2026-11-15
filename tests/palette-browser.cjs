@@ -115,6 +115,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.keyboard.press('Shift+?');await attendre(page,150);
    assert.ok(await page.evaluate(()=>document.querySelector('dialog.raccourcis').open),V+'« ? » ouvre la fiche');
    assert.match(await page.locator('dialog.raccourcis').textContent(),/Aller à une page[\s\S]*Lire la journée[\s\S]*Dupliquer la zone/,V+'tous les raccourcis, par endroit');
+   // Évolution 16 (g) : en version 1, la rubrique de la page rejouée s'appelle « En direct » et dit les touches de la scène ;
+   // la version 2, gelée, garde la sienne (palette.js, commun aux deux, n'est pas touché).
+   const rubriques=await page.locator('dialog.raccourcis .rac-corps section > h3').allTextContents();
+   if(version==='v1'){
+    assert.ok(rubriques.includes('En direct')&&!rubriques.includes('Le plan rejoué'),V+'la rubrique « En direct » : '+rubriques);
+    assert.match(await page.locator('dialog.raccourcis').textContent(),/Lire la journée, ou la mettre en pause[\s\S]*Sur la scène : déplacer la caméra[\s\S]*Ne plus suivre le vol/,V+'les touches de la scène');
+   }else assert.ok(rubriques.includes('Le plan rejoué')&&!rubriques.includes('En direct'),V+'la fiche de la version 2 n’a pas changé : '+rubriques);
    await page.keyboard.press('Escape');await attendre(page,150);
    assert.equal(await page.evaluate(()=>document.querySelector('dialog.raccourcis').open),false);
    await nav.aller(page,'mu-services');await attendre(page);

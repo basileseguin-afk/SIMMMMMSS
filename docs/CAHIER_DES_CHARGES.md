@@ -115,11 +115,11 @@ de relire le cahier des charges initial :
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
 | V1 | Rejouer la journée : horloge, lecture, pause, pas à pas, vitesse | CdC §6 | ✅ | |
-| V2 | **Jetons animés** (trolleys, flux) circulant le long des liens | CdC §6 | ⏸ | **Reporté le 23/09** : les animations viendront plus tard |
-| V3 | **Couleur de congestion** par service (vert → orange → rouge selon l'occupation et la file) | CdC §6 | 🟡 | Quatre états (au travail, attend, a fini, pas commencé) avec médaillon coloré ; **pas de gradient d'occupation** |
-| V4 | Mettre en évidence le **goulot courant** | CdC §6 | ✅ | La Synthèse nomme le goulot de la journée (le service au plus grand cumul d'attente, au-delà du seuil), son moment, sa file et sa cause (évolution 15, R2) ; dans le plan rejoué, « À regarder » nomme le service qui attend depuis le plus longtemps, seulement au-delà du seuil |
-| V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ⏸ | **Reporté le 23/09** avec les animations |
-| V6 | Plan et tableau de bord visibles en même temps | CdC §9 | ✅ | « La journée » : plan + panneau « En ce moment » |
+| V2 | **Jetons animés** (trolleys, flux) circulant le long des liens | CdC §6 | ✅ | Version 1, évolution 16 (Résultats › En direct, « En relief ») : les lots sont des chariots, un par tranche de repas (la tranche est dans la légende), en file devant le service qui va les prendre ou dans l'îlot de l'atelier qui y travaille ; au changement de service ils roulent en convoi ; les tournées du handling sont des véhicules, les vols des avions, les retours sales rejoignent la plonge. Les nombres, les heures et les états sont lus dans le résultat ; le trajet est une mise en scène. « À plat », des points avancent le long de « Ce qui circule » (évolution 14). La version 2, gelée, ne l'a pas |
+| V3 | **Couleur de congestion** par service (vert → orange → rouge selon l'occupation et la file) | CdC §6 | 🟡 | Version 1, évolution 16 (e) : en relief, le sol d'un service prend à l'heure rejouée la couleur d'avertissement (un arrivage y attend au-delà du seuil d'attente, ou des personnes y travaillent après leur horaire) ou la couleur critique (un goulot du jour, pendant qu'il coince), avec le mot sur son étiquette ; la file se voit en chariots. Les raisons sont celles du module des réponses, sans seuil de plus : **pas de gradient continu d'occupation**. « À plat », quatre états (au travail, attend, a fini, pas commencé) |
+| V4 | Mettre en évidence le **goulot courant** | CdC §6 | ✅ | La Synthèse nomme le goulot de la journée (le service au plus grand cumul d'attente, au-delà du seuil), son moment, sa file et sa cause (évolution 15, R2) ; en direct (évolution 16 e), la journée s'ouvre au moment où le premier goulot commence à coincer : son sol est critique, son contour pulse, son étiquette reprend la phrase de la Synthèse ; « Point suivant » mène au prochain goulot ou au prochain chargement en retard, et la barre du temps les marque ; à plat, « À regarder » nomme le service qui attend depuis le plus longtemps, seulement au-delà du seuil |
+| V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ✅ | Version 1, évolution 16 (a, d) : en relief, une ligne robotisée dans la zone de production dès qu'un atelier robot existe (autant que d'ateliers robot présents en même temps) ; elle s'anime quand son équipe travaille, sa cadence écrite au-dessus (« 300 plateaux par heure ») ; la plonge montre le nombre de tunnels des réglages, et chaque tunnel s'anime quand il lave, lui seul — un lavage arrêté est marqué « arrêté ». Un tunnel dit s'il lave, pas son débit. Le plan dessiné (« À plat ») ne les montre pas |
+| V6 | Plan et tableau de bord visibles en même temps | CdC §9 | ✅ | « En direct » : la scène (ou le plan dessiné) + le panneau « En ce moment », qui répond aux cinq questions à l'heure rejouée (évolution 16 f) |
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
 | V8 | **Temporalité** : le temps entre la fin d'un atelier et le début du suivant est un **stock** ; les retours plus rapides que la plonge forment un **bouchon** | 24/09 | ✅ | Stocks par séjour, par lien et devant chaque service (et avant le chargement) ; file de sale, attente, heures en dépassement ; affichés sur le chemin, la frise, l'onglet « Stocks et retours » et le plan rejoué |
 
@@ -411,11 +411,14 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
    plusieurs jours.
 6. **Décalage par vol** (W5), **export CSV des résultats** (W8), **loi de
    charge par lot** (M14).
-7. **Couleur des services selon leur charge** (V3), sans animation.
+7. **Couleur des services selon leur charge** (V3) : un gradient continu
+   d'occupation ; l'avertissement et le critique à l'heure rejouée sont faits
+   (évolution 16).
 8. **Purge des `refs/pull/1..3/head`** (C3, action de Basile) et **test par des
    personnes du terrain** (E9).
 
-Reporté : tout ce qui est **animation** (V2, V5).
+~~Reporté : tout ce qui est **animation** (V2, V5)~~ : fait dans la version 1
+(évolution 16, la vue en direct).
 
 ## 13. Question encore ouverte : le « vivier » de personnes (M13)
 

@@ -5,6 +5,50 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-15 — Évolution 16 (g) : la vue en direct — le menu, le contrôle et la doc
+
+- **Dans le menu Résultats, « En direct » remplace « Le plan rejoué »** et
+  vient juste après la Synthèse. L'ancien nom se cherche toujours dans
+  « Aller à… » ; l'adresse de la page (`j-plan`) et la page retenue ne
+  changent pas. La vue à plat (le plan dessiné) reste, par le choix **« En
+  relief / À plat »** dans la page, avec les mêmes données.
+- Les mots qui nommaient la page suivent : le texte sous son titre et sa
+  tuile d'accueil, le geste « Rejouer la journée » de la palette, la rubrique
+  de la fiche des raccourcis (touche ?), avec les touches de la vue en relief,
+  et le lien de la Synthèse (« Voir la journée en direct → »).
+- **Des captures de contrôle** (`tests/captures-direct-browser.cjs`), sur
+  l'unité fictive, en thème clair et sombre, à 1 280 et 1 920 px : à
+  l'ouverture, pendant un goulot, en suivant un vol, sous deux autres angles.
+  Chacune est vérifiée et gardée hors du dépôt.
+- **Une retouche que ces captures ont montrée** : le trait qui relie une
+  étiquette à son ancre pouvait barrer une autre étiquette. La scène trace
+  maintenant tous les traits, puis tous les cartouches.
+- **La non-régression** : le JSON des outils d'une journée et d'une période,
+  chaque feuille de leurs classeurs, et — sur la journée fictive que la vue
+  rejoue — le résultat du moteur, les indicateurs de charge et les réponses
+  ont les empreintes calculées sur le commit d'avant l'évolution 16
+  (`tests/non-regression-16.test.cjs`). Dans la page, regarder la journée ne
+  la change pas : le résultat, les indicateurs, les réponses et l'export de
+  la journée sont identiques, octet pour octet, avant et après.
+- **La doc** : le README dit ce que montre la vue en direct, les règles qui
+  génèrent le site, et ce qui y est une mise en scène (un tableau : réglage,
+  résultat, ou mise en scène) ; `docs/CAHIER_DES_CHARGES.md` met à jour V2,
+  V3, V4 et V5.
+
+Ce qui ne change pas : aucun calcul, aucun résultat, aucun export. La
+version 2 n'est pas touchée ; `palette.js`, commun avec elle, non plus (la
+page de la version 1 renomme la rubrique de la fiche une fois ouverte).
+
+Fichiers : `onglets.js`, `demarrage.js`, `sim.js`, `index.html`,
+`direct-dessin.js`, `direct-vue.js`, `tests/captures-direct-browser.cjs`,
+`tests/non-regression-16.test.cjs` et `tests/direct-dessin.test.cjs`
+(nouveaux), `tests/empreintes-resultats.cjs`, `tests/onglets.test.cjs`,
+`tests/details-browser.cjs`, `tests/periode-browser.cjs`,
+`tests/palette-browser.cjs`, `README.md`, `docs/CAHIER_DES_CHARGES.md`,
+`CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (f) : la vue en direct — les cinq réponses, à côté de la scène
 
 À droite de la scène (dessous sur un écran étroit), le panneau répond aux cinq

@@ -140,8 +140,8 @@ sans accents ni majuscules, et elle propose une page, un service, une équipe,
 une commande (« af eco » : AF · Économie) ou un geste (rejouer la journée,
 annuler, les problèmes, le thème, exporter les résultats) ; les flèches
 choisissent, Entrée ouvre, Échap ferme. La touche **?** (hors d’un champ)
-ouvre la **fiche des raccourcis** ; sur le plan rejoué, **Espace** lit la
-journée ou la met en pause. Les mouvements sont courts (une page qui arrive,
+ouvre la **fiche des raccourcis** ; sur la page « En direct », **Espace** lit
+la journée ou la met en pause. Les mouvements sont courts (une page qui arrive,
 une fenêtre qui s’ouvre) et s’arrêtent quand le système demande de réduire
 les animations. Annuler / Rétablir
 agit sur ce que la page ouverte modifie (les cases, chemins et équipes ; le
@@ -509,12 +509,18 @@ le rouge ne sert qu’aux retards.
      vers le service où les cocher. « Exporter les résultats » ; le classeur
      de la charge de la journée porte aussi la feuille « Réponses »
      (`docs/FORMATS_EXCEL.md`, § 8).
-   - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, en pleine
-     hauteur, la barre de lecture en bas ; les chiffres de l’instant, la
-     légende et le zoom posés sur le plan ; « En ce moment » à droite, qui se
-     replie (bouton dans le titre de la page) pour lui laisser toute la
-     largeur ; au-dessus des services, ce qui attend en stock ou à laver.
-     « Modifier le plan » ouvre *Équipes › Plan de l’unité*.
+   - *En direct* (évolution 16 ; la page s’appelait « Le plan rejoué », un
+     nom qui se cherche toujours dans « Aller à… ») : la journée rejouée,
+     juste après la Synthèse, en pleine hauteur, la barre de lecture en bas.
+     **« En relief »**, le site généré d’après les réglages — ses ateliers,
+     ses personnes, ce qui circule, où ça coince —, avec la barre du temps
+     sous la scène et les cinq réponses à droite (« La vue en direct », plus
+     bas). **« À plat »**, le plan dessiné de l’unité, avec les mêmes
+     données : les chiffres de l’instant, la légende et le zoom posés sur le
+     plan ; au-dessus des services, ce qui attend en stock ou à laver ;
+     « Modifier le plan » ouvre *Équipes › Plan de l’unité*. « En ce moment »,
+     à droite, se replie (bouton dans le titre de la page) pour laisser toute
+     la largeur.
    - *Planning des équipes* : qui travaille quand — d'abord toute l'unité sur
      un écran, une ligne de 32 px par service (son nom, ses équipes, « pic au
      travail / présents », sa courbe de charge, un trait par lot), de l'amont
@@ -584,9 +590,11 @@ tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
 
-- **Le plan rejoué** : rejoue la journée calculée. Il s'ouvre sur le plan entier
+- **En direct, « À plat »** (le plan dessiné de l'unité : « Le plan rejoué »
+  jusqu'à l'évolution 16) : rejoue la journée calculée. Il s'ouvre sur le plan entier
   (« Tout voir » : tout tient dans la zone visible, à 24 px des bords) et à l'heure
-  où le plus de personnes sont au travail ; cette heure reste tant que la journée
+  où le premier goulot du jour commence à coincer — sans goulot, celle où le plus
+  de personnes sont au travail ; cette heure reste tant que la journée
   relue ne change pas. En haut, « Voir un service » et « Liens » ; au-dessus du
   plan, une bande d'une ligne : les chiffres cumulés jusqu'à l'heure rejouée
   (« commandes prêtes jusqu’ici : 12 sur 30, toutes à l’heure »), et à droite la
@@ -618,7 +626,60 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
   repas n’ont pas d’équipe est dit « Des repas sans équipe ».
 - **Exporter les résultats** (Synthèse) : la journée calculée — départs, classes, journal des lots.
 
-## La vue en direct : le site généré (évolution 16)
+## La vue en direct (évolution 16)
+
+**Résultats › En direct**, juste après la Synthèse, rejoue la journée
+calculée. La page ne calcule rien : elle **lit** le résultat de la journée,
+ses indicateurs de charge et le module des réponses (`moteur/reponses.js`),
+sans règle ni seuil de plus. Rien n'y est décoratif : chaque objet à l'écran
+correspond à un réglage de la simulation ou à une quantité du résultat.
+
+**Ce qu'elle montre**, à l'heure rejouée :
+
+- **le site** : une zone par service, et dans chacune ses ateliers — tables,
+  trolleys, machines, tunnels de lavage, ligne robotisée, rayonnages ;
+- **les personnes** de chaque atelier, chacune dans son état : au travail,
+  sans travail, en pause, en appui ou en chemin ;
+- **ce qui circule** : les lots en chariots (en file devant le service qui va
+  les prendre, ou dans l'îlot de l'atelier qui y travaille), les tournées du
+  handling en véhicules, les vols en avions, les retours sales devant la
+  plonge et dans ses tunnels ;
+- **où ça coince** : le sol du service en couleur critique, son contour qui
+  pulse, et sur son étiquette la phrase de la Synthèse ; un service à
+  surveiller, en couleur d'avertissement, avec le mot ;
+- **sous la scène**, la barre du temps de toute la journée (les départs des
+  vols, les personnes au travail, les arrivages en attente) et « Point
+  suivant », qui mène au prochain moment à regarder ;
+- **à droite**, les cinq réponses de l'évolution 15 à cette heure, le détail
+  d'un service, le vol suivi, et le choix « Référence / Essai » quand deux
+  essais sont retenus.
+
+Le choix **« En relief / À plat »**, dans la page, passe de cette scène au
+plan dessiné de l'unité et en revient : la même journée, la même heure, les
+mêmes données (« Lire le plan rejoué et le planning », plus bas).
+
+**Ce qui vient d'un réglage, ce qui vient du résultat, ce qui est une mise
+en scène :**
+
+| À l'écran | D'où ça vient |
+|---|---|
+| Les zones : lesquelles, leur taille, leur place | **Réglages** : les services qui ont un atelier, leur part de surface, le chemin (les règles ci-dessous). |
+| Les ateliers et leur mobilier : tables, trolleys, machine, rayonnages ; le nombre de tunnels et de lignes robotisées ; la cadence écrite au-dessus de la ligne | **Réglages** : les ateliers de « Équipes », leur poste de travail, leurs tunnels, leur cadence. |
+| Le nombre de personnages d'un atelier, et combien sont dans chaque état | **Résultat** : les indicateurs de charge, par créneau de 15 minutes, en personnes entières. |
+| Les chariots : combien, de quelle nature, dans quelle file ou quel îlot | **Résultat** : le journal des lots et les séjours en stock ; un chariot par tranche de repas, dite dans la légende. |
+| Les véhicules : lesquels, quand ils partent et reviennent | **Résultat** : les tournées du handling. |
+| Les avions : lesquels, leur heure, « retard … », « pas chargé » | **Résultat** : les vols et leur chargement. |
+| Les retours sales, le tunnel qui lave, « arrêté », le reste du soir | **Résultat** : les lavages de la plonge. |
+| Le sol critique ou d'avertissement, les phrases, la barre du temps, les cinq réponses | **Module des réponses** et indicateurs de charge, tels que la Synthèse les lit. |
+| La place exacte d'une personne à son poste, son léger mouvement, sa marche de deux minutes vers son poste ou vers l'aire de pause | **Mise en scène.** |
+| Le trajet d'un convoi de chariots entre deux services (deux minutes) et le personnage qui le pousse, compté dans aucune équipe | **Mise en scène.** |
+| Le tracé de la route, la place d'un avion sur l'aire, sa présence trois heures avant le départ, son décollage de trois minutes | **Mise en scène.** |
+| La vague sur un tunnel qui lave, les plateaux qui avancent sur la ligne robotisée, le contour qui pulse | **Mise en scène** d'un état lu dans le résultat. |
+
+Une mise en scène ne dit jamais un nombre, une heure ni un état : ceux-là
+sont lus. La page le rappelle sous la légende.
+
+### Le site généré : ses règles (évolution 16 a)
 
 La vue en direct ne recopie pas le plan dessiné : elle montre un **site
 schématique**, généré à partir des réglages de la simulation, toujours de la
@@ -657,7 +718,7 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
 
 ### En relief : se déplacer dans le site (évolution 16 b)
 
-Le plan rejoué s'ouvre **« En relief »** : la scène générée, dessinée dans un
+La page « En direct » s'ouvre **« En relief »** : la scène générée, dessinée dans un
 canvas 2D, sans bibliothèque. Le choix **« En relief / À plat »**, à côté du
 titre de la page, passe au plan dessiné de l'unité et en revient, avec les
 mêmes données et la même heure rejouée. « Voir sur le plan » (les liens de
@@ -881,7 +942,7 @@ sont à des coordonnées négatives (à gauche des services) n'est plus coupé.
 
 ## Lire le plan rejoué et le planning
 
-**Le plan rejoué** (Résultats › Le plan rejoué) montre la journée calculée à
+**Le plan rejoué** — la vue « À plat » de Résultats › En direct — montre la journée calculée à
 l'heure rejouée — à l'ouverture, le moment où le premier goulot du jour
 commence à coincer ; sans goulot, le créneau où le plus de personnes sont au
 travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
@@ -1261,7 +1322,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
 | `tests/calage-bases.test.cjs` | La correspondance propose 7,5 h / 7 h par ETP quand rien n'est réglé, sans l'enregistrer ; un réglage enregistré ne change pas ; le moteur garde ses 7 h (v1, évolution 15 d) |
 | `tests/periode-page-browser.cjs` | La page Période dans la page (v1, évolution 15 d), sur l'unité fictive : la colonne Unité, la courbe (souris, flèches) et le réel importé, la première colonne collante et le défilement qui se voit à 760 px, les moyennes des personnes, un seul bloc dans un mois, les jours complets d'abord, aucune durée en minutes au-delà de 60, les bases de la correspondance |
-| `tests/details-browser.cjs` | Moins de pages (v1, évolution 15 c), sur l’unité fictive : le menu des Résultats et les onglets de « Détails » dans l’ordre (au clavier, le focus reste dans les onglets), les anciens identifiants et « Aller à… », les compteurs égaux sur la Synthèse et dans « Détails », les exceptions d’abord, aucune durée en minutes au-delà de 60, pas d’alerte de stock sans seuil, « Bouchon » selon le sale du soir et le seuil d’attente, « À regarder » qui se tait |
+| `tests/details-browser.cjs` | Moins de pages (v1, évolution 15 c), sur l’unité fictive : le menu des Résultats (« En direct » après la Synthèse, évolution 16 g) et les onglets de « Détails » dans l’ordre (au clavier, le focus reste dans les onglets), les anciens identifiants et « Aller à… », les compteurs égaux sur la Synthèse et dans « Détails », les exceptions d’abord, aucune durée en minutes au-delà de 60, pas d’alerte de stock sans seuil, « Bouchon » selon le sale du soir et le seuil d’attente, « À regarder » qui se tait |
 | `tests/classeur-compresse.test.cjs` | Le classeur compressé (v1, banc d’essai, correction 16 c) : 60 journées fictives, relu identique feuille par feuille, au moins trois fois plus léger, le même fichier pour les mêmes données ; le chemin du navigateur (CompressionStream), et sans lui le classeur tel quel ; un classeur d’avant non compressé qui se relit ; les outils `simuler-periode` et `simuler-journee` qui écrivent compressé |
 | `tests/indicateurs-definitions.test.cjs` | Trois définitions des indicateurs de charge (v1, banc d’essai, correction 16), sur des journées fictives : le disponible = personnes × (présence − pauses prises) + heures sup, une plonge en heures sup sous 100 %, une équipe qui n’atteint pas sa pause ; « en appui ou à disposition », les quatre catégories font les présents ; le débit en vols servis d’une équipe aux lots « @… », sans vol « sans objet » ; les renforts reçus et un lot coupé dans le consommé ; la non-régression sur les journées de référence |
 | `tests/import-flights.test.cjs` | L’export « Flights » de Winrest lu tel quel (v1, banc d’essai, évolution 13 a, `moteur/import-flights.js`), sur des exports fictifs calculés à la main : chaque règle de 1 à 12 (les colonnes par leur en-tête, une livraison = un vol, la Guest qty comptée une fois, la table des Guest types, les statuts, ICAO et Flight No exclus, les codes compagnie, le vol_id et « -2 », le vol sans repas, les réserves fondues ou orphelines, les vols fictifs aux lignes annulées, le tri et les colonnes du CSV daté) ; le rapport d’import ; les points à vérifier ; aucun prix dans la sortie ; les refus qui nomment la colonne ou la ligne ; 50 000 lignes en moins de 10 s |
@@ -1301,6 +1362,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
 | `tests/direct-questions.test.cjs` | Les cinq réponses à côté de la scène (v1, évolution 16 f), sans navigateur, sur l’unité fictive : les cinq questions dans l’ordre ; à huit heures de la journée, les personnes par service et par état égales à celles des indicateurs, l’unité leur somme ; ce qui coince à cette heure (les goulots du moment, leur phrase) et sur la journée (la carte de la Synthèse) ; la fin, l’horaire et les heures sup de chaque ligne du module ; les exceptions et leur cause ; le choix « Référence / Essai » ; dans le panneau, les cinq réponses ou le détail du service ; tout texte de l’unité échappé. |
 | `tests/direct-questions-browser.cjs` | Les cinq réponses, dans la page (v1, évolution 16 f) : à six heures de la journée, les chiffres du panneau égaux à ceux du module ; le nom d’un service ouvre son détail ; avec deux essais retenus, « Référence » et « Essai » rejouent l’un ou l’autre à la même heure (ses ateliers, ses personnes, ses réponses), en lecture aussi ; la scène dit quelle journée elle rejoue ; les essais effacés, la journée en cours ; sur un écran étroit, le panneau sous la scène ; rien à plat ni en version 2. |
+| `tests/captures-direct-browser.cjs` | Les captures de contrôle de la vue en direct (v1, évolution 16 g), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : à l’ouverture, pendant un goulot (cadré sur son service, son détail dans le panneau), en suivant un vol chargé en retard, sous deux autres angles (au pic de travail ; pendant une tournée du handling) — la scène entière à 24 px des bords, aucune étiquette sur une autre, les traits des étiquettes tracés avant tous les cartouches (aucun ne barre une étiquette). Et la non-régression dans la page : le résultat, les indicateurs, les réponses et l’export de la journée identiques, octet pour octet, avant et après ; « À plat » montre les mêmes personnes au travail, à la même heure. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-direct-browser.cjs`, sinon un dossier temporaire, dit à la fin |
+| `tests/direct-dessin.test.cjs` | Le dessin d’une étiquette de la vue en direct (v1, évolution 16 g), sans navigateur : son trait et son cartouche en deux passes, les deux ensemble égales au dessin d’un coup ; pas de trait pour une étiquette posée sur son ancre |
+| `tests/non-regression-16.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 16 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs (« Réponses » comprise), ont les empreintes calculées sur le commit d’avant l’évolution ; sur la journée fictive que la vue rejoue, avec et sans retard, le résultat du moteur, les indicateurs de charge et les réponses à deux jeux de seuils aussi ; tout ce que la vue lit, à chaque demi-heure, ne change rien à la journée |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
@@ -1366,7 +1430,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
-| `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites |
+| `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites ; en version 1, la rubrique « En direct » de la fiche des raccourcis, avec les touches de la scène (évolution 16 g), celle de la version 2 inchangée |
 | `tests/palette.test.cjs` | Ce que la palette trouve et dans quel ordre : gestes et pages sans texte, sans accents ni majuscules, début du nom d’abord, tous les mots, au plus N par groupe ; le surlignage échappé ; v1 et v2 portent la même `palette.js` |
 | `tests/latence-browser.cjs` | La latence d’un changement, sans chronomètre (v1 et v2) : un bilan par service au plus pendant un changement ; aucun sur une page qui n’en a pas besoin, le registre des problèmes refait juste après et son compte suivi ; le menu jamais mesuré quand il ne change pas |
 | `tests/graphiques-browser.cjs` | Le planning, la frise des vols et les stocks (v1 et v2) : la palette des données, une barre par lot à l’heure de son lot ; l’étiquette quand elle tient, et seulement alors ; la bulle tout de suite au survol, plus de `<title>` natif ; le trait « maintenant » absent avant le rejeu, à l’heure rejouée ensuite (planning, frise, plonge), qui suit la lecture, sans repère d’axe dessous, et s’en va au début ; la valeur d’une courbe de stock à l’heure survolée, d’après le calcul |
@@ -1410,7 +1474,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |
 | `tests/graphe-browser.cjs` | Diagrammes dans la page : tirer un trait, clavier, doublon et boucle refusés, équipe créée depuis un nœud, disposition retenue, liens de l’unité |
-| `tests/onglets.test.cjs` | Le menu (v1 et v2) : chaque page dans une seule partie, un sujet par partie, les outils fins après « Plus » ; pages de chaque vue, identifiants uniques, règle de masquage, pictogrammes ; la page Période qui ne se montre qu’avec un programme daté |
+| `tests/onglets.test.cjs` | Le menu (v1 et v2) : chaque page dans une seule partie, un sujet par partie, les outils fins après « Plus » ; pages de chaque vue, identifiants uniques, règle de masquage, pictogrammes ; la page Période qui ne se montre qu’avec un programme daté ; « En direct » juste après la Synthèse, son ancien nom (« Le plan rejoué ») toujours cherché (évolution 16 g) |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, écran étroit de bureau |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

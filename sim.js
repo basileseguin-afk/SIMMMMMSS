@@ -1148,7 +1148,7 @@ function elementsPalette(){
   const ici=()=>{const w=document.getElementById(activeView==='accueil'?'view-accueil':'workspace');if(w)w.focus({preventScroll:true});};
   const vers=id=>{allerPage(id);ici();};
   const geste=(nom,faire,o)=>out.push({groupe:'Gestes',nom,faire,...o});
-  geste('Rejouer la journée',()=>{vers('j-plan');if(Sim.vue)Sim.vue.lancer();},{ico:'lecture',indice:'Le plan rejoué',mots:'lire lecture lancer'});
+  geste('Rejouer la journée',()=>{vers('j-plan');if(Sim.vue)Sim.vue.lancer();},{ico:'lecture',indice:'En direct',mots:'lire lecture lancer plan rejoué'});
   const un=document.getElementById('btn-annuler'),re=document.getElementById('btn-retablir');
   if(un&&!un.disabled)geste('Annuler',()=>annulerOuRetablir(false),{ico:'annuler',indice:OrlyPalette.MOD+' Z'});
   if(re&&!re.disabled)geste('Rétablir',()=>annulerOuRetablir(true),{ico:'retablir',indice:OrlyPalette.MOD+' Maj Z'});
@@ -2176,7 +2176,7 @@ function installerPlanRejoue() {
 }
 /* ==========================================================================
  *  LA VUE EN DIRECT, EN RELIEF (évolution 16 b)
- *  La page « Le plan rejoué » montre la journée de deux façons, avec les
+ *  La page « En direct » (« Le plan rejoué » jusqu'à l'évolution 16 g) montre la journée de deux façons, avec les
  *  mêmes données : « En relief », le site généré d'après les réglages
  *  (moteur/site.js), dessiné dans un canvas qu'on parcourt avec une caméra
  *  (direct-vue.js) ; « À plat », le plan dessiné de l'unité. La scène lit la
@@ -2344,6 +2344,20 @@ function initLireDirect() {
     enLecture: () => !!(Sim.vue && Sim.vue.enMarche)
   });
   if (point) point.addEventListener('click', allerAuPointSuivant);
+  // La fiche des raccourcis (palette.js, commune avec la version 2, n'est pas touchée) : ici, sa rubrique « Le plan rejoué »
+  // devient « En direct », avec les touches de la scène et de la barre du temps (évolution 16 g).
+  const touche = k => '<kbd>' + escDirect(k) + '</kbd>', ou = '<span class="rac-ou">ou</span>';
+  const RACCOURCIS_DIRECT = [[['Espace'], 'Lire la journée, ou la mettre en pause'], [['← → ↑ ↓', 'Z Q S D'], 'Sur la scène : déplacer la caméra'], [['A', 'E'], 'Sur la scène : tourner'],
+    [['+', '−'], 'Zoomer, dézoomer'], [['0'], 'Tout voir'], [['← →'], 'Sur la barre du temps : déplacer l’heure d’un quart d’heure (Maj : une heure)'], [['Échap'], 'Ne plus suivre le vol ; fermer le détail du service']];
+  if (typeof MutationObserver === 'function') new MutationObserver(l => {
+    for (const m of l) for (const n of m.addedNodes) {
+      if (!(n.nodeType === 1 && n.matches && n.matches('dialog.raccourcis'))) continue;
+      const h = [...n.querySelectorAll('.rac-corps section > h3')].find(x => x.textContent === 'Le plan rejoué'), dl = h && h.parentNode.querySelector('dl');
+      if (!h || !dl) continue;
+      h.textContent = 'En direct';
+      dl.innerHTML = RACCOURCIS_DIRECT.map(([k, quoi]) => '<div><dt>' + k.map(touche).join(ou) + '</dt><dd>' + escDirect(quoi) + '</dd></div>').join('');
+    }
+  }).observe(document.body, { childList: true });
   if (bandeau) bandeau.addEventListener('click', e => { if (e.target.closest('[data-direct-nesuivre]')) { volSuivi = null; rendreDirect(); } });
   const essai = document.getElementById('direct-essai');
   if (essai) essai.addEventListener('click', e => { if (e.target.closest('[data-direct-essai]')) montrerEssai(null); });

@@ -83,7 +83,7 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.match(await page.locator('#source-count').innerText(),/16 départs · 6 retours · journée du 25\/10\/2026/);
   assert.equal(await etat(),'jamais');
   assert.match(await page.locator('#periode-bandeau .pj-etat').innerText(),/pas encore simulée/);
-  assert.deepEqual((await pagesResultats()).slice(0,2),['j-chiffres','j-periode']);
+  assert.deepEqual((await pagesResultats()).slice(0,3),['j-chiffres','j-plan','j-periode']);
   await verifier('2026-10-25',null,'le premier jour : la journée de ses seuls vols');
 
   // 3. Une autre journée : ses vols, le sale de la veille saisi (la période n'est pas calculée).

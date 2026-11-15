@@ -129,7 +129,8 @@ test('la page Période ne se montre qu’avec un programme daté (évolution 10)
   O.conditions.periode = () => true;
   try {
     assert.equal(O.montree('j-periode'), true);
-    assert.deepEqual(O.pagesDe('resultats').slice(0, 2).map(x => x.id), ['j-chiffres', 'j-periode']);
+    // « En direct » vient juste après la Synthèse (évolution 16 g) ; la période, après.
+    assert.deepEqual(O.pagesDe('resultats').slice(0, 3).map(x => x.id), ['j-chiffres', 'j-plan', 'j-periode']);
   } finally { delete O.conditions.periode; }
 
   assert.equal(O.montree('j-chiffres'), true);
@@ -139,8 +140,13 @@ test('la page Période ne se montre qu’avec un programme daté (évolution 10)
 test('le menu des Résultats (évolution 15 c) : six entrées ; « Détails » en quatre onglets internes ; les anciennes pages restent', () => {
   assert.deepEqual(O.menuDe('resultats').map(o => o.groupe ? 'Détails' : o.id), ['j-chiffres', 'j-plan', 'at-planning', 'Détails', 'j-comparer']);
   O.conditions.periode = () => true;
-  try { assert.deepEqual(O.menuDe('resultats').map(o => o.groupe ? 'Détails' : o.id), ['j-chiffres', 'j-periode', 'j-plan', 'at-planning', 'Détails', 'j-comparer']); }
+  try { assert.deepEqual(O.menuDe('resultats').map(o => o.groupe ? 'Détails' : o.id), ['j-chiffres', 'j-plan', 'j-periode', 'at-planning', 'Détails', 'j-comparer']); }
   finally { delete O.conditions.periode; }
+  // « En direct » remplace « Le plan rejoué », juste après la Synthèse (évolution 16 g) ; l'ancien nom se cherche toujours.
+  const direct = O.ONGLETS.plan.find(x => x.id === 'j-plan');
+  assert.deepEqual([direct.nom, direct.ancien], ['En direct', 'Le plan rejoué']);
+  assert.deepEqual(O.menuDe('resultats').slice(0, 2).map(o => o.id), ['j-chiffres', 'j-plan']);
+  assert.ok(!O.PARTIES.flatMap(p => p.pages).some(x => /plan rejoué/i.test(x.intro || '')));
   // L'ordre des onglets internes : Commandes, Vols, Stocks et retours, Heures sup et renforts.
   assert.deepEqual(O.pagesDuGroupe('details').map(x => [x.id, x.nom]),
     [['at-repas', 'Commandes'], ['v-departs', 'Vols'], ['j-stocks', 'Stocks et retours'], ['j-details', 'Heures sup et renforts']]);

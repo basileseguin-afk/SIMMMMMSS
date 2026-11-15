@@ -56,7 +56,8 @@
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
     // sur la carte ; le menu, lui, ouvre les Résultats par leur synthèse.
     plan: [
-      { id: 'j-plan', nom: 'Le plan rejoué', ico: 'unite' },
+      // Évolution 16 (g) : « En direct » remplace « Le plan rejoué » ; son ancien nom se cherche toujours (« Aller à… »).
+      { id: 'j-plan', nom: 'En direct', ancien: 'Le plan rejoué', ico: 'unite' },
       { id: 'j-chiffres', nom: 'Synthèse', ico: 'check' },
       // Seulement avec un programme de vols daté (banc d'essai, évolution 10).
       { id: 'j-periode', nom: 'Période', ico: 'journee', si: 'periode' },
@@ -117,8 +118,9 @@
       resume: 'Ce que la journée donne',
       pages: [
         { id: 'j-chiffres', intro: 'Combien de personnes il faut, où ça coince, quand chaque service finit, ce qui part en retard, ce que change un essai.' },
+        // « En direct » vient juste après la Synthèse (évolution 16 g), avant la période.
+        { id: 'j-plan', intro: 'La journée en direct : qui travaille, qui attend, ce qui circule, où ça coince.' },
         { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
-        { id: 'j-plan', intro: 'Rejouez la journée : qui travaille, qui attend, ce qui est prêt.' },
         // Le planning occupe sa page (correction 18 b) : sa phrase n'est pas affichée (`sansIntro`).
         { id: 'at-planning', sansIntro: true, intro: 'Qui travaille quand : toute l’unité sur un écran, une ligne par service, de l’amont vers l’aval ; un clic déplie ses équipes ; un jour à la fois, trois zooms, l’axe des heures toujours visible ; le tableau des équipes dessous.' },
         // « Détails » (évolution 15 c) : quatre pages en onglets internes, une seule entrée au menu (GROUPES).
