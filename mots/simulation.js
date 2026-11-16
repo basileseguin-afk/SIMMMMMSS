@@ -255,7 +255,7 @@
       // Des commandes sans équipe : un Problème (à compléter), pas un résultat ; il dit où se régler.
       const sans = k.classesAbsentes ? '<p class="bilan-probleme" role="note">' + (root.OrlyIcones ? root.OrlyIcones.ico('alerte') : '')
         + '<span><b>' + esc(k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')) + '</b>'
-        + ' — un problème à compléter : elles ne sont pas parmi les commandes comptées ici.</span>'
+        + ' — un problème bloquant : elles ne sont pas parmi les commandes comptées ici.</span>'
         + '<button type="button" class="btn btn-sm" data-page="mu-services">Cocher dans un service ' + fleche + '</button></p>' : '';
       box.innerHTML = '<div class="bilan-cles">' + cles.map(carte).join('') + '</div>' + sans
         + '<div class="bilan-groupes">' + groupes.map(groupe).join('') + '</div>';

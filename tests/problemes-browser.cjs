@@ -1,6 +1,9 @@
 /* Un seul registre des problèmes (refonte du 08/10, étape 4).
  *   1. Le pied de la barre latérale en dit le nombre ; le panneau les range en
- *      trois niveaux (à corriger, à compléter, ce que la journée montre).
+ *      trois niveaux : en version 2, à corriger, à compléter, ce que la journée
+ *      montre ; en version 1 (évolution 19 d), bloquant, à corriger,
+ *      information — le nombre ne compte que les deux premiers
+ *      (tests/avis-browser.cjs en dit le détail).
  *   2. Le nombre d'un onglet en dérive : il compte ce qui se règle sur sa page.
  *      Les pages qui listent les mêmes points en disent le même nombre.
  *   3. Chaque problème mène à sa page ; un service, à sa fiche.
@@ -21,20 +24,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const ouvert=()=>page.evaluate(()=>document.getElementById('problemes').matches(':popover-open'));
  // Les nombres des onglets de la partie ouverte, et ce que le registre en dit.
  const badges=()=>page.evaluate(()=>[...document.querySelectorAll('#sous-onglets [data-sous-onglet]')].map(b=>{
-   const n=b.querySelector('.so-badge');return [b.dataset.sousOnglet,n?+n.textContent:0,OrlyProblemes.compte(Sim.problemes.liste,b.dataset.sousOnglet)];}));
+   const n=b.querySelector('.so-badge');return [b.dataset.sousOnglet,n?+n.textContent:0,(window.OrlyAvis||OrlyProblemes).compte(Sim.problemes.liste,b.dataset.sousOnglet)];}));
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
-   const V=version+' : ';
+   const V=version+' : ',v1=version==='v1';
+   // Ce que le pied de la barre compte : tout en version 2 ; en version 1, les problèmes, pas les informations.
+   const comptes=l=>v1?l.filter(p=>p.niveau!=='information').length:l.length;
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre(300);
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
 
-   // 1. La démonstration, sans équipe : deux choses à compléter.
+   // 1. La démonstration, sans équipe : deux choses à compléter. En version 1 : aucune commande n'est préparée
+   //    (bloquant), aucun service n'a d'équipe (à corriger).
    let r=await registre();
-   assert.deepEqual(r.map(p=>p.niveau),['completer','completer'],V+JSON.stringify(r));
-   assert.equal(await compteBarre(),r.length,V+'le pied de la barre dit le nombre');
+   assert.deepEqual(r.map(p=>p.niveau),v1?['bloquant','corriger']:['completer','completer'],V+JSON.stringify(r));
+   assert.equal(await compteBarre(),comptes(r),V+'le pied de la barre dit le nombre');
    await page.locator('#btn-problemes').click();await attendre();
    assert.equal(await ouvert(),true,V+'le panneau s’ouvre');
-   assert.deepEqual(await page.locator('#problemes .pb-groupe').evaluateAll(s=>s.map(x=>x.className)),['pb-groupe completer'],V+'rangés par niveau');
+   assert.deepEqual(await page.locator('#problemes .pb-groupe').evaluateAll(s=>s.map(x=>x.className)),
+     v1?['pb-groupe bloquant','pb-groupe corriger']:['pb-groupe completer'],V+'rangés par niveau');
    assert.equal(await page.locator('#problemes .pb').count(),2);
    await page.keyboard.press('Tab');
    assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#problemes')),true,V+'au clavier, on y entre');
@@ -52,14 +59,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    r=await registre();
    const aCorriger=r.filter(p=>p.niveau==='corriger');
    assert.ok(aCorriger.some(p=>p.service==='dotation'&&/Dotation/.test(p.titre)),V+'la Dotation est à corriger : '+JSON.stringify(r));
-   assert.equal(await compteBarre(),r.length,V+'le nombre suit le changement');
+   assert.equal(await compteBarre(),comptes(r),V+'le nombre suit le changement');
    for(const id of ['mu-services','mu-pas','u-lecture','at-chemins']){
      await nav.aller(page,id);
      for(const [onglet,vu,attendu] of await badges())assert.equal(vu,attendu,V+onglet+' : son nombre dérive du registre');
    }
    // Contrôles détaillés : la page en dit le même nombre que son onglet.
    await nav.aller(page,'u-lecture');
-   const calcul=await page.evaluate(()=>Sim.problemes.liste.filter(p=>p.niveau==='corriger'&&p.aussi.includes('mu-pas')).length);
+   const calcul=v1?await page.evaluate(()=>Sim.ateliers.resultat.anomalies.filter(a=>OrlyAvis.niveauDuCode(a.code)==='corriger').length)
+     :await page.evaluate(()=>Sim.problemes.liste.filter(p=>p.niveau==='corriger'&&p.aussi.includes('mu-pas')).length);
    assert.match(await page.locator('#fc-calcul').innerText(),new RegExp(calcul+' points? à corriger'),V+'la page et le registre comptent pareil');
    // « Points à regarder » : le détail, sans nombre à lui.
    await nav.aller(page,'at-chemins');

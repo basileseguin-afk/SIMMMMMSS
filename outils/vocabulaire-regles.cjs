@@ -154,7 +154,9 @@ const parFichier = {
     ['=Heures de travail', 'Heures travaillées']
   ],
   'simulation.js': [
-    ['=heures de travail', 'heures travaillées']
+    ['=heures de travail', 'heures travaillées'],
+    // Une commande que personne ne prépare : un avis « bloquant » (évolution 19 d).
+    ['un problème à compléter', 'un problème bloquant']
   ],
   // Les classeurs : leurs feuilles, leurs en-têtes et leurs « Lisez-moi » disent les nouveaux mots. Les classeurs d'avant
   // se relisent : classeurs-anciens.js ramène leurs anciens noms de feuilles et leurs anciens en-têtes à ceux-ci.
@@ -192,10 +194,6 @@ const parFichier = {
 /* Les règles « brutes » : [extrait exact de la source, son remplacement], présent une seule fois dans le module. Pour une
  * chaîne d'un seul mot (« flux », « Case ») qui s'affiche à cet endroit et sert d'identifiant ailleurs. */
 const brutes = {
-  // Le panneau des problèmes : « 2 cases » d'un service retiré de l'unité.
-  'problemes.js': [
-    ["pl(f.cases, 'case')", "pl(f.cases, 'équipe')"]
-  ],
   'unite.js': [
     ["f.elements.nom.value.trim() || 'Flux'", "f.elements.nom.value.trim() || 'Chemin'"],
     ["pl(principaux.length, 'flux', 'flux')", "pl(principaux.length, 'chemin', 'chemins')"],
@@ -208,6 +206,11 @@ const brutes = {
     ["groupe('flux', 'Flux')", "groupe('flux', 'Chemins de production')"],
     ['dans le sens du flux">Réorganiser', 'dans le sens du chemin">Réorganiser']
   ],
+  // Les alertes des liens (« Contrôles détaillés ») : ce qui n'est pas « à corriger » est une « information », repliée sous le reste (évolution 19 d).
+  'flow-center.js': [
+    ['`<div class="fc-alerte"><ul>${notes.map(', '`<details class="fc-alerte avis-information"><summary><b>Information</b> — rien à faire</summary><ul>${notes.map('],
+    ["</li>`).join('')}</ul></div>`:'')", "</li>`).join('')}</ul></details>`:'')"]
+  ],
   'reglages.js': [
     ["'Robot' : 'Case'}", "'Robot' : 'Équipe'}"],
     ['aria-label="Exemple : 1 heure de travail pour un vol,', 'aria-label="Exemple : 1 heure par vol,'],
@@ -216,7 +219,8 @@ const brutes = {
   ]
 };
 
-const communs = ['unite.js', 'parcours.js', 'reglages.js', 'echanges.js', 'flow-center.js', 'plan-editor.js', 'temps.js', 'comparaison.js', 'simulation.js', 'problemes.js'];
+// Le registre des problèmes (problemes.js) n'en est plus : la version 1 a le sien, avis.js, en trois niveaux (évolution 19 d).
+const communs = ['unite.js', 'parcours.js', 'reglages.js', 'echanges.js', 'flow-center.js', 'plan-editor.js', 'temps.js', 'comparaison.js', 'simulation.js'];
 const sansGenerales = ['flow-center.js'];
 
 module.exports = { communs, sansGenerales, brutes, parFichier, generales, mot, groupe };

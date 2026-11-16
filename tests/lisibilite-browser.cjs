@@ -72,8 +72,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 6. Les Contrôles : ce que le calcul signale, séparé des résultats de la journée.
   await nav.aller(page,'u-lecture');await attendre();
   const calcul=await page.locator('#fc-calcul').innerText();
-  assert.match(calcul,/choses? que la journée montre/,'les postes trop courts sont des résultats');
-  assert.match(calcul,/(point|points) à corriger dans l’organisation|L’organisation se lit de bout en bout/);
+  assert.match(calcul,/informations? — rien à faire : une commande sans vol ce jour-là, ou ce que la journée montre/,'les postes trop courts sont des résultats : une information');
+  assert.match(calcul,/(point|points) à corriger|L’organisation se lit de bout en bout/);
   // Une étape du chemin sans case : un point à corriger, compté dans le badge.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;const p=st.parcours.find(x=>x.id==='ch');
     p.noeuds.push('dotation');p.liens.push({de:'cuisine',vers:'dotation'});}));await attendre();

@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 19 (d) : un problème est un problème
+
+Quatrième partie du nettoyage de l'interface de la version 1. Aucun calcul ne
+change ; le moteur et la version 2 ne sont pas touchés.
+
+- **Trois niveaux, les mêmes mots partout** : « bloquant » (le calcul ne se
+  fait pas, ou une commande n'est préparée par personne), « à corriger » (le
+  calcul se fait, mais il est faux pour une part), « information » (rien à
+  faire). Dans le panneau des Problèmes, sur le nombre du menu et ceux des
+  onglets, dans les pages d'équipes, « Contrôles détaillés », la Synthèse et
+  l'état du calcul.
+- **Le compteur du menu ne compte que les deux premiers** : une commande sans
+  vol ce jour-là, un service en bout de chaîne, ce que la journée montre ne
+  sont plus comptés. Son ton (rouge, ambre) et sa bulle disent les niveaux.
+- **Les informations se lisent repliées, sous les autres**, et se déplient.
+- Le niveau d'un point du calcul se lit dans son code (`avis.js`) ; les codes
+  que le moteur laisse passer sont relus dans sa source par le test.
+- `problemes.js`, commun avec la version 2, n'est pas touché ; la version 1
+  ne charge plus sa copie (`mots/problemes.js`, retirée).
+
+Fichiers : `avis.js` et `avis.css` (nouveaux), `sim.js`, `ateliers.js`,
+`synthese-vue.js`, `resultats-vue.js`, `index.html`,
+`outils/vocabulaire-regles.cjs`, `mots/flow-center.js`, `mots/simulation.js`,
+`mots/problemes.js` (retiré), `tests/avis.test.cjs` et
+`tests/avis-browser.cjs` (nouveaux), `tests/vocabulaire.test.cjs`,
+`tests/problemes-browser.cjs`, `tests/fantome-browser.cjs`,
+`tests/partage-browser.cjs`, `tests/services-browser.cjs`,
+`tests/lisibilite-browser.cjs`, `README.md`, `docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-15 — Évolution 19 (c) : ce qui se supprime
 
 Troisième partie du nettoyage de l'interface de la version 1. Aucun calcul ne

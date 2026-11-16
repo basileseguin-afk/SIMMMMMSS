@@ -77,6 +77,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await p2.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').length),2);
 
   // 6. Une copie de l'organisation d'avant la fusion est gardée : on peut y revenir.
+  //    C'est une information (rien à faire), repliée sous ce qui est à corriger (évolution 19 d) : on la déplie.
+  await page.locator('#at-anomalies details.avis-niveau.information summary').click();await attendre();
   assert.match(await page.locator('#at-anomalies').innerText(),/copie de l’organisation d’avant la fusion/);
   await page.locator('#at-anomalies [data-at-action=avant-fonte]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='magasin').length),2,'l’organisation d’avant est rétablie');

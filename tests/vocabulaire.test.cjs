@@ -89,8 +89,7 @@ test('le code d’une copie est celui du module commun : seul le texte de ses ch
   // Les chaînes d'un seul mot qui changent : des mots affichés (un titre de colonne, un pluriel), pas des clés.
   const UN_MOT = {
     'unite.js': ['Flux → Chemin', 'flux → chemin', 'flux → chemins'], 'parcours.js': ['Flux → Chemin', 'Flux → Chemins de production'],
-    'reglages.js': ['Case → Équipe'], 'echanges.js': ['Atelier → Équipe', 'Ateliers → Équipes', 'Case → Équipe', 'Cases → Récap des équipes'],
-    'problemes.js': ['case → équipe']
+    'reglages.js': ['Case → Équipe'], 'echanges.js': ['Atelier → Équipe', 'Ateliers → Équipes', 'Case → Équipe', 'Cases → Récap des équipes']
   };
   for (const f of REGLES.communs) {
     const commun = lireSource(f), copie = lireSource(V.DOSSIER + '/' + f);
@@ -164,8 +163,11 @@ test('aucun mot banni dans le texte des modules propres à la version 1, ni dans
   // Un mot seul, donné à la main à un pluriel (« 2 cases ») : il s'affiche aussi.
   const PLURIEL = /\bpl\([^()]*(?:\([^()]*\)[^()]*)*,\s*'(cases?|ateliers?|flux|barèmes?|boutiques?)'/;
   for (const f of v1.concat(REGLES.communs.map(x => V.DOSSIER + '/' + x))) assert.doesNotMatch(lireSource(f), PLURIEL, f);
-  // Les modules communs qui n'ont pas de copie ne portent aucun mot banni : sinon, il leur en faut une.
-  for (const f of [...communs].filter(x => x.endsWith('.js') && !REGLES.communs.includes(x) && fs.existsSync(path.join(RACINE, x)))) {
+  // Les modules communs que la page charge tels quels, sans copie, ne portent aucun mot banni : sinon, il leur en faut une.
+  // Le registre commun des problèmes n'est plus chargé par la version 1 : le sien est avis.js (évolution 19 d).
+  const page = lireSource('index.html'), charge = f => page.includes('<script src="' + f + '?v=');
+  assert.ok(charge('ds.js') && charge('avis.js') && !charge('problemes.js') && !charge(V.DOSSIER + '/problemes.js'), 'ce que la page charge');
+  for (const f of [...communs].filter(x => x.endsWith('.js') && !REGLES.communs.includes(x) && charge(x))) {
     for (const m of chaines(lireSource(f))) if (!IDENTIFIANT.test(m.texte)) assert.doesNotMatch(m.texte, BANNIS, f);
     assert.doesNotMatch(lireSource(f), PLURIEL, f);
   }

@@ -38,6 +38,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#fc-alertes').textContent(),/Quais · Réception fournit sans avoir d’équipe/);
   assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/Plonge : une équipe est décrite mais ne prépare rien/,
     'une plonge lave pour tout le monde : pas d’alerte');
+  // Toutes les commandes ont leur chemin : ces liens ne servent pas au calcul. C'est une information, repliée
+  // (évolution 19 d) ; on la déplie pour faire le geste.
+  await page.locator('#fc-alertes details.avis-information summary').click();await attendre();
   await page.locator('#fc-alertes [data-svc-action=equipe][data-svc=quais]').click();await attendre();
   assert.equal((await cases('quais')).length,1,'l’équipe qui manquait est créée d’un clic');
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');

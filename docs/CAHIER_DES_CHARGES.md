@@ -407,6 +407,24 @@ effacée : elle est gardée et sauvegardée.
 Contrôlé par `tests/jouent.test.cjs` et `tests/jouent-browser.cjs`, chaque cas
 dans les deux sens.
 
+### Les trois niveaux d'avis (version 1, évolution 19 d)
+
+Un problème est un problème. Ce que la page signale a trois niveaux, dits avec
+les mêmes mots partout :
+
+| Niveau | Définition | Compté au menu |
+|---|---|---|
+| **Bloquant** | Le calcul ne se fait pas, ou une commande n'est préparée par personne. | oui |
+| **À corriger** | Le calcul se fait, mais il est faux pour une part (une compagnie qu'aucun handling ne charge). | oui |
+| **Information** | Rien à faire (une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre). | non |
+
+Le compteur du menu et le nombre d'un onglet ne comptent que les deux
+premiers. Les informations se lisent repliées, sous les autres. Le niveau d'un
+point du calcul se lit dans son code : ce que le moteur refuse est bloquant ;
+ce qu'il laisse passer est « à corriger » ou « information » (`avis.js`).
+Contrôlé par `tests/avis.test.cjs` et `tests/avis-browser.cjs`, sur une unité
+fictive qui porte un avis de chaque niveau.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

@@ -817,37 +817,49 @@ function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets
  * des liens entre services, qui ne servent plus quand chaque commande a son
  * chemin — et taisait ce que le calcul signale. On sépare ce qui est à
  * CORRIGER dans l'organisation de ce que la journée MONTRE (des résultats). */
-const CODES_JOURNEE=new Set(['poste','materiel','bouchon','inacheve','plonge-fermee','plonge-vol',
-  'handling-bloque','handling-poste','handling-retard','handling-chauffeurs']);
+const CODES_JOURNEE=new Set(OrlyAvis.JOURNEE);
 function controlesDuCalcul(){
   const an=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[];
-  return {corriger:an.filter(a=>!CODES_JOURNEE.has(a.code)),journee:an.filter(a=>CODES_JOURNEE.has(a.code))};
+  return {corriger:an.filter(a=>!CODES_JOURNEE.has(a.code))};
+}
+/* Ce que le calcul dit, rangé par niveau d'avis (évolution 19 d) : « bloquant »,
+ * « à corriger », « information ». Le niveau se lit dans le code du point. */
+function avisDuCalcul(){
+  const an=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[],de=n=>an.filter(a=>OrlyAvis.niveauDuCode(a.code)===n);
+  return {bloquant:de('bloquant'),corriger:de('corriger'),information:de('information')};
 }
 function sansChemin(){
   return Sim.ateliers&&window.OrlyParcours?Sim.ateliers.classes.filter(c=>!OrlyParcours.fluxDe(Sim.ateliers.state,c)).length:0;
 }
 function renderControles(){
   const box=document.getElementById('fc-calcul');if(!box)return;
-  const {corriger,journee}=controlesDuCalcul(),n=sansChemin();
+  const {bloquant,corriger,information}=avisDuCalcul(),n=sansChemin();
   const liste=l=>'<ul>'+l.slice(0,40).map(a=>'<li>'+escapeHTML(a.message||a.code)+'</li>').join('')+(l.length>40?'<li>… et '+(l.length-40)+' autres</li>':'')+'</ul>';
-  box.innerHTML=(corriger.length
-      ?'<div class="fc-alerte grave"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger dans l’organisation</b>'+liste(corriger)
-        +'<button type="button" class="lien-fort" data-page="at-chemins">Ouvrir les chemins →</button></div>'
-      :'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a son équipe, chaque équipe sait quoi préparer.</p>')
-    +(journee.length?'<details class="fc-alerte"><summary><b>'+journee.length+(journee.length>1?' choses que la journée montre':' chose que la journée montre')
-        +'</b> — retards, postes trop courts, attentes : ce sont des résultats, pas des erreurs de saisie.</summary>'+liste(journee)
+  const dit=id=>escapeHTML(OrlyAvis.NIVEAUX.find(x=>x.id===id).dit);
+  const chemins='<button type="button" class="lien-fort" data-page="at-chemins">Ouvrir les chemins →</button>';
+  box.innerHTML=(bloquant.length?'<div class="fc-alerte grave avis-bloquant"><b>'+bloquant.length+(bloquant.length>1?' points bloquants':' point bloquant')+'</b>'
+        +'<span class="avis-dit">'+dit('bloquant')+'</span>'+liste(bloquant)+chemins+'</div>':'')
+    +(corriger.length?'<div class="fc-alerte grave avis-corriger"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger</b>'
+        +'<span class="avis-dit">'+dit('corriger')+'</span>'+liste(corriger)+chemins+'</div>':'')
+    +(!bloquant.length&&!corriger.length?'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a son équipe, chaque équipe sait quoi préparer.</p>':'')
+    +(information.length?'<details class="fc-alerte avis-information"><summary><b>'+OrlyAvis.dire(information.length,'information')
+        +'</b> — rien à faire : une commande sans vol ce jour-là, ou ce que la journée montre (retards, postes trop courts, attentes).</summary>'+liste(information)
         +'<button type="button" class="lien-fort" data-page="j-chiffres">Voir les résultats →</button></details>':'')
     +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
       :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
 }
-/* Le nombre d'un onglet : les problèmes qui se règlent sur sa page. Il dérive
- * du registre (problemes.js) : un seul compte, partout (refonte du 08/10). */
+/* Le nombre d'un onglet : les problèmes (bloquants, à corriger) qui se règlent
+ * sur sa page. Il dérive du registre (avis.js) : un seul compte, partout
+ * (refonte du 08/10) ; une information n'y compte pas (évolution 19 d). */
 function badgeOnglet(id){return Sim.problemes?Sim.problemes.badge(id):null;}
 /* Les sources du registre des problèmes : celles que le site montre déjà
  * ailleurs (contrôles du calcul, services supprimés encore cités, liens de
- * l'unité quand ils servent, étapes de « Prêt à simuler ? ») ; rien de plus. */
+ * l'unité quand ils servent, étapes de « Prêt à simuler ? ») ; rien de plus.
+ * avis.js les range en trois niveaux : « bloquant », « à corriger »,
+ * « information » (évolution 19 d). */
 function sourcesProblemes(){
-  const {corriger,journee}=controlesDuCalcul();
+  const {corriger}=controlesDuCalcul();
+  const duCalcul=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[];
   const anomalies=new Set(corriger.map(a=>a.message));
   const serviceDe=a=>a.service||((Sim.ateliers.state.ateliers.find(x=>x.id===a.atelier)||{}).service);
   const etapes=[];
@@ -861,14 +873,16 @@ function sourcesProblemes(){
     }
     etapes.push({id:e.id,titre:e.titre,texte:e.texte,page:(e.geste||{}).page,services});
   }
-  return {corriger:corriger.map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
-    liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>a.grave&&!a.fantomes):[],
-    etapes,journee,enClair:MoteurProduction.enClair};
+  // Les liens de l'unité ne comptent que s'ils servent au calcul (une commande sans chemin) : un service qui fournit
+  // sans équipe est à corriger, un service en bout de chaîne est une information.
+  return {anomalies:duCalcul.map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
+    liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
+    etapes,enClair:MoteurProduction.enClair};
 }
 function initProblemes(){
   const bouton=document.getElementById('btn-problemes'),panneau=document.getElementById('problemes');
-  if(!bouton||!panneau||!window.OrlyProblemes)return;
-  Sim.problemes=new OrlyProblemes.Registre({bouton,panneau,sources:sourcesProblemes,
+  if(!bouton||!panneau||!window.OrlyAvis)return;
+  Sim.problemes=new OrlyAvis.Registre({bouton,panneau,sources:sourcesProblemes,
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);}});
   Sim.problemes.maj();
@@ -1167,8 +1181,8 @@ function elementsPalette(){
   const un=document.getElementById('btn-annuler'),re=document.getElementById('btn-retablir');
   if(un&&!un.disabled)geste('Annuler',()=>annulerOuRetablir(false),{ico:'annuler',indice:OrlyPalette.MOD+' Z'});
   if(re&&!re.disabled)geste('Rétablir',()=>annulerOuRetablir(true),{ico:'retablir',indice:OrlyPalette.MOD+' Maj Z'});
-  const pb=Sim.problemes?Sim.problemes.liste.length:0;
-  geste('Problèmes',()=>{const b=document.getElementById('btn-problemes');if(b)b.click();},{ico:'alerte',indice:pb?pb+(pb>1?' problèmes':' problème'):'aucun',mots:'corriger completer'});
+  const pb=Sim.problemes?OrlyAvis.resume(Sim.problemes.liste):'';
+  geste('Problèmes',()=>{const b=document.getElementById('btn-problemes');if(b)b.click();},{ico:'alerte',indice:pb||'aucun',mots:'bloquant corriger information avis'});
   const sombre=document.documentElement.dataset.theme==='sombre';
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
   geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier excel période'});
@@ -1196,7 +1210,7 @@ function majCalcul(){
     b.querySelector('.calcul-mot').textContent={ok:'Calcul à jour',vide:'Rien à calculer',arret:'Calcul arrêté'}[etat];
     b.title={ok:'La journée se recalcule à chaque changement : voir la synthèse',
       vide:'Aucune équipe ne prépare encore de commande : décrire votre unité',
-      arret:'Le calcul s’arrête sur un point à corriger : voir les problèmes'}[etat];
+      arret:'Le calcul s’arrête sur un point bloquant : voir les problèmes'}[etat];
   }
   // Le point bat une fois : le calcul vient de suivre ce qu'on a changé. Le battement repart deux
   // images plus tard, sans forcer de mise en page au milieu du calcul (la latence d'un changement).

@@ -88,7 +88,7 @@
       + '</dl></section>';
     const sans = k.classesAbsentes ? '<p class="bilan-probleme" role="note">' + (I ? I.ico('alerte') : '')
       + '<span><b>' + esc(pluriel(k.classesAbsentes, 'commande que personne ne prépare', 'commandes que personne ne prépare')) + '</b>'
-      + ' — un problème à compléter : elles ne sont pas parmi les commandes comptées ici.</span>'
+      + ' — un problème bloquant : elles ne sont pas parmi les commandes comptées ici.</span>'
       + '<button type="button" class="btn btn-sm" data-page="mu-services">Cocher dans un service ' + fleche + '</button></p>' : '';
     box.innerHTML = '<p class="bilan-resume">' + esc(resume(k)) + '</p><div class="bilan-cles">' + cles.map(carte).join('') + '</div>' + sans
       + '<div class="bilan-groupes">' + groupes.map(groupe).join('') + '</div>';

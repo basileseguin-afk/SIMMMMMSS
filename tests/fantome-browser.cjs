@@ -30,6 +30,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'u-lecture');
   assert.doesNotMatch(await page.locator('#fc-alertes .grave').innerText().catch(()=>''),/Armement(?! AF)[^.]*fournit sans avoir d’équipe/,
     'pas de point à corriger pour un service dont les salles travaillent');
+  // Ce n'est pas à corriger : une information, repliée sous le reste (évolution 19 d). On la déplie pour la lire.
+  const infos=page.locator('#fc-alertes details.avis-information');
+  assert.equal(await infos.evaluate(d=>d.open),false,'l’information est repliée');
+  assert.match(await infos.locator('summary').innerText(),/^Information — rien à faire$/);
+  await infos.locator('summary').click();await attendre();
   assert.match(await alertes(),/Armement n’a pas d’équipe : son travail se fait dans Armement AF Équipage/);
   const bouton=page.locator('#fc-alertes [data-svc-action=supprimer][data-svc=armement]');
   assert.equal(await bouton.count(),1,'le geste « Supprimer Armement » est là');
@@ -46,6 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 3. Supprimé depuis les contrôles : sa salle garde ses liens, et plus
   //    aucune alerte ne le nomme.
   await nav.aller(page,'u-lecture');
+  await infos.locator('summary').click();await attendre();      // le geste est sous l'information : on la déplie
   await bouton.click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='armement').retire),true,'supprimé de l’unité');
   assert.deepEqual(await liensSalle(),avant,'la salle garde les liens de l’Armement');

@@ -1,0 +1,36 @@
+/* Les avis en trois niveaux (version 1, évolution 19 d) : « bloquant »,
+ * « à corriger », « information ». Le panneau des problèmes, puis les avis
+ * rangés par niveau dans une page. Les informations se lisent repliées. */
+
+/* ---- le panneau des problèmes ---- */
+.pb-groupe.bloquant h3 .ico{color:var(--ds-retard)}
+.pb-dit{margin:0;padding:0 16px 4px;font-size:var(--ds-t-12);line-height:1.45;color:var(--ds-texte-3)}
+details.pb-groupe.information{border-top:1px solid var(--ds-bordure)}
+.pb-vide+details.pb-groupe.information,.pb-groupe+details.pb-groupe.information{margin-top:4px}
+details.pb-groupe.information>summary{padding:12px 16px;cursor:pointer;list-style-position:inside;
+  font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.04em;text-transform:uppercase;color:var(--ds-texte-3)}
+details.pb-groupe.information>summary:hover,details.pb-groupe.information[open]>summary{color:var(--ds-texte-2)}
+details.pb-groupe.information>summary .ico{width:14px;height:14px;margin:0 8px 0 2px;vertical-align:-3px}
+.pb-rien{margin-left:8px;font-weight:400;letter-spacing:0;text-transform:none}
+.pb-n{float:right;font-variant-numeric:tabular-nums}
+/* Le nombre du menu : rouge s'il compte un bloquant, ambre sinon (le mot est dans la bulle). */
+.barre-lien .pb-compte.retard{background:var(--ds-nav-retard-fond);color:var(--ds-nav-retard-texte);box-shadow:none}
+.barre-lien .pb-compte.attente{background:var(--ds-nav-attente-fond);color:var(--ds-nav-attente-texte);box-shadow:none}
+
+/* ---- les avis d'une page, par niveau ---- */
+.avis-niveau{margin:8px 0 0}
+.avis-niveau>h4,.avis-niveau>summary{margin:0;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2)}
+.avis-niveau>h4{display:flex;align-items:center;gap:6px}
+.avis-niveau>h4 .ico{flex:none;width:14px;height:14px}
+.avis-niveau>summary .ico{width:14px;height:14px;margin:0 6px 0 2px;vertical-align:-3px}
+.avis-niveau.bloquant>h4 .ico{color:var(--ds-retard)}
+.avis-niveau.corriger>h4 .ico{color:var(--ds-attente)}
+details.avis-niveau>summary{cursor:pointer;list-style-position:inside;width:max-content;max-width:100%;color:var(--ds-texte-3)}
+details.avis-niveau>summary:hover,details.avis-niveau[open]>summary{color:var(--ds-texte-2)}
+.avis-rien{font-weight:400;color:var(--ds-texte-3)}
+/* « Contrôles détaillés » : la phrase du niveau, sous son titre. */
+.fc-alerte .avis-dit{display:block;margin-bottom:2px;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.fc-alerte.avis-information>summary{cursor:pointer;font-weight:400}
+.fc-alerte.avis-information>summary b{display:inline}
+/* Les pages d'équipes : rien que des informations, la boîte perd sa couleur d'alerte. */
+details.at-anomalies.at-informations{border-left-color:var(--ds-bordure-forte);background:var(--ds-surface-2)}

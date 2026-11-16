@@ -1871,37 +1871,41 @@
       const fantomes = this.a.fantomes ? this.a.fantomes() : [];
       const nomSv = id => ((this.a.services().find(x => x.id === id) || fantomes.find(x => x.id === id)) || {}).nom || id;
       const trous = (r.anomalies || []).filter(a => a.code === 'parcours-trou');
-      const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
+      // Chaque avis a son niveau (évolution 19 d) : « bloquant », « à corriger », « information ». Un point du calcul
+      // le tient de son code ; un geste qu'on propose sans rien devoir (ouvrir à heures fixes, une copie gardée) est une information.
+      const AV = root.OrlyAvis;
+      const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => ({ niveau: AV.niveauDuCode(a.code), html: esc(a.message) }));
+      const corriger = html => ({ niveau: 'corriger', html }), information = html => ({ niveau: 'information', html });
       if (trous.length) {
         // Des commandes déjà commencées dont une étape n'a personne : elle est
         // sautée. Ce n'est pas le compte des cases vides du tableau (celles
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
-        list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.');
+        list.push(corriger((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à corriger dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.'));
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
       for (const f of fantomes) {
-        list.unshift('<b>« ' + esc(f.nom) + ' » n’existe plus dans l’unité</b>, mais '
+        list.unshift(corriger('<b>« ' + esc(f.nom) + ' » n’existe plus dans l’unité</b>, mais '
           + [f.cases ? f.cases + (f.cases > 1 ? ' équipes' : ' équipe') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
-          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Équipes › Liste des services →</button>');
+          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Équipes › Liste des services →</button>'));
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
       const vieilles = this.anciensHandlings();
-      if (vieilles.length) list.unshift('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' équipes le préparent' : ' équipe le prépare')
+      if (vieilles.length) list.unshift(corriger('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' équipes le préparent' : ' équipe le prépare')
         + ' commande par commande (ancienne logique).</b> Le handling travaille par vol : il réunit les classes de chaque vol et le charge, le jour J. '
-        + '<button class="btn btn-sm btn-play" data-at-action="handling-convertir">Passer au handling par vol</button>');
+        + '<button class="btn btn-sm btn-play" data-at-action="handling-convertir">Passer au handling par vol</button>'));
       const dispos = PC.anciensDispos(this.state);
       if (dispos.length) {
         const noms = [...new Set(dispos.map(a => (this.a.services().find(x => x.id === a.service) || {}).nom || a.service))];
-        list.unshift('<b>' + esc(noms.join(', ')) + ' : ' + dispos.length + (dispos.length > 1 ? ' équipes préparent' : ' équipe prépare')
+        list.unshift(corriger('<b>' + esc(noms.join(', ')) + ' : ' + dispos.length + (dispos.length > 1 ? ' équipes préparent' : ' équipe prépare')
           + ' commande par commande.</b> Ces postes travaillent pour toutes les commandes à la fois, par vagues : '
           + (dispos.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule équipe par poste, et leurs heures de début deviennent ses vagues. '
-          + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une équipe partagée</button>');
+          + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une équipe partagée</button>'));
       }
       // Un service qui prépare commande par commande (la cuisine…) remplacé par
       // une mise à disposition : on propose de lui rendre une case par commande.
@@ -1912,35 +1916,38 @@
         }));
       for (const sv of remplaces) {
         const nomSv = (this.a.services().find(x => x.id === sv) || {}).nom || sv;
-        list.unshift('<b>« ' + esc(nomSv) + ' » est une mise à disposition</b> : elle sert toutes les commandes à la fois, comme la légumerie. '
+        list.unshift(corriger('<b>« ' + esc(nomSv) + ' » est une mise à disposition</b> : elle sert toutes les commandes à la fois, comme la légumerie. '
           + 'Si ce service prépare commande par commande, rendez-lui une équipe par commande. '
-          + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une équipe par commande dans ' + esc(nomSv) + '</button>');
+          + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une équipe par commande dans ' + esc(nomSv) + '</button>'));
       }
       // La légumerie, le magasin, la réception par vagues : ce sont plutôt des
       // boutiques, ouvertes de telle à telle heure (retour d'usage du 28/09).
       const parVagues = this.state.ateliers.filter(a => a.type === 'dispo' && a.permanent === false && PC.SERVICES_DISPO.includes(a.service));
       if (parVagues.length) {
-        list.push('<b>' + esc(parVagues.map(a => a.nom).join(', ')) + (parVagues.length > 1 ? ' servent' : ' sert') + ' par vagues.</b> '
+        list.push(information('<b>' + esc(parVagues.map(a => a.nom).join(', ')) + (parVagues.length > 1 ? ' servent' : ' sert') + ' par vagues.</b> '
           + 'Ouverts de telle à telle heure, ils servent à l’instant où l’on vient ; fermés, l’étape d’après attend l’ouverture. '
           + '<button class="btn btn-sm btn-play" data-at-action="boutiques">Les ouvrir de 07:00 à 18:00</button> '
-          + '<span class="mini-note">(les heures se changent ensuite dans chaque équipe, ou dans le récap des équipes)</span>');
+          + '<span class="mini-note">(les heures se changent ensuite dans chaque équipe, ou dans le récap des équipes)</span>'));
       }
       let copie = null;
       try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
       if (copie && copie.etat) {
-        list.push('Une copie de l’organisation d’avant la fusion (légumerie, magasin…) est gardée dans ce navigateur. '
+        list.push(information('Une copie de l’organisation d’avant la fusion (légumerie, magasin…) est gardée dans ce navigateur. '
           + '<button class="btn btn-sm" data-at-action="avant-fonte">Revenir à l’organisation d’avant la fusion</button> '
-          + '<button class="lien-discret" data-at-action="oublier-copie">Oublier cette copie</button>');
+          + '<button class="lien-discret" data-at-action="oublier-copie">Oublier cette copie</button>'));
       }
       box.hidden = !list.length;
       if (vieilles.length || dispos.length || remplaces.length || fantomes.length) box.open = true;
       // Replié par défaut. Sans nombre à lui : le compte de ce qui reste à
       // faire est celui des Problèmes, au pied de la barre latérale (08/10) ;
-      // ici, le détail et ses gestes d'un clic.
-      box.innerHTML = list.length
-        ? '<summary><strong>Points à regarder ici</strong></summary><ul>' +
-          list.map(m => '<li>' + m + '</li>').join('') + '</ul>'
-        : '';
+      // ici, le détail et ses gestes d'un clic, rangés par niveau avec les
+      // mêmes mots (évolution 19 d). Rien que des informations : la boîte est
+      // leur repli, et elle le dit.
+      const problemes = list.some(x => x.niveau !== 'information');
+      box.classList.toggle('at-informations', !!list.length && !problemes);
+      box.innerHTML = !list.length ? ''
+        : problemes ? '<summary><strong>Points à regarder ici</strong></summary>' + AV.blocs(list)
+        : '<summary><strong>Information</strong> <span class="avis-rien">— rien à faire</span></summary><ul>' + list.map(x => '<li>' + x.html + '</li>').join('') + '</ul>';
     }
 
     rendreFiltre() {

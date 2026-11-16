@@ -1349,6 +1349,39 @@ pas). Aucun calcul ne change.
   vers le planning des équipes, où l’on voit quand une équipe travaille et
   quand elle attend.
 
+### Un problème est un problème (évolution 19 d)
+
+Ce que la page signale se range en **trois niveaux**, dits avec les mêmes
+mots partout — le panneau des Problèmes, le nombre du menu et ceux des
+onglets, « Points à regarder ici » dans les pages d’équipes, « Contrôles
+détaillés », la Synthèse, l’état du calcul :
+
+| Niveau | Ce qu’il veut dire | Exemples |
+|---|---|---|
+| **Bloquant** | Le calcul ne se fait pas, ou une commande n’est préparée par personne. | une commande mal écrite, une boucle, une commande cochée dans aucune équipe, aucun vol |
+| **À corriger** | Le calcul se fait, mais il est faux pour une part. | une compagnie qu’aucun handling ne charge, un service sans temps par vol, une étape de chemin sans équipe, un service supprimé encore cité |
+| **Information** | Rien à faire. | une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre (un retard, un poste trop court) |
+
+- **Le compteur du menu ne compte que les deux premiers** ; le nombre d’un
+  onglet aussi. Il est rouge s’il compte un bloquant, ambre sinon, et sa
+  bulle le dit en mots (« 1 bloquant · 2 à corriger ; 3 informations à lire,
+  sans rien à faire »). Une commande sans vol ce jour-là n’est plus comptée.
+- **Les informations se lisent repliées, sous les autres** : dans le
+  panneau (« Information — rien à faire », avec leur nombre), dans les pages
+  d’équipes, dans « Contrôles détaillés ». Elles se déplient d’un clic ;
+  chacune mène encore à sa page.
+- **Le niveau d’un point du calcul se lit dans son code** (`avis.js`). Le
+  moteur dit lui-même ce qui arrête le calcul : c’est « bloquant ». Les
+  points qu’il laisse passer sont rangés en « à corriger » ou
+  « information » ; `tests/avis.test.cjs` relit la liste du moteur dans sa
+  source, pour qu’aucun code ne manque ni ne soit de trop. Rien n’est calculé
+  de plus, et le résultat de la journée ne change pas.
+- **Ce que la journée montre** (retards, postes trop courts, attentes) était
+  un niveau à part, compté au menu : ce sont des résultats, que la Synthèse
+  raconte ; ils sont des informations.
+- `problemes.js`, commun avec la version 2, n’est pas touché ; la version 1
+  ne le charge plus.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -1397,7 +1430,7 @@ pas). Aucun calcul ne change.
 | `vols-demo.js` | Programme de vols **fictif** de démonstration, sans QR ni DL ; il reçoit des vols d’essai pour chaque compagnie que l’unité prépare ou a ajoutée sans départ au programme (jamais un programme importé) |
 | `parcours.js` | Chemins des repas : validation, chemins types, tableau « Qui prépare quoi », suivi d’un repas dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
-| `mots/*.js` | Les mots de la version 1 (évolution 19 a) : les copies des modules communs que la page charge à leur place (`unite.js`, `parcours.js`, `reglages.js`, `echanges.js`, `flow-center.js`, `plan-editor.js`, `temps.js`, `comparaison.js`, `simulation.js`, `problemes.js`), où seul le texte affiché change. **Écrites par `outils/vocabulaire.cjs`, jamais à la main** |
+| `mots/*.js` | Les mots de la version 1 (évolution 19 a) : les copies des modules communs que la page charge à leur place (`unite.js`, `parcours.js`, `reglages.js`, `echanges.js`, `flow-center.js`, `plan-editor.js`, `temps.js`, `comparaison.js`, `simulation.js`), où seul le texte affiché change. **Écrites par `outils/vocabulaire.cjs`, jamais à la main** |
 | `outils/vocabulaire.cjs` / `outils/vocabulaire-regles.cjs` | L’outil qui écrit `mots/*.js` (`--verifier` : sort en erreur si une copie a vieilli) et ses règles : par fichier (un extrait exact), puis générales (« case » → « équipe », « flux » → « chemin », « barème » → « temps par vol »…) |
 | `classeurs-anciens.js` | Les classeurs d’avant se relisent (v1, évolution 19 a) : enveloppe la lecture de `tableur.js` — le nom d’une feuille d’avant, la clé d’un nouvel en-tête |
 | `jouent.js` / `jouent-vue.js` / `jouent.css` | Un réglage qui ne joue pas ne s’affiche pas (v1, évolution 19 b) : `jouent.js` dit, pour une équipe, les réglages qui portent une valeur et que le calcul ne lit pas, avec leur raison ; si un service travaille par compagnie ; si « Liens entre services » sert (une commande sans chemin). `jouent-vue.js` l’applique aux fiches à chaque rendu : le champ masqué, la ligne « n réglages ne jouent pas ici » et ses champs grisés, les minutes par compagnie dans « Temps par vol par service » |
@@ -1413,7 +1446,8 @@ pas). Aucun calcul ne change.
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
 | `onglets.js` | Le menu : les cinq parties et leurs pages (chacune est un sous-onglet d’une vue), les outils « Plus », la règle qui masque les autres, le clavier, la page retenue par partie ; une page conditionnelle (la Période, avec un programme daté) |
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
-| `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent |
+| `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent. **Version 2** ; la version 1 a le sien, `avis.js` (évolution 19 d) |
+| `avis.js` / `avis.css` | Les avis en trois niveaux (v1, évolution 19 d) : « bloquant », « à corriger », « information ». `niveauDuCode` donne le niveau d’un point du calcul ; `lister` fait le registre (du bloquant à l’information) ; `compte` ne compte que les deux premiers ; `panneau` et `blocs` écrivent le panneau des Problèmes et les avis d’une page, informations repliées ; `Registre` tient le panneau, le nombre du menu et ceux des onglets |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
 | `champs.js` | Les champs (09/10) : l’heure en 24 h (champ texte `data-heure` : « 0430 », « 4:30 », « 4h30 » → « 04:30 », gardée « HH:MM » comme avant ; tout choisi au focus ; ↑↓ un quart d’heure, Maj+↑↓ une heure), Maj+↑↓ dix pas dans un nombre, et le refus d’une saisie sous son champ (bordure, message lié au champ, valeur gardée remise) |
 | `ds.js` | Les composants scriptés du système de dessin (09/10) : l’infobulle des graphiques (tout de suite au survol, ce que porte le `data-info` d’une barre, d’un avion, d’un nom ; seulement dans un graphique `ds-graphique`), et le trait « maintenant » (l’heure rejouée sur chaque graphique qui déclare son axe du temps, `data-axe="t0 t1 x0 x1 y0 y1"` ; le repère d’axe qu’il chevauche s’efface) |
@@ -1596,6 +1630,8 @@ pas). Aucun calcul ne change.
 | `tests/jouent-browser.cjs` | Dans la page (v1, évolution 19 b), sur l’unité fictive : les six cas dans les deux sens (plonge par vol et au débit ; robot ; mise à disposition toujours ouverte, ouverte de … à …, à heures fixes ; handling aux chauffeurs comptés, non comptés, calculés ; « Temps par vol par service » ; le menu et « Aller à… ») ; la ligne et ses raisons, dans la fiche d’une équipe et dans celle de son service ; la journée identique, champ par champ ; une valeur masquée survit à une sauvegarde et à une restauration |
 | `tests/plan-menage.test.cjs` | Les stockages vides du plan (v1, évolution 19 c), en Node : un stockage non rattaché et vide est retiré, un stockage rattaché ou renseigné ne change pas ; le plan donné n’est pas modifié ; la phrase de l’avis |
 | `tests/menage-browser.cjs` | Ce qui se supprime, dans la page (v1, évolution 19 c), sur l’unité fictive : les mises à disposition hors de « Temps par vol par service » et de « Temps par vol », leurs valeurs gardées, dans les deux sens ; une sauvegarde aux stockages vides non rattachés se restaure en le disant, le panneau ne les liste plus, la sauvegarde suivante part sans eux ; plus de mention « Version 2 » au menu ; plus aucune attente en minutes dans les pages de réglage des équipes, l’heure de fin et le lien vers le planning |
+| `tests/avis.test.cjs` | Les trois niveaux d’avis (v1, évolution 19 d), en Node : le niveau de chaque code du calcul ; les codes que le moteur laisse passer (relus dans sa source) sont « à corriger » ou « information », ni plus ni moins ; le registre du bloquant à l’information ; le compteur sans les informations (une commande sans vol n’est pas comptée) ; le panneau et les avis d’une page, informations repliées ; l’échappement |
+| `tests/avis-browser.cjs` | Dans la page (v1, évolution 19 d), sur une unité fictive qui porte un avis de chaque niveau : une commande que personne ne prépare (bloquant), une compagnie qu’aucun handling ne charge (à corriger), une commande sans vol ce jour-là (information) ; le compteur, son ton et sa bulle ; le panneau et ses informations repliées ; les nombres des onglets ; les mêmes mots dans les pages d’équipes, « Contrôles détaillés », la Synthèse et l’état du calcul ; un calcul refusé ; tout corrigé |
 | `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
