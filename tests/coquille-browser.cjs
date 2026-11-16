@@ -42,7 +42,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 1. Toute page en deux clics : sa partie, puis elle. Les pages de la partie
    //    ouverte se déplient juste sous elle ; le fil d'Ariane dit la partie, le titre la page.
    //    Une page d'un groupe (« Détails », évolution 15 c) : l'entrée du groupe, puis son onglet interne ; le titre, le groupe.
-   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).map(x=>x.id),
+   //    Les pages au menu (v1, évolution 19 b) : « Liens entre services » n'y est que si une commande n'a pas de chemin.
+   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).filter(x=>!OrlyOnglets.auMenu||OrlyOnglets.auMenu(x.id)).map(x=>x.id),
      groupes:Object.fromEntries(OrlyOnglets.pagesDe(p.id).filter(x=>x.groupe).map(x=>[x.id,OrlyOnglets.GROUPES[x.groupe].nom]))})));
    for(const p of parties){
     await page.locator(`#menu [data-vers-partie=${p.id}]`).click();await attendre();

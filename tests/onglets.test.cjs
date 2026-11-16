@@ -161,3 +161,36 @@ test('le menu des Résultats (évolution 15 c) : six entrées ; « Détails » e
   assert.equal(O.partieDe('at-grille').id, 'chemins');
   assert.ok(O.menuDe('chemins').some(o => o.id === 'at-grille'));
 });
+
+test('« Liens entre services » n’est au menu que si une commande n’a pas de chemin ; hors du menu, la page s’ouvre encore (évolution 19 b)', () => {
+  assert.equal(O.page('u-liens').menuSi, 'liens');
+  const menu = ouverte => O.menuDe('chemins', {}, ouverte).map(x => x.id);
+  try {
+    // Toutes les commandes ont un chemin : la page n'est pas au menu, mais elle se montre — « Aller à… » et ses liens y mènent.
+    O.conditions.liens = () => false;
+    assert.equal(O.montree('u-liens'), true, 'elle s’ouvre toujours');
+    assert.equal(O.auMenu('u-liens'), false);
+    assert.deepEqual(menu(), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille']);
+    assert.ok(O.pagesDe('chemins').some(x => x.id === 'u-liens'), 'la recherche la liste encore');
+    // Tant qu'on y est, le menu la montre : on sait où l'on est.
+    assert.equal(O.auMenu('u-liens', 'u-liens'), true);
+    assert.deepEqual(menu('u-liens'), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']);
+    // Ouvrir la partie ne ramène pas sur une page hors du menu, même si c'était la dernière ouverte.
+    const s = new O.SousOnglets({ hote: () => null, vue: () => 'flux' });
+    s.choisir('u-liens');
+    assert.equal(s.page, 'u-liens', 'elle s’ouvre');
+    assert.equal(s.choix.chemins, 'u-liens');
+    assert.equal(s.actifDe('chemins'), 'mu-carte', 'la partie rouvre sa première page au menu');
+    // Une commande sans chemin : au menu, comme avant.
+    O.conditions.liens = () => true;
+    assert.equal(O.auMenu('u-liens'), true);
+    assert.deepEqual(menu(), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']);
+    assert.equal(s.actifDe('chemins'), 'u-liens');
+    // Sans condition posée (une page qui n'a pas encore branché la sienne) : hors du menu, jamais fermée.
+    delete O.conditions.liens;
+    assert.equal(O.auMenu('u-liens'), false); assert.equal(O.montree('u-liens'), true);
+    // Les autres pages ne changent pas : au menu dès qu'elles se montrent.
+    for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'j-chiffres', 'u-services']) assert.equal(O.auMenu(id), true, id);
+    assert.equal(O.auMenu('j-periode'), false, 'une page conditionnelle fermée n’est pas au menu');
+  } finally { delete O.conditions.liens; }
+});

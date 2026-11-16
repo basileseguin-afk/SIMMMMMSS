@@ -240,7 +240,8 @@
         : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
       const tuile = p => {
         const t = etat[p.id];
-        const pages = O().pagesDe(p.id).map(x => `<button type="button" class="acc-page${x.plus ? ' acc-plus' : ''}" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
+        // Les pages au menu : une page hors du menu (« Liens entre services » sans commande sans chemin) n'a pas son raccourci.
+        const pages = O().pagesDe(p.id).filter(x => O().auMenu(x.id)).map(x => `<button type="button" class="acc-page${x.plus ? ' acc-plus' : ''}" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
         return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
           <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
             <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>

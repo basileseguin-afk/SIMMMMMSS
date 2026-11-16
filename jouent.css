@@ -1,0 +1,19 @@
+/* Un réglage qui ne joue pas ne s'affiche pas (version 1, évolution 19 b) :
+ * le champ masqué, la ligne discrète sous la fiche, ses champs grisés. */
+[data-nj-masque]{display:none!important}
+.nj-hote{margin-top:var(--ds-e-3)}
+/* Sous la fiche d'une équipe : dans les marges de sa carte. */
+.at-carte>.nj-hote{margin:0;padding:0 14px 12px}
+.nj{font-size:var(--ds-t-12);color:var(--ds-texte-3)}
+.nj>summary{cursor:pointer;width:max-content;max-width:100%;color:var(--ds-texte-3);font-weight:400}
+.nj>summary:hover,.nj[open]>summary{color:var(--ds-texte-2)}
+.nj-liste{list-style:none;margin:var(--ds-e-2) 0 0;padding:0;display:grid;gap:var(--ds-e-2)}
+.nj-liste li{display:grid;grid-template-columns:minmax(180px,280px) 1fr;gap:var(--ds-e-3);align-items:end}
+.nj-champ{display:grid;gap:2px;color:var(--ds-texte-3)}
+.nj-champ input:disabled{width:100%;min-width:0;box-sizing:border-box;height:auto;padding:6px 8px;font:inherit;font-size:var(--ds-t-13);color:var(--ds-texte-3);background:var(--ds-surface-2);border:1px dashed var(--ds-bordure);border-radius:var(--ds-r-2);opacity:1;cursor:not-allowed}
+.nj-raison{color:var(--ds-texte-3);line-height:1.45;padding-bottom:4px}
+.nj-par-cie{margin-top:var(--ds-e-3);display:grid;gap:var(--ds-e-2);justify-items:start}
+.nj-par-cie p{margin:0}
+.nj-table{width:auto;min-width:260px}
+.nj-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:700px){.nj-liste li{grid-template-columns:1fr}}

@@ -2030,6 +2030,21 @@ function entreeDeLaJournee(){
   if(!e||!e.saleInitial)return null;
   return e.volsVeille?{...e,volsVeille:OrlyJournee.volsDecales(e.volsVeille,CFG.shift)}:e;
 }
+/* Un réglage qui ne joue pas ne s'affiche pas (évolution 19 b) : les fiches des équipes et « Temps par vol par service »
+ * sont repassées à chaque rendu (jouent-vue.js) ; « Liens entre services » ne sert qu'aux commandes sans chemin — la page
+ * n'est au menu que s'il y en a une (elle reste ouverte à « Aller à… »). Rien n'est calculé ici, aucune valeur ne change. */
+function initJouent(){
+  if(!window.OrlyJouent||!Sim.ateliers)return;
+  if(window.OrlyOnglets)OrlyOnglets.conditions.liens=()=>{const at=Sim.ateliers,commandes=(at.classes||[]).filter(c=>!c.categorie);
+    return OrlyJouent.liensUtiles(commandes,MoteurProduction.routesDesClasses(commandes,at.state));};
+  if(window.OrlyJouentVue)Sim.jouent=OrlyJouentVue.brancher({
+    etat:()=>Sim.ateliers?Sim.ateliers.state:null,
+    bareme:()=>(Sim.reglages&&Sim.reglages.etat&&Sim.reglages.etat.bareme)||{},
+    heures:m=>MoteurProduction.heuresFr(m),
+    ouvrirService:id=>{if(Sim.unite)Sim.unite.ouvrir(id);},
+    racines:()=>['view-ateliers','view-reglages'].map(id=>document.getElementById(id)).filter(Boolean)
+  });
+}
 function initPeriode(){
   if(!window.OrlyPeriodeVue||!Sim.ateliers)return;
   if(window.OrlyOnglets)OrlyOnglets.conditions.periode=()=>!!programmeDate();
@@ -3798,7 +3813,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 // donc se dresser qu'une fois qu'ils sont là.
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
-etape('période',initPeriode);
+etape('période',initPeriode); etape('réglages qui jouent',initJouent);
 etape('menu',initOnglets); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);

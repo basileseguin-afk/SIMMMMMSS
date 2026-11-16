@@ -1299,6 +1299,31 @@ texte affiché change :
   anomalies, les formules et les statuts du calage), dans la page et dans le
   classeur du calage ; le résultat du moteur n’est pas modifié.
 
+### Un réglage qui ne joue pas ne s’affiche pas (évolution 19 b)
+
+Un champ ne s’affiche que quand le calcul le lit. Quand des champs sont
+masqués, une ligne discrète le dit sous la fiche — **« n réglages ne jouent pas
+ici »** ; dépliée, elle montre ces champs grisés, chacun avec sa raison en une
+phrase. **Une valeur masquée n’est jamais effacée** : elle est gardée,
+sauvegardée, et rejoue le jour où la situation revient.
+
+| Où | Ce qui ne s’affiche que quand il joue |
+|---|---|
+| Plonge | le débit de chaque tunnel et le plafond de l’ensemble, si la plonge lave **au débit** ; les durées par compagnie (et la vitesse d’un tunnel), si elle lave **par vol** |
+| Robot | le débit général, si une commande du robot n’a pas son propre débit |
+| Mise à disposition | l’heure de début, le jour et les vagues, si elle sert « à heures fixes » — ni « toujours ouverte », ni « ouverte de … à … » |
+| Handling | « vols en même temps », si les chauffeurs ne sont pas comptés ; les créneaux de chauffeurs, s’ils sont saisis et non calculés |
+| Temps par vol par service | un service qui travaille par compagnie (le handling, une plonge par vol, un service à une équipe par compagnie) montre **ses minutes par compagnie**, avec un lien vers sa fiche — pas des temps par classe ; ses temps par classe gardés sont sous la ligne |
+| Menu | « Liens entre services » n’y est que si au moins une commande n’a pas de chemin (la page ne sert qu’à elles) ; sinon « Aller à… » y mène encore, et le menu la montre tant qu’on y est |
+
+Les règles sont dans `jouent.js` (une fonction pure : pour une équipe, la liste
+de ses réglages qui ne jouent pas et leur raison ; elles suivent ce que le
+moteur lit) ; `jouent-vue.js` les applique aux fiches à chaque rendu, y
+compris à celles de « Services et équipes », dont le module est commun avec la
+version 2 et ne change pas. Passer la plonge « au débit » n’efface plus ses
+durées par compagnie : elles restent dans la sauvegarde (le calcul ne les lit
+pas). Aucun calcul ne change.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -1350,6 +1375,7 @@ texte affiché change :
 | `mots/*.js` | Les mots de la version 1 (évolution 19 a) : les copies des modules communs que la page charge à leur place (`unite.js`, `parcours.js`, `reglages.js`, `echanges.js`, `flow-center.js`, `plan-editor.js`, `temps.js`, `comparaison.js`, `simulation.js`, `problemes.js`), où seul le texte affiché change. **Écrites par `outils/vocabulaire.cjs`, jamais à la main** |
 | `outils/vocabulaire.cjs` / `outils/vocabulaire-regles.cjs` | L’outil qui écrit `mots/*.js` (`--verifier` : sort en erreur si une copie a vieilli) et ses règles : par fichier (un extrait exact), puis générales (« case » → « équipe », « flux » → « chemin », « barème » → « temps par vol »…) |
 | `classeurs-anciens.js` | Les classeurs d’avant se relisent (v1, évolution 19 a) : enveloppe la lecture de `tableur.js` — le nom d’une feuille d’avant, la clé d’un nouvel en-tête |
+| `jouent.js` / `jouent-vue.js` / `jouent.css` | Un réglage qui ne joue pas ne s’affiche pas (v1, évolution 19 b) : `jouent.js` dit, pour une équipe, les réglages qui portent une valeur et que le calcul ne lit pas, avec leur raison ; si un service travaille par compagnie ; si « Liens entre services » sert (une commande sans chemin). `jouent-vue.js` l’applique aux fiches à chaque rendu : le champ masqué, la ligne « n réglages ne jouent pas ici » et ses champs grisés, les minutes par compagnie dans « Temps par vol par service » |
 | `mots-moteur.js` | Les messages du moteur avec les mots de la page (v1, évolution 19 a) : les anomalies d’une journée, les formules et les statuts du calage, réécrits à l’affichage et dans le classeur du calage ; le résultat du moteur et l’export de la journée inchangés |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions ; le classeur des résultats d’une période (v1, en lecture) |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
@@ -1540,6 +1566,8 @@ texte affiché change :
 | `tests/accueil-browser.cjs` | La page d’entrée (`accueil.html`) : les jetons, la police et les deux thèmes du design system, sans la grille de l’application (elle défile, rien ne déborde à 390 px) ; les deux applications au clavier avec l’anneau de focus ; rien n’est écrit |
 | `tests/vocabulaire.test.cjs` | Un seul mot par chose (v1, évolution 19 a) : l’outil ne réécrit que le texte d’une chaîne (ni identifiant, ni commentaire, ni expression régulière, ni classe CSS) ; chaque copie de `mots/` est à jour, sans règle inutile, au même code que le module commun, sans mot banni ; la page et Node chargent les copies ; les classeurs écrivent les nouveaux mots, et un classeur d’avant se relit comme un classeur d’aujourd’hui, tel quel puis modifié ; les messages du moteur à l’affichage |
 | `tests/vocabulaire-browser.cjs` | Dans la page (v1, évolution 19 a), sur l’unité fictive de 15 services : toutes les pages du menu sont parcourues (la vue en direct en relief et à plat, le panneau des problèmes) sans aucun mot banni dans le texte, les bulles, les libellés lus ni les exemples des champs ; « Aller à… » trouve une page par son ancien nom et y mène ; un classeur d’équipes d’avant (ses feuilles, ses en-têtes) s’importe et donne le même état que celui d’aujourd’hui. `VOCABULAIRE_RAPPORT=1` liste les écarts |
+| `tests/jouent.test.cjs` | Un réglage qui ne joue pas (v1, évolution 19 b), en Node : pour la plonge, le robot, la mise à disposition et le handling, les réglages qui ne jouent pas et leur raison, dans les deux sens ; la lecture ne change rien ; la ligne « n réglages ne jouent pas ici » (des champs grisés, un nom échappé) ; un service qui travaille par compagnie ; « Liens entre services » au menu seulement s’il y a une commande sans chemin |
+| `tests/jouent-browser.cjs` | Dans la page (v1, évolution 19 b), sur l’unité fictive : les six cas dans les deux sens (plonge par vol et au débit ; robot ; mise à disposition toujours ouverte, ouverte de … à …, à heures fixes ; handling aux chauffeurs comptés, non comptés, calculés ; « Temps par vol par service » ; le menu et « Aller à… ») ; la ligne et ses raisons, dans la fiche d’une équipe et dans celle de son service ; la journée identique, champ par champ ; une valeur masquée survit à une sauvegarde et à une restauration |
 | `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |

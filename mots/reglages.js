@@ -251,7 +251,7 @@
                 et par service de son chemin ; ${pic('importer')} <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
           <p class="rg-exemple" aria-label="Exemple : 1 heure par vol, à 2 personnes, prend 30 minutes.">
-            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>1 h</b><small>de travail pour un vol</small></span>
+            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>1 h</b><small>par vol, pour une personne</small></span>
             <span class="rg-op">÷</span>
             <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>2</b><small>personnes</small></span>
             <span class="rg-op">=</span>

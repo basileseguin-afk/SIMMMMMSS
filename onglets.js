@@ -95,7 +95,9 @@
         { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
         // Un réglage (évolution 15 c) : elle quitte les Résultats pour les Chemins.
         { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
-        { id: 'u-liens', plus: true, intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }
+        // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. Au menu seulement s'il y en a une
+        // (`conditions.liens`, posée par la page) ; sinon la page reste ouverte à « Aller à… » et à ses liens.
+        { id: 'u-liens', plus: true, menuSi: 'liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }
       ] },
     { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, en combien de temps',
@@ -163,15 +165,21 @@
   const montree = id => { const o = page(id); return !!o && (!o.si || !!(conditions[o.si] && conditions[o.si]())); };
   /** Les pages d'une partie qui se montrent, dans l'ordre du menu. */
   const pagesDe = partie => ((PARTIES.find(p => p.id === partie) || {}).pages || []).map(x => page(x.id)).filter(x => montree(x.id));
+  /**
+   * La page est-elle au menu ? Une page `menuSi` (évolution 19 b) n'y est que si sa condition est vraie, ou tant qu'elle
+   * est la page ouverte (`ouverte`) ; hors du menu, elle se montre toujours : « Aller à… » et ses liens y mènent.
+   */
+  const auMenu = (id, ouverte) => { const o = page(id); return montree(id) && (!o.menuSi || id === ouverte || !!(conditions[o.menuSi] && conditions[o.menuSi]())); };
   /** Les pages d'un groupe qui se montrent, dans l'ordre du menu. */
   const pagesDuGroupe = g => PARTIES.flatMap(p => pagesDe(p.id)).filter(x => x.groupe === g);
   /**
    * Les entrées du menu d'une partie : ses pages, un groupe une seule fois (à la place de sa première page), avec son
    * nom et son pictogramme ; `cible` : la page qu'il ouvre (la dernière ouverte du groupe, sinon la première).
+   * `ouverte` : la page ouverte — une page hors du menu y figure tant qu'on y est.
    */
-  function menuDe(partie, choix = {}) {
+  function menuDe(partie, choix = {}, ouverte) {
     const vus = new Set(), out = [];
-    for (const o of pagesDe(partie)) {
+    for (const o of pagesDe(partie).filter(x => auMenu(x.id, ouverte))) {
       if (!o.groupe) { out.push(o); continue; }
       if (vus.has(o.groupe)) continue;
       vus.add(o.groupe);
@@ -223,7 +231,8 @@
 
     /** La page à ouvrir dans une partie : la dernière vue, sinon la première. */
     actifDe(partie) {
-      const pages = pagesDe(partie), c = this.choix[partie];
+      // La dernière page ouverte de la partie, si elle est encore au menu ; sinon sa première page au menu.
+      const pages = pagesDe(partie).filter(x => auMenu(x.id)), c = this.choix[partie];
       return pages.some(x => x.id === c) ? c : (pages[0] || {}).id || null;
     }
 
@@ -280,7 +289,7 @@
       }
       this.rendreInterne(actif);
       const h = this.a.hote(); if (!h) return;
-      const liste = p ? menuDe(p.id, this.choix) : [], dans = actif ? (page(actif) || {}).groupe : null;
+      const liste = p ? menuDe(p.id, this.choix, actif) : [], dans = actif ? (page(actif) || {}).groupe : null;
       const I = root.OrlyIcones;
       const html = liste.map((o, i) => {
         const on = o.groupe ? o.groupe === dans : o.id === actif, b = !o.groupe && this.a.badge ? this.a.badge(o.id) : null;
@@ -342,7 +351,7 @@
     }
   }
 
-  const api = { ONGLETS, PARTIES, GROUPES, conditions, montree, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, regles, SousOnglets };
+  const api = { ONGLETS, PARTIES, GROUPES, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

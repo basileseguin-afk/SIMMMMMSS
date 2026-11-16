@@ -5,6 +5,42 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-15 — Évolution 19 (b) : un réglage qui ne joue pas ne s'affiche pas
+
+Deuxième partie du nettoyage de l'interface de la version 1. Aucun calcul ne
+change ; le moteur et la version 2 ne sont pas touchés.
+
+- **Un champ ne s'affiche que quand il joue.** Plonge : le débit de chaque
+  tunnel et le plafond, si elle lave au débit ; ses durées par compagnie, si
+  elle lave par vol. Robot : le débit général, si une commande n'a pas le
+  sien. Mise à disposition : l'heure, le jour et les vagues, si elle sert à
+  heures fixes. Handling : « vols en même temps », sans chauffeurs comptés ;
+  les créneaux, saisis et non calculés.
+- **La ligne « n réglages ne jouent pas ici »**, sous la fiche d'une équipe
+  (dans « Équipes une par une » comme dans « Services et équipes ») : dépliée,
+  elle montre les champs masqués, grisés, chacun avec sa raison en une phrase.
+- **Une valeur masquée n'est jamais effacée** : elle est gardée et
+  sauvegardée. Passer la plonge « au débit » n'efface plus ses durées par
+  compagnie.
+- **Temps par vol par service** : un service qui travaille par compagnie (le
+  handling, une plonge par vol, un service à une équipe par compagnie) montre
+  ses minutes par compagnie et un lien vers sa fiche, pas des temps par
+  classe.
+- **Le menu** : « Liens entre services » n'y est que si au moins une commande
+  n'a pas de chemin ; sinon « Aller à… » y mène encore.
+- Une retouche de la partie (a) : l'exemple en tête de « Temps par vol par
+  service » dit « 1 h par vol, pour une personne » (« 1 h de travail pour un
+  vol »).
+
+Fichiers : `jouent.js`, `jouent-vue.js`, `jouent.css` (nouveaux),
+`ateliers.js`, `onglets.js`, `demarrage.js`, `sim.js`, `index.html`,
+`outils/vocabulaire-regles.cjs`, `mots/reglages.js`, `tests/jouent.test.cjs`
+et `tests/jouent-browser.cjs` (nouveaux), `tests/onglets.test.cjs`,
+`tests/nav.cjs`, `tests/menu-browser.cjs`, `tests/coquille-browser.cjs`,
+`README.md`, `docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-15 — Évolution 19 (a) : un seul mot par chose
 
 Première partie du nettoyage de l'interface de la version 1 (étape A d'un

@@ -37,7 +37,17 @@ async function aller(page, id, options) {
   if (await page.evaluate(() => document.body.dataset.sous) !== id) {
     const direct = page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
     if (await direct.count()) await direct.click();
-    else {
+    else if (await page.evaluate(id => typeof OrlyOnglets.auMenu === 'function' && !OrlyOnglets.page(id).groupe && !OrlyOnglets.auMenu(id), id)) {
+      // Une page hors du menu (v1, évolution 19 b : « Liens entre services » quand toutes les commandes ont un chemin) :
+      // « Aller à… » y mène encore — on y va par là, comme à la main.
+      const nom = await page.evaluate(id => OrlyOnglets.page(id).nom, id);
+      await page.keyboard.press('Control+k'); await page.waitForSelector('dialog.palette [role=option]');
+      await page.keyboard.type(nom); await page.waitForTimeout(200);
+      const options = page.locator('dialog.palette [role=option]');
+      const i = (await options.evaluateAll(os => os.map(o => (o.querySelector('.pal-nom') || o).textContent.trim()))).findIndex(t => t === nom || t.endsWith('› ' + nom));
+      if (i < 0) throw new Error('page introuvable par « Aller à… » : ' + id);
+      await options.nth(i).click(); await page.waitForTimeout(150);
+    } else {
       // Une page d'un groupe (« Détails », évolution 15 c) : son entrée au menu, puis son onglet interne, comme à la main.
       const entree = await page.evaluate(id => {
         const g = OrlyOnglets.page(id).groupe, o = g && OrlyOnglets.menuDe(document.body.dataset.partie, Sim.onglets.choix).find(x => x.groupe === g);

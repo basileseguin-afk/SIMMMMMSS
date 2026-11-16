@@ -370,7 +370,8 @@
           // bride toutes. Zéro ou absent = aucun plafond.
           plafond: Number.isFinite(+a.plafond) ? Math.max(0, +a.plafond) : 0,
           // Par vol (retour d'usage du 28/09) : un tunnel lave un vol en la durée de sa compagnie.
-          ...(a.parVol ? { parVol: true, durees: dureesDe(a, 30) } : {}),
+          // Au débit, ces durées ne jouent pas : elles sont gardées, pas effacées (évolution 19 b) — le calcul ne les lit pas.
+          ...(a.parVol ? { parVol: true, durees: dureesDe(a, 30) } : Object.keys(dureesDe(a)).length ? { durees: dureesDe(a) } : {}),
           // Le débit d'une plonge est la somme de ses tunnels : on garde la
           // liste, pas le total, sinon on ne saurait plus d'où il vient.
           tunnels: (Array.isArray(a.tunnels) ? a.tunnels : [{ nom: 'Tunnel 1', debit: 300 }])
@@ -1596,7 +1597,8 @@
           case 'plonge-mode':
             for (const x of this.equipesDePlonge(a)) {
               if (v === 'vol') { x.parVol = true; if (!x.durees || !Object.keys(x.durees).length) x.durees = { [P.TOUTES]: 30 }; }
-              else { delete x.parVol; delete x.durees; }
+              // Au débit, les durées par compagnie ne jouent plus : elles restent, pour le jour où la plonge relave par vol (évolution 19 b).
+              else delete x.parVol;
             }
             break;
           // Une compagnie absente des vols du jour : sa ligne, au temps de toutes.

@@ -387,6 +387,26 @@ parcourt toutes les pages sur une unité fictive, et `tests/vocabulaire.test.cjs
 Dans ce cahier, les exigences gardent les mots du jour où elles ont été
 dites (« atelier », « barème ») : ce sont des citations.
 
+### Un réglage qui ne joue pas ne s'affiche pas (version 1, évolution 19 b)
+
+Un champ ne s'affiche que quand le calcul le lit dans la situation où l'équipe
+est. Quand des champs sont masqués, une ligne discrète le dit sous la fiche
+(« n réglages ne jouent pas ici ») ; elle se déplie et montre ces champs
+grisés, chacun avec sa raison en une phrase. Une valeur masquée n'est jamais
+effacée : elle est gardée et sauvegardée.
+
+| Cas | Ce qui ne s'affiche que quand il joue |
+|---|---|
+| Plonge | le débit de chaque tunnel et le plafond : si elle lave au débit ; par vol, ses durées par compagnie |
+| Robot | le débit général : si une commande du robot n'a pas son propre débit |
+| Mise à disposition | l'heure de début, le jour, les vagues : si elle n'est ni « toujours ouverte » ni « ouverte de … à … » |
+| Handling | « vols à la fois » : si les chauffeurs ne sont pas comptés ; les créneaux : s'ils sont saisis et non calculés |
+| Temps par vol par service | un service qui travaille par compagnie montre ses minutes par compagnie, pas des temps par classe |
+| Menu | « Liens entre services » : si au moins une commande n'a pas de chemin ; sinon par « Aller à… » |
+
+Contrôlé par `tests/jouent.test.cjs` et `tests/jouent-browser.cjs`, chaque cas
+dans les deux sens.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

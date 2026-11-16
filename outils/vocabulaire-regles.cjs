@@ -210,7 +210,9 @@ const brutes = {
   ],
   'reglages.js': [
     ["'Robot' : 'Case'}", "'Robot' : 'Équipe'}"],
-    ['aria-label="Exemple : 1 heure de travail pour un vol,', 'aria-label="Exemple : 1 heure par vol,']
+    ['aria-label="Exemple : 1 heure de travail pour un vol,', 'aria-label="Exemple : 1 heure par vol,'],
+    // L'exemple en tête de la page : « 1 h par vol ÷ 2 personnes = 30 min de préparation » (évolution 19 b, retouche de la partie a).
+    ['<b>1 h</b><small>de travail pour un vol</small>', '<b>1 h</b><small>par vol, pour une personne</small>']
   ]
 };
 
