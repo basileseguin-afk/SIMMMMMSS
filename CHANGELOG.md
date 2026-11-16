@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 19 (e) : la page des vols montre les vols ; contrôle et doc
+
+Cinquième et dernière partie du nettoyage de l'interface de la version 1.
+Aucun calcul ne change ; le moteur et la version 2 ne sont pas touchés.
+
+- **Le tableau des vols du jour**, sous l'import : vol, compagnie, heure de
+  départ, passagers par classe ; trié par heure, avec une recherche ; sur la
+  largeur de la page ; il suit le jour d'un programme daté.
+- **Un seul bouton, « Importer des vols »**, qui reconnaît le format du
+  fichier à ses en-têtes (le modèle CSV, le CSV daté, l'export de l'ERP, le
+  classeur des vols) et dit lequel ; un format inconnu est refusé en disant
+  les colonnes lues. La lecture des vols ne change pas.
+- **Les modèles à télécharger** sont dans un menu, « Modèles », à côté.
+- **Captures de contrôle** sur des données fictives, à 1 366 × 768 et
+  1 920 × 1 080, en clair et en sombre (hors du dépôt) : la page des vols, une
+  fiche de plonge par vol et au débit, les temps par vol, le panneau des
+  problèmes.
+- **Doc** : README, `docs/CAHIER_DES_CHARGES.md` (le vocabulaire retenu, la
+  règle « un réglage qui ne joue pas ne s'affiche pas », les trois niveaux
+  d'avis, la page des vols), `docs/FORMATS_EXCEL.md` (les en-têtes qui
+  signent chaque format).
+
+Fichiers : `vols-page.js` et `vols-page.css` (nouveaux), `sim.js`,
+`index.html`, `onglets.js`, `tests/vols-page.test.cjs`,
+`tests/vols-page-browser.cjs` et `tests/captures-evolution-19-browser.cjs`
+(nouveaux), `tests/import-flights-browser.cjs`,
+`tests/programme-date-browser.cjs`, `README.md`,
+`docs/CAHIER_DES_CHARGES.md`, `docs/FORMATS_EXCEL.md`, `docs/BANC_ESSAI.md`.
+
+---
+
 ## 2026-11-16 — Évolution 19 (d) : un problème est un problème
 
 Quatrième partie du nettoyage de l'interface de la version 1. Aucun calcul ne

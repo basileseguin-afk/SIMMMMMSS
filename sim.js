@@ -2761,6 +2761,12 @@ function initControles() {
   // « Comparer J+1 et planche retour » : ici, dans les réglages et sur la planche.
   document.addEventListener('click', e => { if (e.target.closest('[data-comparer-retours]')) comparerRetours(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
+  { const q=document.getElementById('vp-recherche'); if(q)q.addEventListener('input', renderVolsDuJour); }
+  // Le menu des modèles (évolution 19 e) : il se referme après un choix, sur Échap, ou d'un clic ailleurs.
+  { const m=document.getElementById('vp-modeles');
+    if(m){ m.addEventListener('click', e => { if (e.target.closest('.at-menu-liste button')) m.open = false; });
+      m.addEventListener('keydown', e => { if (e.key === 'Escape' && m.open) { m.open = false; m.querySelector('summary').focus(); } });
+      document.addEventListener('click', e => { if (m.open && !m.contains(e.target)) m.open = false; }); } }
   installerWinrest();
   document.getElementById('exp-vols').addEventListener('click', exporterVols);
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
@@ -3048,18 +3054,32 @@ function renderReglageSeuils(force){
 
 /* Le programme de vols s'importe en Excel (feuilles « Départs » et
  * « Retours ») ou en CSV (une table, colonne « sens »). */
+/* « Importer des vols » (évolution 19 e) : un seul bouton. Le format du fichier se reconnaît à ses en-têtes
+ * (vols-page.js) : le modèle CSV, le CSV daté, le classeur des vols, ou l'export de l'ERP ; le compte rendu dit
+ * lequel, et un format inconnu est refusé en le disant. La lecture reste celle d'avant : moteur/journee.js pour
+ * le programme, moteur/import-flights.js pour l'export. */
+const lireTexteDuFichier=f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
+  rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);});
 async function importVols(e) {
   const file=e.target.files[0];if(!file)return;
-  const report=document.getElementById('import-report');
+  const report=document.getElementById('import-report'),box=document.getElementById('winrest-rapport');
   const fail=message=>{report.classList.add('error');report.textContent=message;};
+  if(box)box.hidden=true;
   try {
+    // Le plus gros fichier qu'on sache lire est l'export de l'ERP (30 Mo) ; le programme, lui, tient en 4 Mo.
+    if(file.size>MAX_WINREST)throw new Error('Fichier trop volumineux (30 Mo maximum). Aucune donnée remplacée.');
+    const csv=/\.(csv|txt)$/i.test(file.name);
+    const lu=csv?{texte:await lireTexteDuFichier(file)}:{feuilles:await OrlyTableur.lireFichier(file,MAX_WINREST)};
+    const vu=OrlyVolsPage.reconnaitre({nom:file.name,...lu});
+    if(!vu.format)throw new Error(OrlyVolsPage.refus(file.name,vu));
+    const reconnu=OrlyVolsPage.phrase(vu);
+    if(vu.format==='erp'){await importWinrest(file,lu.feuilles||await OrlyTableur.lireFichier(file,MAX_WINREST),reconnu);return;}
     // CSV ou classeur Excel (4 Mo au plus), lus comme le banc d'essai les lit (moteur/journee.js).
-    // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
-    // le même fichier ne déclenche plus `change`.
-    const data=await OrlyJournee.volsDuFichier(file,f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
-      rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);}));
-    report.classList.remove('error');report.textContent=remplacerProgramme(data,file.name);
+    const data=await OrlyJournee.volsDuFichier(file,lireTexteDuFichier);
+    report.classList.remove('error');report.textContent=reconnu+'\n'+remplacerProgramme(data,file.name);
   } catch(err){fail(err.message);}
+  // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
+  // le même fichier ne déclenche plus `change`.
   finally{e.target.value='';}
 }
 /** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
@@ -3084,23 +3104,21 @@ function remplacerProgramme(data,nom){
 const MAX_WINREST=30*1024*1024;
 let rapportWinrest=null;
 function installerWinrest(){
-  const champ=document.getElementById('imp-winrest'),corps=document.getElementById('winrest-regles-corps');
-  if(!champ||!corps||!window.OrlyWinrestVue)return;
-  champ.addEventListener('change',importWinrest);
+  const corps=document.getElementById('winrest-regles-corps');
+  if(!corps||!window.OrlyWinrestVue)return;
   rendreReglesWinrest();
   corps.addEventListener('change',e=>changerRegleWinrest(e.target));
   corps.addEventListener('click',e=>{const b=e.target.closest('[data-wr-action]');if(b)agirRegleWinrest(b);});
   document.getElementById('winrest-rapport').addEventListener('click',e=>{if(e.target.closest('[data-wr-action=rapport-classeur]'))telechargerRapportWinrest();});
 }
-async function importWinrest(e){
-  const file=e.target.files[0];if(!file)return;
+/** L'export de l'ERP, reconnu par « Importer des vols » : `feuilles` est déjà lu, `reconnu` dit le format. */
+async function importWinrest(file,feuilles,reconnu){
   const report=document.getElementById('import-report'),box=document.getElementById('winrest-rapport');
   const fail=message=>{report.classList.add('error');report.textContent=message;};
   box.hidden=true;
   try{
     const {regles,erreur}=reglesWinrest();
     if(erreur)throw new Error('Les règles d’import Winrest gardées sont illisibles ('+erreur+') : corrigez-les dans « Règles d’import Winrest ». Aucune donnée remplacée.');
-    const feuilles=await OrlyTableur.lireFichier(file,MAX_WINREST);
     const r=OrlyWinrest.convertir(OrlyWinrest.lignesDeLExport(feuilles),regles,{fichier:file.name});
     // Le rapport se lit même quand rien n'est gardé : il dit pourquoi.
     rapportWinrest=r.rapport;box.innerHTML=OrlyWinrestVue.rapportHTML(r.rapport);box.hidden=false;
@@ -3113,9 +3131,8 @@ async function importWinrest(e){
       +r.vols.length+' vols).',{titre:'Remplacer le programme de vols ?',oui:'Remplacer le programme',danger:true})){
       report.classList.remove('error');report.textContent='Import annulé : le programme de vols n’a pas changé.';return;
     }
-    report.classList.remove('error');report.textContent=remplacerProgramme(data,file.name);
-  }catch(err){fail('Export Winrest non importé : '+err.message);}
-  finally{e.target.value='';}
+    report.classList.remove('error');report.textContent=reconnu+'\n'+remplacerProgramme(data,file.name);
+  }catch(err){fail(reconnu+'\nExport Winrest non importé : '+err.message);}
 }
 async function telechargerRapportWinrest(){
   if(!rapportWinrest)return;
@@ -3369,8 +3386,19 @@ function showView(name) {
   // fenêtre d'une case peut mesurer où se caler.
   if(name==='ateliers'&&Sim.ateliers){Sim.ateliers.surOnglet(document.body.dataset.sous);Sim.ateliers.parcours.placeTiroir();}
 }
+/* Les vols du jour, sous l'import (évolution 19 e) : les départs que la journée simule, triés par heure, avec une
+ * recherche. Le tableau est celui de vols-page.js ; rien n'est calculé ici. */
+function renderVolsDuJour(){
+  const box=document.getElementById('vp-tableau');if(!box||!window.OrlyVolsPage)return;
+  const champ=document.getElementById('vp-recherche'),r=OrlyVolsPage.lignes(flights,champ?champ.value:'');
+  box.innerHTML=OrlyVolsPage.tableau(r);
+  const compte=document.getElementById('vp-compte');
+  if(compte)compte.textContent=OrlyVolsPage.compte(r)+(Sim.jourVols?' · journée du '+OrlyPeriode.dateLongue(Sim.jourVols):'')
+    +(CFG.shift?' · heures décalées de '+(CFG.shift>0?'+':'−')+Math.abs(CFG.shift)+' min (Réglages de la simulation)':'');
+}
 function updateSource() {
   majDemarrage();
+  renderVolsDuJour();
   // Le jeu de démonstration dit quelles compagnies ont reçu des vols d'essai.
   const essai=[...new Set(flights.filter(f=>f.essai).map(f=>f.cie))];
   document.getElementById('source-label').textContent=dataSource+(essai.length?' + vols d’essai : '+essai.join(', '):'');

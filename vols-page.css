@@ -1,0 +1,30 @@
+/* La page des vols montre les vols (version 1, évolution 19 e) : l'import sur une ligne, les modèles dans un
+ * menu, puis le tableau des vols du jour sur toute la largeur de la page. */
+
+/* ---- l'import ---- */
+#vols-donnees{grid-template-columns:minmax(0,1fr)}
+.vp-gestes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
+.vp-importer .ico{width:16px;height:16px}
+.vp-modeles>summary.btn{display:inline-flex;align-items:center;gap:6px;padding:var(--ds-e-2) var(--ds-e-3);color:var(--ds-texte-1);font-weight:var(--ds-g-moyen);line-height:inherit}
+.vp-modeles>summary.btn::after{content:"";width:6px;height:6px;margin:-3px 2px 0 2px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg)}
+.vp-modeles .at-menu-liste{left:0;right:auto;min-width:340px}
+
+/* ---- les vols du jour ---- */
+.vols-jour{margin:18px 0 0}
+.vp-tete{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 12px;margin:0 0 10px}
+.vp-titre{margin:0;font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.vp-compte{padding-bottom:2px;font-size:var(--ds-t-13);color:var(--ds-texte-3)}
+.vp-chercher{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.vp-chercher input{width:260px;max-width:60vw;min-height:34px;padding:6px 10px;font:inherit;font-size:var(--ds-t-13);color:var(--ds-texte-1);
+  background:var(--ds-surface-3);border:1px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2)}
+.vp-cadre{max-height:none}
+.vp-table{width:100%;border-collapse:collapse;background:var(--ds-surface-3)}
+.vp-table th,.vp-table td{padding:8px 14px;text-align:left;border-bottom:1px solid var(--ds-bordure);white-space:nowrap}
+.vp-table tbody tr:last-child>*{border-bottom:0}
+.vp-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.vp-table tbody th{font-weight:var(--ds-g-fort);color:var(--ds-texte-1);background:none;font-size:var(--ds-t-13)}
+.vp-heure{font-variant-numeric:tabular-nums;font-weight:var(--ds-g-moyen);color:var(--ds-texte-1)}
+/* La compagnie prend la place libre : les passagers restent alignés à droite. */
+.vp-table th:nth-child(3),.vp-table td:nth-child(3){width:100%}
+.vp-vide{margin:0;padding:18px 16px;border:1px dashed var(--ds-bordure);border-radius:var(--ds-r-3);color:var(--ds-texte-2);background:var(--ds-surface-2)}
+@media (max-width:700px){.vp-chercher{margin-left:0;width:100%}.vp-chercher input{flex:1;width:auto;max-width:none}}

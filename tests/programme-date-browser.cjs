@@ -25,6 +25,8 @@ const CSV='date,vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC
   await nav.aller(page,'v-programme');
 
   // 1. Le modèle daté : deux jours fictifs, la date en première colonne.
+  //    Les modèles sont dans le menu « Modèles », à côté du bouton d'import (évolution 19 e).
+  await page.locator('#vp-modeles summary').click();await attendre(150);
   const modele=fs.readFileSync(await telecharger('#csv-template-date'),'utf8');
   assert.match(modele,/^date,vol_id,/);
   assert.deepEqual([...new Set(modele.trim().split('\n').slice(1).map(l=>l.split(',')[0]))],['2026-11-02','2026-11-03']);

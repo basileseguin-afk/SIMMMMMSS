@@ -425,6 +425,19 @@ ce qu'il laisse passer est « à corriger » ou « information » (`avis.js`).
 Contrôlé par `tests/avis.test.cjs` et `tests/avis-browser.cjs`, sur une unité
 fictive qui porte un avis de chaque niveau.
 
+### La page des vols montre les vols (version 1, évolution 19 e)
+
+Sous l'import, le tableau des vols du jour : vol, compagnie, heure de départ,
+passagers par classe ; trié par heure, avec une recherche ; sur la largeur de
+la page. Un seul bouton, « Importer des vols », reconnaît le format du fichier
+(le modèle CSV, le CSV daté, l'export de l'ERP — et le classeur des vols que la
+page exporte) et dit lequel ; un format inconnu est refusé en le disant. Les
+modèles à télécharger sont dans un menu, à côté. La lecture des vols ne change
+pas. Contrôlé par `tests/vols-page.test.cjs`, `tests/vols-page-browser.cjs` et
+les captures de `tests/captures-evolution-19-browser.cjs` (la page des vols,
+une fiche de plonge par vol et au débit, les temps par vol, le panneau des
+problèmes ; 1 366 × 768 et 1 920 × 1 080, en clair et en sombre).
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

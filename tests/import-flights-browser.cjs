@@ -37,7 +37,7 @@ const classeur=async lignes=>Buffer.from(await Z.compresser(T.ecrireClasseur([{n
  const garde=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)||'null'),K);
  const vols=()=>page.evaluate(()=>Sim.dataCourante.map(v=>[v.date,v.id,v.cie,v.yc,v.bc,v.crew]));
  const importer=async(nom,octets,type=XLSX)=>{
-  await page.locator('#imp-winrest').setInputFiles({name:nom,mimeType:type,buffer:octets});
+  await page.locator('#imp-vols').setInputFiles({name:nom,mimeType:type,buffer:octets});
  };
  const rapport=()=>page.locator('#winrest-rapport').textContent();
  const changer=async(sel,valeur)=>{await page.fill(sel,valeur);await page.dispatchEvent(sel,'change');await page.waitForTimeout(150);};
@@ -46,11 +46,12 @@ const classeur=async lignes=>Buffer.from(await Z.compresser(T.ecrireClasseur([{n
   await page.waitForTimeout(200);
   await nav.aller(page,'v-programme');
 
-  // 1. L'import, à côté de celui des vols.
-  const champ=page.locator('#imp-winrest');
-  assert.equal(await champ.getAttribute('accept'),'.xlsx,.csv');
-  assert.match(await page.evaluate(()=>document.getElementById('imp-vols').closest('.panneau').textContent),/Export Winrest \(Flights\)/);
-  assert.equal(await page.evaluate(()=>!!document.getElementById('imp-vols').closest('.panneau').querySelector('#imp-winrest')),true,'dans le même panneau que l’import des vols');
+  // 1. L'import : celui des vols — un seul bouton, qui reconnaît l'export (évolution 19 e) ; ses règles dans le même panneau.
+  const champ=page.locator('#imp-vols');
+  assert.equal(await champ.getAttribute('accept'),'.xlsx,.csv,.txt');
+  assert.equal(await page.locator('#imp-winrest').count(),0,'plus de second bouton pour l’export');
+  assert.match(await page.evaluate(()=>document.getElementById('imp-vols').closest('.panneau').textContent),/Importer des vols[\s\S]*L’export de l’ERP \(Winrest\)/);
+  assert.equal(await page.evaluate(()=>!!document.getElementById('imp-vols').closest('.panneau').querySelector('#winrest-regles')),true,'les règles d’import dans le même panneau que l’import des vols');
   assert.equal(await page.locator('#winrest-rapport').isHidden(),true,'pas de rapport avant un import');
 
   // 2. Un export fictif : le programme daté chargé, le rapport sous l'import (vols de démonstration : pas de question).

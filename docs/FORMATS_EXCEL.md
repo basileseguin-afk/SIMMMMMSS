@@ -416,6 +416,36 @@ Une seule table, mêmes colonnes que la feuille « Barème ».
 
 ## 3. Le classeur des vols
 
+### « Importer des vols » : le format reconnu à ses en-têtes (version 1, évolution 19 e)
+
+Un seul bouton (Vols › Programme des vols). Le format du fichier se reconnaît
+à ses **en-têtes** (la première ligne non vide ; dans un classeur, au nom de
+ses feuilles), et le compte rendu de l'import dit lequel :
+
+| Format reconnu | Ce qui le signe | Ses en-têtes |
+|---|---|---|
+| le modèle CSV | une colonne `vol_id`, pas de colonne `date` | `vol_id`, `compagnie`, `type_avion`, `sens`, `heure_std`, `heure_sta`, `nb_BC`, `nb_PC`, `nb_YC`, `nb_CREW`, `nb_SPML` |
+| le CSV daté | une colonne `vol_id` et une colonne `date` | `date`, puis les mêmes |
+| l'export de l'ERP (Winrest) | une colonne `Flight No` ; dans un classeur, l'onglet « Flights » | `Date`, `Delivery No`, `Flight No`, `ICAO`, `ETD`, `Statut`, `Guest type`, `Guest qty` (§ 7) |
+| le classeur des vols | une feuille « Départs » ou « Retours » | celles des feuilles ci-dessous |
+
+- Un en-tête se compare sans tenir compte des majuscules, des accents, des
+  espaces répétés ni des guillemets ; une marque d'ordre (BOM) en tête de
+  fichier est ignorée ; le séparateur d'un CSV est « ; » s'il domine la
+  première ligne, sinon « , ».
+- Un classeur d'une seule table (une feuille « Vols », ou la première feuille)
+  se reconnaît comme un CSV, à ses en-têtes.
+- Un fichier qui n'a ni `vol_id` ni `Flight No` est **refusé**, et le refus dit
+  ce qui a été lu : « Format non reconnu : « x.csv » n'est ni le modèle CSV,
+  ni le CSV daté, ni l'export de l'ERP. Colonnes lues : a, b, c. Aucune donnée
+  remplacée. »
+- Reconnaître n'est pas lire : une fois le format reconnu, c'est le lecteur du
+  format qui lit, comme avant, et qui dit une colonne manquante ou une valeur
+  illisible (`heure_std` absente du modèle, « ETD » absente de l'export).
+- Tailles : 30 Mo au plus pour l'export de l'ERP, 4 Mo pour les autres.
+- Les modèles à télécharger (« Modèles », à côté du bouton) : le modèle CSV et
+  le modèle CSV daté, ci-dessous (« En CSV »).
+
 ### Feuilles « Départs » et « Retours »
 
 | vol_id | compagnie | type_avion | heure_std | nb_BC | nb_PC | nb_YC | nb_CREW | nb_SPML |
@@ -737,7 +767,8 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
 ## 7. L'export Winrest (version 1)
 
 Banc d'essai, évolution 13 (`BANC_ESSAI.md`, § 14), par le même code depuis la
-page (Vols › Programme des vols, « Export Winrest (Flights) ») et depuis l'outil
+page (Vols › Programme des vols, « Importer des vols », qui reconnaît l'export
+à ses en-têtes depuis l'évolution 19 e — § 3) et depuis l'outil
 `outils/importer-flights.cjs` : `moteur/import-flights.js`. L'export se lit
 **tel quel**, sans retraitement à la main ; il donne le programme daté (§ 3,
 le CSV daté de l'évolution 10) et un rapport d'import.

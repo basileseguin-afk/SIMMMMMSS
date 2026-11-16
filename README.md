@@ -167,8 +167,9 @@ Chaque chiffre dit son unité (vols, commandes, services) et son moment (« à
 le rouge ne sert qu’aux retards.
 
 1. **Vols** — ce qu’on importe.
-   - *Programme des vols* : importer le programme en Excel ou CSV simplifié, ou garder les
-     vols d’exemple ; d’où viennent les vols est dit en tête.
+   - *Programme des vols* : importer le programme (un seul bouton, qui reconnaît le format du
+     fichier), ou garder les vols d’exemple ; d’où viennent les vols est dit en tête, et le
+     tableau des vols du jour est sous l’import (évolution 19 e).
    - *Planche retour* : quand chaque vol revient à l’unité, pour la plonge.
 2. **Chemins** — par où passe chaque commande.
    - *Vue d’ensemble* : tous les chemins d’un coup d’œil, comme un plan de
@@ -1382,6 +1383,42 @@ détaillés », la Synthèse, l’état du calcul :
 - `problemes.js`, commun avec la version 2, n’est pas touché ; la version 1
   ne le charge plus.
 
+### La page des vols montre les vols (évolution 19 e)
+
+« Vols › Programme des vols » avait deux boutons d’import et ne montrait
+aucun vol.
+
+- **Un seul bouton, « Importer des vols ».** Le format du fichier se
+  reconnaît à ses en-têtes, et le compte rendu dit lequel (« Format reconnu :
+  le CSV daté (un programme sur plusieurs jours). ») :
+
+  | Format | Ce qui le signe |
+  |---|---|
+  | le modèle CSV | une colonne `vol_id`, pas de colonne `date` |
+  | le CSV daté | une colonne `vol_id` et une colonne `date` |
+  | l’export de l’ERP (Winrest) | une colonne « Flight No » ; dans un classeur, l’onglet « Flights » |
+  | le classeur des vols (Excel) | des feuilles « Départs » et « Retours » |
+
+  Un fichier d’un autre format est refusé, et le refus dit les colonnes
+  lues (« Format non reconnu : « x.csv » n’est ni le modèle CSV, ni le CSV
+  daté, ni l’export de l’ERP. Colonnes lues : … Aucune donnée remplacée. »).
+  La lecture elle-même ne change pas : le programme est lu par
+  `moteur/journee.js`, l’export par `moteur/import-flights.js`, qui disent
+  toujours une colonne manquante ou une valeur illisible.
+- **Les modèles à télécharger sont dans un menu**, « Modèles », à côté du
+  bouton : le modèle CSV, le modèle CSV daté.
+- **Le tableau des vols du jour**, sous l’import : le vol, sa compagnie, son
+  heure de départ, ses passagers par classe (Business, Premium, Économie,
+  Équipage), trié par heure de départ, avec une recherche (un numéro de vol,
+  une compagnie). Il prend la largeur de la page, suit le jour choisi d’un
+  programme daté et le décalage des vols des réglages. Les retours restent
+  dans « Planche retour ».
+- `vols-page.js` reconnaît et affiche ; il ne lit ni ne change aucun vol.
+- Captures de contrôle (`tests/captures-evolution-19-browser.cjs`), sur des
+  données fictives, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre :
+  la page des vols, une fiche de plonge par vol et au débit, les temps par
+  vol, le panneau des problèmes. Elles restent hors du dépôt.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -1448,6 +1485,7 @@ détaillés », la Synthèse, l’état du calcul :
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent. **Version 2** ; la version 1 a le sien, `avis.js` (évolution 19 d) |
 | `avis.js` / `avis.css` | Les avis en trois niveaux (v1, évolution 19 d) : « bloquant », « à corriger », « information ». `niveauDuCode` donne le niveau d’un point du calcul ; `lister` fait le registre (du bloquant à l’information) ; `compte` ne compte que les deux premiers ; `panneau` et `blocs` écrivent le panneau des Problèmes et les avis d’une page, informations repliées ; `Registre` tient le panneau, le nombre du menu et ceux des onglets |
+| `vols-page.js` / `vols-page.css` | La page des vols montre les vols (v1, évolution 19 e) : `reconnaitre` dit le format d’un fichier de vols d’après ses en-têtes (le modèle CSV, le CSV daté, l’export de l’ERP, le classeur des vols), `phrase` le dit, `refus` refuse un format inconnu en disant les colonnes lues ; `lignes`, `compte` et `tableau` dressent le tableau des vols du jour (trié par heure, avec une recherche). Il ne lit aucun vol |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
 | `champs.js` | Les champs (09/10) : l’heure en 24 h (champ texte `data-heure` : « 0430 », « 4:30 », « 4h30 » → « 04:30 », gardée « HH:MM » comme avant ; tout choisi au focus ; ↑↓ un quart d’heure, Maj+↑↓ une heure), Maj+↑↓ dix pas dans un nombre, et le refus d’une saisie sous son champ (bordure, message lié au champ, valeur gardée remise) |
 | `ds.js` | Les composants scriptés du système de dessin (09/10) : l’infobulle des graphiques (tout de suite au survol, ce que porte le `data-info` d’une barre, d’un avion, d’un nom ; seulement dans un graphique `ds-graphique`), et le trait « maintenant » (l’heure rejouée sur chaque graphique qui déclare son axe du temps, `data-axe="t0 t1 x0 x1 y0 y1"` ; le repère d’axe qu’il chevauche s’efface) |
@@ -1516,7 +1554,7 @@ détaillés », la Synthèse, l’état du calcul :
 | `tests/import-flights.test.cjs` | L’export « Flights » de Winrest lu tel quel (v1, banc d’essai, évolution 13 a, `moteur/import-flights.js`), sur des exports fictifs calculés à la main : chaque règle de 1 à 12 (les colonnes par leur en-tête, une livraison = un vol, la Guest qty comptée une fois, la table des Guest types, les statuts, ICAO et Flight No exclus, les codes compagnie, le vol_id et « -2 », le vol sans repas, les réserves fondues ou orphelines, les vols fictifs aux lignes annulées, le tri et les colonnes du CSV daté) ; le rapport d’import ; les points à vérifier ; aucun prix dans la sortie ; les refus qui nomment la colonne ou la ligne ; 50 000 lignes en moins de 10 s |
 | `tests/import-flights-regles.test.cjs` | Les règles d’import Winrest gardées (v1, banc d’essai, évolution 13 b) : la clé `ory-import-winrest-v1` et son enveloppe (schéma, version, règles complètes) ; l’aller-retour à l’identique ; une enveloppe ou une règle invalide refusée, nommée ; la clé dans « Tout sauvegarder », retirée à la restauration si elle manque |
 | `tests/import-flights-sauvegarde-browser.cjs` | Les règles d’import Winrest dans « Tout sauvegarder » et « Restaurer » : les défauts sans clé, l’enveloppe enregistrée, une règle invalide ou inconnue qui refuse la sauvegarde entière sans rien remplacer, la restauration à l’identique, une sauvegarde d’avant qui rend les défauts, une clé abîmée lue comme les défauts |
-| `tests/import-flights-browser.cjs` | L’export Winrest dans la page (v1, banc d’essai, évolution 13 c), sur un export fictif : l’import « Export Winrest (Flights) » à côté de celui des vols, le programme daté chargé, le rapport (les totaux, les listes repliées, le texte piégé qui reste du texte, aucun prix), le classeur du rapport compressé, les règles d’import (exclusion, code compagnie, vol fictif, Guest type, refus sous le champ), le réimport et sa question, les refus, 50 000 lignes en moins de 10 s, les couleurs en clair et en sombre |
+| `tests/import-flights-browser.cjs` | L’export Winrest dans la page (v1, banc d’essai, évolution 13 c), sur un export fictif : l’export importé par « Importer des vols » (un seul bouton depuis l’évolution 19 e), le programme daté chargé, le rapport (les totaux, les listes repliées, le texte piégé qui reste du texte, aucun prix), le classeur du rapport compressé, les règles d’import (exclusion, code compagnie, vol fictif, Guest type, refus sous le champ), le réimport et sa question, les refus, 50 000 lignes en moins de 10 s, les couleurs en clair et en sombre |
 | `tests/import-flights-classeur.test.cjs` | Le classeur du rapport d’import Winrest (évolution 13 c, `echanges-import-flights.js`) : les totaux de la page et du Lisez-moi, une feuille par liste, de vraies dates Excel, aucun prix, un rapport vide |
 | `tests/importer-flights.test.cjs` | L’outil `outils/importer-flights.cjs` (évolution 13 d), sur un export fictif tiré de l’unité fictive des tests : le CSV daté du module avec les règles de la sauvegarde, `simuler-periode` qui le lit tel quel, les défauts sans sauvegarde ou avec une sauvegarde d’avant, `--rapport` et `--xlsx` (compressé), aucun prix, les refus (appel, option sans valeur ou répétée, sortie qui écraserait l’export ou la sauvegarde, colonne manquante, règle forgée, fichier trop gros, rien de gardé) |
 | `tests/indicateurs-periode.test.cjs` | Les indicateurs de charge sur une période (évolution 12 b) : une équipe à J−1 au jour des vols − 1, un jour de travail qui réunit J−1 et J ; par équipe et par jour de travail ; un jour incomplet hors des moyennes, la somme sur la période égale à celle des jours, le plus haut pic ; sans indicateurs dans les extraits, le bilan d’avant champ par champ ; le débit du handling sur la période, une mise à disposition sans objet ; deux mois, une période vide ; 60 journées de 50 vols en moins de 2 s |
@@ -1568,7 +1606,7 @@ détaillés », la Synthèse, l’état du calcul :
 | `tests/renforts.test.cjs` | Les renforts de la v1 (banc d’essai) : sans renfort possible, la même journée ; une équipe qui finit à 10:00 aide une équipe qui aurait débordé de 60 min, et le débordement baisse selon l’efficacité ; la matrice interdit un passage ; familles ; `personnesMax` ; un renfort part à la fin de sa présence ; l’amont ; l’ordre des équipes aidées ; pauses ; robot ; handling ; déterminisme, validation, options du banc, Excel |
 | `tests/renforts-browser.cjs` | Les renforts dans la page : la case et ses réglages (Réglages de la simulation), qui peut aider qui, les postes de travail d’une équipe, le tableau de la Synthèse, « Tout sauvegarder » |
 | `tests/chauffeurs-calcules-browser.cjs` | Les chauffeurs calculés dans la page : le mode et ses réglages dans la fiche du handling, rangés avec l’équipe seulement saisis, le plan lisible comme des créneaux, « Tout sauvegarder », la reprise en créneaux saisis |
-| `tests/programme-date-browser.cjs` | Le programme daté dans la page : « Modèle CSV daté », le rapport d’import de la période et du jour sans vol, le refus d’une ligne non datée, l’export Excel avec la date en première colonne |
+| `tests/programme-date-browser.cjs` | Le programme daté dans la page : « Modèle CSV daté » (dans le menu « Modèles »), le rapport d’import de la période et du jour sans vol, le refus d’une ligne non datée, l’export Excel avec la date en première colonne |
 | `tests/periode-browser.cjs` | La période dans la page (v1, banc d’essai, évolution 10) : sans programme daté rien de nouveau ; le sélecteur de journée de vols ; « Simuler la période » par étapes, Annuler ; le bilan de la page = celui du moteur ; la journée affichée part du sale laissé la veille dans la période, puis, « à relancer » après un réglage modifié, du sale saisi ; la page Période (jours incomplets, totaux et moyennes par mois, la charge, les personnes du service et le surplus d’arrondi, un clic ouvre la journée, le détail par équipe et par compagnie) ; « Exporter les résultats » propose le classeur de la période, le même que l’outil (`--xlsx`), la journée reste en JSON |
 | `tests/handling-vagues-browser.cjs` | Le handling 24 h/24 par vagues dans la page : le véhicule d’une compagnie selon l’heure de départ, les vols par VL, le quai par vol de plus, l’échange sur l’avion et les durées en VL, rangés avec l’équipe seulement saisis, le bilan des tournées, le rechargement, « Tout sauvegarder » |
 | `tests/handling-24h-browser.cjs` | Le handling 24 h/24 dans la page : la case et les réglages de la fiche, rangés avec l’équipe seulement saisis, l’heure_eta de l’import, le bilan des tournées, la page des départs, « Tout sauvegarder » |
@@ -1632,6 +1670,9 @@ détaillés », la Synthèse, l’état du calcul :
 | `tests/menage-browser.cjs` | Ce qui se supprime, dans la page (v1, évolution 19 c), sur l’unité fictive : les mises à disposition hors de « Temps par vol par service » et de « Temps par vol », leurs valeurs gardées, dans les deux sens ; une sauvegarde aux stockages vides non rattachés se restaure en le disant, le panneau ne les liste plus, la sauvegarde suivante part sans eux ; plus de mention « Version 2 » au menu ; plus aucune attente en minutes dans les pages de réglage des équipes, l’heure de fin et le lien vers le planning |
 | `tests/avis.test.cjs` | Les trois niveaux d’avis (v1, évolution 19 d), en Node : le niveau de chaque code du calcul ; les codes que le moteur laisse passer (relus dans sa source) sont « à corriger » ou « information », ni plus ni moins ; le registre du bloquant à l’information ; le compteur sans les informations (une commande sans vol n’est pas comptée) ; le panneau et les avis d’une page, informations repliées ; l’échappement |
 | `tests/avis-browser.cjs` | Dans la page (v1, évolution 19 d), sur une unité fictive qui porte un avis de chaque niveau : une commande que personne ne prépare (bloquant), une compagnie qu’aucun handling ne charge (à corriger), une commande sans vol ce jour-là (information) ; le compteur, son ton et sa bulle ; le panneau et ses informations repliées ; les nombres des onglets ; les mêmes mots dans les pages d’équipes, « Contrôles détaillés », la Synthèse et l’état du calcul ; un calcul refusé ; tout corrigé |
+| `tests/vols-page.test.cjs` | La page des vols (v1, évolution 19 e), en Node : chaque format reconnu à ses en-têtes (CSV et classeur), sa phrase, le refus d’un format inconnu ; ce qui est reconnu est bien lu par le lecteur de la page ; les vols du jour triés par heure, la recherche, le tableau et son échappement |
+| `tests/vols-page-browser.cjs` | Dans la page (v1, évolution 19 e), sur des vols fictifs : un seul bouton d’import, le menu des modèles (il s’ouvre, donne ses deux modèles, se referme) ; le tableau après import, son tri, sa largeur, sa recherche ; le format reconnu pour le modèle CSV, le CSV daté, l’export de l’ERP (classeur et CSV) et le classeur des vols ; le jour d’un programme daté ; un format inconnu refusé en le disant, rien ne change ; les modèles téléchargés se réimportent |
+| `tests/captures-evolution-19-browser.cjs` | Les captures de contrôle du nettoyage de l’interface (v1, évolution 19 e), sur l’unité fictive, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre (24 captures, hors du dépôt) : la page des vols, une fiche de plonge par vol et au débit, « Temps par vol par service » et « Temps par vol », le panneau des problèmes avec un avis de chaque niveau |
 | `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |

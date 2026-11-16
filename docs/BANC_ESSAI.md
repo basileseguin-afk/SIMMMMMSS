@@ -3317,7 +3317,9 @@ Un texte du fichier qui porte le nom d'une propriété d'objet (« constructor �
 
 Vols › Programme des vols : sous « Importer vos vols », l'import « Export
 Winrest (Flights) » (un `.xlsx` de 30 Mo au plus, ou un CSV aux mêmes
-colonnes). Pas de page de plus dans le menu.
+colonnes). Pas de page de plus dans le menu. (Depuis l'évolution 19 e, un seul
+bouton, « Importer des vols », reconnaît l'export à ses en-têtes : README,
+« La page des vols montre les vols ».)
 
 - Le programme obtenu remplace le programme daté comme un import de CSV
   daté (le même code le relit : `UI.parseFlights`), et le compte rendu de

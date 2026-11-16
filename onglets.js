@@ -84,7 +84,7 @@
     { id: 'donnees', nom: 'Vols', ico: 'avion', couleur: 'var(--c-vols)',
       resume: 'Ce qui part et ce qui revient',
       pages: [
-        { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
+        { id: 'v-programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
         { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
       ] },
     { id: 'chemins', nom: 'Chemins', ico: 'fleche', couleur: 'var(--c-chemins)',
