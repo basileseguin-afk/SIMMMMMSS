@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 20 (b) : la disposition, l'utilisateur dit où va chaque zone
+
+Deuxième partie de l'évolution 20. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Un réglage « disposition »**, gardé avec les équipes, vide par défaut
+  (les deux bandes d'aujourd'hui). Réglé : des colonnes, de gauche à droite,
+  chacune avec ses zones de haut en bas ; puis des rangées du bas, chacune
+  avec une zone et les colonnes qu'elle longe.
+- **Les tailles viennent toujours des parts de surface** : chaque zone a
+  exactement sa surface ; quand les parts ne tombent pas juste (des colonnes
+  moins hautes parce qu'une rangée les longe), ce sont leurs largeurs qui
+  s'ajustent. Le site reste un rectangle sans trou.
+- **Des allées fines** séparent les colonnes et les rangées ; les personnes
+  et les chariots les suivent. Les avions se rangent le long du bord
+  extérieur de la zone du quai. L'entrée et l'aire de pause restent au bord.
+- **« Disposer les zones »**, dans « En direct » : un panneau à côté de la
+  scène, où chaque zone se déplace par glisser-déposer, par ses boutons et
+  au clavier ; « Ajouter une colonne », « Retirer cette colonne vide »,
+  « Revenir à la disposition automatique » ; « Annuler » et « Rétablir ».
+- Une zone absente de la disposition se range à la fin de la dernière
+  colonne, et la page le signale ; une zone en double ou disparue est
+  ignorée en le disant.
+
+Fichiers : `moteur/disposition.js`, `direct-allees.js`,
+`direct-disposer.js` (nouveaux), `moteur/site.js`, `ateliers.js`, `sim.js`,
+`direct-scene.js`, `direct.css`, `index.html`, `tests/disposition.test.cjs`,
+`tests/site-disposition.test.cjs`, `tests/direct-disposition.test.cjs`,
+`tests/direct-disposer.test.cjs`, `tests/direct-disposer-browser.cjs`
+(nouveaux), `tests/site-zones-browser.cjs`, `README.md`.
+
+---
+
 ## 2026-11-16 — Évolution 20 (a) : les zones de la vue en direct, qui partage la zone de qui
 
 Première partie de l'évolution 20 (la disposition du site, dans la vue en

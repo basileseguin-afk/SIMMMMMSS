@@ -688,7 +688,8 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
 
 - **Le site est un rectangle** : deux bandes de zones de part et d'autre d'un
   couloir central ; l'entrée est au bout gauche du couloir, l'aire de pause à
-  côté ; les avions sont du côté droit.
+  côté ; les avions sont du côté droit. C'est la disposition automatique ;
+  « Disposer les zones » (plus bas) permet de dire où va chaque zone.
 - **Une zone par service qui a au moins un atelier.** La préparation et le
   montage partagent une seule grande zone, « FOOD ».
 - **Qui partage la zone de qui** (évolution 20 a) :
@@ -743,6 +744,69 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
   d'abord (côté arrivées), la production au milieu, le quai du handling au
   bout (côté avions), la plonge au bout de l'autre bande, près du quai des
   retours.
+
+### Disposer les zones (évolution 20 b)
+
+Par défaut, les zones se rangent toutes seules, en deux bandes, dans l'ordre
+du chemin. Pour dire **où va chaque zone, à côté de quoi** : dans « En
+direct », le bouton **« Disposer les zones »** (dans la barre de la scène)
+ouvre un panneau à côté d'elle, à la place de « En ce moment ».
+
+- **La disposition** : des **colonnes**, de gauche à droite, chacune avec ses
+  zones de haut en bas ; puis des **rangées du bas**, de haut en bas, chacune
+  avec une zone et les colonnes qu'elle longe (de la colonne i à la colonne
+  j). Une colonne qu'aucune rangée ne longe descend jusqu'en bas du site.
+  C'est un réglage de l'utilisateur, gardé avec les équipes (« Tout
+  sauvegarder », « Restaurer ») ; vide, c'est la disposition automatique ;
+  une sauvegarde d'avant donne le site d'aujourd'hui. Il ne change aucun
+  calcul.
+- **Le panneau** liste les colonnes et les rangées du bas. Chaque zone s'y
+  déplace par **glisser-déposer** (on la saisit par son nom ; on la lâche
+  dans une colonne, sur une zone dont elle prend le rang, ou parmi les
+  rangées du bas) et par ses **boutons** : monter, descendre, colonne
+  précédente, colonne suivante, « En rangée du bas » ; pour une rangée, « de
+  la colonne » … « à la colonne » …, et « En colonne ». « Ajouter une
+  colonne », « Retirer cette colonne vide », « Revenir à la disposition
+  automatique ». **Au clavier** : chaque bouton, et les flèches quand une
+  zone a le focus (haut, bas : son rang ; gauche, droite : sa colonne) ; le
+  focus reste sur ce qu'on vient d'actionner. La scène se redessine à chaque
+  geste ; **« Annuler » et « Rétablir »** (en haut de la page) défont et
+  refont les gestes du panneau tant qu'il est ouvert — eux seuls : un
+  changement d'équipes fait avant ne s'y défait pas.
+- **Le point de départ.** Tant que rien n'est réglé, le panneau montre la
+  disposition qui ressemble le plus aux deux bandes (une colonne par zone de
+  la première bande, les zones de la seconde sous elles) : le premier geste
+  part de là.
+- **Les tailles viennent toujours des parts de surface** : chaque zone a
+  exactement sa surface (sa part du site), jamais moins que la place de ses
+  équipes et de ses machines. La largeur d'une colonne suit la somme des
+  parts de ses zones ; dans une colonne, la hauteur d'une zone suit sa
+  part ; une rangée du bas prend sa part sur toute la largeur des colonnes
+  qu'elle longe. **Quand les parts ne tombent pas juste** — des colonnes
+  qu'une rangée longe sont moins hautes que leurs voisines —, ce sont les
+  largeurs qui s'ajustent : ces colonnes sont un peu plus larges, pour que
+  leurs zones gardent leur surface. Le site reste un rectangle sans trou.
+- **Les rangées du bas** : la plus large est toujours la plus basse (une
+  rangée repose sur celles qui la portent). Deux rangées qui se chevauchent
+  sans que l'une contienne l'autre ne peuvent pas être deux rectangles : la
+  seconde est réduite aux colonnes où elle repose à plat, et le panneau le
+  dit. Deux rangées ne changent de place (monter, descendre) que si elles
+  longent les mêmes colonnes. Au plus quatre niveaux de rangées emboîtées :
+  une rangée qui en ferait un cinquième redevient une zone de la dernière
+  colonne, en le disant.
+- **Des allées fines** (1,5 m) séparent les colonnes et les rangées : une en
+  haut, sur toute la largeur — l'entrée est à son bout gauche, l'aire de
+  pause à côté, au bord du site — ; une à gauche de chaque colonne ; une
+  au-dessus de chaque rangée du bas. Chaque zone ouvre sur une allée ; les
+  personnes et les chariots les suivent, au plus court.
+- **Les avions** se rangent le long du bord extérieur de la zone du quai :
+  en bas du site ou à sa droite, là où elle a son plus long côté au bord ;
+  si elle n'est pas au bord (ou sans quai), à droite, comme avant.
+- **Ce que la page signale** : une zone absente de la disposition (un
+  service qui reçoit sa première équipe) se range à la fin de la dernière
+  colonne ; une zone citée deux fois, ou qui n'existe plus, est ignorée. Le
+  bouton porte alors un nombre, et le panneau le dit en phrases — comme une
+  boucle de zones partagées. Le premier geste range tout.
 
 ### En relief : se déplacer dans le site (évolution 16 b)
 
@@ -1650,6 +1714,11 @@ aucun vol.
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à sa marge des bords (24 px, 4 % du petit côté au plus) ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-zones.test.cjs` | Qui partage la zone de qui (v1, évolution 20 a), sans navigateur : une annexe rattachée n’a pas de zone, ses équipes et sa ligne sont dans celle de son parent ; une annexe à part entière garde la sienne, le plan dit qui est rattaché à qui ; deux services partagent une zone (son nom, ses équipes et leurs îlots, les parts qui s’additionnent, de proche en proche, la production, le quai, la plonge) ; la boucle refusée en la nommant ; une ligne par robot (deux équipes en même temps : une ligne ; deux robots : deux lignes) ; dans la scène, chaque ligne s’anime dans sa zone ; des machines de plusieurs sortes sans recouvrement ; 200 unités tirées d’une graine fixe ; sans réglage, le site d’avant, champ par champ (`tests/site-avant-20.attendu.json`, calculé sur le commit d’avant par `tests/site-unites.cjs`) ; le réglage gardé dans la sauvegarde |
+| `tests/disposition.test.cjs` | La disposition du site (v1, évolution 20 b), sans navigateur (`moteur/disposition.js`) : quatre colonnes et deux rangées du bas dont une ne longe que deux colonnes — les rectangles calculés à la main, sans trou ni chevauchement, la somme des surfaces ; des colonnes seules, une rangée sur toute la largeur ; une zone oubliée, en double, disparue ; sans disposition ; les rangées (la plus large en bas, côte à côte, trois niveaux, deux rangées croisées) ; les cas limites ; 300 dispositions tirées d’une graine fixe ; les gestes du panneau ; le point de départ |
+| `tests/site-disposition.test.cjs` | Le site disposé (v1, évolution 20 b), sans navigateur : sans disposition, le site d’aujourd’hui champ par champ ; avec, les mêmes zones et les mêmes parts à une autre place, un rectangle sans trou, les portes sur une allée, les machines dans leur zone ; les avions le long du bord extérieur du quai ; une zone oubliée, en double, disparue, avec une zone partagée ; 200 unités tirées ; la disposition gardée par la sauvegarde |
+| `tests/direct-disposition.test.cjs` | La scène d’un site disposé (v1, évolution 20 b), sans navigateur, sur la journée fictive : les allées au sol, les murs ouverts du côté de l’allée ; le chemin par les allées (`direct-allees.js`) ; à chaque heure, les personnes et les chariots dans leur zone, dans une allée, dans la pause ou sur la route ; les mêmes comptes que dans le site automatique ; l’aire des avions en bas ou à droite, les véhicules depuis le bord du quai ; sans disposition, la scène d’avant |
+| `tests/direct-disposer.test.cjs` | Le panneau « Disposer les zones » (v1, évolution 20 b), sans navigateur (`direct-disposer.js`) : ce qu’il liste, ses boutons (désactivés au bout), ce que le site a à dire en phrases, l’échappement ; chaque geste et ce qu’il dit |
+| `tests/direct-disposer-browser.cjs` | « Disposer les zones » dans la page (v1, évolution 20 b), sur l’unité fictive : le bouton et le panneau à côté de la scène ; une zone déplacée d’une colonne à l’autre au clavier, le focus gardé, les flèches ; « En rangée du bas », de quelle colonne à quelle colonne ; le glisser-déposer ; ajouter et retirer une colonne, « Annuler » et « Rétablir » ; une zone absente signalée ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; le retour à l’automatique ; la journée inchangée ; la version 2 sans ce panneau |
 | `tests/site-zones-browser.cjs` | Le choix « Dans la vue en direct, partage la zone de » dans la fiche d’un service (v1, évolution 20 a), sur l’unité fictive : l’annexe rattachée dans la zone de son service, une seule ligne robotisée ; une zone pour deux services, la journée inchangée, chaque service à sa ligne à côté de la scène ; la boucle refusée sous le champ ; « Annuler », le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans ce champ |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |

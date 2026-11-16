@@ -478,12 +478,17 @@
     // relit telle quelle : le site ne la joue pas, et la nomme (moteur/site.js).
     const partages = Object.fromEntries(Object.entries(brut.partages && typeof brut.partages === 'object' && !Array.isArray(brut.partages) ? brut.partages : {})
       .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
+    // La disposition du site dans la vue en direct (évolution 20 b) : des colonnes de zones et des rangées du bas, que
+    // l'utilisateur règle dans « Disposer les zones ». Un réglage d'affichage : il ne change aucun calcul. Sans elle (une
+    // sauvegarde d'avant), ou vide : la disposition automatique. Sa forme est remise au propre par moteur/disposition.js.
+    const DISPOSITION = root.OrlyDisposition || (typeof require === 'function' ? require('./moteur/disposition.js') : null);
+    const disposition = DISPOSITION ? DISPOSITION.lire(brut.disposition) : null;
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
-      ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}) };
+      ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -922,12 +927,23 @@
       }, nomDe(service) + ' : ' + (h === null ? 'sa propre zone, dans la vue en direct.' : 'dans la zone de ' + nomDe(h) + ', dans la vue en direct.'));
       return { ok: true };
     }
+    /**
+     * Règle la disposition du site dans la vue en direct (évolution 20 b) : { colonnes, rangees } ; vide ou null : la
+     * disposition automatique. `dit` : ce que le geste a fait, pour « Annuler ». Un réglage d'affichage : aucun calcul ne change.
+     */
+    regleDisposition(disposition, dit) {
+      const D = root.OrlyDisposition || (typeof require === 'function' ? require('./moteur/disposition.js') : null), d = D ? D.lire(disposition) : null;
+      if (JSON.stringify(d) === JSON.stringify(this.state.disposition || null)) return false;
+      this.changer(() => { if (d) this.state.disposition = d; else delete this.state.disposition; }, dit || (d ? 'La disposition des zones est réglée.' : 'La disposition des zones redevient automatique.'));
+      return true;
+    }
     /** Le site de la vue en direct, généré à partir des réglages (moteur/site.js) ; `regime` : la règle de poste générale. */
     site(regime) {
       const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
       if (!S) return null;
       return S.generer({ ateliers: this.state.ateliers, parcours: this.state.parcours, surfaces: this.state.surfaces, regime,
-        noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])), parents: this.parentsDuSite(), partages: this.state.partages });
+        noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])), parents: this.parentsDuSite(), partages: this.state.partages,
+        disposition: this.state.disposition });
     }
 
     regleEncadrement(service, n) {
@@ -1055,6 +1071,16 @@
     enregistrer() {
       try { localStorage.setItem(CLE, JSON.stringify(this.state)); }
       catch { this.a.notify('Enregistrement impossible : exportez vos équipes.'); }
+    }
+
+    /**
+     * Ce que le dernier geste à annuler (ou à rétablir, `refaire`) a changé : les clés de l'état qui diffèrent d'avec
+     * aujourd'hui ; null s'il n'y a rien à annuler. « Disposer les zones » ne défait ainsi que ses propres gestes.
+     */
+    clesDuDernierGeste(refaire) {
+      const pile = refaire ? this.redo : this.undo; if (!pile.length) return null;
+      const autre = pile[pile.length - 1];
+      return [...new Set([...Object.keys(autre), ...Object.keys(this.state)])].filter(k => JSON.stringify(autre[k]) !== JSON.stringify(this.state[k]));
     }
 
     histoire(refaire) {

@@ -17,6 +17,9 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const CAM = () => (enNode ? require('./direct-camera.js') : root.OrlyDirectCamera);
   const ETAT = () => (enNode ? require('./direct-etat.js') : root.OrlyDirectEtat);
+  const ALLEES = () => (enNode ? require('./direct-allees.js') : root.OrlyDirectAllees);
+  /** Par où passer, d'un point à un autre : par les allées d'un site disposé (évolution 20 b) ; sans allées, tout droit, comme avant. */
+  const parAllees = (site, de, vers) => (site && site.allees ? ALLEES().chemin(site, de, vers) : []);
 
   /** Les hauteurs, en mètres : les murs sont bas, pour que rien ne soit caché. */
   const H = { mur: 0.5, convoyeur: 0.85, bras: 1.9, tunnel: 1.45, rayonnage: 2.1, etiquette: 2.8, avion: 2.6 };
@@ -27,7 +30,7 @@
   function boite(site, aire) {
     const e = (site && site.emprise) || { x0: 0, y0: 0, x1: 1, y1: 1 };
     if (!aire) return { x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1, h: H.etiquette };
-    return { x0: e.x0, y0: Math.min(e.y0, aire.y), x1: Math.max(e.x1, aire.x + aire.w), y1: Math.max(e.y1, aire.y + aire.h), h: H.etiquette };
+    return { x0: Math.min(e.x0, aire.x), y0: Math.min(e.y0, aire.y), x1: Math.max(e.x1, aire.x + aire.w), y1: Math.max(e.y1, aire.y + aire.h), h: H.etiquette };
   }
   /**
    * La boîte à cadrer à l'ouverture et sur « Tout voir » : le bâtiment et les avions présents — pas l'aire vide (évolution 19,
@@ -48,6 +51,8 @@
   const zoneDuService = (site, service) => ((site && site.zones) || []).find(z => z.services.includes(service) || z.id === service) || null;
   const zoneSous = (site, p) => ((site && site.zones) || []).find(z => p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h) || null;
 
+  /** Les murs d'une zone d'un site disposé, d'après le côté où elle ouvre : à gauche (une colonne), en haut (une rangée du bas). */
+  const OUVERT = { gauche: ['x1', 'y0', 'y1'], haut: ['x0', 'x1', 'y1'] };
   /** Les murs d'un rectangle, sur les côtés donnés : un par côté, en dedans du bord. */
   function mursDe(r, cotes, zone) {
     const m = { x0: { x: r.x, y: r.y, w: MUR, d: r.h }, x1: { x: r.x + r.w - MUR, y: r.y, w: MUR, d: r.h },
@@ -72,14 +77,16 @@
     sols.push({ id: 'site', ton: 'site', x: e.x0 - 1, y: e.y0 - 1, w: e.x1 - e.x0 + 2, d: e.y1 - e.y0 + 2 });
     // Du côté des avions : la route où roulent les véhicules du handling, et l'aire où se tiennent les avions.
     if (aire) { sols.push({ id: 'route', ton: 'route', x: aire.route.x, y: aire.route.y, w: aire.route.w, d: aire.route.h }); sols.push({ id: 'aire', ton: 'aire', x: aire.x, y: aire.y, w: aire.w, d: aire.h }); }
-    sols.push({ id: 'couloir', ton: 'couloir', x: site.couloir.x, y: site.couloir.y, w: site.couloir.w, d: site.couloir.h });
+    // Le couloir ; dans un site disposé, ses allées : celle de l'entrée (le couloir), puis les autres.
+    if (site.allees) site.allees.forEach((a, i) => sols.push({ id: i ? 'allee-' + i : 'couloir', ton: 'couloir', x: a.x, y: a.y, w: a.w, d: a.h }));
+    else sols.push({ id: 'couloir', ton: 'couloir', x: site.couloir.x, y: site.couloir.y, w: site.couloir.w, d: site.couloir.h });
     sols.push({ id: 'pause', ton: 'pause', x: site.pause.x, y: site.pause.y, w: site.pause.w, d: site.pause.h });
     // L'aire de pause s'ouvre du côté de l'entrée.
-    murs.push(...mursDe(site.pause, ['x0', 'x1', site.pause.y >= site.couloir.y ? 'y1' : 'y0'], 'pause'));
+    murs.push(...mursDe(site.pause, site.allees ? ['x0', 'y0', 'y1'] : ['x0', 'x1', site.pause.y >= site.couloir.y ? 'y1' : 'y0'], 'pause'));
     for (const z of site.zones) {
       sols.push({ id: z.id, ton: 'zone', x: z.x, y: z.y, w: z.w, d: z.h, zone: z.id });
-      // Une zone s'ouvre sur le couloir : pas de mur de ce côté.
-      murs.push(...mursDe(z, ['x0', 'x1', z.bande === 0 ? 'y0' : 'y1'], z.id));
+      // Une zone s'ouvre sur le couloir — ou, dans un site disposé, sur son allée (`ouvert`) : pas de mur de ce côté.
+      murs.push(...mursDe(z, z.ouvert ? OUVERT[z.ouvert] : ['x0', 'x1', z.bande === 0 ? 'y0' : 'y1'], z.id));
       for (const [i, l] of (z.lignes || []).entries()) {
         objets.push({ quoi: 'ligne', ton: 'machine', x: l.x, y: l.y, z: 0, w: l.w, d: l.h, h: H.convoyeur, zone: z.id, ref: i, ateliers: l.ateliers });
         const c = Math.min(0.5, l.h * 0.4);
@@ -344,7 +351,8 @@
       const porte = zones.get(ilot.zone).porte, ici = E.personnesDe(e, t);
       const avant = apresDebut !== null ? E.personnesDe(e, debut - 1) : null, apres = avantFin !== null ? E.personnesDe(e, fin) : null;
       const n = Math.max(ici.presents, avant ? avant.presents : 0, apres ? apres.presents : 0);
-      const versPause = [porte, { x: porte.x, y: site.entree.y }, { x: site.pause.x + site.pause.w, y: site.entree.y }];
+      // Vers la pause : par le couloir ; dans un site disposé, par ses allées, jusqu'à l'entrée.
+      const versPause = [porte, ...(site.allees ? parAllees(site, porte, site.entree) : [{ x: porte.x, y: site.entree.y }]), { x: site.pause.x + site.pause.w, y: site.entree.y }];
       const base = (i, etat) => ({ quoi: 'personne', atelier: e.id, service: e.service, zone: ilot.zone, i, etat, couche: 1 });
       for (let i = 0; i < n; i++) {
         const etat = etatDe(ici, i), poste = placeDe(ilot, i);
@@ -390,6 +398,13 @@
    */
   function aireDe(site, nombre) {
     if (!site || !site.zones.length || !(nombre > 0)) return null;
+    if (site.avions === 'bas') {
+      // Sous le site (le quai a son bord extérieur en bas, évolution 20 b) : la route le long du bord, puis des places en rangs.
+      const parRang = Math.max(1, Math.floor(site.largeur / AVION.w)), rangs = Math.ceil(nombre / parRang), cols = Math.min(nombre, parRang);
+      const x0 = (site.largeur - cols * AVION.w) / 2, xb = Math.min(0, x0), wb = Math.max(site.largeur, cols * AVION.w), yb = site.profondeur + ROUTE;
+      const enBas = Array.from({ length: nombre }, (_, i) => ({ x: x0 + ((i % parRang) + 0.5) * AVION.w, y: yb + (Math.floor(i / parRang) + 0.5) * AVION.h }));
+      return { x: xb, y: yb, w: wb, h: rangs * AVION.h, route: { x: xb, y: site.profondeur, w: wb, h: ROUTE }, places: enBas };
+    }
     const parColonne = Math.max(1, Math.floor(site.profondeur / AVION.h)), colonnes = Math.ceil(nombre / parColonne), rangs = Math.min(nombre, parColonne);
     const x = site.largeur + ROUTE, y = Math.min(0, (site.profondeur - rangs * AVION.h) / 2), h = Math.max(site.profondeur, rangs * AVION.h);
     const places = Array.from({ length: nombre }, (_, i) => ({ x: x + (Math.floor(i / parColonne) + 0.5) * AVION.w, y: (site.profondeur - rangs * AVION.h) / 2 + ((i % parColonne) + 0.5) * AVION.h }));
@@ -466,6 +481,12 @@
     const quai = zones.find(z => z.role === 'quai') || null, plonge = zones.find(z => (z.tunnels || []).length) || zones.find(z => z.role === 'plonge') || null;
     // Ce qui est prêt avant le chargement attend au quai du handling ; sans quai, au bout du couloir, du côté des avions.
     const sortie = { x: site.largeur - 4, y: site.couloir.y + 0.4, w: 3.4, h: site.couloir.h - 0.8, sens: 1 };
+    // D'où partent les véhicules, où reviennent les retours : le milieu du bord du quai, du côté des avions (à droite, ou en
+    // bas dans un site disposé) ; sans quai, le bout du couloir.
+    // Dans un site disposé, un quai qui n'est pas au bord du côté des avions : les véhicules partent du bout de l'allée du haut.
+    const quaiAuBord = !!quai && (!site.allees || Math.abs(site.avions === 'bas' ? quai.y + quai.h - site.profondeur : quai.x + quai.w - site.largeur) < 1e-6);
+    const versAvions = site.avions === 'bas' ? { x: quaiAuBord ? quai.x + quai.w / 2 : site.largeur / 2, y: site.profondeur }
+      : quaiAuBord ? { x: site.largeur, y: quai.y + quai.h / 2 } : { x: site.largeur, y: site.couloir.y + site.couloir.h / 2 };
     const bande = service => { const z = service === 'chargement' ? quai : zoneDe(service); return z ? bandeDeFile(z, scene.ilots) : sortie; };
     const porte = service => { const z = service === 'chargement' ? quai : zoneDe(service); return z ? z.porte : { x: sortie.x, y: site.couloir.y + site.couloir.h / 2 }; };
     // D'où part un lot : l'îlot de l'atelier qui vient de le finir dans le service d'amont ; à défaut, la porte de sa zone.
@@ -480,7 +501,8 @@
       for (const l of lots) {
         const base = { quoi: 'chariot', ton: l.nature, couche: 1, etat: 'file', service, classe: l.classe, vol: l.vol };
         // Un lot qui vient d'entrer en stock roule deux minutes de son atelier à la file, en convoi, poussé par un personnage.
-        const depuis = l.arrive < 1 ? source(l) : null, chemin = depuis ? [depuis, porte(l.de || service), porte(service)] : null;
+        const depuis = l.arrive < 1 ? source(l) : null, sort = depuis && porte(l.de || service), entre = depuis && porte(service);
+        const chemin = depuis ? [depuis, sort, ...parAllees(site, sort, entre), entre] : null;
         if (depuis) out.pousseurs.push(pousseur([...chemin, places[k + l.chariots - 1]], l.arrive, l.chariots));
         for (let i = 0; i < l.chariots; i++, k++) {
           const p = depuis ? surChemin([...chemin, places[k]], avanceDuConvoi(l.arrive, i, l.chariots)) : places[k];
@@ -499,11 +521,14 @@
     // Les retours sales : ils arrivent du quai des retours, attendent devant la plonge, passent dans leur tunnel.
     if (plonge) {
       const tunnels = plonge.tunnels || [], tunnelDe = nom => tunnels.find(x => x.nom === nom) || tunnels[0] || null, b = bandeDeFile(plonge, scene.ilots), retours = { x: site.largeur, y: site.couloir.y + site.couloir.h / 2 };
+      // Dans un site disposé : du bord du quai (côté avions), par sa porte et les allées, jusqu'à la porte de la plonge.
+      const parSaPorte = quaiAuBord && quai !== plonge;
+      const parLeQuai = site.allees ? [versAvions, ...(parSaPorte ? [quai.porte] : []), ...(quaiAuBord && quai === plonge ? [] : parAllees(site, parSaPorte ? quai.porte : versAvions, plonge.porte)), plonge.porte] : null;
       const lavages = E.lavagesA(r, t, N), enFile = lavages.filter(x => x.etat === 'file' || x.etat === 'arrive'), places = placesDeFile(b, enFile.reduce((n, x) => n + x.chariots, 0));
       let k = 0;
       for (const x of enFile) {
         // Un retour qui arrive roule deux minutes depuis la route, du côté des avions, par le couloir, jusqu'à la file.
-        const roule = x.etat === 'arrive', chemin = [retours, { x: plonge.porte.x, y: retours.y }, plonge.porte];
+        const roule = x.etat === 'arrive', chemin = parLeQuai || [retours, { x: plonge.porte.x, y: retours.y }, plonge.porte];
         if (roule) out.pousseurs.push(pousseur([...chemin, places[k + x.chariots - 1]], x.arrive, x.chariots));
         for (let i = 0; i < x.chariots; i++, k++) {
           const p = roule ? surChemin([...chemin, places[k]], avanceDuConvoi(x.arrive, i, x.chariots)) : places[k];
@@ -550,10 +575,11 @@
         const p = aire.places[v.place % aire.places.length];
         out.avions.push({ quoi: 'avion', couche: 1, id: v.id, cie: v.cie, depart: v.depart, charge: v.charge, retard: v.retard, enRetard: v.enRetard, decolle: v.decolle, x: p.x + v.decolle * 9, y: p.y, dz: v.decolle * 6, alpha: 1 - v.decolle });
       }
-      const depart = quai ? { x: site.largeur, y: quai.y + quai.h / 2 } : { x: site.largeur, y: site.couloir.y + site.couloir.h / 2 }, route = aire.route.x + aire.route.w / 2;
+      const depart = versAvions, enBas = site.avions === 'bas', route = enBas ? aire.route.y + aire.route.h / 2 : aire.route.x + aire.route.w / 2;
       for (const c of E.vehiculesA(r, t)) {
         const p = aire.places[(places.places.get(c.vols[0]) ?? 0) % aire.places.length], but = { x: p.x - AVION.long / 2 - 0.2, y: p.y + 1.5 };
-        const q = surChemin([depart, { x: route, y: depart.y }, { x: route, y: but.y }, but], c.avance);
+        // Par la route : le long du bord du site, jusqu'à la hauteur de l'avion.
+        const q = surChemin(enBas ? [depart, { x: depart.x, y: route }, { x: but.x, y: route }, but] : [depart, { x: route, y: depart.y }, { x: route, y: but.y }, but], c.avance);
         out.vehicules.push({ quoi: 'vehicule', couche: 1, cle: c.cle, type: c.vehicule, camion: c.camion, phase: c.phase, vols: c.vols, avance: c.avance, x: q.x, y: q.y });
       }
     }

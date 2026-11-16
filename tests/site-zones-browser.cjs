@@ -98,7 +98,7 @@ const URL=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
   const e1=await relief();
   assert.equal(e1.zones.includes('dotation'),false);
   assert.equal(e1.ilots.find(i=>i.atelier==='do').zone,'cuisine');
-  if(await page.locator('#direct-panneau').evaluate(p=>p.hidden||!p.checkVisibility()))await page.locator('#direct-en-ce-moment').click();
+  if(await page.locator('#direct-panneau').evaluate(p=>p.hidden||!p.checkVisibility()))await page.locator('#btn-en-ce-moment').click();
   await page.waitForSelector('#direct-panneau [data-direct-service=cuisine]');
   assert.equal(await page.locator('#direct-panneau [data-direct-service=dotation]').count(),1,'la dotation garde sa ligne');
   assert.equal(await page.locator('#direct-panneau [data-direct-service=cuisine]').count(),1,'la cuisine garde la sienne');

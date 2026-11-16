@@ -32,13 +32,19 @@
  *     au moins la place de ses ateliers. Les parts se ramènent à un total de 1 ;
  *   - les zones se rangent dans l'ordre du chemin, de l'amont vers l'aval : le
  *     magasin d'abord (côté arrivées), le quai du handling au bout (côté
- *     avions), la plonge au bout de l'autre bande (près du quai des retours).
+ *     avions), la plonge au bout de l'autre bande (près du quai des retours) ;
+ *   - ou bien là où l'utilisateur le dit (évolution 20 b) : avec une
+ *     `disposition` — des colonnes et des rangées du bas —, le tracé est celui
+ *     de moteur/disposition.js : des allées fines à la place du couloir,
+ *     l'entrée et l'aire de pause en haut à gauche, les avions le long du bord
+ *     extérieur de la zone du quai. Les tailles viennent toujours des parts.
  * ==========================================================================*/
 (function (root) {
   'use strict';
   const enNode = typeof module !== 'undefined' && module.exports;
   const P = () => (enNode ? require('./production.js') : root.MoteurProduction);
   const ORDRE = () => (enNode ? require('./ordre-services.js') : root.OrlyOrdreServices);
+  const DISPOSITION = () => (enNode ? require('./disposition.js') : root.OrlyDisposition);
 
   /** Les services de la production : la préparation et le montage, dans une seule zone. */
   const FOOD = ['preparation', 'prepa'];
@@ -399,20 +405,26 @@
       z.entrepot = z.rayons && z.ateliers.every(id => parId.get(id).service === 'magasin');
     }
     const parts = new Map(zones.map(z => [z.id, z.part]));
+    /** Une zone posée : ce qu'elle est, sa place ({ bande, x, y, w, h, porte } — et `ouvert`, dans une disposition), ses machines. */
+    const poser = (z, place) => {
+      const pose = { id: z.id, nom: z.nom, role: z.role, services: z.services, ateliers: z.ateliers, personnes: z.personnes, part: parts.get(z.id), surface: parts.get(z.id) * surface, minimum: z.minimum, ...place };
+      const machines = machinesDe(pose, z);
+      if (z.lignes) pose.lignes = machines.lignes.map((p, i) => ({ ...p, ateliers: z.lignes[i] }));
+      if (z.tunnels) pose.tunnels = machines.tunnels.map((p, i) => ({ nom: z.tunnels[i], ...p }));
+      if (z.rayons) pose.rayonnages = machines.rayonnages;
+      return pose;
+    };
+    // La disposition de l'utilisateur (évolution 20 b) : des colonnes et des rangées du bas, tracées par moteur/disposition.js.
+    const disposition = DISPOSITION() ? DISPOSITION().lire(r.disposition) : null;
+    if (disposition) return dispose(zones, disposition, surface, poser, notes);
     const largeur = Math.sqrt(ALLONGEMENT * surface), bandes = bandesDe(zones, parts);
     const fond = bandes.map(b => surface * somme(b, z => parts.get(z.id)) / largeur);
     const y = [0, fond[0] + COULOIR], sortie = [];
     bandes.forEach((b, k) => {
       let x = 0;
       for (const z of b) {
-        const s = parts.get(z.id) * surface, w = s / fond[k];
-        const pose = { id: z.id, nom: z.nom, role: z.role, services: z.services, ateliers: z.ateliers, personnes: z.personnes, part: parts.get(z.id), surface: s, minimum: z.minimum,
-          bande: k, x, y: y[k], w, h: fond[k], porte: { x: x + w / 2, y: k === 0 ? fond[0] : fond[0] + COULOIR } };
-        const machines = machinesDe(pose, z);
-        if (z.lignes) pose.lignes = machines.lignes.map((p, i) => ({ ...p, ateliers: z.lignes[i] }));
-        if (z.tunnels) pose.tunnels = machines.tunnels.map((p, i) => ({ nom: z.tunnels[i], ...p }));
-        if (z.rayons) pose.rayonnages = machines.rayonnages;
-        sortie.push(pose); x += w;
+        const w = parts.get(z.id) * surface / fond[k];
+        sortie.push(poser(z, { bande: k, x, y: y[k], w, h: fond[k], porte: { x: x + w / 2, y: k === 0 ? fond[0] : fond[0] + COULOIR } })); x += w;
       }
     });
     const profondeur = fond[0] + COULOIR + fond[1];
@@ -424,6 +436,30 @@
     return { largeur, profondeur, surface, couloir: { x: 0, y: fond[0], w: largeur, h: COULOIR }, entree: { x: 0, y: fond[0] + COULOIR / 2 }, pause,
       emprise: { x0: pause.x, y0: 0, x1: largeur, y1: profondeur }, avions: 'droite', zones: sortie.sort((p, q) => rang.get(p.id) - rang.get(q.id)),
       ...(notes.length ? { notes } : {}) };
+  }
+
+  /**
+   * Le site d'une disposition (évolution 20 b) : les zones là où l'utilisateur les a mises. La disposition s'accorde
+   * d'abord aux zones du site (une zone oubliée, en double ou disparue : c'est dit). La largeur : celle du site
+   * automatique, plus une allée par colonne. Une zone d'une colonne ouvre sur l'allée de sa gauche ; son fond est en
+   * haut (`bande` 0). Une rangée du bas ouvre sur l'allée au-dessus d'elle ; son fond est en bas (`bande` 1).
+   * L'allée de l'entrée, en haut, tient lieu de couloir ; l'entrée est à son bout gauche, l'aire de pause à côté. Les
+   * avions sont le long du bord extérieur de la zone du quai : à droite ou en bas du site, là où elle a son plus long
+   * côté au bord ; si elle n'en a pas (ou sans quai), à droite.
+   * Rend le site, avec en plus `allees` ([{ x, y, w, h, sens }]), `disposition` (celle qui est tracée) et, sur chaque zone, `ouvert`.
+   */
+  function dispose(zones, disposition, surface, poser, notes) {
+    const D = DISPOSITION(), a = D.ALLEE, accord = D.accorder(disposition, zones.map(z => z.id));
+    const largeur = Math.sqrt(ALLONGEMENT * surface) + accord.colonnes.filter(c => c.length).length * a;
+    const trace = D.tracer(accord, new Map(zones.map(z => [z.id, z.part * surface])), largeur, a), profondeur = trace.profondeur;
+    const sortie = zones.map(z => { const p = trace.zones.get(z.id); return poser(z, { bande: p.rangee ? 1 : 0, x: p.x, y: p.y, w: p.w, h: p.h, porte: p.porte, ouvert: p.ouvert }); });
+    const pause = { x: -PAUSE.w, y: 0, w: PAUSE.w, h: Math.min(PAUSE.h, profondeur) };
+    const quai = sortie.find(z => z.role === 'quai'), auBord = (bord, cote) => (Math.abs(bord) < 1e-6 ? cote : 0);
+    const avions = quai && auBord(quai.y + quai.h - profondeur, quai.w) > auBord(quai.x + quai.w - largeur, quai.h) ? 'bas' : 'droite';
+    const dites = [...notes, ...accord.notes, ...trace.notes];
+    return { largeur, profondeur, surface, couloir: { x: 0, y: 0, w: largeur, h: a }, entree: { x: 0, y: a / 2 }, pause,
+      emprise: { x0: pause.x, y0: 0, x1: largeur, y1: profondeur }, avions, zones: sortie, allees: trace.allees,
+      disposition: { colonnes: accord.colonnes, rangees: accord.rangees }, ...(dites.length ? { notes: dites } : {}) };
   }
 
   const api = { generer, FOOD, PARTS, lignesRobot, tunnelsDe, parentsDuPlan, boucle };

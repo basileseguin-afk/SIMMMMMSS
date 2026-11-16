@@ -283,3 +283,45 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
    choix parmi les services : il a la place d'un nom, pas celle d'un nombre. */
 .mu-encadrement.site-partage{grid-template-columns:max-content minmax(160px,300px) 1fr}
 .mu-encadrement.site-partage select{width:100%;min-width:0}
+
+/* ==========================================================================
+ *  « DISPOSER LES ZONES » — le panneau à côté de la scène (évolution 20 b)
+ *  Il prend la place de « En ce moment » tant qu'il est ouvert. Des colonnes
+ *  de zones, des rangées du bas : chaque zone est une ligne qu'on glisse, avec
+ *  ses boutons.
+ * ==========================================================================*/
+#direct-disposer{display:none}
+body.direct-dispose[data-direct="relief"][data-sous="j-plan"] #direct-disposer{display:block}
+body.direct-dispose[data-direct="relief"][data-sous="j-plan"] #direct-panneau{display:none!important}
+#direct-disposer .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-e-3)}
+#direct-disposer-btn[aria-expanded="true"]{background:var(--ds-accent-pale);color:var(--ds-accent-texte)}
+.dd-pastille{display:inline-block;min-width:16px;margin-left:6px;padding:0 4px;border-radius:8px;background:var(--ds-accent-pale);color:var(--ds-accent-texte);
+  font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);line-height:16px;text-align:center}
+.dd-pastille[hidden]{display:none}
+.dd-corps{font-size:var(--ds-t-14)}
+.dd-corps h3{display:flex;align-items:baseline;gap:8px;margin:var(--ds-e-4) 0 var(--ds-e-2);font-size:var(--ds-t-14)}
+.dd-corps h3 small{color:var(--ds-texte-2);font-size:var(--ds-t-12);font-weight:var(--ds-g-normal)}
+.dd-corps h4{margin:0 0 4px;color:var(--ds-texte-2);font-size:var(--ds-t-12);font-weight:var(--ds-g-normal);text-transform:none}
+.dd-etat{margin:0 0 var(--ds-e-2)}
+.dd-notes{margin:0 0 var(--ds-e-3);padding:8px 10px 8px 26px;border-radius:var(--ds-r-2);background:var(--ds-accent-pale);color:var(--ds-texte-1);font-size:var(--ds-t-12);line-height:1.45}
+.dd-colonnes{display:grid;gap:var(--ds-e-2);margin:0;padding:0;list-style:none}
+.dd-colonne{padding:8px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
+.dd-zones{display:grid;gap:4px;min-height:12px;margin:0;padding:0;list-style:none}
+.dd-rangees{padding:8px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
+.dd-zones.dd-depot{outline:2px dashed var(--ds-accent);outline-offset:2px}
+.dd-zone{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;padding:4px 6px 4px 8px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-2);
+  background:var(--ds-surface-2);cursor:grab}
+.dd-zone:focus-visible{outline:0;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.dd-zone.dd-glissee{opacity:.5}
+.dd-nom{flex:1 1 90px;min-width:0;overflow-wrap:anywhere;font-weight:var(--ds-g-fort)}
+.dd-gestes{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:2px}
+.dd-geste{min-width:var(--ds-h-compact);min-height:var(--ds-h-compact);padding:0 6px}
+.dd-geste.dd-mot{padding:0 8px;font-size:var(--ds-t-12)}
+.dd-longe{display:inline-flex;align-items:center;gap:4px;color:var(--ds-texte-2);font-size:var(--ds-t-12)}
+.dd-longe select{min-height:var(--ds-h-compact);padding:0 4px}
+.dd-vide{margin:4px 0 0;color:var(--ds-texte-2);font-size:var(--ds-t-12)}
+.dd-corps .row-btns{margin:var(--ds-e-3) 0 0}
+/* Sur une toile étroite, la barre de la scène — plus longue depuis « Disposer les zones » — passerait sur la légende :
+   la légende se pose alors au-dessus d'elle. */
+.direct{container-type:inline-size}
+@container (max-width: 980px){.direct-coin{bottom:calc(var(--ds-e-3) + var(--ds-h-compact) + 18px)}}

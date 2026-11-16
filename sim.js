@@ -674,7 +674,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1120,14 +1120,24 @@ const HISTOIRES=[
 function boutonsAnnuler(){
   if(editMode)return ['pe-undo','pe-redo'];
   if(activeView==='accueil')return null;
+  // « Disposer les zones » (évolution 20 b) règle la disposition, gardée avec les équipes : tant que son panneau est
+  // ouvert, dans « En direct », le bouton du haut annule et rétablit ses gestes — et eux seuls (`gesteDeDisposition`).
+  if(document.body.classList.contains('direct-dispose'))return ['at-undo','at-redo'];
   const h=HISTOIRES.find(([pages])=>pages.includes(document.body.dataset.sous));
   return h?[h[1],h[2]]:null;
+}
+/** Dans « Disposer les zones » : le dernier geste à annuler (ou à rétablir) n'a-t-il changé que la disposition ? Hors du
+ *  panneau, la question ne se pose pas. Un changement d'équipes fait avant d'ouvrir le panneau ne s'y défait pas. */
+function gesteDeDisposition(refaire){
+  if(!document.body.classList.contains('direct-dispose'))return true;
+  const cles=Sim.ateliers&&Sim.ateliers.clesDuDernierGeste(refaire);
+  return !!cles&&cles.length===1&&cles[0]==='disposition';
 }
 function majAnnuler(){
   const ids=boutonsAnnuler();
   [['btn-annuler','Annuler (Ctrl Z)','Rien à annuler sur cette page'],['btn-retablir','Rétablir (Ctrl Maj Z)','Rien à rétablir sur cette page']].forEach(([id,titre,rien],k)=>{
     const b=document.getElementById(id);if(!b)return;
-    const c=ids&&document.getElementById(ids[k]),off=!c||c.disabled,t=ids?titre:rien;
+    const c=ids&&document.getElementById(ids[k]),off=!c||c.disabled||!gesteDeDisposition(k===1),t=ids?titre:rien;
     // Seulement ce qui change : le bouton du haut observe les « disabled » de la page, et lui-même en est un.
     if(b.disabled!==off)b.disabled=off;
     if(b.title!==t)b.title=t;
@@ -1135,7 +1145,7 @@ function majAnnuler(){
 }
 function annulerOuRetablir(refaire){
   const ids=boutonsAnnuler(),c=ids&&document.getElementById(ids[refaire?1:0]);
-  if(c&&!c.disabled)c.click();
+  if(c&&!c.disabled&&gesteDeDisposition(refaire))c.click();
   majAnnuler();
 }
 /** Un champ où l'on tape du texte : Ctrl Z y reste celui du navigateur. */
@@ -2266,17 +2276,63 @@ function initPleinEcran() {
   if (typeof MutationObserver === 'function') new MutationObserver(() => { if (document.body.classList.contains('direct-plein')) pleinEcran(true); })
     .observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct'] });
 }
-let siteGarde = null;
-/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées ne changent. */
-function siteDeLaVue() {
+/* « Disposer les zones » (évolution 20 b) : le panneau qui dit où va chaque zone, à la place de « En ce moment » tant qu'il
+ * est ouvert. Il règle la disposition gardée avec les équipes : « Annuler » et « Rétablir » le suivent ; la scène se
+ * redessine à chaque geste. Le bouton porte le nombre de choses que le site a à dire (une zone oubliée, en double…). */
+function disposerLesZones(ouvert) {
+  const b = document.getElementById('direct-disposer-btn'), oui = !!ouvert && document.body.dataset.direct === 'relief' && document.body.dataset.sous === 'j-plan';
+  if (!b || document.body.classList.contains('direct-dispose') === oui) return;
+  document.body.classList.toggle('direct-dispose', oui);
+  b.setAttribute('aria-expanded', String(oui));
+  // Le volet s'ouvre pour le panneau, le temps qu'il sert ; refermé, « En ce moment » retrouve son état.
+  if (oui) { appliquerEnCeMoment(true); if (Sim.disposer) Sim.disposer.rendre(); } else majEnCeMoment();
+  // « Annuler » et « Rétablir » suivent le panneau : ouverts sur ses gestes, refermés avec lui.
+  majAnnuler();
+}
+function majDisposer() {
+  const site = siteDeLaVue(), n = site && site.notes ? site.notes.length : 0, p = document.getElementById('dd-pastille'), b = document.getElementById('direct-disposer-btn');
+  if (p) { p.hidden = !n; p.textContent = n ? String(n) : ''; }
+  if (b) b.title = 'Disposer les zones : dire où va chaque zone, à côté de quoi' + (n ? ' — ' + n + (n > 1 ? ' choses à lire' : ' chose à lire') : '');
+  if (Sim.disposer && document.body.classList.contains('direct-dispose')) Sim.disposer.rendre();
+}
+function initDisposer() {
+  const b = document.getElementById('direct-disposer-btn'), hote = document.getElementById('dd-corps'), fermer = document.getElementById('dd-fermer');
+  if (!b || !hote || !window.OrlyDirectDisposer || !window.OrlyDisposition) return;
+  // Une zone porte le nom de son service ; la production, « FOOD ».
+  const nom = id => (id === 'food' ? 'FOOD' : nomDeService(id));
+  Sim.disposer = OrlyDirectDisposer.installer(hote, {
+    site: siteDeLaVue, siteAuto: () => { const r = reglagesDuSite(); return r ? OrlySite.generer({ ...r, disposition: null }) : null; },
+    reglee: () => !!(Sim.ateliers && Sim.ateliers.state.disposition),
+    regler: (d, dit) => { if (Sim.ateliers) Sim.ateliers.regleDisposition(d, dit); }, nom });
+  b.addEventListener('click', () => {
+    const ouvrir = !document.body.classList.contains('direct-dispose');
+    disposerLesZones(ouvrir);
+    if (ouvrir) { const t = document.getElementById('dd-titre'); if (t) t.focus(); }
+  });
+  if (fermer) fermer.addEventListener('click', () => { disposerLesZones(false); b.focus(); });
+  // Quitter la vue en relief, ou replier le volet, referme le panneau.
+  if (typeof MutationObserver === 'function') new MutationObserver(() => {
+    if (!document.body.classList.contains('direct-dispose')) return;
+    if (document.body.dataset.direct !== 'relief' || document.body.dataset.sous !== 'j-plan' || document.body.classList.contains('sans-en-ce-moment')) disposerLesZones(false);
+  }).observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct', 'class'] });
+  majDisposer();
+}
+/** Ce que le site lit des réglages (moteur/site.js) : les équipes, les chemins, les noms, les parts, qui partage la zone de qui, la disposition. */
+function reglagesDuSite() {
   const at = Sim.ateliers; if (!at || !window.OrlySite) return null;
   const noms = Object.fromEntries(servicesDisponibles().map(x => [x.id, nomLisible(x.nom)]));
   const regime = Sim.reglages && Sim.reglages.etat ? Sim.reglages.etat.regime : undefined;
   // Qui partage la zone de qui (évolution 20 a) : les annexes rattachées, d'après le plan, et le réglage des fiches.
-  const parents = at.parentsDuSite(), partages = at.state.partages || null;
-  const cle = JSON.stringify([noms, regime || null, at.state.surfaces || null, at.state.ateliers.length, parents, partages]);
+  return { ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime, parents: at.parentsDuSite(), partages: at.state.partages || null,
+    disposition: at.state.disposition || null };
+}
+let siteGarde = null;
+/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées, ni la disposition ne changent. */
+function siteDeLaVue() {
+  const at = Sim.ateliers, r = reglagesDuSite(); if (!r) return null;
+  const cle = JSON.stringify([r.noms, r.regime || null, r.surfaces || null, r.ateliers.length, r.parents, r.partages, r.disposition]);
   if (siteGarde && siteGarde.r === at.resultat && siteGarde.cle === cle) return siteGarde.site;
-  siteGarde = { r: at.resultat, cle, site: OrlySite.generer({ ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime, parents, partages }) };
+  siteGarde = { r: at.resultat, cle, site: OrlySite.generer(r) };
   return siteGarde.site;
 }
 /** « En relief » ou « À plat » : le choix de la page, gardé le temps de la visite. */
@@ -2297,6 +2353,7 @@ function initDirect() {
     coin.addEventListener('toggle', () => { try { localStorage.setItem(CLE_LEGENDE_DIRECT, coin.open ? 'ouverte' : 'repliee'); } catch (e) { /* le choix vaut pour la visite */ } });
   }
   initPleinEcran();
+  initDisposer();
   Sim.direct = OrlyDirectVue.creer(hote, {
     lire: () => { const x = lectureDirecte(), m = journeeMontree(); return { site: m.site, journee: m.j, t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
