@@ -51,7 +51,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-clear-selection]').click({delay:150});assert.equal(await page.locator('#zone-picker').inputValue(),'');
   // Existing v2 data migrates without assuming which service owns a fridge.
   await page.evaluate(()=>{const p=structuredClone(Sim.editor.state);p.version=2;p.zones.push({id:'cold-custom',nom:'Ancien froid',kind:'cold',x:0,y:0,w:20,h:20});localStorage.removeItem('orly-plan-v3');localStorage.setItem('orly-plan-v2',JSON.stringify(p));});
-  await nav.recharger(page);await versPlan();await choisirCuisine();assert.equal((await state()).unassignedStorages.length,1);assert.equal(await page.locator('[data-pe-zone="cold-custom"]').count(),0);
+  // Évolution 19 (c) : l'ancien froid devient un stockage « à rattacher » sans contenu — rattaché à aucune zone et vide, le panneau ne le liste plus.
+  await nav.recharger(page);await versPlan();await choisirCuisine();assert.equal((await state()).unassignedStorages.length,0);assert.equal(await page.locator('[data-pe-zone="cold-custom"]').count(),0);
+  assert.equal(await panel.locator('summary').count(),0);
+  // Un ancien stockage qui dit ce qu'il contient reste à rattacher, et se rattache en un clic.
+  await page.evaluate(()=>{const p=structuredClone(Sim.editor.state);p.unassignedStorages=[{id:'storage-0',nom:'Ancien froid',contenu:'Laitages'}];localStorage.setItem('orly-plan-v3',JSON.stringify(p));});
+  await nav.recharger(page);await versPlan();await choisirCuisine();assert.equal((await state()).unassignedStorages.length,1);
   await panel.locator('summary').click();await panel.locator('[data-stock-action=assign]').click();assert.equal((await state()).unassignedStorages.length,0);assert.equal(await panel.locator('fieldset').count(),2);
   await cuisineEnregistree(2);
   await nav.recharger(page);await versPlan();assert.equal((await state()).zones.find(z=>z.id==='cuisine').storages.length,2);

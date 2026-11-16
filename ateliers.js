@@ -2046,7 +2046,10 @@
       const ouvert = dansChemin || this.ouvert === a.id;
       const dispo = a.type === 'dispo';
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
-      const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
+      // Évolution 19 (c) : plus d'attente en minutes ici (une ancienne définition, qui contredisait la Synthèse). L'heure de
+      // fin simulée reste, avec un lien vers le planning des équipes, où l'on voit quand l'équipe travaille et quand elle attend.
+      const versPlanning = !dispo && calcul && calcul.fin != null
+        ? `<button type="button" class="lien-discret at-vers-planning" data-page="at-planning" title="Voir « ${esc(a.nom)} » dans le planning des équipes">planning →</button>` : '';
       const jour = a.jour ? ' (' + jourEcrit(a.jour) + (a.type === 'lavage' ? ' de l’arrivée' : '') + ')' : '';
       // Ses commandes dans l'ordre ; chacune ouvre son chemin sur cette case.
       const handling = a.type === 'handling';
@@ -2069,16 +2072,17 @@
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
             : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion' + (Object.keys(a.volsCamion || {}).length ? ' (sauf ' + Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ') + ')' : '')
               : ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois') : '')
-          + ' → fin ' + esc(fin) + esc(attente);
+          + ' → fin ' + esc(fin);
 
       const entete = dansChemin
-        ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Équipe « ${esc(a.nom)} »</strong><span>${sous}</span></div></div>`
+        ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Équipe « ${esc(a.nom)} »</strong><span>${sous}</span></div>${versPlanning}</div>`
         : `<div class="at-carte-tete">
         <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}" title="La régler dans le chemin d’une de ses commandes">
           <strong>${esc(a.nom)}</strong>
           <span>${sous}</span>
         </button>
         <span class="at-resume">${resume}</span>
+        ${versPlanning}
       </div>`;
 
       if (!ouvert) return `<article class="at-carte" data-at="${esc(a.id)}">${entete}</article>`;
@@ -2533,7 +2537,8 @@
       const l = lots[index];
       if (!l) return '';
       if (l.impossible) return 'ne tourne pas';
-      return P.hhmm(l.debut) + ' → ' + P.hhmm(l.fin) + (l.attente ? ' (attente ' + Math.round(l.attente) + ')' : '');
+      // L'heure de début et de fin du lot ; son attente se lit au planning (évolution 19 c).
+      return P.hhmm(l.debut) + ' → ' + P.hhmm(l.fin);
     }
 
     /* ---- planning ---------------------------------------------------- */
@@ -2611,7 +2616,7 @@
         <p class="mini-note">${a.lignePropre ? 'Cette équipe a <b>sa propre machine</b> : elle tourne en même temps que les autres robots.'
           : autres.length ? `Une seule ligne, partagée avec ${autres.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : un lot à la fois, quelle que soit l’équipe.`
           : 'Une seule ligne : une autre équipe Robot de ce service (l’équipe de l’après-midi…) la partagera.'}
-          ${attend >= 1 ? ` <b>Attend la ligne ${Math.round(attend)} min</b> aujourd’hui.` : ''}</p>
+          ${attend >= 1 ? ` <b>Attend la ligne</b> aujourd’hui : <button type="button" class="lien-discret" data-page="at-planning" title="Voir quand cette équipe attend la ligne, dans le planning des équipes">voir le planning →</button>` : ''}</p>
         <label class="chk chk-mini"><input type="checkbox" data-at-champ="ligne-propre" ${a.lignePropre ? 'checked' : ''}> Un second robot : sa propre ligne</label>
         ${arrets.map((x, i) => `<div class="at-pause">
           <span class="mini-note">Arrêt de la ligne</span>
@@ -2801,7 +2806,7 @@
           if (!l.length) return '';
           const lot = vue.lots[k++];
           const quand = !lot ? '' : lot.impossible ? '<small class="rc-quand ko">ne se fait pas</small>'
-            : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}${lot.attente >= 1 ? ` <span title="Attente du service d’avant">· attend ${Math.round(lot.attente)} min</span>` : ''}</small>`;
+            : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}</small>`;
           return `<li class="${l.length > 1 ? 'ens' : ''}">${l.length > 1 ? '<span class="rc-ens-tete">ensemble</span>' : ''}<span class="rc-cmds">${l.map(chip).join('')}</span>${quand}</li>`;
         }).join('<li class="rc-fleche" aria-hidden="true">→</li>')}</ol>`;
       };
@@ -2834,7 +2839,7 @@
       const cle = actif && { at: actif.closest('[data-at]')?.dataset.at, champ: actif.dataset.atChamp, index: actif.dataset.index };
       box.innerHTML = `<div class="rc-scroll"><table class="rc-table" data-clavier>
         <thead><tr><th scope="col">Équipe</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
-          <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin</th></tr></thead>
+          <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin <button type="button" class="lien-discret rc-vers-planning" data-page="at-planning" title="Voir quand chaque équipe travaille et attend, dans le planning des équipes">planning →</button></th></tr></thead>
         <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune équipe ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
       const apres = box.querySelector('.rc-scroll');
       if (apres) { apres.scrollTop = haut; apres.scrollLeft = gauche; }

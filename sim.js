@@ -1484,6 +1484,15 @@ function basculerEdition() {
   if(!editMode&&Sim.onglets)Sim.onglets.choisir(Sim.pageAvantPlan||'j-plan');
 }
 
+/* Les stockages vides non rattachés du plan (évolution 19 c, plan-menage.js) : aucun calcul ne les lit. Le panneau ne les
+ * liste plus — ils quittent l'état de l'éditeur dès la lecture, sans rien écrire ; la prochaine sauvegarde part sans eux. */
+const CLE_PLAN='orly-plan-v3';
+function retirerStockagesVides(){
+  const ed=Sim.editor;if(!ed||!ed.state||!window.OrlyPlanMenage)return 0;
+  const r=OrlyPlanMenage.sansStockagesVides(ed.state);
+  if(r.retires){ed.state=r.plan;if(ed.renderStoragePanels)ed.renderStoragePanels();}
+  return r.retires;
+}
 function initEdition() {
   Sim.editor=new window.OrlyPlan.PlanEditor({
     svg,viewport:Sim._gVue,zones:ZONES,storages:STORAGES,notify:toast,
@@ -1498,7 +1507,7 @@ function initEdition() {
       e.g.classList.toggle('couleur-perso',!!c);
       if(c)e.g.style.setProperty('--zone-perso',c);else e.g.style.removeProperty('--zone-perso');
     },
-    refresh(){ajusterTextesPlan();suivreNomsServices();if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();
+    refresh(){retirerStockagesVides();ajusterTextesPlan();suivreNomsServices();if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();
       if(Sim.reglages)Sim.reglages.rendre();majDemarrage();},
     pick(id){selectionner(id);},
     // Une zone de production supprimée ne laisse pas d'équipes orphelines : on
@@ -1522,6 +1531,7 @@ function initEdition() {
     focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
   });
   document.getElementById('btn-edit').addEventListener('click',basculerEdition);
+  retirerStockagesVides();   // le plan enregistré peut porter d'anciens stockages vides, à rattacher : le panneau ne les liste plus
   majPicker();   // le plan enregistré peut contenir des annexes
 }
 
@@ -2042,6 +2052,7 @@ function initJouent(){
     bareme:()=>(Sim.reglages&&Sim.reglages.etat&&Sim.reglages.etat.bareme)||{},
     heures:m=>MoteurProduction.heuresFr(m),
     ouvrirService:id=>{if(Sim.unite)Sim.unite.ouvrir(id);},
+    nomService:id=>(servicesDisponibles().find(s=>s.id===id)||{}).nom||null,
     racines:()=>['view-ateliers','view-reglages'].map(id=>document.getElementById(id)).filter(Boolean)
   });
 }
@@ -2859,6 +2870,8 @@ function sauvegardeComplete() {
     try { brut = localStorage.getItem(p.cle); } catch (e) { /* stockage indisponible */ }
     if (!brut) return;
     try { contenu[p.cle] = JSON.parse(brut); parties++; } catch (e) { /* clé illisible : ignorée */ }
+    // Le plan part sans ses stockages vides non rattachés (évolution 19 c).
+    if (p.cle === CLE_PLAN && contenu[p.cle] && window.OrlyPlanMenage) contenu[p.cle] = OrlyPlanMenage.sansStockagesVides(contenu[p.cle]).plan;
   });
   if (!parties) { toast('Rien à sauvegarder pour l’instant.'); return; }
   const jour = new Date().toISOString().slice(0, 10);
@@ -2890,13 +2903,17 @@ async function restaurerSauvegarde(e) {
     // TOUT valider avant d'écrire QUOI QUE CE SOIT : une sauvegarde à moitié
     // restaurée serait pire qu'un refus.
     const aEcrire = [], aRetirer = [];
+    let stockagesRetires = 0;
     for (const p of PARTIES) {
       const part = brut.contenu[p.cle];
       if (part === undefined) { if (p.siAbsente === 'retirer') aRetirer.push(p.cle); continue; }
       try { p.valider(JSON.parse(JSON.stringify(part))); }
       // Un message qui nomme déjà sa partie (« règles d’import Winrest, … ») ne la répète pas.
       catch (err) { throw new Error(err.message.startsWith(p.nom) ? err.message : p.nom + ' — ' + err.message); }
-      aEcrire.push([p.cle, JSON.stringify(part)]);
+      // Les stockages vides non rattachés du plan ne sont pas restaurés (évolution 19 c) : l'avis le dit.
+      const menage = p.cle === CLE_PLAN && window.OrlyPlanMenage ? OrlyPlanMenage.sansStockagesVides(part) : { plan: part, retires: 0 };
+      stockagesRetires += menage.retires;
+      aEcrire.push([p.cle, JSON.stringify(menage.plan)]);
     }
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
     // Une vraie question : la restauration remplace tout, et ne se défait pas.
@@ -2905,6 +2922,7 @@ async function restaurerSauvegarde(e) {
       // Une sauvegarde d'avant, sans les règles d'import Winrest : elles reviennent aux défauts, et la question le dit.
       + (aRetirer.includes(CLE_WINREST) ? ' Elle n’a pas de règles d’import Winrest : les règles d’import Winrest par défaut reviennent.' : '')
       + (aRetirer.includes(CLE_SEUILS) ? ' Elle n’a pas de seuils d’alerte : les seuils par défaut reviennent.' : '')
+      + (stockagesRetires ? ' ' + OrlyPlanMenage.phrase(stockagesRetires) + ' : rattachés à aucune zone, ils ne disaient rien.' : '')
       + ' La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
       { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
     if (enRetard()) throw new Error(RETARD);

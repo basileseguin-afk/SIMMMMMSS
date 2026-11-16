@@ -132,12 +132,22 @@
     return null;
   }
 
+  /**
+   * Un service est-il une mise à disposition (évolution 19 c) ? Oui quand toutes ses équipes (hors appui) en sont : on vient
+   * s'y servir, il n'a pas de temps par vol — ses lignes quittent la page des temps par vol. Ses valeurs restent gardées.
+   */
+  function miseADisposition(service, etat) {
+    if (!etat || !service) return false;
+    const equipes = (etat.ateliers || []).filter(a => a && a.service === service && a.type !== 'appui');
+    return equipes.length > 0 && equipes.every(a => a.type === 'dispo');
+  }
+
   /** « Liens entre services » ne sert qu'aux commandes sans chemin : vrai si une commande au moins n'a pas de route. */
   function liensUtiles(classes, routes) {
     return (classes || []).some(c => c && !(routes && routes.has(c.id)));
   }
 
-  const api = { nonJoues, ligne, parCompagnie, liensUtiles, dureesDe, dureesLues };
+  const api = { nonJoues, ligne, parCompagnie, miseADisposition, liensUtiles, dureesDe, dureesLues };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyJouent = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

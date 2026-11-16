@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-15 — Évolution 19 (c) : ce qui se supprime
+
+Troisième partie du nettoyage de l'interface de la version 1. Aucun calcul ne
+change ; le moteur et la version 2 ne sont pas touchés.
+
+- **Les temps par vol d'une mise à disposition** : un service dont toutes les
+  équipes sont des mises à disposition n'a plus sa ligne dans « Temps par vol
+  par service » (une note le dit) ; ses valeurs restent dans la sauvegarde.
+- **Les stockages vides du plan** : un ancien stockage « à rattacher »,
+  rattaché à aucune zone et sans contenu, n'est plus listé ; il est retiré à
+  la prochaine sauvegarde, et la restauration le dit en une ligne (« n
+  stockages vides retirés du plan »). Un stockage rattaché ou renseigné ne
+  change pas.
+- **La mention « Version 2, en construction »** quitte le menu de la
+  version 1.
+- **L'attente en minutes d'une équipe** quitte les pages de réglage (carte,
+  lots de la fiche, tableau des horaires, ligne d'un robot) ; l'heure de fin
+  simulée reste, avec un lien vers le planning des équipes.
+
+Fichiers : `plan-menage.js` (nouveau), `jouent.js`, `jouent-vue.js`,
+`ateliers.js`, `sim.js`, `planning-vue.css`, `index.html`,
+`tests/plan-menage.test.cjs` et
+`tests/menage-browser.cjs` (nouveaux), `tests/jouent.test.cjs`,
+`tests/storage-browser.cjs`, `tests/v2-browser.cjs`, `README.md`.
+
+---
+
 ## 2026-11-15 — Évolution 19 (b) : un réglage qui ne joue pas ne s'affiche pas
 
 Deuxième partie du nettoyage de l'interface de la version 1. Aucun calcul ne

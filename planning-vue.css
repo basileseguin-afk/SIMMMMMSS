@@ -176,3 +176,7 @@
 
 /* Un service visé depuis la Synthèse (évolution 15 b) : un liseré d'accent sur son en-tête. */
 .pg-groupe.pg-vise>.pg-groupe-tete{box-shadow:inset 3px 0 0 var(--ds-accent);background:var(--ds-accent-pale)}
+
+/* Le lien « planning → » de l'en-tête « Horaires des équipes » (évolution 19 c) : il ne grandit pas la ligne des
+   titres — le service en cours reste collé juste dessous quand le tableau défile. */
+.rc-table thead .rc-vers-planning{min-height:0;padding:0 0 0 4px;font-size:inherit;vertical-align:baseline}

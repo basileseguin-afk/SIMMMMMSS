@@ -1324,6 +1324,31 @@ version 2 et ne change pas. Passer la plonge « au débit » n’efface plus ses
 durées par compagnie : elles restent dans la sauvegarde (le calcul ne les lit
 pas). Aucun calcul ne change.
 
+### Ce qui se supprime (évolution 19 c)
+
+- **Les temps par vol d’une mise à disposition.** Un service dont toutes les
+  équipes sont des mises à disposition n’a pas de temps par vol : on vient
+  s’y servir. Sa ligne quitte « Temps par vol par service » (une note, sous
+  la liste, dit lesquels), et il n’a pas de colonne dans « Temps par vol ».
+  Ses valeurs restent dans la sauvegarde ; il retrouve sa ligne dès qu’une
+  équipe y prépare.
+- **Les stockages vides du plan.** Un ancien stockage « à rattacher » —
+  rattaché à aucune zone — dont le contenu est vide ne dit rien : aucun
+  calcul ne le lit. Le panneau ne le liste plus ; il est retiré à la
+  prochaine sauvegarde (« Tout sauvegarder », ou un changement du plan), et
+  la restauration d’une sauvegarde qui en porte le dit en une ligne
+  (« n stockages vides retirés du plan »). Un stockage rattaché à une zone,
+  ou qui dit ce qu’il contient, ne change pas (`plan-menage.js`).
+- **La mention « Version 2, en construction »** quitte le menu de la
+  version 1 ; la version 2 s’ouvre toujours par son adresse (`v2/`), ses
+  fichiers ne changent pas.
+- **L’attente en minutes d’une équipe**, dans les pages de réglage (la carte
+  d’une équipe, chaque lot de sa fiche, le tableau « Horaires des équipes »,
+  la ligne d’un robot) : c’était une ancienne définition, qui contredisait
+  la Synthèse. L’heure de fin simulée reste, avec un lien « planning → »
+  vers le planning des équipes, où l’on voit quand une équipe travaille et
+  quand elle attend.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -1376,6 +1401,7 @@ pas). Aucun calcul ne change.
 | `outils/vocabulaire.cjs` / `outils/vocabulaire-regles.cjs` | L’outil qui écrit `mots/*.js` (`--verifier` : sort en erreur si une copie a vieilli) et ses règles : par fichier (un extrait exact), puis générales (« case » → « équipe », « flux » → « chemin », « barème » → « temps par vol »…) |
 | `classeurs-anciens.js` | Les classeurs d’avant se relisent (v1, évolution 19 a) : enveloppe la lecture de `tableur.js` — le nom d’une feuille d’avant, la clé d’un nouvel en-tête |
 | `jouent.js` / `jouent-vue.js` / `jouent.css` | Un réglage qui ne joue pas ne s’affiche pas (v1, évolution 19 b) : `jouent.js` dit, pour une équipe, les réglages qui portent une valeur et que le calcul ne lit pas, avec leur raison ; si un service travaille par compagnie ; si « Liens entre services » sert (une commande sans chemin). `jouent-vue.js` l’applique aux fiches à chaque rendu : le champ masqué, la ligne « n réglages ne jouent pas ici » et ses champs grisés, les minutes par compagnie dans « Temps par vol par service » |
+| `plan-menage.js` | Les stockages vides du plan (v1, évolution 19 c) : un ancien stockage « à rattacher », rattaché à aucune zone et sans contenu, est retiré — du panneau, de la sauvegarde suivante, d’une sauvegarde restaurée (« n stockages vides retirés du plan ») ; un stockage rattaché ou renseigné ne change pas |
 | `mots-moteur.js` | Les messages du moteur avec les mots de la page (v1, évolution 19 a) : les anomalies d’une journée, les formules et les statuts du calage, réécrits à l’affichage et dans le classeur du calage ; le résultat du moteur et l’export de la journée inchangés |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions ; le classeur des résultats d’une période (v1, en lecture) |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
@@ -1568,6 +1594,8 @@ pas). Aucun calcul ne change.
 | `tests/vocabulaire-browser.cjs` | Dans la page (v1, évolution 19 a), sur l’unité fictive de 15 services : toutes les pages du menu sont parcourues (la vue en direct en relief et à plat, le panneau des problèmes) sans aucun mot banni dans le texte, les bulles, les libellés lus ni les exemples des champs ; « Aller à… » trouve une page par son ancien nom et y mène ; un classeur d’équipes d’avant (ses feuilles, ses en-têtes) s’importe et donne le même état que celui d’aujourd’hui. `VOCABULAIRE_RAPPORT=1` liste les écarts |
 | `tests/jouent.test.cjs` | Un réglage qui ne joue pas (v1, évolution 19 b), en Node : pour la plonge, le robot, la mise à disposition et le handling, les réglages qui ne jouent pas et leur raison, dans les deux sens ; la lecture ne change rien ; la ligne « n réglages ne jouent pas ici » (des champs grisés, un nom échappé) ; un service qui travaille par compagnie ; « Liens entre services » au menu seulement s’il y a une commande sans chemin |
 | `tests/jouent-browser.cjs` | Dans la page (v1, évolution 19 b), sur l’unité fictive : les six cas dans les deux sens (plonge par vol et au débit ; robot ; mise à disposition toujours ouverte, ouverte de … à …, à heures fixes ; handling aux chauffeurs comptés, non comptés, calculés ; « Temps par vol par service » ; le menu et « Aller à… ») ; la ligne et ses raisons, dans la fiche d’une équipe et dans celle de son service ; la journée identique, champ par champ ; une valeur masquée survit à une sauvegarde et à une restauration |
+| `tests/plan-menage.test.cjs` | Les stockages vides du plan (v1, évolution 19 c), en Node : un stockage non rattaché et vide est retiré, un stockage rattaché ou renseigné ne change pas ; le plan donné n’est pas modifié ; la phrase de l’avis |
+| `tests/menage-browser.cjs` | Ce qui se supprime, dans la page (v1, évolution 19 c), sur l’unité fictive : les mises à disposition hors de « Temps par vol par service » et de « Temps par vol », leurs valeurs gardées, dans les deux sens ; une sauvegarde aux stockages vides non rattachés se restaure en le disant, le panneau ne les liste plus, la sauvegarde suivante part sans eux ; plus de mention « Version 2 » au menu ; plus aucune attente en minutes dans les pages de réglage des équipes, l’heure de fin et le lien vers le planning |
 | `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |

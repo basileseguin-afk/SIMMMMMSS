@@ -170,3 +170,15 @@ test('une valeur masquée est gardée par la validation, et ne change pas la jou
   // Et l'équipe le dit : ses durées ne jouent pas.
   assert.deepEqual(J.nonJoues(plonges(unite(true))[0]).map(x => x.cle), ['durees', 'tunnel-vitesse:1']);
 });
+
+test('un service est une mise à disposition quand toutes ses équipes en sont : il n’a pas de temps par vol (évolution 19 c)', () => {
+  const etat = { ateliers: [dispo(), dispo({ id: 'lg2', nom: 'Légumerie soir' }), { id: 'ap', nom: 'Appui légumerie', service: 'decontam', type: 'appui' },
+    { id: 'mg', nom: 'Magasin', service: 'magasin', type: 'dispo', permanent: true }, { id: 'mgp', nom: 'Magasin prépare', service: 'magasin', type: 'manuel', lots: [] },
+    robot(), handling(), { id: 'seul', nom: 'Appui seul', service: 'dotation', type: 'appui' }] };
+  assert.equal(J.miseADisposition('decontam', etat), true, 'deux mises à disposition et une équipe d’appui');
+  assert.equal(J.miseADisposition('magasin', etat), false, 'une équipe y prépare : il a des temps par vol');
+  for (const s of ['prepa', 'quais', 'dotation', 'inconnu']) assert.equal(J.miseADisposition(s, etat), false, s);
+  assert.equal(J.miseADisposition('decontam', null), false);
+  // Ni l'un ni l'autre à la fois : une mise à disposition ne « travaille pas par compagnie ».
+  assert.equal(J.parCompagnie('decontam', etat), null);
+});

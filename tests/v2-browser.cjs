@@ -15,12 +15,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const equipes=()=>page.evaluate(()=>Sim.ateliers.state.ateliers.map(a=>a.nom));
  const ajouter=nom=>page.evaluate(nom=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'t-'+nom,nom,service:'prepa',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:false}});},''),nom);
  try{
-  // 1. La v1 : un travail en cours, et un lien vers la v2.
+  // 1. La v1 : un travail en cours. Son menu ne mentionne plus la version 2 (évolution 19 c) : on y va par son adresse.
   await page.goto(v1);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
   await ajouter('Équipe de la v1');await attendre();
   assert.ok((await equipes()).includes('Équipe de la v1'));
-  assert.equal(await page.locator('#barre .btn-version').getAttribute('href'),'v2/');
+  assert.equal(await page.locator('#barre .btn-version').count(),0,'la version 1 ne mentionne plus la version 2 dans son menu');
 
   // 2. La v2 s'ouvre sans erreur, se dit en construction, et part du travail de la v1.
   await page.goto(v2);await attendre();

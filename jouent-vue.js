@@ -33,6 +33,7 @@
      *   bareme()        — les temps par classe gardés, par service : { [service]: { '*' + '/BC': minutes, … } }
      *   heures(minutes) — une durée en minutes, écrite en heures par vol
      *   ouvrirService(id) — ouvre la fiche d'un service
+     *   nomService(id)  — le nom d'un service
      *   racines()       — les éléments de la page où des fiches se dessinent
      * } */
     constructor(a) { this.a = a; this.ouverts = new Set(); this.observateur = null; }
@@ -92,11 +93,19 @@
       d.addEventListener('toggle', () => { if (d.open) this.ouverts.add(cle); else this.ouverts.delete(cle); });
     }
 
-    /** « Temps par vol par service » : un service qui travaille par compagnie montre ses minutes par compagnie. */
+    /**
+     * « Temps par vol par service » : un service qui travaille par compagnie montre ses minutes par compagnie ; un service
+     * qui est une mise à disposition n'a pas de temps par vol — sa ligne quitte la page (évolution 19 c), une note le dit.
+     */
     services(racine, etat) {
       const bareme = (this.a.bareme && this.a.bareme()) || {};
-      for (const d of racine.querySelectorAll('details.rg-service[data-service]')) {
-        const id = d.dataset.service, pc = J().parCompagnie(id, etat);
+      const blocs = [...racine.querySelectorAll('details.rg-service[data-service]')];
+      const dispos = [];
+      for (const d of blocs) {
+        const id = d.dataset.service, dispo = J().miseADisposition(id, etat);
+        masquer(d, dispo);
+        if (dispo) { dispos.push(id); continue; }
+        const pc = J().parCompagnie(id, etat);
         let bloc = [...d.children].find(c => c.classList.contains('nj-par-cie'));
         const tete = [...d.children].find(c => c.tagName === 'SUMMARY');
         if (!tete) continue;
@@ -138,6 +147,17 @@
           lignePliee.addEventListener('toggle', () => { if (lignePliee.open) this.ouverts.add(cle); else this.ouverts.delete(cle); });
         }
       }
+      // Les mises à disposition : une ligne sous la liste, pour qui les chercherait ici.
+      const liste = blocs.length ? blocs[0].parentElement : null;
+      if (!liste) return;
+      let note = [...liste.children].find(c => c.classList.contains('nj-dispos'));
+      if (!dispos.length) { if (note) note.remove(); return; }
+      const nom = id => (this.a.nomService ? this.a.nomService(id) : null) || id;
+      const texte = (dispos.length > 1 ? dispos.length + ' services sont des mises à disposition' : '1 service est une mise à disposition')
+        + ' : on vient s’y servir, pas de temps par vol (' + dispos.map(nom).join(', ') + ').';
+      if (note && note.textContent === texte) return;
+      if (!note) { note = document.createElement('p'); note.className = 'mini-note nj-dispos'; liste.appendChild(note); }
+      note.textContent = texte;
     }
   }
 
