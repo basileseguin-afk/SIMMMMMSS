@@ -12,9 +12,11 @@
  *    — à l'écran : tourner à gauche, à droite, incliner, −, +, « Cadrer » (le
  *      service choisi), « Tout voir ».
  *  À l'ouverture et sur « Tout voir », la caméra revient à l'angle de la
- *  maquette et la scène entière tient dans la zone visible, à 24 px de ses
- *  bords ; tant qu'on n'a ni déplacé ni zoomé, elle y tient encore à tout
- *  angle. Avec « réduire les animations », la caméra change d'angle d'un coup.
+ *  maquette et cadre le bâtiment et les avions présents à cette heure — pas
+ *  l'aire vide (évolution 19, retouche) — dans la zone visible, à la marge du
+ *  cadrage près ; tant qu'on n'a ni déplacé ni zoomé, ce cadre y tient encore
+ *  à tout angle, et il suit les avions : un avion qui arrive hors du cadre
+ *  l'élargit, le dernier parti le resserre. Avec « réduire les animations », la caméra change d'angle d'un coup.
  *
  *  Ce module ne calcule rien de la journée : la page lui donne le site, la
  *  journée lue et l'heure rejouée (`lire`), il dessine.
@@ -53,7 +55,7 @@
    */
   function creer(hote, a) {
     const toile = hote.querySelector('canvas'), ctx = toile.getContext('2d');
-    const v = { cam: C().camera(), ajustee: true, site: null, decor: null, ilots: [], aire: null, places: null, tranche: null, circule: null, journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], marques: [], extras: null,
+    const v = { cam: C().camera(), ajustee: true, cadre: [], site: null, decor: null, ilots: [], aire: null, places: null, tranche: null, circule: null, journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], marques: [], extras: null,
       lu: null, suivi: null, tons: {}, goulot: null,
       stats: { images: 0, ms: 0, dernier: 0 } };
     let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null, circuleDe = null, battement = 0;
@@ -62,7 +64,14 @@
 
     const immobile = () => !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const visible = () => hote.offsetParent !== null && toile.clientWidth > 0 && toile.clientHeight > 0;
-    const boite = () => D().boite(v.site, v.aire);
+    /** Ce qu'on cadre : le bâtiment, et les avions présents au dernier cadrage (`v.cadre`, leurs places). */
+    const boite = () => D().boiteCadree(v.site, v.cadre);
+    /** Les places des avions présents à l'heure rejouée. */
+    const presents = () => {
+      const r = v.journee && v.journee.r;
+      if (!r || !v.aire || !v.aire.places.length || !Number.isFinite(v.t)) return [];
+      return E().volsA(r, v.t, v.places).map(x => v.aire.places[x.place % v.aire.places.length]);
+    };
     const demander = () => { if (!image) image = root.requestAnimationFrame(dessiner); };
 
     /** La largeur d'un texte d'étiquette, mesurée une fois. */
@@ -96,10 +105,11 @@
     const incliner = (d, anime) => allerA(recadree(C().incliner(but(), d)), anime);
     function zoomer(f, X, Y, anime) { v.ajustee = false; allerA(C().zoomer(but(), ecran, f, X, Y), anime); }
     function deplacer(dX, dY, anime) { v.ajustee = false; allerA(C().deplacer(but(), ecran, dX, dY), anime); }
-    /** « Tout voir » : l'angle de la maquette, la scène entière, à la marge du cadrage près. */
+    /** « Tout voir » : l'angle de la maquette, le bâtiment et les avions présents, à la marge du cadrage près. */
     function toutVoir(anime) {
       v.ajustee = true;
       if (!v.site) { demander(); return; }
+      v.cadre = presents();
       allerA(C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite()), anime);
     }
     /** « Cadrer » : la zone du service choisi, à l'angle courant ; sans service choisi, tout. */
@@ -131,19 +141,27 @@
         const parId = new Map(((r && r.ateliers) || []).map(e => [e.id, e.personnes]));
         v.ilots = v.site && ateliers ? D().ilots(v.site, ateliers, id => parId.get(id)) : [];
         // Les avions de la journée : leurs places au bord de la scène, du côté des avions ; la tranche d'un chariot.
-        const avant2 = v.aire;
         v.places = r ? E().placesDesVols(r) : null; v.aire = v.site ? D().aireDe(v.site, v.places ? v.places.nombre : 0) : null;
         const tranche = r ? E().tranche(r) : null;
         if (tranche !== v.tranche) { v.tranche = tranche; if (a.dire) a.dire({ tranche }); }
         v.decor = v.site ? D().decor(v.site, v.ilots, v.aire) : null; boites = null; circuleDe = null;
-        // L'aire des avions apparaît, grandit ou disparaît : la scène cadrée en entier se recadre, au même angle.
-        if (!nouveauSite && v.ajustee && v.site && ecran.w && JSON.stringify(avant2 && [avant2.w, avant2.h]) !== JSON.stringify(v.aire && [v.aire.w, v.aire.h])) { v.cam = C().cadrer(but(), ecran, boite()); anim = null; }
       }
-      if (nouveauSite) {
-        v.ajustee = true; anim = null;
-        if (v.site && ecran.w) v.cam = C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite());
-      }
+      const sansHeure = !Number.isFinite(v.t);
       if (x.journee !== v.journee || x.t !== v.t) { v.journee = x.journee || null; v.t = x.t; v.etat = v.journee && Number.isFinite(x.t) ? E().etatA(v.journee, x.t) : null; }
+      if (nouveauSite) {
+        // Un site nouveau : l'angle de la maquette, le bâtiment et les avions présents.
+        v.ajustee = true; anim = null; v.cadre = presents();
+        if (v.site && ecran.w) v.cam = C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite());
+      } else if (v.ajustee && v.site && ecran.w) {
+        // La scène encore cadrée suit les avions : ceux qui sont là ne sont jamais hors du cadre. Une autre journée, ou la
+        // première heure rejouée, se recadre d'un coup ; un avion qui arrive ou qui part, en glissant.
+        const cadre = presents();
+        if (JSON.stringify(D().boiteCadree(v.site, cadre)) !== JSON.stringify(boite())) {
+          v.cadre = cadre;
+          if (r !== avant || sansHeure) { v.cam = C().cadrer(but(), ecran, boite()); anim = null; }
+          else allerA(C().cadrer(but(), ecran, boite()), true);
+        }
+      }
       v.selection = x.selection || null; v.lecture = !!x.lecture;
       // Ce que la journée dit à cette heure (direct-lire.js) : la teinte de chaque service, le goulot du moment ; le vol suivi.
       v.lu = x.lu || null; v.suivi = x.suivi || null;
@@ -407,7 +425,9 @@
     function etat() {
       const b = v.site ? boite() : null, c = v.circule;
       return { camera: { ...v.cam }, ecran: { ...ecran }, ajustee: v.ajustee, enMouvement: !!anim, zones: v.site ? v.site.zones.map(z => z.id) : [], selection: v.selection, t: v.t,
+        // `emprise` : ce qu'on cadre (le bâtiment et les avions présents au dernier cadrage), à l'écran ; `batiment` : le bâtiment seul.
         emprise: b ? C().emprise(v.cam, ecran, b) : null, tient: b ? C().tient(v.cam, ecran, b) : false, murs: C().mursDuFond(v.cam),
+        batiment: v.site ? C().emprise(v.cam, ecran, D().boite(v.site, null)) : null, cadre: v.cadre.map(p => ({ x: p.x, y: p.y })),
         etiquettes: v.poses.filter(e => e.vol == null && !e.marque).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), compacte: !!e.compacte, ...(e.ton ? { ton: e.ton } : {}) })),
         vols: v.poses.filter(e => e.vol != null).map(e => ({ vol: e.vol, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ton: e.ton || null })),
         circule: c ? { tranche: c.tranche, pousseurs: c.pousseurs.length, tunnels: c.tunnels.slice(), lignes: c.lignes.map(l => ({ ...l })), marques: v.marques.map(m => ({ ...m })),

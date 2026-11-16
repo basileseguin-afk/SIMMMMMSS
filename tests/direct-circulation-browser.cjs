@@ -48,9 +48,9 @@ const rvb=texte=>(String(texte).match(/\d+(\.\d+)?/g)||[]).slice(0,3).map(Number
   // 1. La légende : une couleur par nature, et la tranche d'un chariot ; ses carrés ont les couleurs de la scène.
   const e0=await dessinee();
   const legende=await page.evaluate(()=>{const l=document.getElementById('direct-legende'),c=s=>'rgb('+OrlyDirectDessin.rvb(getComputedStyle(l.querySelector(s)).backgroundColor).join(',')+')';
-    return {texte:l.textContent.replace(/\s+/g,' ').trim(),visible:l.offsetParent!==null&&l.getBoundingClientRect().right<=document.getElementById('plan-bande').getBoundingClientRect().right+1,
+    return {texte:l.textContent.replace(/\s+/g,' ').trim(),visible:l.checkVisibility()&&l.getBoundingClientRect().right<=document.getElementById('direct-coin').getBoundingClientRect().right+1,
       repas:c('.dl-repas'),equipement:c('.dl-equipement'),sale:c('.dl-sale'),tranche:document.getElementById('direct-tranche').textContent};});
-  assert.ok(legende.visible,'la légende tient dans la bande, sans être coupée');
+  assert.ok(legende.visible,'la légende tient dans son coin de la toile, sans être coupée');
   for(const mot of ['repas','équipement','retour sale','un chariot = 50 repas'])assert.ok(legende.texte.includes(mot),'la légende dit « '+mot+' »');
   assert.equal(legende.tranche,'un chariot = '+e0.circule.tranche+' repas','la tranche de la légende est celle de la scène');
   for(const n of ['repas','equipement','sale'])assert.ok(proche(rvb(legende[n]),rvb(e0.couleurs[n]),2),'le carré « '+n+' » a la couleur des chariots : '+legende[n]+' / '+e0.couleurs[n]);
@@ -174,9 +174,9 @@ const rvb=texte=>(String(texte).match(/\d+(\.\d+)?/g)||[]).slice(0,3).map(Number
 
   // 9. À plat, la légende des chariots n'est pas montrée : elle parle de la scène en relief.
   await nav.vueDuPlan(page,'plat');
-  assert.equal(await page.evaluate(()=>document.getElementById('direct-legende').offsetParent),null,'à plat, pas de légende de la scène');
+  assert.equal(await page.evaluate(()=>document.getElementById('direct-legende').checkVisibility()),false,'à plat, pas de légende de la scène');
   await nav.vueDuPlan(page,'relief');
-  await page.waitForFunction(()=>document.getElementById('direct-legende').offsetParent!==null);
+  await page.waitForFunction(()=>document.getElementById('direct-legende').checkVisibility());
 
   // 10. La version 2 n'a rien de cela.
   await page.goto(pathToFileURL(path.resolve(__dirname,'../v2/index.html')).href);

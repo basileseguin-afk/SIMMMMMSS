@@ -73,33 +73,33 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
   const enPause=pause.personnes.filter(q=>q.atelier==='mo'&&q.etat==='enPause');
   assert.ok(enPause.length>=8&&enPause.every(q=>q.x>=aire.x&&q.x<=aire.x+aire.w&&q.y>=aire.y&&q.y<=aire.y+aire.h),'en pause : dans l’aire de pause');
 
-  // 3. La légende et la phrase, sur une seule ligne repliable, en relief (évolution 16, retouches) ; à plat, la légende du plan dessiné.
+  // 3. La légende, la phrase et les gestes de la caméra, dans un coin de la toile, repliables (évolution 19, retouche) ; à plat, la légende du plan dessiné.
   assert.deepEqual((await page.locator('#direct-legende > span').allInnerTexts()).slice(0,3),['au travail','sans travail','en pause, en appui ou en chemin'],'les personnes d’abord (les chariots suivent, partie d)');
   assert.equal(await page.locator('#direct-note').innerText(),PHRASE);
   assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#legende-plan').isVisible()],[true,false]);
-  const places=()=>page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect();return {bande:b('#plan-bande').height,legende:b('#direct-legende'),note:b('#direct-note'),toile:b('#direct-toile').top,
-    aide:document.getElementById('direct-aide').offsetParent!==null,plus:document.getElementById('direct-plus').getAttribute('aria-expanded'),mot:document.getElementById('direct-plus').textContent};});
-  const repliee=await places();
-  assert.ok(repliee.bande<=28&&repliee.legende.height<=22&&repliee.note.height<=22,'la légende et la phrase sur une seule ligne ('+repliee.bande+' px)');
-  assert.ok(repliee.legende.bottom<=repliee.toile+1&&repliee.note.bottom<=repliee.toile+1&&Math.abs(repliee.note.top-repliee.legende.top)<8,'au-dessus de la scène, côte à côte');
-  assert.deepEqual([repliee.aide,repliee.plus,repliee.mot],[false,'false','Tout lire'],'repliée : les gestes de la caméra sont rangés');
-  // « Tout lire » la déplie : toute la légende, la phrase entière, les gestes de la caméra ; « Replier » la referme.
-  const hauteurToile=()=>page.evaluate(()=>document.getElementById('direct-toile').clientHeight),h0=await hauteurToile();
-  await page.locator('#direct-plus').click();
-  await page.waitForFunction(()=>document.getElementById('plan-bande').classList.contains('ouverte'));
+  const places=()=>page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),d=document.getElementById('direct-coin');return {ouverte:d.open,coin:b('#direct-coin'),legende:b('#direct-legende'),note:b('#direct-note'),toile:b('#direct-toile'),
+    aide:document.getElementById('direct-aide').checkVisibility(),bande:document.getElementById('plan-bande').offsetParent!==null,titre:d.querySelector('summary').textContent};});
   const depliee=await places();
-  assert.deepEqual([depliee.aide,depliee.plus,depliee.mot],[true,'true','Replier']);
-  assert.ok(await page.locator('#direct-note').isVisible()&&depliee.note.top>=depliee.legende.bottom-1&&depliee.note.width>300,'dépliée : la phrase entière, sous la légende');
+  assert.deepEqual([depliee.ouverte,depliee.titre,depliee.aide,depliee.bande],[true,'Légende',true,false],'dépliée à l’ouverture ; plus de bande au-dessus de la scène');
+  assert.ok(depliee.coin.left>=depliee.toile.left&&depliee.coin.bottom<=depliee.toile.bottom&&depliee.coin.left-depliee.toile.left<=16&&depliee.toile.bottom-depliee.coin.bottom<=16,'dans le coin de la toile');
+  assert.ok(depliee.note.top>=depliee.legende.bottom-1&&depliee.note.width>200,'la phrase entière, sous la légende');
   assert.ok(await page.evaluate(()=>{const n=document.getElementById('direct-note');return n.scrollWidth<=n.clientWidth+1;}),'sans coupure');
   assert.match(await page.locator('#direct-aide').innerText(),/Glisser : se déplacer/);
-  await page.locator('#direct-plus').click();
-  await page.waitForFunction(h=>!document.getElementById('plan-bande').classList.contains('ouverte')&&document.getElementById('direct-toile').clientHeight===h,h0);
+  // Repliée : son seul titre ; la toile ne change pas de taille.
+  const hauteurToile=()=>page.evaluate(()=>document.getElementById('direct-toile').clientHeight),h0=await hauteurToile();
+  await page.locator('#direct-coin > summary').click();
+  await page.waitForFunction(()=>!document.getElementById('direct-coin').open);
+  const repliee=await places();
+  assert.deepEqual([repliee.ouverte,repliee.aide,await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible()],[false,false,false,false],'repliée : la légende, la phrase et les gestes sont rangés');
+  assert.ok(repliee.coin.height<=34&&await hauteurToile()===h0,'son seul titre ('+repliee.coin.height+' px), sans déplacer la scène');
+  await page.locator('#direct-coin > summary').click();
+  await page.waitForFunction(()=>document.getElementById('direct-coin').open);
   // Les pastilles ont les couleurs des personnes de la scène (les jetons du thème).
   const couleurs=await page.evaluate(()=>{const c=s=>getComputedStyle(document.querySelector(s)).backgroundColor,j=n=>{const e=document.createElement('span');e.style.color='var(--dv-'+n+')';document.getElementById('direct').appendChild(e);const v=getComputedStyle(e).color;e.remove();return v;};
     return [[c('.dl-travail'),j('travail')],[c('.dl-attente'),j('attente')],[c('.dl-neutre'),j('neutre')]];});
   for(const [pastille,scene] of couleurs)assert.equal(pastille,scene);
   await nav.vueDuPlan(page,'plat');
-  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#direct-plus').isVisible(),await page.locator('#legende-plan').isVisible()],[false,false,false,true]);
+  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#direct-coin').isVisible(),await page.locator('#legende-plan').isVisible()],[false,false,false,true]);
 
   // 4. Le poste de travail se règle dans la fiche de l'équipe : cinq choix, le défaut dit ; il ne change aucun calcul.
   //    (Les effectifs calculés de l'unité se posent au premier changement : la journée de référence est celle d'un

@@ -2,8 +2,10 @@
  * que le site sait déjà en trois niveaux, avec les mêmes mots partout :
  * « bloquant » (le calcul ne se fait pas, ou une commande n'est préparée par
  * personne), « à corriger » (le calcul se fait, mais il est faux pour une
- * part), « information » (rien à faire). Le compteur ne compte que les deux
- * premiers ; les informations se lisent repliées, sous les autres.
+ * part), « information » (à lire : rien n'est demandé). Le compteur ne compte
+ * que les deux premiers ; les informations se lisent repliées, sous les autres,
+ * dans un repli qui s'appelle « Information » ; un geste qu'une information
+ * propose dit « Facultatif » (évolution 19, retouche).
  * Aucune donnée de l'unité : des services, des équipes et des vols fictifs. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +40,7 @@ test('trois niveaux, les mêmes mots : « Bloquant », « À corriger », « Inf
   // Chaque niveau se dit en une phrase : celle de sa définition.
   assert.match(A.NIVEAUX[0].dit, /^Le calcul ne se fait pas, ou une commande n’est préparée par personne\.$/);
   assert.match(A.NIVEAUX[1].dit, /^Le calcul se fait, mais il est faux pour une part\.$/);
-  assert.match(A.NIVEAUX[2].dit, /^Rien à faire\.$/);
+  assert.equal(A.NIVEAUX[2].dit, 'À lire : rien n’est demandé. Un geste proposé est facultatif.');
 });
 
 test('un point du calcul prend son niveau de son code', () => {
@@ -46,7 +48,7 @@ test('un point du calcul prend son niveau de son code', () => {
   assert.equal(A.niveauDuCode('handling-sans'), 'corriger');
   assert.equal(A.niveauDuCode('bareme'), 'corriger');
   assert.equal(A.niveauDuCode('parcours-trou'), 'corriger');
-  // Une commande sans vol ce jour-là, et ce que la journée montre : rien à faire.
+  // Une commande sans vol ce jour-là, et ce que la journée montre : une information.
   assert.equal(A.niveauDuCode('commande-absente'), 'information');
   for (const c of A.JOURNEE) assert.equal(A.niveauDuCode(c), 'information', c);
   assert.deepEqual(A.JOURNEE, ['poste', 'materiel', 'bouchon', 'inacheve', 'plonge-fermee', 'plonge-vol', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs']);
@@ -146,9 +148,10 @@ test('le panneau : les deux premiers niveaux, puis les informations repliées, d
   assert.ok(iB > 0 && iB < iC && iC < iI, 'bloquant, à corriger, puis information');
   assert.match(html, /<section class="pb-groupe bloquant"><h3>[^]*?Bloquant<span>2<\/span><\/h3>/);
   assert.match(html, /<section class="pb-groupe corriger"><h3>[^]*?À corriger<span>6<\/span><\/h3>/);
-  // Les informations : un bloc replié (pas d'attribut open), avec son nombre et « rien à faire ».
+  // Les informations : un bloc replié (pas d'attribut open), qui s'appelle « Information », avec son nombre.
   const infos = html.slice(html.indexOf('<details class="pb-groupe information"'));
-  assert.match(infos, /^<details class="pb-groupe information"><summary>[^]*?Information[^]*?rien à faire[^]*?<span class="pb-n">3<\/span><\/summary>/);
+  assert.match(infos, /^<details class="pb-groupe information"><summary>[^<]*(<svg[^]*?<\/svg>)?<span class="pb-nom">Information<\/span><span class="pb-n">3<\/span><\/summary>/);
+  assert.doesNotMatch(html, /rien à faire/i, 'le repli ne dit plus « rien à faire » : il peut porter un geste');
   assert.doesNotMatch(html, /<details[^>]* open/);
   assert.equal((infos.match(/class="pb"/g) || []).length, 3);
   assert.equal((html.match(/class="pb"/g) || []).length, 11);
@@ -189,8 +192,25 @@ test('dans une page : les mêmes niveaux, les mêmes mots, les informations repl
   assert.ok(iB >= 0 && iB < iC && iC < iI);
   assert.match(html, /<section class="avis-niveau bloquant"><h4>[^]*?Bloquant<\/h4><ul><li>Le chemin tourne en rond\.<\/li><\/ul><\/section>/);
   assert.match(html, /<section class="avis-niveau corriger"><h4>[^]*?À corriger<\/h4><ul><li><b>« Vieux »<\/b>[^]*?<\/li><li>Dressage : aucun temps par vol\.<\/li><\/ul><\/section>/);
-  assert.match(html, /<details class="avis-niveau information"><summary>[^]*?Information[^]*?rien à faire[^]*?<\/summary><ul><li>Montage[^]*?<\/li><\/ul><\/details>/);
+  assert.match(html, /<details class="avis-niveau information"><summary>[^<]*(<svg[^]*?<\/svg>)?<span class="avis-nom">Information<\/span><\/summary><ul><li>Montage[^]*?<\/li><\/ul><\/details>/);
+  assert.doesNotMatch(html, /rien à faire/i);
   // Rien que des informations : le bloc replié, seul. Rien du tout : rien.
   assert.match(A.blocs([{ niveau: 'information', html: 'x' }]), /^<details class="avis-niveau information">/);
   assert.equal(A.blocs([]), '');
+});
+
+test('une information qui propose un geste le dit : « Facultatif »', () => {
+  assert.equal(A.FACULTATIF, 'Facultatif');
+  assert.equal(A.facultatif(), '<span class="avis-facultatif">Facultatif</span>');
+  // Dans une page : le mot, devant le geste.
+  const html = A.blocs([{ niveau: 'information', html: 'Légumerie sert par vagues. ' + A.facultatif() + ' <button>Les ouvrir de 07:00 à 18:00</button>' }]);
+  assert.match(html, /sert par vagues\. <span class="avis-facultatif">Facultatif<\/span> <button>/);
+  // Dans une page qu'un autre module écrit : chaque groupe de gestes d'une information est marqué, une seule fois.
+  const groupe = () => { const g = { enfants: [], marque: false,
+    querySelector: sel => (sel === ':scope > .avis-facultatif' && g.marque ? {} : null),
+    insertAdjacentHTML: (ou, h) => { assert.equal(ou, 'afterbegin'); assert.equal(h, A.facultatif() + ' '); g.marque = true; } }; return g; };
+  const g1 = groupe(), g2 = groupe(), racine = { querySelectorAll: sel => { assert.equal(sel, 'details.info .gestes'); return [g1, g2]; } };
+  assert.equal(A.marquerFacultatifs(racine, 'details.info .gestes'), 2);
+  assert.equal(A.marquerFacultatifs(racine, 'details.info .gestes'), 0, 'déjà marqués');
+  assert.equal(A.marquerFacultatifs(null, 'x'), 0);
 });

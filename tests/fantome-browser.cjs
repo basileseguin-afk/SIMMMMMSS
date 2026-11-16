@@ -33,8 +33,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Ce n'est pas à corriger : une information, repliée sous le reste (évolution 19 d). On la déplie pour la lire.
   const infos=page.locator('#fc-alertes details.avis-information');
   assert.equal(await infos.evaluate(d=>d.open),false,'l’information est repliée');
-  assert.match(await infos.locator('summary').innerText(),/^Information — rien à faire$/);
+  assert.match(await infos.locator('summary').innerText(),/^Information$/);
   await infos.locator('summary').click();await attendre();
+  // Le geste qu'elle propose le dit : « Facultatif » (évolution 19, retouche).
+  assert.match(await infos.locator('.fc-gestes',{has:page.locator('[data-svc=armement]')}).first().innerText(),/^Facultatif\s*Supprimer Armement$/);
   assert.match(await alertes(),/Armement n’a pas d’équipe : son travail se fait dans Armement AF Équipage/);
   const bouton=page.locator('#fc-alertes [data-svc-action=supprimer][data-svc=armement]');
   assert.equal(await bouton.count(),1,'le geste « Supprimer Armement » est là');

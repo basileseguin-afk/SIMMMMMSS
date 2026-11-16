@@ -182,3 +182,92 @@ test('un service est une mise à disposition quand toutes ses équipes en sont :
   // Ni l'un ni l'autre à la fois : une mise à disposition ne « travaille pas par compagnie ».
   assert.equal(J.parCompagnie('decontam', etat), null);
 });
+
+/* ---- une valeur masquée ne se perd jamais, même par Excel (évolution 19, retouche) ---- */
+
+// Le classeur des équipes tel que la page l'écrit et le relit : la copie de la version 1 (mots/echanges.js).
+const E = require('../mots/echanges.js'), T = require('../tableur.js'), A = require('../ateliers.js');
+require('../classeurs-anciens.js').envelopper(T);       // la lecture des classeurs, comme dans la page de la version 1
+const SERVICES_CLASSEUR = ['appros', 'cuisine', 'preparation', 'dotation', 'plonge', 'prepa', 'decontam', 'quais', 'magasin'].map(id => ({ id, nom: id }));
+const PROGRAMME_CLASSEUR = [{ id: 'NORD/YC', cie: 'NORD', cabine: 'YC', vols: [{ id: 'N1', depart: 600 }], pax: 100 }, { id: 'SUD/YC', cie: 'SUD', cabine: 'YC', vols: [{ id: 'S1', depart: 700 }], pax: 80 }];
+const CTX_CLASSEUR = { services: SERVICES_CLASSEUR, programme: PROGRAMME_CLASSEUR, classes: PROGRAMME_CLASSEUR, banc: true };
+const etatDe = (...equipes) => A.valider({ schema: 'ory-ateliers', version: 1, ateliers: equipes });
+/** L'aller-retour de la page : exporter « Équipes et chemins », le relire, garder ce que le classeur ne porte pas, valider. `modifier` change le classeur. */
+async function parLeClasseur(etat, modifier) {
+  const feuilles = E.ateliersVersClasseur(etat, CTX_CLASSEUR);
+  if (modifier) modifier(feuilles);
+  const lu = E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(feuilles)), etat, CTX_CLASSEUR).etat;
+  const gardes = J.garderMasques(lu, etat);
+  return { etat: A.valider(lu), gardes };
+}
+const ligneDe = (feuilles, feuille, nom) => { const f = feuilles.find(x => x.nom === feuille); return f.lignes.find(l => l.includes(nom)); };
+const colonne = (feuilles, feuille, titre) => feuilles.find(x => x.nom === feuille).lignes[0].indexOf(titre);
+
+test('par Excel, au débit : les durées par compagnie, masquées, sont toujours là après l’import', async () => {
+  const etat = etatDe(plonge({}));
+  assert.deepEqual(J.nonJoues(etat.ateliers[0]).map(x => x.cle), ['durees', 'tunnel-vitesse:1'], 'au débit : les durées et la vitesse ne jouent pas');
+  // Le classeur ne porte pas les durées d'une plonge au débit : sans la garde, l'import les effaçait.
+  const brut = E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(E.ateliersVersClasseur(etat, CTX_CLASSEUR))), etat, CTX_CLASSEUR).etat;
+  assert.equal(brut.ateliers[0].durees, undefined, 'le classeur ne les porte pas');
+  const r = await parLeClasseur(etat);
+  assert.deepEqual(r.etat.ateliers[0].durees, { '*': 30, NORD: 45 }, 'la valeur de la page est gardée');
+  assert.equal(r.etat.ateliers[0].parVol, undefined, 'et la plonge lave toujours au débit');
+  assert.deepEqual(J.nonJoues(r.etat.ateliers[0]), J.nonJoues(etat.ateliers[0]), 'les mêmes réglages masqués, avec les mêmes valeurs');
+  assert.deepEqual(r.gardes, [{ equipe: 'Plonge matin', libelle: 'Temps pour laver un vol, par compagnie' }]);
+  // Deux allers-retours de suite ne perdent rien non plus.
+  const r2 = await parLeClasseur(r.etat);
+  assert.deepEqual(r2.etat.ateliers[0].durees, { '*': 30, NORD: 45 });
+});
+
+test('par Excel, par vol : le débit des tunnels et le plafond, masqués, sont toujours là après l’import', async () => {
+  const etat = etatDe(plonge({ parVol: true }));
+  assert.deepEqual(J.nonJoues(etat.ateliers[0]).map(x => x.cle), ['tunnel-debit:0', 'tunnel-debit:1', 'plafond']);
+  const r = await parLeClasseur(etat), a = r.etat.ateliers[0];
+  assert.deepEqual([a.parVol, a.plafond, a.tunnels.map(t => t.debit), a.tunnels.map(t => t.vitesse || 1)], [true, 500, [300, 200], [1, 2]]);
+  assert.deepEqual(a.durees, { '*': 30, NORD: 45 }, 'ses durées, qui jouent, aussi');
+  assert.deepEqual(J.nonJoues(a), J.nonJoues(etat.ateliers[0]));
+  assert.deepEqual(r.gardes, [], 'le classeur les porte : rien à reprendre de la page');
+});
+
+test('par Excel, la façon de laver changée dans le classeur : la valeur que le nouveau mode masque est gardée', async () => {
+  // Par vol dans la page, « non » dans le classeur : la plonge passe au débit, ses durées restent.
+  const parVol = etatDe(plonge({ parVol: true }));
+  // (Une ligne de la feuille « Plonge par vol » dit aussi « par vol » : on retire celles de l'équipe.)
+  const versDebit = await parLeClasseur(parVol, f => { ligneDe(f, 'Équipes', 'Plonge matin')[colonne(f, 'Équipes', 'Plonge par vol')] = 'non';
+    const pv = f.find(x => x.nom === 'Plonge par vol'); pv.lignes = pv.lignes.filter((l, i) => !i || l[0] !== 'Plonge matin'); });
+  assert.equal(versDebit.etat.ateliers[0].parVol, undefined, 'le classeur a changé le mode');
+  assert.deepEqual(versDebit.etat.ateliers[0].durees, { '*': 30, NORD: 45 }, 'les durées, que le débit masque, sont gardées');
+  // Au débit dans la page, « oui » dans le classeur : la plonge passe par vol, avec les durées gardées jusque-là.
+  const auDebit = etatDe(plonge({}));
+  const versVol = await parLeClasseur(auDebit, f => { ligneDe(f, 'Équipes', 'Plonge matin')[colonne(f, 'Équipes', 'Plonge par vol')] = 'oui'; });
+  assert.deepEqual([versVol.etat.ateliers[0].parVol, versVol.etat.ateliers[0].durees], [true, { '*': 30, NORD: 45 }]);
+  assert.deepEqual(versVol.etat.ateliers[0].tunnels.map(t => t.debit), [300, 200], 'et les débits, que le vol masque, restent');
+});
+
+test('par Excel : ce que le classeur porte l’emporte, et rien de ce qui jouerait n’est repris de la page', async () => {
+  // Un plafond changé dans le classeur d'une plonge par vol (masqué, mais porté) : c'est la valeur du classeur.
+  const parVol = etatDe(plonge({ parVol: true }));
+  const r = await parLeClasseur(parVol, f => { ligneDe(f, 'Équipes', 'Plonge matin')[colonne(f, 'Équipes', 'Plafond plonge (u/h)')] = 650; });
+  assert.equal(r.etat.ateliers[0].plafond, 650);
+  // La garde ne remet que ce qui ne joue pas dans la situation lue : jamais une valeur qui changerait le calcul.
+  const lu = { ateliers: [{ id: 'h', nom: 'Quais', service: 'quais', type: 'handling', debut: '04:00', jour: 0, personnes: 4, pauses: [], lots: [], durees: { '*': 25 } }] };
+  const page = { ateliers: [handling({})] };
+  assert.deepEqual(J.garderMasques(lu, page), [], 'des créneaux retirés du classeur ne reviennent pas : ils joueraient');
+  assert.equal(lu.ateliers[0].creneaux, undefined);
+  // Une équipe que la page ne connaît pas, ou d'une autre nature : rien à garder.
+  assert.deepEqual(J.garderMasques({ ateliers: [plonge({ id: 'neuve', durees: undefined })] }, { ateliers: [plonge({})] }), []);
+  assert.deepEqual(J.garderMasques({ ateliers: [{ ...robot({}), id: 'pl' }] }, { ateliers: [plonge({})] }), []);
+  assert.deepEqual(J.garderMasques({ ateliers: [] }, null), []);
+});
+
+test('par Excel : les autres réglages masqués font l’aller-retour (robot, mise à disposition, handling)', async () => {
+  const cas = { robot: robot({ debits: { 'NORD/YC': 450, 'SUD/YC': 450 } }), 'toujours ouverte': dispo({}),
+    'ouverte de … à …': dispo({ id: 'mg', nom: 'Magasin', service: 'magasin', ouverture: { de: '02:30', a: '14:00' } }),
+    'handling, créneaux saisis': handling({}), 'handling, chauffeurs calculés': handling({ handling24h: true, chauffeurs: { mode: 'calcules', long: 2, court: 1 } }) };
+  for (const [nom, equipe] of Object.entries(cas)) {
+    const etat = etatDe(equipe), avant = J.nonJoues(etat.ateliers[0]);
+    assert.ok(avant.length > 0, nom + ' : un réglage masqué au moins');
+    const r = await parLeClasseur(etat);
+    assert.deepEqual(J.nonJoues(r.etat.ateliers[0]), avant, nom + ' : les mêmes réglages masqués, les mêmes valeurs');
+  }
+});

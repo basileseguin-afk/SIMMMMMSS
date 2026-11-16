@@ -198,3 +198,21 @@ test('à « Tout voir », les étiquettes gardent leur taille et aucune n’en r
   assert.deepEqual(D.tailleEtiquette({ titre: 'Cuisine', lignes: [] }, t => t.length * 10), { w: 84, h: 26 });
   assert.deepEqual(D.tailleEtiquette({ titre: 'Cuisine', lignes: ['4 au travail / 6 présents', '2 lots à faire'] }, t => t.length * 10), { w: 264, h: 56 });
 });
+
+test('le cadrage d’ouverture et de « Tout voir » : le bâtiment et les avions présents, pas l’aire vide', () => {
+  const batiment = D.boite(SITE), aire = { x: SITE.emprise.x1 + 4, y: SITE.emprise.y0 - 3, w: 40, h: SITE.emprise.y1 - SITE.emprise.y0 + 6 };
+  // Sans avion présent : le bâtiment seul, quelle que soit l'aire.
+  assert.deepEqual(D.boiteCadree(SITE, []), batiment);
+  assert.deepEqual(D.boiteCadree(SITE), batiment);
+  // Un avion présent : la boîte s'étend jusqu'à lui, de la moitié de sa taille de chaque côté — et pas plus loin.
+  const un = { x: aire.x + 6, y: (SITE.emprise.y0 + SITE.emprise.y1) / 2 }, b1 = D.boiteCadree(SITE, [un]);
+  assert.equal(b1.x1, un.x + D.AVION.w / 2);
+  assert.deepEqual({ x0: b1.x0, y0: b1.y0, y1: b1.y1, h: b1.h }, { x0: batiment.x0, y0: batiment.y0, y1: batiment.y1, h: batiment.h });
+  // Deux avions, dont un plus haut que le bâtiment : la boîte les tient tous les deux, et reste dans celle de l'aire entière.
+  const deux = { x: aire.x + 20, y: aire.y + D.AVION.h / 2 }, b2 = D.boiteCadree(SITE, [un, deux]), entiere = D.boite(SITE, aire);
+  assert.equal(b2.x1, deux.x + D.AVION.w / 2);
+  assert.equal(b2.y0, deux.y - D.AVION.h / 2);
+  assert.ok(b2.x1 < entiere.x1 && b2.y0 >= entiere.y0 && b2.y1 <= entiere.y1, 'plus serrée que l’aire entière');
+  // La boîte du site n'est pas modifiée.
+  assert.deepEqual(D.boite(SITE), batiment);
+});

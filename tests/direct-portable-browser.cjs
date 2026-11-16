@@ -2,10 +2,16 @@
  * sur l'unité fictive de 15 services (tests/unite-15-services.cjs), à
  * 1 366 × 768 et à 1 920 × 1 080 :
  *   1. la scène d'abord : à l'ouverture, après « Tout voir » et après un
- *      changement de taille de fenêtre, le site cadré remplit la toile, avec
- *      une marge de 5 % au plus ; la légende et la note tiennent sur une seule
- *      ligne ; sous 1 500 px de large, « En ce moment » est replié à
- *      l'ouverture — un bouton l'ouvre, le choix est retenu ;
+ *      changement de taille de fenêtre, ce qu'on cadre — le bâtiment et les
+ *      avions présents, pas l'aire vide (évolution 19, retouche) — remplit la
+ *      toile, avec une marge de 5 % au plus ; à 1 366 × 768 la toile fait au
+ *      moins 560 px de haut, et le bâtiment occupe au moins 70 % de sa largeur
+ *      ou de sa hauteur ; le titre, le choix de la journée de vols et « En
+ *      relief / À plat » tiennent sur une ligne ; la légende est dans un coin
+ *      de la toile, repliable, et le choix est retenu ; « Plein écran » masque
+ *      le menu et l'en-tête, Échap en sort ; sous 1 500 px de large, « En ce
+ *      moment » est replié à l'ouverture — un bouton l'ouvre, le choix est
+ *      retenu ;
  *   2. les étiquettes ne cachent pas la scène : le nom seul, en petit ; les
  *      chiffres au survol, sur le service choisi, et pour le seul goulot du
  *      moment ; les vols : ceux qu'on charge ou qui partent dans l'heure, six
@@ -70,11 +76,57 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
     const e0=await dessinee();
     assert.ok(e0.zones.length>=15,V+'une unité d’une quinzaine de services ('+e0.zones.length+' zones)');
     const parts0=cadrage(e0,V+'à l’ouverture');
-    // La légende et la note : une seule ligne au-dessus de la scène ; la légende entière s'y lit.
-    const ligne=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),l=b('#direct-legende'),bande=b('#plan-bande');
-      return {bande:bande.height,legende:l.height,note:b('#direct-note').height,entiere:[...document.querySelectorAll('#direct-legende > span')].every(s=>s.getBoundingClientRect().right<=bande.right+1),plus:document.getElementById('direct-plus').offsetParent!==null};});
-    assert.ok(ligne.bande<=28&&ligne.legende<=22&&ligne.note<=22&&ligne.plus,V+'la légende et la note sur une seule ligne ('+ligne.bande+' px), avec « Tout lire »');
-    assert.ok(ligne.entiere,V+'toute la légende se lit sur cette ligne');
+    // Ce qu'on cadre : le bâtiment et les avions présents à cette heure — pas l'aire entière des avions de la journée.
+    const presents=e0.circule.avions.length;
+    assert.equal(e0.cadre.length,presents,V+'le cadre compte les avions présents ('+presents+')');
+    assert.ok(e0.aire.places>presents,V+'l’aire a plus de places ('+e0.aire.places+') que d’avions présents : le cadrage ne la compte plus entière');
+    // Le bâtiment : au moins 70 % de la largeur ou de la hauteur de la toile ; sur un portable, la toile fait au moins 560 px de haut.
+    const bat={largeur:(e0.batiment.x1-e0.batiment.x0)/e0.ecran.w,hauteur:(e0.batiment.y1-e0.batiment.y0)/e0.ecran.h};
+    assert.ok(Math.max(bat.largeur,bat.hauteur)>=0.7,V+'le bâtiment occupe au moins 70 % de la largeur ou de la hauteur de la toile ('+pourcent(bat.largeur)+', '+pourcent(bat.hauteur)+')');
+    if(etroit)assert.ok(e0.ecran.h>=560,V+'la toile fait au moins 560 px de haut ('+e0.ecran.h+' px)');
+    mesures.push(largeur+' px : toile '+e0.ecran.w+' × '+e0.ecran.h+', bâtiment '+pourcent(bat.largeur)+' × '+pourcent(bat.hauteur));
+    // L'en-tête : le titre de la page et « En relief / À plat » sur une seule ligne ; plus de bande au-dessus de la scène.
+    const tete=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),t=b('#tete-titre'),c=b('#direct-choix'),h=b('#tete-page'),toile=b('#direct-toile');
+      return {hauteur:h.height,ligne:t.bottom>c.top&&c.bottom>t.top,titre:document.getElementById('tete-titre').textContent,bande:document.getElementById('plan-bande').offsetParent!==null,
+        intro:document.getElementById('view-intro').textContent.length>10&&b('#view-intro').width<=2,colle:Math.abs(toile.top-h.bottom)};});
+    assert.ok(tete.ligne&&tete.hauteur<=44&&tete.titre==='En direct',V+'le titre et « En relief / À plat » sur une seule ligne ('+tete.hauteur+' px)');
+    assert.ok(!tete.bande&&tete.colle<=1,V+'la scène commence sous l’en-tête : plus de bande entre les deux');
+    assert.ok(tete.intro,V+'l’introduction n’est plus à l’écran ; les lecteurs d’écran la lisent encore');
+    // La légende : dans un coin de la toile, dépliée à l'ouverture, repliable ; le choix est retenu.
+    const coin=async()=>page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),d=document.getElementById('direct-coin'),c=b('#direct-coin'),t=b('#direct-toile');
+      return {ouverte:d.open,dans:c.left>=t.left&&c.right<=t.right&&c.top>=t.top&&c.bottom<=t.bottom,coin:c.left-t.left<=16&&t.bottom-c.bottom<=16,part:c.width*c.height/(t.width*t.height),
+        legende:document.getElementById('direct-legende').checkVisibility(),note:document.getElementById('direct-note').checkVisibility(),aide:document.getElementById('direct-aide').checkVisibility(),
+        titre:d.querySelector('summary').textContent,choix:localStorage.getItem('ory-ui-direct-legende')};});
+    let lg=await coin();
+    assert.ok(lg.ouverte&&lg.legende&&lg.note&&lg.aide&&lg.titre==='Légende',V+'la légende, dépliée à l’ouverture : '+JSON.stringify(lg));
+    assert.ok(lg.dans&&lg.coin&&lg.part<0.15,V+'dans le coin de la toile ('+pourcent(lg.part)+' de la toile)');
+    await page.locator('#direct-coin > summary').click();
+    await page.waitForFunction(()=>!document.getElementById('direct-coin').open&&localStorage.getItem('ory-ui-direct-legende')==='repliee');
+    lg=await coin();
+    assert.ok(!lg.ouverte&&!lg.legende&&lg.dans&&lg.coin&&lg.part<0.012,V+'repliée : son seul titre, dans le coin ('+pourcent(lg.part)+')');
+    await page.locator('#direct-coin > summary').focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.getElementById('direct-coin').open&&localStorage.getItem('ory-ui-direct-legende')==='ouverte');
+    // « Plein écran » : le menu et l'en-tête sont masqués, la toile prend toute la fenêtre ; Échap en sort.
+    const places=()=>page.evaluate(()=>{const vu=s=>{const e=document.querySelector(s);return !!e&&e.offsetParent!==null;},t=document.getElementById('direct-toile').getBoundingClientRect(),b=document.getElementById('direct-plein');
+      return {plein:document.body.classList.contains('direct-plein'),menu:vu('#barre'),haut:vu('header.haut'),tete:vu('#tete-page'),toile:[Math.round(t.left),Math.round(t.top),Math.round(t.width),Math.round(t.height)],
+        bouton:[b.getAttribute('aria-pressed'),b.textContent,b.offsetParent!==null],temps:vu('#direct-temps'),lecteur:vu('#lecteur')};});
+    const avantPlein=await places();
+    assert.deepEqual([avantPlein.plein,avantPlein.menu,avantPlein.haut,avantPlein.tete,avantPlein.bouton],[false,true,true,true,['false','Plein écran',true]],V+'avant le plein écran');
+    await page.locator('#direct-plein').click();
+    await page.waitForFunction(()=>document.body.classList.contains('direct-plein')&&Sim.direct.etatVue().ecran.h===document.getElementById('direct-toile').clientHeight);
+    const plein=await places();
+    assert.deepEqual([plein.plein,plein.menu,plein.haut,plein.tete,plein.bouton],[true,false,false,false,['true','Quitter le plein écran',true]],V+'en plein écran : ni menu ni en-tête, le bouton reste');
+    // Depuis le coin de la fenêtre ; sur toute sa largeur, moins « En ce moment » quand il est ouvert (un écran large).
+    const panneauOuvert=await page.evaluate(()=>{const p=document.getElementById('en-ce-moment');return p.offsetParent!==null?Math.round(p.getBoundingClientRect().width):0;});
+    assert.deepEqual(plein.toile.slice(0,3),[0,0,largeur-panneauOuvert],V+'la toile part du coin de la fenêtre et prend toute la largeur libre');
+    assert.equal(panneauOuvert>0,!etroit,V+'« En ce moment » garde son état');
+    assert.ok(plein.toile[3]>avantPlein.toile[3]+80&&plein.temps&&plein.lecteur,V+'et plus de hauteur ('+avantPlein.toile[3]+' → '+plein.toile[3]+' px) ; la barre du temps et le lecteur restent');
+    cadrage(await dessinee(),V+'en plein écran');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.body.classList.contains('direct-plein')&&Sim.direct.etatVue().ecran.h===document.getElementById('direct-toile').clientHeight);
+    assert.deepEqual(await places(),avantPlein,V+'Échap : le menu et l’en-tête reviennent, la toile reprend sa place');
+    assert.equal(await page.evaluate(()=>document.activeElement&&document.activeElement.id),'direct-plein',V+'le bouton garde le clavier');
+    cadrage(await dessinee(),V+'après le plein écran');
     // Les étiquettes : le nom seul, en petit — sauf le goulot du moment ; elles couvrent moins de 15 % de la toile.
     const zoneGoulot=e0.goulot&&e0.goulot.zone;
     assert.ok(zoneGoulot,V+'la journée s’ouvre sur un goulot');
@@ -217,6 +269,6 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
    }finally{ch.effacer();await ctx.close();}
   }
   assert.equal(faites.length,6);
-  console.log('direct-portable-browser : ok — '+mesures.join(' ; ')+' ; la légende et la note sur une ligne ; « En ce moment » replié sous 1 500 px, son choix retenu ; les chiffres au survol et sur le service choisi ; six vols étiquetés au plus ; la somme des colonnes des personnes égale aux présents, des chauffeurs en route compris ; '+faites.length+' captures dans '+dossier);
+  console.log('direct-portable-browser : ok — '+mesures.join(' ; ')+' ; le titre et « En relief / À plat » sur une ligne, la légende dans un coin de la toile, repliable ; « Plein écran » puis Échap ; « En ce moment » replié sous 1 500 px, son choix retenu ; les chiffres au survol et sur le service choisi ; six vols étiquetés au plus ; la somme des colonnes des personnes égale aux présents, des chauffeurs en route compris ; '+faites.length+' captures dans '+dossier);
  }catch(e){console.error(e);process.exitCode=1;}finally{site.effacer();await browser.close();}
 })();

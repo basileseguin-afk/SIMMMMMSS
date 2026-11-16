@@ -208,7 +208,7 @@ const brutes = {
   ],
   // Les alertes des liens (« Contrôles détaillés ») : ce qui n'est pas « à corriger » est une « information », repliée sous le reste (évolution 19 d).
   'flow-center.js': [
-    ['`<div class="fc-alerte"><ul>${notes.map(', '`<details class="fc-alerte avis-information"><summary><b>Information</b> — rien à faire</summary><ul>${notes.map('],
+    ['`<div class="fc-alerte"><ul>${notes.map(', '`<details class="fc-alerte avis-information"><summary><b>Information</b></summary><ul>${notes.map('],
     ["</li>`).join('')}</ul></div>`:'')", "</li>`).join('')}</ul></details>`:'')"]
   ],
   'reglages.js': [

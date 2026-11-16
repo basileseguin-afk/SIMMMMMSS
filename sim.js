@@ -843,7 +843,7 @@ function renderControles(){
         +'<span class="avis-dit">'+dit('corriger')+'</span>'+liste(corriger)+chemins+'</div>':'')
     +(!bloquant.length&&!corriger.length?'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a son équipe, chaque équipe sait quoi préparer.</p>':'')
     +(information.length?'<details class="fc-alerte avis-information"><summary><b>'+OrlyAvis.dire(information.length,'information')
-        +'</b> — rien à faire : une commande sans vol ce jour-là, ou ce que la journée montre (retards, postes trop courts, attentes).</summary>'+liste(information)
+        +'</b> : une commande sans vol ce jour-là, ou ce que la journée montre (retards, postes trop courts, attentes).</summary>'+liste(information)
         +'<button type="button" class="lien-fort" data-page="j-chiffres">Voir les résultats →</button></details>':'')
     +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
       :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
@@ -886,6 +886,12 @@ function initProblemes(){
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);}});
   Sim.problemes.maj();
+  // Les alertes des liens (flow-center.js, commun) : sous « Information », un geste proposé dit « Facultatif » (évolution 19, retouche).
+  const liens=document.getElementById('fc-alertes');
+  if(liens&&window.MutationObserver){
+    const marquer=()=>OrlyAvis.marquerFacultatifs(liens,'details.avis-information .fc-gestes');
+    new MutationObserver(marquer).observe(liens,{childList:true});marquer();
+  }
 }
 /* ==========================================================================
  *  MON UNITÉ (unite.js) — tout le paramétrage, service par service
@@ -2237,6 +2243,29 @@ function installerPlanRejoue() {
  *  (direct-vue.js) ; « À plat », le plan dessiné de l'unité. La scène lit la
  *  journée (journeeLue) à l'heure rejouée : elle ne calcule rien.
  * ==========================================================================*/
+const CLE_LEGENDE_DIRECT = 'ory-ui-direct-legende';
+/* « Plein écran » (évolution 19, retouche) : la scène prend toute la fenêtre — le menu et l'en-tête sont masqués ; le
+ * bouton reste avec les commandes de la caméra, et Échap en sort. Ce n'est pas le plein écran du navigateur : la page
+ * reste dans sa fenêtre. Quitter la page « En direct », ou passer « À plat », en sort aussi. */
+function pleinEcran(actif) {
+  const b = document.getElementById('direct-plein'), oui = !!actif && document.body.dataset.direct === 'relief' && document.body.dataset.sous === 'j-plan';
+  if (document.body.classList.contains('direct-plein') === oui) return;
+  document.body.classList.toggle('direct-plein', oui);
+  if (b) { b.setAttribute('aria-pressed', String(oui)); b.textContent = oui ? 'Quitter le plein écran' : 'Plein écran';
+    b.title = oui ? 'Quitter le plein écran : retrouver le menu et l’en-tête (Échap)' : 'Plein écran : masquer le menu et l’en-tête (Échap pour en sortir)'; }
+  if (Sim.direct) Sim.direct.demander();
+}
+function initPleinEcran() {
+  const b = document.getElementById('direct-plein'); if (!b) return;
+  b.addEventListener('click', () => pleinEcran(!document.body.classList.contains('direct-plein')));
+  // Échap sort du plein écran, avant tout autre effet (annuler un choix, fermer un panneau).
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !document.body.classList.contains('direct-plein') || document.querySelector('dialog[open]')) return;
+    e.preventDefault(); e.stopPropagation(); pleinEcran(false); b.focus();
+  }, true);
+  if (typeof MutationObserver === 'function') new MutationObserver(() => { if (document.body.classList.contains('direct-plein')) pleinEcran(true); })
+    .observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct'] });
+}
 let siteGarde = null;
 /** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste ne changent. */
 function siteDeLaVue() {
@@ -2258,14 +2287,14 @@ function choisirVueDirect(mode) {
 function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
-  // La ligne de la légende se déplie (toute la légende, la note entière, les gestes de la caméra) et se replie : la
-  // scène reprend alors sa place (évolution 16, retouches).
-  const plus = document.getElementById('direct-plus'), bande = document.getElementById('plan-bande');
-  if (plus && bande) plus.addEventListener('click', () => {
-    const ouverte = !bande.classList.contains('ouverte');
-    bande.classList.toggle('ouverte', ouverte); plus.setAttribute('aria-expanded', String(ouverte)); plus.textContent = ouverte ? 'Replier' : 'Tout lire';
-    if (Sim.direct) Sim.direct.demander();
-  });
+  // La légende se pose dans un coin de la toile (évolution 19, retouche) : dépliée à l'ouverture, on la replie d'un clic ;
+  // le choix est retenu dans ce navigateur, comme celui de « En ce moment ».
+  const coin = document.getElementById('direct-coin');
+  if (coin) {
+    try { if (localStorage.getItem(CLE_LEGENDE_DIRECT) === 'repliee') coin.open = false; } catch (e) { /* stockage indisponible : dépliée */ }
+    coin.addEventListener('toggle', () => { try { localStorage.setItem(CLE_LEGENDE_DIRECT, coin.open ? 'ouverte' : 'repliee'); } catch (e) { /* le choix vaut pour la visite */ } });
+  }
+  initPleinEcran();
   Sim.direct = OrlyDirectVue.creer(hote, {
     lire: () => { const x = lectureDirecte(), m = journeeMontree(); return { site: m.site, journee: m.j, t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).

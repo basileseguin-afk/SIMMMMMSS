@@ -27,7 +27,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Les points à regarder proposent d'en faire une boutique, d'un clic.
   await nav.aller(page,'at-equipes');
   await page.locator('#at-anomalies').evaluate(d=>d.open=true);
-  assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie sert par vagues/);
+  assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie sert par vagues[\s\S]*Facultatif\s*Les ouvrir de 07:00 à 18:00/,'une information ; son geste dit « Facultatif »');
   await page.locator('#at-anomalies [data-at-action=boutiques]').click();await attendre();
   assert.deepEqual(await page.evaluate(()=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id==='lg');return [a.permanent,a.ouverture];}),[true,{de:'07:00',a:'18:00'}]);
   assert.equal(await page.locator('#at-anomalies [data-at-action=boutiques]').count(),0,'plus rien à proposer');

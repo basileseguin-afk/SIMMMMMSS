@@ -29,6 +29,18 @@
     if (!aire) return { x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1, h: H.etiquette };
     return { x0: e.x0, y0: Math.min(e.y0, aire.y), x1: Math.max(e.x1, aire.x + aire.w), y1: Math.max(e.y1, aire.y + aire.h), h: H.etiquette };
   }
+  /**
+   * La boîte à cadrer à l'ouverture et sur « Tout voir » : le bâtiment et les avions présents — pas l'aire vide (évolution 19,
+   * retouche). `presents` : les places des avions qui sont là ([{ x, y }], le milieu de chacune) ; sans avion, le bâtiment seul.
+   */
+  function boiteCadree(site, presents) {
+    const b = boite(site, null);
+    for (const p of presents || []) {
+      b.x0 = Math.min(b.x0, p.x - AVION.w / 2); b.x1 = Math.max(b.x1, p.x + AVION.w / 2);
+      b.y0 = Math.min(b.y0, p.y - AVION.h / 2); b.y1 = Math.max(b.y1, p.y + AVION.h / 2);
+    }
+    return b;
+  }
   /** La boîte d'une zone, pour « Cadrer » le service choisi. */
   const boiteDeZone = z => ({ x0: z.x, y0: z.y, x1: z.x + z.w, y1: z.y + z.h, h: H.etiquette });
 
@@ -629,7 +641,7 @@
     return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes, ...(vues[i].e.ton ? { ton: vues[i].e.ton } : {}), ...(vues[i].e.vol != null ? { vol: vues[i].e.vol } : {}), ...(vues[i].e.compacte ? { compacte: true } : {}), ...(vues[i].e.marque ? { marque: true } : {}) }));
   }
 
-  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, HEURE_DES_VOLS, VOLS_ETIQUETES, volsEtiquetes, tailleEtiquette, poserEtiquettes, pluriel,
+  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteCadree, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, HEURE_DES_VOLS, VOLS_ETIQUETES, volsEtiquetes, tailleEtiquette, poserEtiquettes, pluriel,
     ROUTE, AVION, PAS_FILE, aireDe, bandeDeFile, placesDeFile, placesDansIlot, circulation, etiquettesDesVols, avanceDuConvoi,
     posteParDefaut, posteDe, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

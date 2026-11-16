@@ -41,6 +41,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Toutes les commandes ont leur chemin : ces liens ne servent pas au calcul. C'est une information, repliée
   // (évolution 19 d) ; on la déplie pour faire le geste.
   await page.locator('#fc-alertes details.avis-information summary').click();await attendre();
+  assert.match(await page.locator('#fc-alertes details.avis-information .fc-gestes',{has:page.locator('[data-svc=quais]')}).first().innerText(),/^Facultatif\s*\+ Une équipe dans Quais/,'le geste d’une information dit « Facultatif »');
   await page.locator('#fc-alertes [data-svc-action=equipe][data-svc=quais]').click();await attendre();
   assert.equal((await cases('quais')).length,1,'l’équipe qui manquait est créée d’un clic');
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');

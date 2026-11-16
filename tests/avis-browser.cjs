@@ -77,7 +77,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.equal(c.n,nB+nC,'le compteur : bloquants et à corriger');
   assert.ok(nI>=1&&c.n===r.length-nI,'les informations ne sont pas comptées');
   assert.deepEqual(c.tons,['retard'],'un bloquant : le nombre est rouge');
-  assert.match(c.bulle,new RegExp('^1 bloquant · '+nC+' à corriger ; '+nI+' informations? à lire, sans rien à faire$'),c.bulle);
+  assert.match(c.bulle,new RegExp('^1 bloquant · '+nC+' à corriger ; '+nI+' informations? à lire$'),c.bulle);
 
   // 3. Le panneau : les deux premiers niveaux, puis les informations repliées, dessous.
   await ouvrirPanneau();
@@ -90,7 +90,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.match(await page.locator('#problemes .pb-groupe.corriger .pb-dit').innerText(),/^Le calcul se fait, mais il est faux pour une part\.$/);
   const infos=page.locator('#problemes details.pb-groupe.information');
   assert.equal(await infos.evaluate(d=>d.open),false,'les informations sont repliées');
-  assert.match(await infos.locator('summary').innerText(),new RegExp('^INFORMATION\\s*rien à faire\\s*'+nI+'$','i'));
+  assert.match(await infos.locator('summary').innerText(),new RegExp('^INFORMATION\\s*'+nI+'$','i'),'le repli s’appelle « Information »');
   assert.equal(await infos.locator('.pb').first().isVisible(),false,'repliées : on ne les lit pas encore');
   assert.equal(await page.locator('#problemes .pb:visible').count(),nB+nC,'on lit d’abord les problèmes');
   await infos.locator('summary').click();await attendre(150);
@@ -126,7 +126,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.match(await boite.locator('.avis-niveau.corriger').innerText(),/1 vol EST : aucun handling ne charge cette compagnie/);
   const infosPage=boite.locator('details.avis-niveau.information');
   assert.equal(await infosPage.evaluate(d=>d.open),false,'l’information est repliée');
-  assert.match(await infosPage.locator('summary').innerText(),/^Information — rien à faire$/);
+  assert.match(await infosPage.locator('summary').innerText(),/^Information$/);
   assert.doesNotMatch(await boite.innerText(),/aucun vol ce jour-là/,'repliée : pas encore lue');
   await infosPage.locator('summary').click();await attendre(150);
   assert.match(await boite.innerText(),/Montage : .* n’ont aucun vol ce jour-là/);
@@ -138,7 +138,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.match(await controles.locator('.avis-corriger').innerText(),/Le calcul se fait, mais il est faux pour une part\.[\s\S]*aucun handling ne charge/);
   assert.equal(await controles.locator('details.avis-information').evaluate(d=>d.open),false);
   const duCalcul=await page.evaluate(()=>Sim.ateliers.resultat.anomalies.filter(a=>OrlyAvis.niveauDuCode(a.code)==='information').length);
-  assert.match(await controles.locator('details.avis-information summary').innerText(),new RegExp('^'+duCalcul+' informations? — rien à faire'));
+  assert.match(await controles.locator('details.avis-information summary').innerText(),new RegExp('^'+duCalcul+' informations? : une commande sans vol ce jour-là'));
   assert.match(await controles.locator('details.avis-information').evaluate(d=>d.textContent),/n’ont aucun vol ce jour-là/);
   assert.equal(await controles.locator('.avis-bloquant').count(),0,'le calcul se fait : rien de bloquant dans ce qu’il dit');
   //    La Synthèse : la commande que personne ne prépare est un problème bloquant.
@@ -170,7 +170,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.ok(de(r,'information').some(p=>/aucun vol ce jour-là/.test(p.titre)),'la commande sans vol reste une information');
   if(!reste){
     assert.deepEqual(c.tons,[],'plus de nombre, plus de ton');
-    assert.match(c.bulle,/^Aucun problème : rien de bloquant, rien à corriger ; \d+ informations? à lire, sans rien à faire$/,c.bulle);
+    assert.match(c.bulle,/^Aucun problème : rien de bloquant, rien à corriger ; \d+ informations? à lire$/,c.bulle);
     await ouvrirPanneau();
     assert.match(await page.locator('#problemes .pb-vide').innerText(),/Rien de bloquant, rien à corriger/);
     assert.equal(await page.locator('#problemes .pb-total').innerText(),'aucun');
@@ -179,7 +179,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
     await fermerPanneau();
     // Les équipes : rien que des informations ; la boîte est leur repli, et elle le dit.
     await nav.aller(page,'at-equipes');
-    assert.match(await boite.locator('summary').first().innerText(),/^Information — rien à faire$/);
+    assert.match(await boite.locator('summary').first().innerText(),/^Information$/);
     assert.equal(await boite.locator('.avis-niveau').count(),0,'pas de repli dans le repli');
     assert.equal(await boite.evaluate(d=>d.classList.contains('at-informations')),true);
     assert.match(await boite.evaluate(d=>d.textContent),/Montage : .* n’ont aucun vol ce jour-là/);

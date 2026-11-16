@@ -393,7 +393,9 @@ Un champ ne s'affiche que quand le calcul le lit dans la situation où l'équipe
 est. Quand des champs sont masqués, une ligne discrète le dit sous la fiche
 (« n réglages ne jouent pas ici ») ; elle se déplie et montre ces champs
 grisés, chacun avec sa raison en une phrase. Une valeur masquée n'est jamais
-effacée : elle est gardée et sauvegardée.
+effacée : elle est gardée et sauvegardée — et l'import d'un classeur Excel
+n'efface pas un réglage masqué qu'il ne porte pas : il garde la valeur de la
+page.
 
 | Cas | Ce qui ne s'affiche que quand il joue |
 |---|---|
@@ -416,7 +418,7 @@ les mêmes mots partout :
 |---|---|---|
 | **Bloquant** | Le calcul ne se fait pas, ou une commande n'est préparée par personne. | oui |
 | **À corriger** | Le calcul se fait, mais il est faux pour une part (une compagnie qu'aucun handling ne charge). | oui |
-| **Information** | Rien à faire (une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre). | non |
+| **Information** | À lire : rien n'est demandé (une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre). Un geste qu'elle propose est dit « Facultatif ». | non |
 
 Le compteur du menu et le nombre d'un onglet ne comptent que les deux
 premiers. Les informations se lisent repliées, sous les autres. Le niveau d'un

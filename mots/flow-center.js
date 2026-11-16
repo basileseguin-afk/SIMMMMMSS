@@ -206,7 +206,7 @@ class FlowCenter{
     (a.geste==='equipe'?`<button type="button" class="btn btn-sm" data-svc-action="equipe" data-svc="${esc(x.id)}">+ Une équipe dans ${esc(x.nom)}</button>`:'')
     +`<button type="button" class="btn btn-sm svc-danger" data-svc-action="supprimer" data-svc="${esc(x.id)}">Supprimer ${esc(x.nom)}</button>`).join('')}</span>`:'';
   alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} ${graves.length>1?'points':'point'} à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul><button type="button" class="lien-fort" data-page="u-services">Voir tous les services →</button></div>`:'')
-   +(notes.length?`<details class="fc-alerte avis-information"><summary><b>Information</b> — rien à faire</summary><ul>${notes.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul></details>`:'')
+   +(notes.length?`<details class="fc-alerte avis-information"><summary><b>Information</b></summary><ul>${notes.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul></details>`:'')
    +(!lu.alertes.length?'<p class="fc-alerte ok">Le parcours se lit de bout en bout.</p>':'');
   box.innerHTML=`<table class="fc-table"><thead><tr>
     <th scope="col">Service</th><th scope="col">Ce qu’il est</th>

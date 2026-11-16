@@ -11,7 +11,6 @@ details.pb-groupe.information>summary{padding:12px 16px;cursor:pointer;list-styl
   font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.04em;text-transform:uppercase;color:var(--ds-texte-3)}
 details.pb-groupe.information>summary:hover,details.pb-groupe.information[open]>summary{color:var(--ds-texte-2)}
 details.pb-groupe.information>summary .ico{width:14px;height:14px;margin:0 8px 0 2px;vertical-align:-3px}
-.pb-rien{margin-left:8px;font-weight:400;letter-spacing:0;text-transform:none}
 .pb-n{float:right;font-variant-numeric:tabular-nums}
 /* Le nombre du menu : rouge s'il compte un bloquant, ambre sinon (le mot est dans la bulle). */
 .barre-lien .pb-compte.retard{background:var(--ds-nav-retard-fond);color:var(--ds-nav-retard-texte);box-shadow:none}
@@ -27,7 +26,9 @@ details.pb-groupe.information>summary .ico{width:14px;height:14px;margin:0 8px 0
 .avis-niveau.corriger>h4 .ico{color:var(--ds-attente)}
 details.avis-niveau>summary{cursor:pointer;list-style-position:inside;width:max-content;max-width:100%;color:var(--ds-texte-3)}
 details.avis-niveau>summary:hover,details.avis-niveau[open]>summary{color:var(--ds-texte-2)}
-.avis-rien{font-weight:400;color:var(--ds-texte-3)}
+/* Le geste qu'une information propose : « Facultatif », en toutes lettres, devant lui. */
+.avis-facultatif{display:inline-block;margin-right:2px;padding:1px 7px;border:1px solid var(--ds-bordure-forte);border-radius:99px;
+  font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);line-height:1.5;color:var(--ds-texte-2);background:var(--ds-surface-1);vertical-align:1px}
 /* « Contrôles détaillés » : la phrase du niveau, sous son titre. */
 .fc-alerte .avis-dit{display:block;margin-bottom:2px;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
 .fc-alerte.avis-information>summary{cursor:pointer;font-weight:400}

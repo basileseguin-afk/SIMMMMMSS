@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 19, retouches : une valeur masquée gardée par Excel, le repli « Information », la vue en direct sur un portable
+
+Trois retouches demandées après l'évolution 19. Aucun calcul ne change ; le
+moteur et la version 2 ne sont pas touchés.
+
+- **Une valeur masquée ne se perd jamais, même par Excel** : l'import d'un
+  classeur n'efface plus un réglage masqué que le classeur ne porte pas (les
+  durées par compagnie d'une plonge au débit) ; il garde la valeur de la page,
+  et le compte rendu le dit. Ce que le classeur porte l'emporte toujours.
+- **Le repli s'appelle « Information »** (il disait « rien à faire ») ; quand
+  une information propose un geste, elle le dit : « Facultatif », devant le
+  geste — dans les pages d'équipes et dans « Contrôles détaillés ».
+- **La vue en direct sur un portable** (1 366 × 768) : le titre, le choix de
+  la journée de vols et « En relief / À plat » sur une seule ligne ; la
+  légende dans un coin de la toile, repliable ; « Tout voir » et le cadrage
+  d'ouverture cadrent le bâtiment et les avions présents, pas l'aire vide ; un
+  bouton « Plein écran » masque le menu et l'en-tête, Échap en sort. La toile
+  fait au moins 560 px de haut.
+
+Fichiers : `jouent.js`, `ateliers.js`, `avis.js`, `avis.css`, `sim.js`,
+`index.html`, `direct-vue.js`, `direct-scene.js`, `direct.css`,
+`outils/vocabulaire-regles.cjs`, `mots/flow-center.js`,
+`tests/jouent.test.cjs`, `tests/jouent-browser.cjs`, `tests/avis.test.cjs`,
+`tests/avis-browser.cjs`, `tests/fantome-browser.cjs`,
+`tests/services-browser.cjs`, `tests/partage-browser.cjs`,
+`tests/boutique-browser.cjs`, `tests/lisibilite-browser.cjs`,
+`tests/direct-portable-browser.cjs`, `tests/direct-ateliers-browser.cjs`,
+`tests/direct-circulation-browser.cjs`, `tests/direct-scene.test.cjs`,
+`README.md`, `docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-16 — Évolution 19 (e) : la page des vols montre les vols ; contrôle et doc
 
 Cinquième et dernière partie du nettoyage de l'interface de la version 1.

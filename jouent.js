@@ -96,6 +96,37 @@
     return a.type === 'lavage' ? plonge(a) : a.type === 'robot' ? robot(a) : a.type === 'dispo' ? dispo(a) : a.type === 'handling' ? handling(a) : [];
   }
 
+  /* Les réglages d'une équipe qu'un classeur peut ne pas porter, et la clé sous laquelle `nonJoues` les dit. Le débit ou la
+   * vitesse d'un tunnel ne sont pas ici : le classeur a une ligne par tunnel, il les porte toujours. */
+  const MASQUABLES = { lavage: [['durees', 'durees'], ['plafond', 'plafond']], robot: [['debit', 'debit']], dispo: [['vagues', 'vagues']],
+    handling: [['simultanes', 'simultanes'], ['creneaux', 'creneaux']] };
+  const vide = v => v === undefined || v === null || v === '' || (Array.isArray(v) ? !v.length : typeof v === 'object' && !Object.keys(v).length);
+
+  /**
+   * L'import d'un classeur n'efface pas un réglage masqué que le classeur ne porte pas : il garde la valeur de la page
+   * (évolution 19, retouche). Le classeur des équipes n'écrit, par exemple, les durées par compagnie d'une plonge que si
+   * elle lave par vol : relu, une plonge au débit perdait les siennes.
+   * Pour chaque équipe lue qui existe dans la page (même identifiant, même nature), un réglage que l'équipe lue ne porte
+   * pas et que la page porte est repris de la page — s'il ne joue pas dans la situation lue. Ce que le classeur porte
+   * l'emporte toujours, et rien de ce qui jouerait n'est repris : le calcul reste celui que le classeur décrit.
+   * Modifie `etatLu` ; rend ce qui a été gardé : [{ equipe, libelle }].
+   */
+  function garderMasques(etatLu, etatPage) {
+    const page = new Map(((etatPage && etatPage.ateliers) || []).map(a => [a.id, a])), gardes = [];
+    for (const a of (etatLu && etatLu.ateliers) || []) {
+      const avant = a && page.get(a.id);
+      if (!avant || avant.type !== a.type) continue;
+      for (const [champ, cle] of MASQUABLES[a.type] || []) {
+        if (!vide(a[champ]) || vide(avant[champ])) continue;
+        const essai = { ...a, [champ]: avant[champ] }, dit = nonJoues(essai).find(x => x.cle === cle);
+        if (!dit) continue;
+        a[champ] = JSON.parse(JSON.stringify(avant[champ]));
+        gardes.push({ equipe: a.nom || a.id, libelle: dit.libelle });
+      }
+    }
+    return gardes;
+  }
+
   let numero = 0;
   /**
    * La ligne sous la fiche : « n réglages ne jouent pas ici », qui se déplie sur ces champs grisés, chacun avec sa raison.
@@ -147,7 +178,7 @@
     return (classes || []).some(c => c && !(routes && routes.has(c.id)));
   }
 
-  const api = { nonJoues, ligne, parCompagnie, miseADisposition, liensUtiles, dureesDe, dureesLues };
+  const api = { nonJoues, garderMasques, ligne, parCompagnie, miseADisposition, liensUtiles, dureesDe, dureesLues };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyJouent = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

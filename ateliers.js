@@ -18,6 +18,12 @@
   const J = () => (enNode ? require('./moteur/journee.js') : root.OrlyJournee);
   // Évolution 19 (a) : les messages du moteur, avec les mots de la page (le moteur, lui, ne change pas).
   const MM = () => (enNode ? require('./mots-moteur.js') : root.OrlyMotsMoteur);
+  /** Les réglages qui ne jouent pas (jouent.js) : l'import d'un classeur garde ceux qu'il ne porte pas. */
+  const JOUENT = () => (enNode ? require('./jouent.js') : root.OrlyJouent);
+  /** « 2 réglages qui ne jouent pas ici sont gardés de la page (Plonge matin : temps pour laver un vol, par compagnie). » ; rien, si rien n'est gardé. */
+  const direGardes = gardes => (!gardes.length ? '' : ' ' + (gardes.length > 1 ? gardes.length + ' réglages qui ne jouent pas ici sont gardés' : '1 réglage qui ne joue pas ici est gardé')
+    + ' de la page, le classeur ne les portant pas (' + gardes.slice(0, 4).map(g => g.equipe + ' : ' + g.libelle.charAt(0).toLowerCase() + g.libelle.slice(1)).join(' ; ')
+    + (gardes.length > 4 ? '…' : '') + ').');
   /** « J », « J-1 », « J+1 » : un décalage en jours, écrit comme on le dit. */
   const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
   /* La plonge lave ce qui revient des vols : son jour se compte depuis
@@ -1772,7 +1778,7 @@
     async importer(e) {
       const f = e.target.files[0]; if (!f) return;
       try {
-        let etat, ajouts = [];
+        let etat, ajouts = [], gardes = [];
         if (/\.json$/i.test(f.name)) {
           // L'ancien format d'échange reste lu : une sauvegarde d'hier s'ouvre.
           if (f.size > 4 * 1024 * 1024) throw new Error('Fichier trop grand.');
@@ -1786,12 +1792,14 @@
           // `banc` : les réglages du banc d'essai que seule la version 1 lit (une plonge qui ne vient que s'il reste du sale…).
           const r = E.classeurVersAteliers(feuilles, this.state,
             { services: this.a.services(), programme: this.a.classes() || [], banc: true });
+          // Une valeur masquée ne se perd pas par Excel : ce que le classeur ne porte pas garde la valeur de la page.
+          gardes = JOUENT().garderMasques(r.etat, this.state);
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
           this.fondreDispos(etat); etat = valider(etat);
         }
         this.changer(() => { this.state = etat; }, 'Équipes importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes' : ' équipe')
           + ', avec les chemins du fichier, à la place des précédents.'
-          + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
+          + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : '') + direGardes(gardes));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }
@@ -1872,7 +1880,8 @@
       const nomSv = id => ((this.a.services().find(x => x.id === id) || fantomes.find(x => x.id === id)) || {}).nom || id;
       const trous = (r.anomalies || []).filter(a => a.code === 'parcours-trou');
       // Chaque avis a son niveau (évolution 19 d) : « bloquant », « à corriger », « information ». Un point du calcul
-      // le tient de son code ; un geste qu'on propose sans rien devoir (ouvrir à heures fixes, une copie gardée) est une information.
+      // le tient de son code ; un geste qu'on propose sans rien devoir (ouvrir à heures fixes, une copie gardée) est une information,
+      // et il le dit : « Facultatif ».
       const AV = root.OrlyAvis;
       const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => ({ niveau: AV.niveauDuCode(a.code), html: esc(a.message) }));
       const corriger = html => ({ niveau: 'corriger', html }), information = html => ({ niveau: 'information', html });
@@ -1926,14 +1935,14 @@
       if (parVagues.length) {
         list.push(information('<b>' + esc(parVagues.map(a => a.nom).join(', ')) + (parVagues.length > 1 ? ' servent' : ' sert') + ' par vagues.</b> '
           + 'Ouverts de telle à telle heure, ils servent à l’instant où l’on vient ; fermés, l’étape d’après attend l’ouverture. '
-          + '<button class="btn btn-sm btn-play" data-at-action="boutiques">Les ouvrir de 07:00 à 18:00</button> '
+          + AV.facultatif() + ' <button class="btn btn-sm" data-at-action="boutiques">Les ouvrir de 07:00 à 18:00</button> '
           + '<span class="mini-note">(les heures se changent ensuite dans chaque équipe, ou dans le récap des équipes)</span>'));
       }
       let copie = null;
       try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
       if (copie && copie.etat) {
         list.push(information('Une copie de l’organisation d’avant la fusion (légumerie, magasin…) est gardée dans ce navigateur. '
-          + '<button class="btn btn-sm" data-at-action="avant-fonte">Revenir à l’organisation d’avant la fusion</button> '
+          + AV.facultatif() + ' <button class="btn btn-sm" data-at-action="avant-fonte">Revenir à l’organisation d’avant la fusion</button> '
           + '<button class="lien-discret" data-at-action="oublier-copie">Oublier cette copie</button>'));
       }
       box.hidden = !list.length;
@@ -1947,7 +1956,7 @@
       box.classList.toggle('at-informations', !!list.length && !problemes);
       box.innerHTML = !list.length ? ''
         : problemes ? '<summary><strong>Points à regarder ici</strong></summary>' + AV.blocs(list)
-        : '<summary><strong>Information</strong> <span class="avis-rien">— rien à faire</span></summary><ul>' + list.map(x => '<li>' + x.html + '</li>').join('') + '</ul>';
+        : '<summary><strong>Information</strong></summary><ul>' + list.map(x => '<li>' + x.html + '</li>').join('') + '</ul>';
     }
 
     rendreFiltre() {
@@ -2871,7 +2880,8 @@
         const r = E.classeurVersRecapCases(await T.lireFichier(f, 4 * 1024 * 1024), this.state, { services: this.a.services(), classes: this.classes });
         if (!r.changes.length) return this.rendre('Équipes lues : rien ne change.');
         const liste = r.changes.slice(0, 6).join(', ') + (r.changes.length > 6 ? '…' : '');
-        this.changer(() => { this.state = valider(r.etat); }, 'Équipes importées : ' + r.changes.length + (r.changes.length > 1 ? ' équipes changées' : ' équipe changée') + ' (' + liste + ').');
+        const gardes = JOUENT().garderMasques(r.etat, this.state);
+        this.changer(() => { this.state = valider(r.etat); }, 'Équipes importées : ' + r.changes.length + (r.changes.length > 1 ? ' équipes changées' : ' équipe changée') + ' (' + liste + ').' + direGardes(gardes));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }

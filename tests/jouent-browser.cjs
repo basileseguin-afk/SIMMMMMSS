@@ -17,7 +17,11 @@
  *   7. rien n'est calculé autrement : revenue à ses réglages de départ, la
  *      journée est la même, champ par champ ;
  *   8. une valeur masquée n'est pas effacée : elle survit à une sauvegarde et
- *      à une restauration, et rejoue quand la situation revient.
+ *      à une restauration, et rejoue quand la situation revient ;
+ *   9. ni par Excel (évolution 19, retouche) : « Équipes et chemins » exporté
+ *      puis réimporté, la valeur masquée est toujours là, dans les deux sens
+ *      (par vol : les débits et le plafond ; au débit : les durées par
+ *      compagnie).
  * Aucune donnée de l'unité : tout est fictif. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs'),F=require('./plan-rejoue-fictif.cjs');
@@ -268,8 +272,40 @@ function sauvegarde(){
   assert.equal(await (await ouvrir('pl1')).locator('[data-at-champ="plafond"]').inputValue(),'400','le plafond rejoue, avec sa valeur');
   await (await ouvrir('pl1')).locator('[data-at-champ="plonge-mode"]').selectOption('vol');await attendre();
 
+  // 9. Ni par Excel : « Équipes et chemins » exporté puis réimporté, la valeur masquée est toujours là, dans les deux sens.
+  const plonge=async()=>{const a=await equipe('pl1');return {parVol:!!a.parVol,plafond:a.plafond,debits:a.tunnels.map(t=>t.debit),vitesses:a.tunnels.map(t=>t.vitesse||1),durees:a.durees};};
+  const parExcel=async nom=>{
+    await nav.aller(page,'at-equipes');
+    const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#at-export').click()]);
+    const f=path.join(dossier,nom);await dl.saveAs(f);
+    await page.evaluate(()=>{document.getElementById('at-status').textContent='';});
+    await page.locator('#at-import').setInputFiles(f);
+    await page.waitForFunction(()=>/Équipes importées|Import refusé/.test(document.getElementById('at-status').textContent));
+    return page.locator('#at-status').textContent();};
+  //    Par vol : le débit des tunnels et le plafond ne jouent pas ; le classeur les porte, ils reviennent tels quels.
+  const parVol=await plonge();
+  assert.deepEqual(parVol,{parVol:true,plafond:400,debits:[300,300],vitesses:[1,1.5],durees:{'*':30,NORD:45}});
+  let statut=await parExcel('par-vol.xlsx');
+  assert.match(statut,/^Équipes importées : \d+ équipes/,statut);
+  assert.deepEqual(await plonge(),parVol,'par vol : rien ne se perd par Excel');
+  assert.doesNotMatch(statut,/gardés? de la page/,'le classeur porte tout : rien à reprendre de la page');
+  //    Au débit : les durées par compagnie ne jouent pas, et le classeur ne les porte pas — l'import garde celles de la page.
+  await (await ouvrir('pl1')).locator('[data-at-champ="plonge-mode"]').selectOption('debit');await attendre();
+  const auDebit=await plonge();
+  assert.deepEqual(auDebit,{...parVol,parVol:false},'au débit, les durées sont gardées dans la page');
+  statut=await parExcel('au-debit.xlsx');
+  assert.match(statut,/^Équipes importées : \d+ équipes/,statut);
+  assert.deepEqual(await plonge(),auDebit,'au débit : les durées masquées sont toujours là après l’import');
+  assert.match(statut,/réglages? qui ne jouen?t pas ici (sont gardés|est gardé) de la page, le classeur ne les portant pas \(.*temps pour laver un vol, par compagnie/,statut);
+  fiche=await ouvrir('pl1');
+  l=await ligne(fiche);
+  assert.deepEqual(l.lignes.map(x=>[x[0],x[1]]),[['Temps pour laver un vol, par compagnie','toutes compagnies : 30 min ; NORD : 45 min'],['Vitesse de « T2 »','× 1,5']],'la ligne les montre toujours');
+  //    Et elles rejouent : repassée par vol, la plonge retrouve ses durées.
+  await fiche.locator('[data-at-champ="plonge-mode"]').selectOption('vol');await attendre();
+  assert.deepEqual(await plonge(),parVol);
+
   assert.deepEqual(errors,[],errors.join(' | '));
   x.effacer();
-  console.log('jouent-browser : ok — la plonge, le robot, la mise à disposition, le handling, les temps par vol par service et le menu, dans les deux sens ; la ligne et ses raisons ; les valeurs masquées gardées ; le résultat inchangé');
+  console.log('jouent-browser : ok — la plonge, le robot, la mise à disposition, le handling, les temps par vol par service et le menu, dans les deux sens ; la ligne et ses raisons ; les valeurs masquées gardées (sauvegarde, classeur Excel) ; le résultat inchangé');
  }catch(e){console.error(e);process.exitCode=1;}finally{fs.rmSync(dossier,{recursive:true,force:true});await browser.close();}
 })();

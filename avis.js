@@ -11,8 +11,9 @@
  *      par personne ;
  *    - À CORRIGER : le calcul se fait, mais il est faux pour une part (une
  *      compagnie qu'aucun handling ne charge, un service sans temps par vol) ;
- *    - INFORMATION : rien à faire (une commande sans vol ce jour-là, un
- *      service en bout de chaîne, ce que la journée montre).
+ *    - INFORMATION : à lire, rien n'est demandé (une commande sans vol ce
+ *      jour-là, un service en bout de chaîne, ce que la journée montre) ;
+ *      quand une information propose un geste, elle le dit : « facultatif ».
  *  Le compteur du menu et le nombre d'un onglet ne comptent que les deux
  *  premiers. Les informations se lisent repliées, sous les autres.
  *
@@ -34,7 +35,7 @@
     { id: 'corriger', nom: 'À corriger', un: 'à corriger', plusieurs: 'à corriger', ico: 'curseurs', ton: 'attente', probleme: true,
       dit: 'Le calcul se fait, mais il est faux pour une part.' },
     { id: 'information', nom: 'Information', un: 'information', plusieurs: 'informations', ico: 'info', ton: '', probleme: false,
-      dit: 'Rien à faire.' }
+      dit: 'À lire : rien n’est demandé. Un geste proposé est facultatif.' }
   ];
   const RANG = Object.fromEntries(NIVEAUX.map((n, i) => [n.id, i]));
   const niveau = id => NIVEAUX[RANG[id]] || NIVEAUX[0];
@@ -133,7 +134,22 @@
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pic = nom => (root.OrlyIcones ? root.OrlyIcones.ico(nom) : '');
-  const RIEN = 'rien à faire';
+  /** Le mot qui précède un geste proposé par une information : rien n'oblige à le faire. */
+  const FACULTATIF = 'Facultatif';
+  const facultatif = () => '<span class="avis-facultatif">' + FACULTATIF + '</span>';
+  /**
+   * Dans une page que ce module n'écrit pas (les alertes des liens, d'un module commun) : chaque groupe de gestes d'une
+   * information reçoit le mot « Facultatif ». `selecteur` : les groupes de gestes à marquer, sous `racine`.
+   */
+  function marquerFacultatifs(racine, selecteur) {
+    if (!racine || !racine.querySelectorAll) return 0;
+    let n = 0;
+    for (const g of racine.querySelectorAll(selecteur)) {
+      if (g.querySelector(':scope > .avis-facultatif')) continue;
+      g.insertAdjacentHTML('afterbegin', facultatif() + ' '); n++;
+    }
+    return n;
+  }
 
   /**
    * Le panneau des problèmes : les bloquants, les points à corriger, puis les
@@ -155,7 +171,7 @@
     return `<div class="pb-tete"><h2 id="problemes-titre">Problèmes</h2> <span class="pb-total">${esc(resume(liste) || 'aucun')}</span></div>`
       + (problemes || `<p class="pb-vide">${pic('check')}Rien de bloquant, rien à corriger : la journée se calcule sur une organisation complète.</p>`)
       + (infos.length ? `<details class="pb-groupe information"><summary>${pic(nvI.ico)}<span class="pb-nom">${esc(nvI.nom)}</span>`
-        + `<span class="pb-rien">${RIEN}</span><span class="pb-n">${infos.length}</span></summary><ul>${infos.map(item).join('')}</ul></details>` : '');
+        + `<span class="pb-n">${infos.length}</span></summary><ul>${infos.map(item).join('')}</ul></details>` : '');
   }
 
   /**
@@ -170,7 +186,7 @@
       if (!l) return '';
       return nv.probleme
         ? `<section class="avis-niveau ${nv.id}"><h4>${pic(nv.ico)}${esc(nv.nom)}</h4><ul>${l}</ul></section>`
-        : `<details class="avis-niveau ${nv.id}"><summary>${pic(nv.ico)}<span class="avis-nom">${esc(nv.nom)}</span> <span class="avis-rien">— ${RIEN}</span></summary><ul>${l}</ul></details>`;
+        : `<details class="avis-niveau ${nv.id}"><summary>${pic(nv.ico)}<span class="avis-nom">${esc(nv.nom)}</span></summary><ul>${l}</ul></details>`;
     }).join('');
   }
 
@@ -202,7 +218,7 @@
         for (const nv of NIVEAUX) if (nv.ton) c.classList.toggle(nv.ton, !!n && ton(this.liste) === nv.ton);
       }
       this.a.bouton.title = (n ? resume(this.liste) : 'Aucun problème : rien de bloquant, rien à corriger')
-        + (infos ? ' ; ' + dire(infos, 'information') + ' à lire, sans rien à faire' : '');
+        + (infos ? ' ; ' + dire(infos, 'information') + ' à lire' : '');
       const sig = JSON.stringify(this.liste);
       if (sig !== this.sig) { this.sig = sig; this.rendre(); }
     }
@@ -217,7 +233,7 @@
     rendre() { this.a.panneau.innerHTML = panneau(this.liste, this.a.nomPage); }
   }
 
-  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, niveauDuCode, dire, lister, pages, compte, parNiveau, resume, ton, panneau, blocs, Registre };
+  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, niveauDuCode, dire, lister, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyAvis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

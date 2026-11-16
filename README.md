@@ -738,10 +738,13 @@ l'unité) ouvre la vue à plat : les liens se dessinent sur le plan dessiné.
   plus bas), −, +, « Cadrer » (le service choisi dans « Voir un service » ou
   d'un clic sur sa zone) et « Tout voir ».
 - **À l'ouverture et sur « Tout voir »**, la caméra revient à l'angle de trois
-  quarts (45°, vue isométrique) et la scène entière remplit la toile, à la
-  marge du cadrage près : 24 px, et jamais plus de 4 % du petit côté de la
-  toile. Tant qu'on n'a ni déplacé ni zoomé, elle y tient encore quand on
-  tourne, qu'on incline ou qu'on change la taille de la fenêtre.
+  quarts (45°, vue isométrique) et cadre **le bâtiment et les avions présents
+  à cette heure** — pas l'aire vide des avions de la journée (évolution 19,
+  retouche) —, à la marge du cadrage près : 24 px, et jamais plus de 4 % du
+  petit côté de la toile. Tant qu'on n'a ni déplacé ni zoomé, ce cadre y tient
+  encore quand on tourne, qu'on incline ou qu'on change la taille de la
+  fenêtre, et il suit les avions : un avion qui arrive hors du cadre
+  l'élargit, le dernier parti le resserre.
 - **Les murs sont bas** (50 cm) et ne se dessinent que du côté opposé à la
   caméra, quel que soit l'angle ; une zone s'ouvre sur le couloir. Les objets
   se dessinent du fond vers l'avant, pour l'angle courant.
@@ -962,10 +965,21 @@ Sur un portable (1 366 × 768), la scène passe avant ce qui l'entoure :
   côté). Vu de trois quarts, un site rectangulaire touche ses marges du côté
   qui le limite — la hauteur sur une toile large ; les commandes de la
   caméra se posent dans un coin, par-dessus.
-- **La légende et la note tiennent sur une seule ligne**, au-dessus de la
-  scène : la légende d'abord, la note ensuite, coupée par des points de
-  suspension. « Tout lire » la déplie — toute la légende, la note entière et
-  les gestes de la caméra ; « Replier » la referme.
+- **La légende se pose dans un coin de la toile**, en bas à gauche, et se
+  replie d'un clic sur son titre (évolution 19, retouche ; elle tenait sur une
+  ligne au-dessus de la scène, dépliée par « Tout lire ») : les personnes, ce
+  qui circule, la tranche d'un chariot, la note et les gestes de la caméra. Le
+  choix est retenu dans ce navigateur.
+- **L'en-tête tient sur une ligne** (évolution 19, retouche) : le titre de la
+  page, le choix de la journée de vols d'un programme daté, « En relief / À
+  plat » et « En ce moment ». La phrase d'introduction n'est plus à l'écran
+  (les lecteurs d'écran la lisent encore). À 1 366 × 768, la toile fait au
+  moins 560 px de haut.
+- **« Plein écran »**, avec les commandes de la caméra (évolution 19,
+  retouche) : le menu et l'en-tête sont masqués, la scène prend toute la
+  fenêtre ; le bouton devient « Quitter le plein écran », et Échap en sort.
+  Ce n'est pas le plein écran du navigateur ; quitter la page ou passer « À
+  plat » en sort aussi.
 - **Sous 1 500 px de large, « En ce moment » est replié à l'ouverture** de la
   scène en relief (sous 1 200 px pour le plan dessiné, comme avant). Son
   bouton l'ouvre et le choix est retenu dans ce navigateur ; choisir un
@@ -1325,6 +1339,16 @@ version 2 et ne change pas. Passer la plonge « au débit » n’efface plus ses
 durées par compagnie : elles restent dans la sauvegarde (le calcul ne les lit
 pas). Aucun calcul ne change.
 
+**Une valeur masquée ne se perd pas non plus par Excel** (retouche). Le
+classeur « Équipes et chemins » n’écrit les durées par compagnie d’une plonge
+que si elle lave par vol : relu, une plonge au débit perdait les siennes.
+L’import d’un classeur n’efface plus un réglage masqué que le classeur ne
+porte pas : il garde la valeur de la page (`garderMasques`, dans `jouent.js`),
+et le compte rendu de l’import le dit (« 1 réglage qui ne joue pas ici est
+gardé de la page, le classeur ne le portant pas »). Ce que le classeur porte
+l’emporte toujours ; rien de ce qui jouerait n’est repris de la page — le
+calcul reste celui que le classeur décrit.
+
 ### Ce qui se supprime (évolution 19 c)
 
 - **Les temps par vol d’une mise à disposition.** Un service dont toutes les
@@ -1361,16 +1385,20 @@ détaillés », la Synthèse, l’état du calcul :
 |---|---|---|
 | **Bloquant** | Le calcul ne se fait pas, ou une commande n’est préparée par personne. | une commande mal écrite, une boucle, une commande cochée dans aucune équipe, aucun vol |
 | **À corriger** | Le calcul se fait, mais il est faux pour une part. | une compagnie qu’aucun handling ne charge, un service sans temps par vol, une étape de chemin sans équipe, un service supprimé encore cité |
-| **Information** | Rien à faire. | une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre (un retard, un poste trop court) |
+| **Information** | À lire : rien n’est demandé. | une commande sans vol ce jour-là, un service en bout de chaîne, ce que la journée montre (un retard, un poste trop court) |
 
 - **Le compteur du menu ne compte que les deux premiers** ; le nombre d’un
   onglet aussi. Il est rouge s’il compte un bloquant, ambre sinon, et sa
-  bulle le dit en mots (« 1 bloquant · 2 à corriger ; 3 informations à lire,
-  sans rien à faire »). Une commande sans vol ce jour-là n’est plus comptée.
+  bulle le dit en mots (« 1 bloquant · 2 à corriger ; 3 informations à
+  lire »). Une commande sans vol ce jour-là n’est plus comptée.
 - **Les informations se lisent repliées, sous les autres** : dans le
-  panneau (« Information — rien à faire », avec leur nombre), dans les pages
-  d’équipes, dans « Contrôles détaillés ». Elles se déplient d’un clic ;
-  chacune mène encore à sa page.
+  panneau (« Information », avec leur nombre), dans les pages d’équipes, dans
+  « Contrôles détaillés ». Elles se déplient d’un clic ; chacune mène encore
+  à sa page. Le repli s’appelle « Information », sans plus (retouche : il
+  disait « rien à faire », et portait des gestes). **Quand une information
+  propose un geste, elle le dit : « Facultatif »**, devant le geste (« + Une
+  équipe dans… », « Supprimer… », « Les ouvrir de 07:00 à 18:00 », « Revenir
+  à l’organisation d’avant la fusion »).
 - **Le niveau d’un point du calcul se lit dans son code** (`avis.js`). Le
   moteur dit lui-même ce qui arrête le calcul : c’est « bloquant ». Les
   points qu’il laisse passer sont rangés en « à corriger » ou
@@ -1588,7 +1616,7 @@ aucun vol.
 | `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
 | `tests/direct-questions.test.cjs` | Les cinq réponses à côté de la scène (v1, évolution 16 f), sans navigateur, sur l’unité fictive : les cinq questions dans l’ordre ; à huit heures de la journée, les personnes par service et par état égales à celles des indicateurs, l’unité leur somme ; ce qui coince à cette heure (les goulots du moment, leur phrase) et sur la journée (la carte de la Synthèse) ; la fin, l’horaire et les heures sup de chaque ligne du module ; les exceptions et leur cause ; le choix « Référence / Essai » ; dans le panneau, les cinq réponses ou le détail du service ; tout texte de l’unité échappé. |
 | `tests/direct-questions-browser.cjs` | Les cinq réponses, dans la page (v1, évolution 16 f) : à six heures de la journée, les chiffres du panneau égaux à ceux du module ; le nom d’un service ouvre son détail ; avec deux essais retenus, « Référence » et « Essai » rejouent l’un ou l’autre à la même heure (ses ateliers, ses personnes, ses réponses), en lecture aussi ; la scène dit quelle journée elle rejoue ; les essais effacés, la journée en cours ; sur un écran étroit, le panneau sous la scène ; rien à plat ni en version 2. |
-| `tests/direct-portable-browser.cjs` | La vue en direct sur un portable (v1, évolution 16, retouches), sur l’unité fictive de 15 services, à 1 366 × 768 et 1 920 × 1 080 : à l’ouverture, après « Tout voir » et après un changement de taille, le site cadré remplit la toile (sa marge, 5 % au plus, du côté qui le limite ; les parts de la toile sont affichées) ; la légende et la note sur une ligne ; « En ce moment » replié sous 1 500 px, ouvert par son bouton, le choix retenu après un rechargement ; les étiquettes, le nom seul sauf le goulot, moins de 15 % de la toile ; les chiffres au survol et sur le service choisi ; les vols étiquetés à chaque heure (chargés ou dans l’heure, six au plus), un autre au survol ; la somme des trois colonnes des personnes égale aux présents à trois heures, dont une où des chauffeurs sont en route ; le détail du service avec les mêmes mots. Six captures de contrôle, hors du dépôt (`ORY_CAPTURES`) |
+| `tests/direct-portable-browser.cjs` | La vue en direct sur un portable (v1, évolution 16, retouches), sur l’unité fictive de 15 services, à 1 366 × 768 et 1 920 × 1 080 : à l’ouverture, après « Tout voir » et après un changement de taille, ce qu’on cadre (le bâtiment et les avions présents) remplit la toile (sa marge, 5 % au plus, du côté qui le limite ; les parts de la toile sont affichées) ; à 1 366 × 768 la toile fait au moins 560 px de haut et le bâtiment en occupe au moins 70 % de la largeur ou de la hauteur ; le titre et « En relief / À plat » sur une ligne, la légende dans un coin de la toile, repliable ; « Plein écran » puis Échap (évolution 19, retouche) ; « En ce moment » replié sous 1 500 px, ouvert par son bouton, le choix retenu après un rechargement ; les étiquettes, le nom seul sauf le goulot, moins de 15 % de la toile ; les chiffres au survol et sur le service choisi ; les vols étiquetés à chaque heure (chargés ou dans l’heure, six au plus), un autre au survol ; la somme des trois colonnes des personnes égale aux présents à trois heures, dont une où des chauffeurs sont en route ; le détail du service avec les mêmes mots. Six captures de contrôle, hors du dépôt (`ORY_CAPTURES`) |
 | `tests/captures-direct-browser.cjs` | Les captures de contrôle de la vue en direct (v1, évolution 16 g), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : à l’ouverture, pendant un goulot (cadré sur son service, son détail dans le panneau), en suivant un vol chargé en retard, sous deux autres angles (au pic de travail ; pendant une tournée du handling) — la scène entière à 24 px des bords, aucune étiquette sur une autre, les traits des étiquettes tracés avant tous les cartouches (aucun ne barre une étiquette). Et la non-régression dans la page : le résultat, les indicateurs, les réponses et l’export de la journée identiques, octet pour octet, avant et après ; « À plat » montre les mêmes personnes au travail, à la même heure. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-direct-browser.cjs`, sinon un dossier temporaire, dit à la fin |
 | `tests/direct-dessin.test.cjs` | Le dessin d’une étiquette de la vue en direct (v1, évolution 16 g), sans navigateur : son trait et son cartouche en deux passes, les deux ensemble égales au dessin d’un coup ; pas de trait pour une étiquette posée sur son ancre |
 | `tests/non-regression-16.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 16 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs (« Réponses » comprise), ont les empreintes calculées sur le commit d’avant l’évolution ; sur la journée fictive que la vue rejoue, avec et sans retard, le résultat du moteur, les indicateurs de charge et les réponses à deux jeux de seuils aussi ; tout ce que la vue lit, à chaque demi-heure, ne change rien à la journée |
