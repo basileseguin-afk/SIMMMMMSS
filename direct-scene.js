@@ -436,6 +436,57 @@
     return Array.from({ length: n }, (_, i) => ({ x: bande.x + (Math.floor(i / rangs) + 0.5) * pas, y: y0 + bande.sens * (i % rangs) * PAS_FILE.y }));
   }
 
+  /** Les lots de handling d'une journée : « service|commande|début » de chacun — ce qu'un lot en stock attend, quand il attend son chargement. */
+  const CHARGEMENTS = new WeakMap();
+  function chargementsDe(r) {
+    let c = CHARGEMENTS.get(r);
+    if (!c) {
+      c = new Set();
+      for (const l of r.lots || []) if (l.handling && Number.isFinite(l.debut)) for (const k of l.classes || []) c.add(l.service + '|' + k + '|' + l.debut);
+      CHARGEMENTS.set(r, c);
+    }
+    return c;
+  }
+
+  /**
+   * Les files, rangées : [{ service, lots, zone, places, debut }] — les lots de la file d'un service, les places de la file
+   * où ils se rangent, et le rang de leur premier chariot dans ces places. `files` : les files de direct-etat.js
+   * ({ service: lots }) ; `bandeDuService(service)` : la bande de la file d'un service, devant sa zone (au quai, pour ce
+   * qui attend le chargement sans équipe de handling) ; `bandeDeLaZone(zone)` : celle d'une zone.
+   * Sans le réglage du site (`site.attentes`), une file par service, devant sa zone : comme avant. Avec lui (évolution
+   * 20 c), ce qui attend le chargement — les lots qu'une équipe de handling va charger, et ceux qui attendent leur vol
+   * sans handling — se range dans la zone choisie (`zone`), et non au quai. Cette zone range tout à la suite, dans une
+   * seule file : ce qui attend ses propres services d'abord, puis ce qui attend le chargement ; aucun chariot n'en cache
+   * un autre (une file longue se resserre : ses premiers chariots gardent leur rang, pas toujours leur place au
+   * centimètre). Un lot qui attend un service attend toujours dans la zone de ce service.
+   */
+  function filesRangees(files, r, site, quai, zoneDe, bandeDeLaZone, bandeDuService) {
+    const chariots = lots => lots.reduce((n, l) => n + l.chariots, 0);
+    const seule = (service, lots) => ({ service, lots, zone: null, places: placesDeFile(bandeDuService(service), chariots(lots)), debut: 0 });
+    const attentes = site.attentes;
+    if (!attentes) return Object.entries(files).map(([service, lots]) => seule(service, lots));
+    const zoneParId = id => site.zones.find(z => z.id === id) || null, reglee = s => (Object.prototype.hasOwnProperty.call(attentes, s) ? zoneParId(attentes[s]) : null);
+    // Sans équipe de handling pour une commande, elle attend son vol au quai : là où le quai envoie ce qu'il charge.
+    const duQuai = quai ? quai.services.map(reglee).find(z => z) || null : null, charges = chargementsDe(r);
+    const morceaux = [];
+    for (const [service, lots] of Object.entries(files)) {
+      const ou = service === 'chargement' ? duQuai : reglee(service);
+      const partent = ou ? lots.filter(l => service === 'chargement' || charges.has(service + '|' + l.classe + '|' + l.sortie)) : [];
+      const restent = partent.length ? lots.filter(l => !partent.includes(l)) : lots;
+      if (restent.length) morceaux.push({ service, lots: restent, zone: null, chez: service === 'chargement' ? quai : zoneDe(service) });
+      if (partent.length) morceaux.push({ service, lots: partent, zone: ou, chez: ou });
+    }
+    // Une zone qui reçoit ce qui attend le chargement : ses propres files d'abord, puis ces lots, dans une seule file.
+    const accueils = new Map();
+    for (const z of new Set(morceaux.filter(m => m.zone).map(m => m.zone))) {
+      const siens = [...morceaux.filter(m => !m.zone && m.chez === z), ...morceaux.filter(m => m.zone === z)];
+      const places = placesDeFile(bandeDeLaZone(z), siens.reduce((n, m) => n + chariots(m.lots), 0));
+      let debut = 0;
+      for (const m of siens) { accueils.set(m, { places, debut }); debut += chariots(m.lots); }
+    }
+    return morceaux.map(m => (accueils.has(m) ? { service: m.service, lots: m.lots, zone: m.zone, ...accueils.get(m) } : seule(m.service, m.lots)));
+  }
+
   /**
    * Les places des chariots d'un lot en cours, dans l'îlot de son atelier : ses trolleys (c'est le trolley sur lequel on
    * travaille), ou le bout de ses tables, d'un côté puis de l'autre ; au-delà, en rangs serrés le long de son bord, du
@@ -495,13 +546,12 @@
       return i ? { x: i.x + i.w / 2, y: i.y + i.h / 2 } : s.de ? porte(s.de) : porte(s.vers);
     };
     // Les files : devant chaque service, ses lots dans l'ordre de leur arrivée ; chacun, ses chariots à la suite.
-    for (const [service, lots] of Object.entries(E.filesA(r, t, N))) {
-      const places = placesDeFile(bande(service), lots.reduce((n, l) => n + l.chariots, 0));
-      let k = 0;
+    for (const { service, lots, zone, places, debut } of filesRangees(E.filesA(r, t, N), r, site, quai, zoneDe, z => bandeDeFile(z, scene.ilots), bande)) {
+      let k = debut;
       for (const l of lots) {
         const base = { quoi: 'chariot', ton: l.nature, couche: 1, etat: 'file', service, classe: l.classe, vol: l.vol };
         // Un lot qui vient d'entrer en stock roule deux minutes de son atelier à la file, en convoi, poussé par un personnage.
-        const depuis = l.arrive < 1 ? source(l) : null, sort = depuis && porte(l.de || service), entre = depuis && porte(service);
+        const depuis = l.arrive < 1 ? source(l) : null, sort = depuis && porte(l.de || service), entre = depuis && (zone ? zone.porte : porte(service));
         const chemin = depuis ? [depuis, sort, ...parAllees(site, sort, entre), entre] : null;
         if (depuis) out.pousseurs.push(pousseur([...chemin, places[k + l.chariots - 1]], l.arrive, l.chariots));
         for (let i = 0; i < l.chariots; i++, k++) {

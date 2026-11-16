@@ -478,6 +478,11 @@
     // relit telle quelle : le site ne la joue pas, et la nomme (moteur/site.js).
     const partages = Object.fromEntries(Object.entries(brut.partages && typeof brut.partages === 'object' && !Array.isArray(brut.partages) ? brut.partages : {})
       .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
+    // Où se range ce qui attend le chargement, dans la vue en direct (évolution 20 c) : { service du handling: service } —
+    // la zone du service choisi, au lieu du quai. Un réglage d'affichage : il ne change aucun calcul. Sans lui (une
+    // sauvegarde d'avant), au quai. Il ne joue que pour un service qui a une équipe de handling (moteur/site.js).
+    const attentes = Object.fromEntries(Object.entries(brut.attentes && typeof brut.attentes === 'object' && !Array.isArray(brut.attentes) ? brut.attentes : {})
+      .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
     // La disposition du site dans la vue en direct (évolution 20 b) : des colonnes de zones et des rangées du bas, que
     // l'utilisateur règle dans « Disposer les zones ». Un réglage d'affichage : il ne change aucun calcul. Sans elle (une
     // sauvegarde d'avant), ou vide : la disposition automatique. Sa forme est remise au propre par moteur/disposition.js.
@@ -488,7 +493,8 @@
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
-      ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}) };
+      ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
+      ...(Object.keys(attentes).length ? { attentes } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -937,13 +943,31 @@
       this.changer(() => { if (d) this.state.disposition = d; else delete this.state.disposition; }, dit || (d ? 'La disposition des zones est réglée.' : 'La disposition des zones redevient automatique.'));
       return true;
     }
+    /**
+     * Où se range ce qui attend le chargement du handling de `service`, dans la vue en direct (évolution 20 c) : la zone
+     * choisie (son identifiant), ou null — le quai. C'est ce que la vue montre : un choix qui ne joue plus (un service
+     * supprimé, la zone du quai lui-même) rend null.
+     */
+    attente(service) { const s = this.site(); return (s && s.attentes && Object.prototype.hasOwnProperty.call(s.attentes, service) ? s.attentes[service] : null) || null; }
+    /** Les zones où ce qui attend le chargement de `service` peut se ranger : [{ id, nom }] — celles du site, sauf la sienne (le quai). */
+    zonesDAttente(service) { const s = this.site(); return s ? s.zones.filter(z => !z.services.includes(service)).map(z => ({ id: z.id, nom: z.nom })) : []; }
+    /**
+     * Règle « ce qui attend le chargement se range dans la zone de `zone` », pour le handling de `service` ; `zone` vide :
+     * le quai. À appeler dans un changement (`changer`). Un réglage d'affichage : il ne change aucun calcul.
+     */
+    regleAttente(service, zone) {
+      const z = zone === null || zone === undefined ? '' : String(zone), e = { ...(this.state.attentes || {}) };
+      if (z !== '' && !this.zonesDAttente(service).some(x => x.id === z)) throw new Error('cette zone n’existe plus : choisissez-en une autre.');
+      if (z === '') delete e[service]; else e[service] = z;
+      if (Object.keys(e).length) this.state.attentes = e; else delete this.state.attentes;
+    }
     /** Le site de la vue en direct, généré à partir des réglages (moteur/site.js) ; `regime` : la règle de poste générale. */
     site(regime) {
       const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
       if (!S) return null;
       return S.generer({ ateliers: this.state.ateliers, parcours: this.state.parcours, surfaces: this.state.surfaces, regime,
         noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])), parents: this.parentsDuSite(), partages: this.state.partages,
-        disposition: this.state.disposition });
+        disposition: this.state.disposition, attentes: this.state.attentes });
     }
 
     regleEncadrement(service, n) {
@@ -1585,6 +1609,8 @@
           // Saisi en heures, gardé en minutes.
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
           case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
+          // Où se range ce qui attend le chargement, dans la vue en direct (évolution 20 c) : un réglage d'affichage.
+          case 'attente': this.regleAttente(a.service, v); break;
           case 'effectif': this.regleEffectifEquipe(a, v); break;
           // Saisies en heures par vol (08/10), gardées en minutes.
           case 'appui-h': {
@@ -2453,6 +2479,7 @@
             title="Le handling ne commence pas un vol plus tôt que cela avant son départ">`, 'h')}</label>
           <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
             title="Vide : toutes les compagnies. Sinon, par exemple : AF, TX"></label>
+          ${this.champAttente(a)}
         </div>
         ${h24 ? this.blocTournees(a) : ''}
 
@@ -2539,6 +2566,20 @@
           ${option('camion', 'gros camion')}${option('vl', 'VL')}${option('des', 'VL à partir de')}</select>${v === 'des'
         ? `<input ${HEURE} value="${esc(des)}" data-at-champ="vl-des" data-cie="${esc(cie)}" class="at-vl-des"
             aria-label="${esc(cie)} : en VL pour les départs à partir de cette heure, en gros camion avant" title="Les départs à partir de cette heure partent en VL ; avant, en gros camion">` : ''}`;
+    }
+
+    /**
+     * Le choix « Ce qui attend le chargement se range dans la zone de », dans la fiche d'une équipe de handling (évolution
+     * 20 c) : le quai par défaut, ou une autre zone de la vue en direct. Le réglage vaut pour le service de l'équipe : ses
+     * équipes de handling montrent le même. Un réglage d'affichage : aucun calcul ne change. Sans autre zone : rien.
+     */
+    champAttente(a) {
+      const zones = this.zonesDAttente(a.service), choisie = this.attente(a.service);
+      if (!zones.length) return '';
+      return `<label class="at-attente">Ce qui attend le chargement se range dans la zone de&nbsp;:<select data-at-champ="attente"
+            title="Dans la vue en direct : où se dessinent les lots finis qui attendent leur vol. Un réglage d’affichage : aucun calcul ne change.">
+            <option value="" ${choisie === null ? 'selected' : ''}>le quai</option>
+            ${zones.map(z => `<option value="${esc(z.id)}" ${z.id === choisie ? 'selected' : ''}>${esc(z.nom)}</option>`).join('')}</select></label>`;
     }
 
     blocTournees(a) {

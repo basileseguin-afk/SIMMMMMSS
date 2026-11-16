@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 20 (c) : ce qui attend son vol se rassemble là où l'utilisateur le dit
+
+Troisième partie de l'évolution 20. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Un réglage de plus dans la fiche de l'équipe de handling** : « Ce qui
+  attend le chargement se range dans la zone de : » — le quai par défaut, ou
+  une autre zone de la vue en direct.
+- **Avec lui**, les lots finis qui attendent leur vol se dessinent dans la
+  zone choisie, d'où qu'ils viennent, et en partent au moment du chargement.
+  Le quai ne montre plus que les camions et les chauffeurs. Dans la zone
+  choisie, tout se range à la suite, sans qu'un chariot en cache un autre.
+- **Aucune autre aire de stockage** : un lot qui attend un service attend
+  dans la zone de ce service, comme avant. **Le compte des chariots dessinés
+  ne change pas.**
+- Sans le réglage, la scène est celle d'avant ; une sauvegarde d'avant se
+  relit sans lui.
+
+Fichiers : `moteur/site.js`, `direct-scene.js`, `ateliers.js`, `sim.js`,
+`index.html` (empreintes), `tests/direct-attente.test.cjs`,
+`tests/direct-attente-browser.cjs` (nouveaux), `README.md`.
+
+---
+
 ## 2026-11-16 — Évolution 20 (b) : la disposition, l'utilisateur dit où va chaque zone
 
 Deuxième partie de l'évolution 20. Aucun calcul ne change ; la version 2

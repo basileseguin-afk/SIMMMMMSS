@@ -808,6 +808,41 @@ ouvre un panneau à côté d'elle, à la place de « En ce moment ».
   bouton porte alors un nombre, et le panneau le dit en phrases — comme une
   boucle de zones partagées. Le premier geste range tout.
 
+### Où attend ce qui est prêt (évolution 20 c)
+
+Par défaut, les lots finis qui attendent leur vol sont dessinés **dans la
+zone du quai**. Dans une unité où ils attendent ailleurs, la fiche de
+l'équipe de handling (page « Équipes ») a un choix de plus :
+
+> **Ce qui attend le chargement se range dans la zone de :** le quai (par
+> défaut), ou une autre zone du site.
+
+- **Avec le réglage**, les lots finis qui attendent leur vol se dessinent
+  dans la zone choisie, d'où qu'ils viennent : un lot qui vient de finir y
+  roule depuis son atelier. Ils en partent au moment du chargement : à
+  l'heure où le handling les prend, ils ne sont plus dessinés — comme ils
+  quittaient le quai. Le quai ne montre plus que les camions et les
+  chauffeurs. Une commande sans handling, qui attend son vol, se range au
+  même endroit.
+- **Dans la zone choisie**, tout se range à la suite, sans qu'un chariot en
+  cache un autre : ce qui attend les services de la zone d'abord, puis ce qui
+  attend le chargement.
+- **Aucune autre aire de stockage n'est dessinée** : un lot qui attend un
+  service attend dans la zone de ce service, comme avant — y compris un lot
+  qui attend une autre équipe du service du quai.
+- **Le compte des chariots dessinés ne change pas** : les mêmes lots, les
+  mêmes chariots, à un autre endroit.
+- **Le réglage vaut pour le service de l'équipe de handling** : ses équipes
+  de handling montrent toutes le même choix ; deux équipes de handling dans
+  deux services ont chacune le leur. Il se garde avec les équipes (« Tout
+  sauvegarder », « Restaurer »), s'annule, et ne change aucun calcul ; une
+  sauvegarde d'avant se relit sans lui : au quai.
+- **Le choix désigne une zone par un de ses services** : si ce service
+  rejoint plus tard la zone d'un autre (« partage la zone de »), ce qui
+  attend le chargement le suit, et la fiche montre cette zone. Si la zone
+  n'existe plus (le service est supprimé, ou n'a plus d'équipe), ou si c'est
+  celle du quai lui-même, c'est le quai — la fiche le dit.
+
 ### En relief : se déplacer dans le site (évolution 16 b)
 
 La page « En direct » s'ouvre **« En relief »** : la scène générée, dessinée dans un
@@ -920,8 +955,9 @@ des lots, les séjours en stock, les vols, les tournées :
   couloir : la file se voit. Les chariots en file devant un service sont
   exactement ses lots en stock. Une longue file s'étale devant les îlots,
   puis s'entasse, sans sortir de sa zone.
-- **Ce qui est prêt avant le chargement attend au quai du handling** ; sans
-  handling, au bout du couloir, du côté des avions.
+- **Ce qui est prêt avant le chargement attend au quai du handling** — ou
+  dans la zone que l'équipe de handling a choisie (« Où attend ce qui est
+  prêt », plus haut) ; sans handling, au bout du couloir, du côté des avions.
 - **Chaque tournée du handling est un véhicule** — un camion ou un véhicule
   léger, celui du résultat : il part du quai à son départ, rejoint l'avion de
   son vol au bord de la scène, et revient ; hors de son trajet, il n'est pas
@@ -1719,6 +1755,8 @@ aucun vol.
 | `tests/direct-disposition.test.cjs` | La scène d’un site disposé (v1, évolution 20 b), sans navigateur, sur la journée fictive : les allées au sol, les murs ouverts du côté de l’allée ; le chemin par les allées (`direct-allees.js`) ; à chaque heure, les personnes et les chariots dans leur zone, dans une allée, dans la pause ou sur la route ; les mêmes comptes que dans le site automatique ; l’aire des avions en bas ou à droite, les véhicules depuis le bord du quai ; sans disposition, la scène d’avant |
 | `tests/direct-disposer.test.cjs` | Le panneau « Disposer les zones » (v1, évolution 20 b), sans navigateur (`direct-disposer.js`) : ce qu’il liste, ses boutons (désactivés au bout), ce que le site a à dire en phrases, l’échappement ; chaque geste et ce qu’il dit |
 | `tests/direct-disposer-browser.cjs` | « Disposer les zones » dans la page (v1, évolution 20 b), sur l’unité fictive : le bouton et le panneau à côté de la scène ; une zone déplacée d’une colonne à l’autre au clavier, le focus gardé, les flèches ; « En rangée du bas », de quelle colonne à quelle colonne ; le glisser-déposer ; ajouter et retirer une colonne, « Annuler » et « Rétablir » ; une zone absente signalée ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; le retour à l’automatique ; la journée inchangée ; la version 2 sans ce panneau |
+| `tests/direct-attente.test.cjs` | Où attend ce qui est prêt (v1, évolution 20 c), sans navigateur, sur la journée fictive : le site dit la zone choisie (`attentes`), seulement si le réglage joue (une équipe de handling, une autre zone que la sienne, un service qui existe) ; avec le réglage, les lots en attente de chargement sont dans la zone choisie et non sur le quai ; sans lui, au quai, comme avant ; le compte des chariots ne change pas, ni les véhicules, les avions, les personnes, ni les chariots des autres zones ; dans la zone choisie, aucun chariot sur un autre ; un lot qui attend un service reste dans la zone de ce service, y compris une autre équipe du quai ; une commande sans handling suit le quai ; la production comme zone d’accueil, un site disposé, une zone disparue ; le handling 24 h/24 en tournées ; le réglage gardé par la sauvegarde, sans aucun effet sur le calcul. |
+| `tests/direct-attente-browser.cjs` | Le choix « Ce qui attend le chargement se range dans la zone de : » dans la fiche de l’équipe de handling (v1, évolution 20 c), sur l’unité fictive : « le quai » par défaut, puis les autres zones ; dans la scène, les lots en attente de chargement au quai, puis dans la zone choisie, autant de chariots ; la journée inchangée ; « Annuler » et « Rétablir » ; une zone partagée, un site disposé ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; une zone inconnue refusée, un nom de zone échappé ; la version 2 sans ce champ. |
 | `tests/site-zones-browser.cjs` | Le choix « Dans la vue en direct, partage la zone de » dans la fiche d’un service (v1, évolution 20 a), sur l’unité fictive : l’annexe rattachée dans la zone de son service, une seule ligne robotisée ; une zone pour deux services, la journée inchangée, chaque service à sa ligne à côté de la scène ; la boucle refusée sous le champ ; « Annuler », le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans ce champ |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |

@@ -37,7 +37,10 @@
  *     `disposition` — des colonnes et des rangées du bas —, le tracé est celui
  *     de moteur/disposition.js : des allées fines à la place du couloir,
  *     l'entrée et l'aire de pause en haut à gauche, les avions le long du bord
- *     extérieur de la zone du quai. Les tailles viennent toujours des parts.
+ *     extérieur de la zone du quai. Les tailles viennent toujours des parts ;
+ *   - ce qui attend le chargement se range au quai, ou dans la zone que l'équipe
+ *     de handling a choisie (`attentes`, un réglage, évolution 20 c) : le site
+ *     dit laquelle ; aucune autre aire de stockage n'est dessinée.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -363,14 +366,34 @@
   }
 
   /**
-   * Le site généré à partir des réglages : { ateliers, parcours, noms, surfaces, regime, parents, partages }.
+   * Où se range ce qui attend le chargement (évolution 20 c) : { service du handling: zone }. `attentes` ({ service du
+   * handling: service }) est le réglage de la fiche de l'équipe de handling, « Ce qui attend le chargement se range dans
+   * la zone de » : le service choisi désigne sa zone (la production se désigne aussi par « food »). Il ne joue que pour un
+   * service qui a une équipe de handling, et s'il désigne une zone du site autre que la sienne ; sinon c'est le quai,
+   * comme avant, et rien n'est rendu pour ce service.
+   */
+  function attentesDe(attentes, ateliers, zones) {
+    const reglees = objet(attentes), out = {};
+    for (const s of new Set(ateliers.filter(a => a.type === 'handling').map(a => a.service))) {
+      const choix = Object.prototype.hasOwnProperty.call(reglees, s) ? texte(reglees[s]) : null;
+      if (choix === null) continue;
+      const z = zones.find(x => x.services.includes(choix)) || zones.find(x => x.id === choix), ici = zones.find(x => x.services.includes(s));
+      if (z && z !== ici) out[s] = z.id;
+    }
+    return out;
+  }
+
+  /**
+   * Le site généré à partir des réglages : { ateliers, parcours, noms, surfaces, regime, parents, partages, attentes }.
    * `parents` : { annexe: service } — les annexes rattachées, d'après le plan (`parentsDuPlan`) ; `partages` : { service:
-   * service } — le réglage « partage la zone de ». Sans eux : une zone par service.
+   * service } — le réglage « partage la zone de ». Sans eux : une zone par service. `attentes` : { service du handling:
+   * service } — le réglage « Ce qui attend le chargement se range dans la zone de » (`attentesDe`).
    * Rend { largeur, profondeur, surface, couloir, entree, pause, emprise, avions, zones } ; chaque zone :
    * { id, nom, role, services, ateliers, personnes, part, surface, minimum, bande, x, y, w, h, porte } — plus `lignes` (ses
    * lignes robotisées, chacune avec ses ateliers ; la zone FOOD en a toujours la liste), `tunnels` (une zone qui lave) ou
    * `rayonnages` (la zone du magasin). Et `notes`, s'il y a quelque chose à dire : une boucle de zones partagées
-   * ({ code: 'boucle', services }), un service choisi qui n'existe plus ({ code: 'inconnu', service, hote }).
+   * ({ code: 'boucle', services }), un service choisi qui n'existe plus ({ code: 'inconnu', service, hote }). Et `attentes`,
+   * si le réglage joue : { service du handling: zone } — où se range ce qui attend le chargement (évolution 20 c).
    */
   function generer(reglages) {
     const r = reglages || {}, ateliers = (Array.isArray(r.ateliers) ? r.ateliers : []).filter(a => a && a.id != null && a.service != null);
@@ -405,6 +428,8 @@
       z.entrepot = z.rayons && z.ateliers.every(id => parId.get(id).service === 'magasin');
     }
     const parts = new Map(zones.map(z => [z.id, z.part]));
+    // Où se range ce qui attend le chargement (évolution 20 c) : dit avec le site, seulement si le réglage joue.
+    const attentes = attentesDe(r.attentes, ateliers, zones), fini = site => (Object.keys(attentes).length ? { ...site, attentes } : site);
     /** Une zone posée : ce qu'elle est, sa place ({ bande, x, y, w, h, porte } — et `ouvert`, dans une disposition), ses machines. */
     const poser = (z, place) => {
       const pose = { id: z.id, nom: z.nom, role: z.role, services: z.services, ateliers: z.ateliers, personnes: z.personnes, part: parts.get(z.id), surface: parts.get(z.id) * surface, minimum: z.minimum, ...place };
@@ -416,7 +441,7 @@
     };
     // La disposition de l'utilisateur (évolution 20 b) : des colonnes et des rangées du bas, tracées par moteur/disposition.js.
     const disposition = DISPOSITION() ? DISPOSITION().lire(r.disposition) : null;
-    if (disposition) return dispose(zones, disposition, surface, poser, notes);
+    if (disposition) return fini(dispose(zones, disposition, surface, poser, notes));
     const largeur = Math.sqrt(ALLONGEMENT * surface), bandes = bandesDe(zones, parts);
     const fond = bandes.map(b => surface * somme(b, z => parts.get(z.id)) / largeur);
     const y = [0, fond[0] + COULOIR], sortie = [];
@@ -433,9 +458,9 @@
     const pause = { x: -PAUSE.w, y: fond[1] > 0 ? fond[0] + COULOIR : Math.max(0, fond[0] - hp), w: PAUSE.w, h: hp };
     // Les zones dans l'ordre du chemin, comme elles ont été données.
     const rang = new Map(zones.map((z, i) => [z.id, i]));
-    return { largeur, profondeur, surface, couloir: { x: 0, y: fond[0], w: largeur, h: COULOIR }, entree: { x: 0, y: fond[0] + COULOIR / 2 }, pause,
+    return fini({ largeur, profondeur, surface, couloir: { x: 0, y: fond[0], w: largeur, h: COULOIR }, entree: { x: 0, y: fond[0] + COULOIR / 2 }, pause,
       emprise: { x0: pause.x, y0: 0, x1: largeur, y1: profondeur }, avions: 'droite', zones: sortie.sort((p, q) => rang.get(p.id) - rang.get(q.id)),
-      ...(notes.length ? { notes } : {}) };
+      ...(notes.length ? { notes } : {}) });
   }
 
   /**

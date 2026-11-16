@@ -2317,20 +2317,20 @@ function initDisposer() {
   }).observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct', 'class'] });
   majDisposer();
 }
-/** Ce que le site lit des réglages (moteur/site.js) : les équipes, les chemins, les noms, les parts, qui partage la zone de qui, la disposition. */
+/** Ce que le site lit des réglages (moteur/site.js) : les équipes, les chemins, les noms, les parts, qui partage la zone de qui, la disposition, où attend le chargement. */
 function reglagesDuSite() {
   const at = Sim.ateliers; if (!at || !window.OrlySite) return null;
   const noms = Object.fromEntries(servicesDisponibles().map(x => [x.id, nomLisible(x.nom)]));
   const regime = Sim.reglages && Sim.reglages.etat ? Sim.reglages.etat.regime : undefined;
   // Qui partage la zone de qui (évolution 20 a) : les annexes rattachées, d'après le plan, et le réglage des fiches.
   return { ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime, parents: at.parentsDuSite(), partages: at.state.partages || null,
-    disposition: at.state.disposition || null };
+    disposition: at.state.disposition || null, attentes: at.state.attentes || null };
 }
 let siteGarde = null;
-/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées, ni la disposition ne changent. */
+/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées, ni la disposition, ni la zone d'attente du chargement ne changent. */
 function siteDeLaVue() {
   const at = Sim.ateliers, r = reglagesDuSite(); if (!r) return null;
-  const cle = JSON.stringify([r.noms, r.regime || null, r.surfaces || null, r.ateliers.length, r.parents, r.partages, r.disposition]);
+  const cle = JSON.stringify([r.noms, r.regime || null, r.surfaces || null, r.ateliers.length, r.parents, r.partages, r.disposition, r.attentes]);
   if (siteGarde && siteGarde.r === at.resultat && siteGarde.cle === cle) return siteGarde.site;
   siteGarde = { r: at.resultat, cle, site: OrlySite.generer(r) };
   return siteGarde.site;
