@@ -483,6 +483,11 @@
     // sauvegarde d'avant), au quai. Il ne joue que pour un service qui a une équipe de handling (moteur/site.js).
     const attentes = Object.fromEntries(Object.entries(brut.attentes && typeof brut.attentes === 'object' && !Array.isArray(brut.attentes) ? brut.attentes : {})
       .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
+    // Les services qui ont des rayonnages dans leur zone, dans la vue en direct (évolution 20 d) : { service: true }. Un
+    // réglage d'affichage : il ne change aucun calcul. Sans lui (une sauvegarde d'avant), seul le magasin en a — il en a
+    // toujours : rien à garder pour lui.
+    const rayonnages = Object.fromEntries(Object.entries(brut.rayonnages && typeof brut.rayonnages === 'object' && !Array.isArray(brut.rayonnages) ? brut.rayonnages : {})
+      .filter(([k, x]) => k && k.length <= 160 && k !== 'magasin' && x === true).slice(0, 500));
     // La disposition du site dans la vue en direct (évolution 20 b) : des colonnes de zones et des rangées du bas, que
     // l'utilisateur règle dans « Disposer les zones ». Un réglage d'affichage : il ne change aucun calcul. Sans elle (une
     // sauvegarde d'avant), ou vide : la disposition automatique. Sa forme est remise au propre par moteur/disposition.js.
@@ -494,7 +499,7 @@
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
       ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
-      ...(Object.keys(attentes).length ? { attentes } : {}) };
+      ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -961,13 +966,29 @@
       if (z === '') delete e[service]; else e[service] = z;
       if (Object.keys(e).length) this.state.attentes = e; else delete this.state.attentes;
     }
+    /** `service` a-t-il des rayonnages dans sa zone, dans la vue en direct (évolution 20 d) ? Le magasin en a toujours. */
+    rayonnages(service) { return service === 'magasin' || (this.state.rayonnages || {})[service] === true; }
+    /**
+     * Règle « des rayonnages dans sa zone », pour `service` : ils se rangent au fond, les postes de ses équipes devant. Le
+     * magasin en a toujours : rien à régler. Un réglage d'affichage : il ne change aucun calcul.
+     */
+    regleRayonnages(service, oui) {
+      const o = oui === true, nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      if (service === 'magasin' || o === this.rayonnages(service)) return false;
+      this.changer(() => {
+        const e = { ...(this.state.rayonnages || {}) };
+        if (o) e[service] = true; else delete e[service];
+        if (Object.keys(e).length) this.state.rayonnages = e; else delete this.state.rayonnages;
+      }, nom + ' : ' + (o ? 'des rayonnages au fond de sa zone, dans la vue en direct.' : 'plus de rayonnages dans sa zone, dans la vue en direct.'));
+      return true;
+    }
     /** Le site de la vue en direct, généré à partir des réglages (moteur/site.js) ; `regime` : la règle de poste générale. */
     site(regime) {
       const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
       if (!S) return null;
       return S.generer({ ateliers: this.state.ateliers, parcours: this.state.parcours, surfaces: this.state.surfaces, regime,
         noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])), parents: this.parentsDuSite(), partages: this.state.partages,
-        disposition: this.state.disposition, attentes: this.state.attentes });
+        disposition: this.state.disposition, attentes: this.state.attentes, rayonnages: this.state.rayonnages });
     }
 
     regleEncadrement(service, n) {

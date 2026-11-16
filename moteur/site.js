@@ -38,6 +38,11 @@
  *     de moteur/disposition.js : des allées fines à la place du couloir,
  *     l'entrée et l'aire de pause en haut à gauche, les avions le long du bord
  *     extérieur de la zone du quai. Les tailles viennent toujours des parts ;
+ *   - des rayonnages : le magasin en a toujours ; un autre service en a si sa
+ *     fiche le dit (`rayonnages`, un réglage, évolution 20 d). Une zone qui n'a
+ *     que les équipes du magasin est un entrepôt, sur toute sa profondeur ;
+ *     sinon ils se rangent au fond (`rayonnagesAuFond`), et la zone garde le
+ *     devant pour les postes de ses équipes — et la place des deux ;
  *   - ce qui attend le chargement se range au quai, ou dans la zone que l'équipe
  *     de handling a choisie (`attentes`, un réglage, évolution 20 c) : le site
  *     dit laquelle ; aucune autre aire de stockage n'est dessinée.
@@ -341,25 +346,40 @@
   /** L'écart entre deux sortes de machines rangées l'une devant l'autre. */
   const ENTRE = 0.6;
 
+  /** Dans une zone qui a des rayonnages au fond et des postes devant, la part de la profondeur que ses machines prennent au plus : des rayonnages seuls ; avec d'autres machines. */
+  const FOND = { rayonnages: 0.5, machines: 0.75 };
+
   /**
    * Les machines d'une zone posée, depuis son fond : { lignes, tunnels, rayonnages }, des rectangles. Une seule sorte : dans
    * toute la zone. Plusieurs sortes (une zone que des services partagent) : l'une devant l'autre — les rayonnages au fond,
    * puis les lignes, puis les tunnels —, chacune dans sa tranche de la profondeur : à leur taille si elles tiennent toutes,
    * resserrées ensemble sinon. Jamais l'une sur l'autre, jamais hors de la zone.
+   * Une zone qui a des rayonnages sans être un entrepôt (évolution 20 d) garde le devant libre pour les postes de ses
+   * équipes : ses rayonnages ne passent pas la moitié de la profondeur ; avec d'autres machines, l'ensemble ne passe pas
+   * les trois quarts — à l'étroit, ils rétrécissent.
    */
   function machinesDe(pose, z) {
-    const sortes = [], out = { lignes: [], tunnels: [], rayonnages: [] };
+    const sortes = [], out = { lignes: [], tunnels: [], rayonnages: [] }, auFond = z.rayons && !z.entrepot;
     if (z.rayons) sortes.push(['rayonnages', RAYON, null]);
     if (z.lignes && z.lignes.length) sortes.push(['lignes', LIGNE, z.lignes.length]);
     if (z.tunnels && z.tunnels.length) sortes.push(['tunnels', TUNNEL, z.tunnels.length]);
     const nombre = n => (n !== null ? n : z.entrepot && sortes.length === 1 ? rangeesDEntrepot(pose.h) : rangeesAuFond(pose));
-    if (sortes.length <= 1) { for (const [cle, forme, n] of sortes) out[cle] = empiler(pose, nombre(n), forme); return out; }
     const depuisLeFond = m => (pose.bande === 0 ? Math.max(...m.map(p => p.y + p.h)) - pose.y : pose.y + pose.h - Math.min(...m.map(p => p.y)));
-    const besoins = sortes.map(([, forme, n]) => depuisLeFond(empiler(pose, nombre(n), forme)) + ENTRE), k = Math.min(1, pose.h / somme(besoins, x => x));
+    /** La tranche du fond de la zone, de profondeur `h`, à `pris` du fond. */
+    const tranche = (pris, h) => ({ ...pose, y: pose.bande === 0 ? pose.y + pris : pose.y + pose.h - pris - h, h });
+    if (sortes.length <= 1) {
+      for (const [cle, forme, n] of sortes) {
+        out[cle] = empiler(pose, nombre(n), forme);
+        // Des rayonnages au fond qui passeraient la moitié de la profondeur (une zone peu profonde) : rangés dans cette moitié.
+        if (auFond && depuisLeFond(out[cle]) > FOND.rayonnages * pose.h + 1e-9) out[cle] = empiler(tranche(0, FOND.rayonnages * pose.h), nombre(n), forme);
+      }
+      return out;
+    }
+    const besoins = sortes.map(([, forme, n]) => depuisLeFond(empiler(pose, nombre(n), forme)) + ENTRE), k = Math.min(1, (auFond ? FOND.machines : 1) * pose.h / somme(besoins, x => x));
     let pris = 0;
     sortes.forEach(([cle, forme, n], i) => {
       const h = besoins[i] * k;
-      out[cle] = empiler({ ...pose, y: pose.bande === 0 ? pose.y + pris : pose.y + pose.h - pris - h, h }, nombre(n), forme);
+      out[cle] = empiler(tranche(pris, h), nombre(n), forme);
       pris += h;
     });
     return out;
@@ -384,14 +404,15 @@
   }
 
   /**
-   * Le site généré à partir des réglages : { ateliers, parcours, noms, surfaces, regime, parents, partages, attentes }.
+   * Le site généré à partir des réglages : { ateliers, parcours, noms, surfaces, regime, parents, partages, attentes, rayonnages }.
    * `parents` : { annexe: service } — les annexes rattachées, d'après le plan (`parentsDuPlan`) ; `partages` : { service:
    * service } — le réglage « partage la zone de ». Sans eux : une zone par service. `attentes` : { service du handling:
-   * service } — le réglage « Ce qui attend le chargement se range dans la zone de » (`attentesDe`).
+   * service } — le réglage « Ce qui attend le chargement se range dans la zone de » (`attentesDe`). `rayonnages` :
+   * { service: true } — le réglage « Des rayonnages dans sa zone » (le magasin en a toujours).
    * Rend { largeur, profondeur, surface, couloir, entree, pause, emprise, avions, zones } ; chaque zone :
    * { id, nom, role, services, ateliers, personnes, part, surface, minimum, bande, x, y, w, h, porte } — plus `lignes` (ses
    * lignes robotisées, chacune avec ses ateliers ; la zone FOOD en a toujours la liste), `tunnels` (une zone qui lave) ou
-   * `rayonnages` (la zone du magasin). Et `notes`, s'il y a quelque chose à dire : une boucle de zones partagées
+   * `rayonnages` (la zone du magasin, ou d'un service qui en a ; avec `rayonnagesAuFond` si ce n'est pas un entrepôt). Et `notes`, s'il y a quelque chose à dire : une boucle de zones partagées
    * ({ code: 'boucle', services }), un service choisi qui n'existe plus ({ code: 'inconnu', service, hote }). Et `attentes`,
    * si le réglage joue : { service du handling: zone } — où se range ce qui attend le chargement (évolution 20 c).
    */
@@ -402,6 +423,8 @@
       pause: { x: -PAUSE.w, y: 0, w: PAUSE.w, h: COULOIR }, emprise: { x0: -PAUSE.w, y0: 0, x1: 0, y1: COULOIR }, avions: 'droite', zones: [] };
     if (!zones.length) return vide;
     const parId = new Map(ateliers.map(a => [a.id, a]));
+    // Les rayonnages : le magasin en a toujours ; un autre service, si sa fiche le dit (`rayonnages`, évolution 20 d).
+    const reglees = objet(r.rayonnages), aDesRayonnages = s => s === 'magasin' || (Object.prototype.hasOwnProperty.call(reglees, s) && reglees[s] === true);
     // Les tunnels : dans la zone de la plonge, et dans toute zone dont un atelier lave (un quai qui a sa propre équipe de
     // lavage) — sauf les équipes de la production et du magasin, qui ont leurs propres machines.
     const tunnels = ids => { const laveurs = ids.map(id => parId.get(id)).filter(a => a.type === 'lavage' && !FOOD.includes(a.service) && a.service !== 'magasin'); return laveurs.length ? tunnelsDe(laveurs, r.regime) : null; };
@@ -409,7 +432,7 @@
       // La place qu'il faut à l'unité : ses ateliers, ses machines, ses rayonnages.
       const siens = tunnels(u.ateliers);
       u.minimum = MARGE * somme(u.ateliers, id => placeAtelier(parId.get(id))) + u.lignes.length * LIGNE.place
-        + (siens ? siens.length * TUNNEL.place : 0) + (u.services.includes('magasin') ? RAYON.place : 0);
+        + (siens ? siens.length * TUNNEL.place : 0) + (u.services.some(aDesRayonnages) ? RAYON.place : 0);
     }
     // Le site : assez grand pour tous, sans descendre sous un minimum ; puis, les parts fixées, pour que chaque unité tienne.
     const base = Math.max(SURFACE_MIN, 1.6 * somme(unites, u => u.minimum));
@@ -423,8 +446,10 @@
       z.part = somme(z.unites, u => partDe.get(u.id)); z.minimum = somme(z.unites, u => u.minimum);
       const siens = tunnels(z.ateliers);
       if (siens) z.tunnels = siens;
-      // Les rayonnages : dans la zone où est le magasin ; un entrepôt si elle n'a que ses équipes.
-      z.rayons = z.services.includes('magasin');
+      // Les rayonnages : dans la zone où est le magasin, ou un service qui en a par réglage (évolution 20 d). Un entrepôt,
+      // sur toute sa profondeur, si elle n'a que les équipes du magasin (comme avant) ; sinon ils se rangent au fond, et
+      // les postes des équipes se placent devant.
+      z.rayons = z.services.some(aDesRayonnages);
       z.entrepot = z.rayons && z.ateliers.every(id => parId.get(id).service === 'magasin');
     }
     const parts = new Map(zones.map(z => [z.id, z.part]));
@@ -437,6 +462,8 @@
       if (z.lignes) pose.lignes = machines.lignes.map((p, i) => ({ ...p, ateliers: z.lignes[i] }));
       if (z.tunnels) pose.tunnels = machines.tunnels.map((p, i) => ({ nom: z.tunnels[i], ...p }));
       if (z.rayons) pose.rayonnages = machines.rayonnages;
+      // Des rayonnages au fond, des postes devant : la scène y range les îlots devant les machines (direct-scene.js).
+      if (z.rayons && !z.entrepot) pose.rayonnagesAuFond = true;
       return pose;
     };
     // La disposition de l'utilisateur (évolution 20 b) : des colonnes et des rangées du bas, tracées par moteur/disposition.js.

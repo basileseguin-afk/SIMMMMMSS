@@ -5,7 +5,9 @@
  *  (moteur/site.js, évolution 16 a), et où un service peut partager la zone
  *  d'un autre (évolution 20 a). Ces réglages se font dans la fiche du service,
  *  section « Avancé » : un champ en %, vide pour la part par défaut ; un choix
- *  « Dans la vue en direct, partage la zone de » (aucun, ou un autre service).
+ *  « Dans la vue en direct, partage la zone de » (aucun, ou un autre service) ;
+ *  une case « Des rayonnages dans sa zone » (évolution 20 d ; le magasin en a
+ *  toujours : sa fiche le dit, sans case).
  *  La fiche est dessinée par unite.js, commun aux deux versions : ce module de
  *  la version 1 y ajoute ses champs après chaque dessin, sans toucher au
  *  fichier commun. Les réglages se sauvegardent avec les ateliers ; ils ne
@@ -74,6 +76,22 @@
       + '<small id="site-partage-mot">' + esc(explicationPartage(e)) + '</small></label>';
   }
 
+  /** Ce que la case « Des rayonnages dans sa zone » explique ; `e.par` : les autres services de sa zone qui en ont déjà (leurs noms). */
+  function motRayonnages(e) {
+    return 'Dans la vue en direct, les rayonnages se rangent au fond de la zone ; les équipes gardent leur poste de travail (tables, chariots, machine) '
+      + 'et se placent devant. La zone garde la place des deux. Ce réglage ne change aucun calcul.'
+      + (e.par && e.par.length ? ' Aujourd’hui, sa zone a déjà ceux de ' + e.par.join(', ') + '.' : '');
+  }
+  /**
+   * La case « Des rayonnages dans sa zone », pour la fiche du service `e.service` (`e.oui` : cochée ; `e.par`). Le magasin
+   * en a toujours : pas de case, une phrase. Ce que la case fait est dit dessous, hors de son libellé.
+   */
+  function caseRayonnages(e) {
+    if (e.service === 'magasin') return '<p class="site-rayonnages"><small>Dans la vue en direct, le magasin a toujours des rayonnages dans sa zone.</small></p>';
+    return '<div class="site-rayonnages"><label><input type="checkbox" data-site-rayonnages="' + esc(e.service) + '"' + (e.oui ? ' checked' : '') + ' aria-describedby="site-rayonnages-mot">'
+      + '<span>Des rayonnages dans sa zone</span></label><small id="site-rayonnages-mot">' + esc(motRayonnages(e)) + '</small></div>';
+  }
+
   /** Le service de la fiche affichée : sa part réglée, la part et le nom de sa zone, le service dont il partage la zone, ceux qui sont avec lui. */
   function etatDe(section, a, regime) {
     const repere = section.querySelector('[data-mu-encadrement]'), service = repere && repere.dataset.muEncadrement;
@@ -83,15 +101,17 @@
     const parent = a.parentsDuSite ? a.parentsDuSite()[service] : null;
     return { service, reglee: a.surface(service), part: partDe(site, service), zone: z && z.services.length > 1 ? z.nom : null,
       partage: { service, hote: a.partage ? a.partage(service) : null, parent: parent ? nomDe(parent) : null, services, zone: z ? z.nom : null,
-        avec: z ? z.services.filter(x => x !== service).map(nomDe) : [] } };
+        avec: z ? z.services.filter(x => x !== service).map(nomDe) : [] },
+      rayonnages: { service, oui: a.rayonnages ? a.rayonnages(service) : false,
+        par: z && a.rayonnages ? z.services.filter(x => x !== service && a.rayonnages(x)).map(nomDe) : [] } };
   }
 
-  /** Ajoute les champs à la section « Avancé » de la fiche affichée dans `box`, s'ils n'y sont pas : la part de surface, puis la zone partagée. */
+  /** Ajoute les champs à la section « Avancé » de la fiche affichée dans `box`, s'ils n'y sont pas : la part de surface, la zone partagée, les rayonnages. */
   function completer(box, at, regime) {
     const section = box && box.querySelector('[data-mu-section="avance"]'), a = at && at();
     if (!section || !a || section.querySelector('[data-site-surface]')) return;
     const e = etatDe(section, a, regime);
-    if (e) section.insertAdjacentHTML('beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : ''));
+    if (e) section.insertAdjacentHTML('beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : '') + (a.regleRayonnages ? caseRayonnages(e.rayonnages) : ''));
   }
 
   /** Après un réglage, la fiche n'est pas redessinée : le champ reprend la valeur gardée, et dit la place d'aujourd'hui. */
@@ -104,6 +124,10 @@
     const valeur = e.reglee === null ? '' : String(e.reglee);
     if (el.value !== valeur) el.value = valeur;
     if (mot) mot.textContent = explication(e.part, e.zone);
+    // Les rayonnages : la case dit ce qui est gardé ; dessous, si sa zone en a déjà par un autre service.
+    const coche = section.querySelector('[data-site-rayonnages]'), motCase = section.querySelector('#site-rayonnages-mot');
+    if (coche && coche.checked !== e.rayonnages.oui) coche.checked = e.rayonnages.oui;
+    if (coche && motCase) motCase.textContent = motRayonnages(e.rayonnages);
     // La zone partagée : le choix gardé, et où est le service aujourd'hui.
     const sel = section.querySelector('[data-site-partage]');
     if (!sel) return;
@@ -138,6 +162,11 @@
         setTimeout(() => actualiser(box, at, regime), 0);
         return;
       }
+      if (el.dataset.siteRayonnages !== undefined) {
+        const service = el.dataset.siteRayonnages, oui = el.checked;
+        setTimeout(() => { at().regleRayonnages(service, oui); actualiser(box, at, regime); }, 0);
+        return;
+      }
       if (el.dataset.siteSurface === undefined) return;
       const service = el.dataset.siteSurface, valeur = el.value;
       setTimeout(() => { at().regleSurface(service, valeur); actualiser(box, at, regime); }, 0);
@@ -146,7 +175,7 @@
     completer(box, at, regime);
   }
 
-  const api = { ecouter, completer, actualiser, champ, partDe, choix, explicationPartage, motAucun };
+  const api = { ecouter, completer, actualiser, champ, partDe, choix, explicationPartage, motAucun, caseRayonnages, motRayonnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlySiteReglages = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

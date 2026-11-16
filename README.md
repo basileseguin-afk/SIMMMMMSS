@@ -739,7 +739,9 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
   jamais l'une sur l'autre, jamais hors de la zone. Dans une zone que des
   services partagent, les sortes de machines se rangent l'une devant
   l'autre — les rayonnages au fond, puis les lignes, puis les tunnels — et
-  les rayonnages du magasin ne prennent que le fond.
+  les rayonnages du magasin ne prennent que le fond. Un autre service peut
+  avoir des rayonnages dans sa zone (« Des rayonnages et des postes dans la
+  même zone », plus bas).
 - **Le placement** suit le chemin, de l'amont vers l'aval : le magasin
   d'abord (côté arrivées), la production au milieu, le quai du handling au
   bout (côté avions), la plonge au bout de l'autre bande, près du quai des
@@ -842,6 +844,40 @@ l'équipe de handling (page « Équipes ») a un choix de plus :
   attend le chargement le suit, et la fiche montre cette zone. Si la zone
   n'existe plus (le service est supprimé, ou n'a plus d'équipe), ou si c'est
   celle du quai lui-même, c'est le quai — la fiche le dit.
+
+### Des rayonnages et des postes dans la même zone (évolution 20 d)
+
+Le magasin a toujours des rayonnages. Un autre service peut en avoir aussi,
+à côté des postes de ses équipes : dans sa fiche, section « Avancé », après
+la part de surface et la zone partagée, une case de plus :
+
+> **Des rayonnages dans sa zone** (non cochée par défaut).
+
+- **Les rayonnages se rangent au fond de la zone**, en rangs sur sa largeur :
+  la moitié de sa profondeur au plus. **Les îlots des équipes** — leurs
+  tables, leurs chariots, leur machine — **gardent leur poste de travail et
+  se placent devant** : les deux sont dessinés, jamais l'un sur l'autre. Une
+  équipe réglée sur le poste « rayonnages » travaille entre ceux de la zone.
+- **La zone garde la place des deux** : sa place minimale est celle de ses
+  équipes et de ses machines, plus celle des rayonnages. Elle grandit s'il
+  le faut ; la part de surface réglée ne descend pas sous cette place.
+- **Avec d'autres machines** dans la même zone (des tunnels, une ligne
+  robotisée) : les rayonnages au fond, puis les lignes, puis les tunnels ;
+  l'ensemble ne passe pas les trois quarts de la profondeur, et les îlots
+  restent devant. À l'étroit, machines et îlots se resserrent plutôt que de
+  se recouvrir.
+- **Le magasin en a toujours** : sa fiche le dit, sans case. Seul avec ses
+  équipes, il reste l'entrepôt d'aujourd'hui, des rangées sur toute sa
+  profondeur, quel que soit le poste de ses équipes. Dans une zone qu'il
+  partage avec un autre service, ses rayonnages se rangent au fond, comme
+  ceux d'un service qui a coché la case.
+- **Un service qui partage la zone d'un autre** apporte ses rayonnages à
+  cette zone. La case reste celle du service : la fiche d'un service dont la
+  zone a déjà des rayonnages par un autre le dit sous sa case (« Aujourd'hui,
+  sa zone a déjà ceux de … »).
+- Le réglage se garde avec les équipes (« Tout sauvegarder », « Restaurer »),
+  s'annule, et ne change aucun calcul ; une sauvegarde d'avant se relit sans
+  lui : seul le magasin a des rayonnages, et le site est celui d'avant.
 
 ### En relief : se déplacer dans le site (évolution 16 b)
 
@@ -1757,6 +1793,8 @@ aucun vol.
 | `tests/direct-disposer-browser.cjs` | « Disposer les zones » dans la page (v1, évolution 20 b), sur l’unité fictive : le bouton et le panneau à côté de la scène ; une zone déplacée d’une colonne à l’autre au clavier, le focus gardé, les flèches ; « En rangée du bas », de quelle colonne à quelle colonne ; le glisser-déposer ; ajouter et retirer une colonne, « Annuler » et « Rétablir » ; une zone absente signalée ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; le retour à l’automatique ; la journée inchangée ; la version 2 sans ce panneau |
 | `tests/direct-attente.test.cjs` | Où attend ce qui est prêt (v1, évolution 20 c), sans navigateur, sur la journée fictive : le site dit la zone choisie (`attentes`), seulement si le réglage joue (une équipe de handling, une autre zone que la sienne, un service qui existe) ; avec le réglage, les lots en attente de chargement sont dans la zone choisie et non sur le quai ; sans lui, au quai, comme avant ; le compte des chariots ne change pas, ni les véhicules, les avions, les personnes, ni les chariots des autres zones ; dans la zone choisie, aucun chariot sur un autre ; un lot qui attend un service reste dans la zone de ce service, y compris une autre équipe du quai ; une commande sans handling suit le quai ; la production comme zone d’accueil, un site disposé, une zone disparue ; le handling 24 h/24 en tournées ; le réglage gardé par la sauvegarde, sans aucun effet sur le calcul. |
 | `tests/direct-attente-browser.cjs` | Le choix « Ce qui attend le chargement se range dans la zone de : » dans la fiche de l’équipe de handling (v1, évolution 20 c), sur l’unité fictive : « le quai » par défaut, puis les autres zones ; dans la scène, les lots en attente de chargement au quai, puis dans la zone choisie, autant de chariots ; la journée inchangée ; « Annuler » et « Rétablir » ; une zone partagée, un site disposé ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; une zone inconnue refusée, un nom de zone échappé ; la version 2 sans ce champ. |
+| `tests/site-rayonnages.test.cjs` | Des rayonnages et des postes dans la même zone (v1, évolution 20 d), sans navigateur : sans le réglage, le site de référence et ses îlots, champ par champ ; avec, des rayonnages au fond de la zone, les tables de ses équipes devant, les deux dessinés, sans chevauchement, la moitié de la profondeur au plus, une place minimale plus grande ; des chariots, une machine, une équipe sans poste, une équipe aux rayonnages ; les tunnels et la ligne robotisée devant les rayonnages ; le magasin seul, l’entrepôt d’aujourd’hui quel que soit le poste de ses équipes ; une zone partagée ; un site disposé, une part de surface minuscule, une zone de moins d’un mètre de profondeur ; 200 unités tirées d’une graine fixe, des réglages au hasard : jamais un îlot sur une machine ni hors de sa zone ; le réglage gardé par la sauvegarde. |
+| `tests/site-rayonnages-browser.cjs` | La case « Des rayonnages dans sa zone » dans la fiche d’un service (v1, évolution 20 d), sur l’unité fictive : non cochée par défaut, après la part de surface et la zone partagée ; le magasin sans case ; cochée, des rayonnages au fond de la zone et les tables devant, dans la scène ; la journée inchangée ; « Annuler » et « Rétablir » (la case se remet à jour) ; un service dont la zone a déjà des rayonnages par un autre ; le magasin seul, inchangé ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans cette case. |
 | `tests/site-zones-browser.cjs` | Le choix « Dans la vue en direct, partage la zone de » dans la fiche d’un service (v1, évolution 20 a), sur l’unité fictive : l’annexe rattachée dans la zone de son service, une seule ligne robotisée ; une zone pour deux services, la journée inchangée, chaque service à sa ligne à côté de la scène ; la boucle refusée sous le champ ; « Annuler », le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans ce champ |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |

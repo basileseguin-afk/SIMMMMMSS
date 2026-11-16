@@ -283,6 +283,11 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
    choix parmi les services : il a la place d'un nom, pas celle d'un nombre. */
 .mu-encadrement.site-partage{grid-template-columns:max-content minmax(160px,300px) 1fr}
 .mu-encadrement.site-partage select{width:100%;min-width:0}
+/* « Des rayonnages dans sa zone » (évolution 20 d) : une case et son nom ; dessous, ce qu'elle fait ; pour le magasin, une phrase. */
+.site-rayonnages{margin:12px 0 0;max-width:620px;font-size:var(--ds-t-14)}
+.site-rayonnages label{display:inline-flex;align-items:center;gap:8px}
+.site-rayonnages input{flex:none;margin:0}
+.site-rayonnages small{display:block;margin-top:4px;font-size:var(--ds-t-12);color:var(--txt2);line-height:1.4}
 
 /* ==========================================================================
  *  « DISPOSER LES ZONES » — le panneau à côté de la scène (évolution 20 b)

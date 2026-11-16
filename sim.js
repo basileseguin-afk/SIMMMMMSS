@@ -674,7 +674,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -944,6 +944,12 @@ function initUnite(){
   // Évolution 16 (a) : la part de surface du service dans la vue en direct, dans la section « Avancé » de sa fiche. La
   // fiche est dessinée par unite.js, commun aux deux versions : un module de la version 1 y ajoute son champ.
   if(box&&window.OrlySiteReglages)OrlySiteReglages.ecouter(box,()=>Sim.ateliers,()=>(Sim.reglages&&Sim.reglages.etat?Sim.reglages.etat.regime:undefined));
+}
+/* Les champs de la vue en direct dans la fiche d'un service (la part de surface, la zone partagée, les rayonnages) disent
+   ce qui est gardé : après un changement fait ailleurs — « Annuler », « Rétablir » —, ils se remettent à jour. */
+function majSiteReglages(){
+  const box=document.getElementById('mu-services');
+  if(box&&window.OrlySiteReglages&&Sim.ateliers)OrlySiteReglages.actualiser(box,()=>Sim.ateliers,()=>(Sim.reglages&&Sim.reglages.etat?Sim.reglages.etat.regime:undefined));
 }
 /* La hauteur de l'en-tête (la barre du haut et le titre de la page, avec ses
  * outils) : les listes collées en haut d'une vue (services, commandes) s'y
@@ -2317,20 +2323,20 @@ function initDisposer() {
   }).observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct', 'class'] });
   majDisposer();
 }
-/** Ce que le site lit des réglages (moteur/site.js) : les équipes, les chemins, les noms, les parts, qui partage la zone de qui, la disposition, où attend le chargement. */
+/** Ce que le site lit des réglages (moteur/site.js) : les équipes, les chemins, les noms, les parts, qui partage la zone de qui, la disposition, où attend le chargement, qui a des rayonnages. */
 function reglagesDuSite() {
   const at = Sim.ateliers; if (!at || !window.OrlySite) return null;
   const noms = Object.fromEntries(servicesDisponibles().map(x => [x.id, nomLisible(x.nom)]));
   const regime = Sim.reglages && Sim.reglages.etat ? Sim.reglages.etat.regime : undefined;
   // Qui partage la zone de qui (évolution 20 a) : les annexes rattachées, d'après le plan, et le réglage des fiches.
   return { ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime, parents: at.parentsDuSite(), partages: at.state.partages || null,
-    disposition: at.state.disposition || null, attentes: at.state.attentes || null };
+    disposition: at.state.disposition || null, attentes: at.state.attentes || null, rayonnages: at.state.rayonnages || null };
 }
 let siteGarde = null;
 /** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées, ni la disposition, ni la zone d'attente du chargement ne changent. */
 function siteDeLaVue() {
   const at = Sim.ateliers, r = reglagesDuSite(); if (!r) return null;
-  const cle = JSON.stringify([r.noms, r.regime || null, r.surfaces || null, r.ateliers.length, r.parents, r.partages, r.disposition, r.attentes]);
+  const cle = JSON.stringify([r.noms, r.regime || null, r.surfaces || null, r.ateliers.length, r.parents, r.partages, r.disposition, r.attentes, r.rayonnages]);
   if (siteGarde && siteGarde.r === at.resultat && siteGarde.cle === cle) return siteGarde.site;
   siteGarde = { r: at.resultat, cle, site: OrlySite.generer(r) };
   return siteGarde.site;

@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 20 (d) : des rayonnages et des postes dans la même zone
+
+Quatrième partie de l'évolution 20. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Un réglage de plus dans la fiche d'un service**, section « Avancé » :
+  « Des rayonnages dans sa zone » (non coché par défaut ; le magasin en a
+  toujours — sa fiche le dit, sans case).
+- **Les rayonnages se rangent au fond de la zone** ; les îlots des équipes
+  (tables, chariots, machine) gardent leur poste de travail et se placent
+  devant. Les deux sont dessinés, sans chevauchement, même à l'étroit.
+- **La zone garde la place des deux** : sa place minimale compte celle des
+  rayonnages.
+- Le magasin seul reste l'entrepôt d'aujourd'hui ; sans le réglage, le site
+  est celui d'avant.
+- Dans la fiche d'un service, les champs de la vue en direct (part de
+  surface, zone partagée, rayonnages) se remettent à jour après « Annuler »
+  et « Rétablir ».
+
+Fichiers : `moteur/site.js`, `direct-scene.js`, `ateliers.js`,
+`site-reglages.js`, `sim.js`, `direct.css`, `index.html` (empreintes),
+`tests/site-rayonnages.test.cjs`, `tests/site-rayonnages-browser.cjs`
+(nouveaux), `README.md`.
+
+---
+
 ## 2026-11-16 — Évolution 20 (c) : ce qui attend son vol se rassemble là où l'utilisateur le dit
 
 Troisième partie de l'évolution 20. Aucun calcul ne change ; la version 2

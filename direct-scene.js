@@ -241,10 +241,13 @@
       }
       if (!libres.length) continue;
       // La place libre de la zone : devant ses machines, derrière la bande de la file. Trop peu profonde : la moitié avant.
-      const prof = profondeurMachines(z), reste = z.h - (prof ? prof + 0.6 : BORD) - FILE;
-      const hl = reste >= 1.2 ? reste : Math.max(0.3, z.h * 0.45), wl = Math.max(0.3, z.w - 2 * Math.min(BORD, z.w * 0.2));
+      // Une zone qui a des rayonnages au fond (évolution 20 d) : même à l'étroit, ses îlots restent devant eux — dans ce
+      // que ses machines laissent libre ; ils se resserrent plutôt que de les recouvrir.
+      const prof = profondeurMachines(z), reste = z.h - (prof ? prof + 0.6 : BORD) - FILE, devant = z.h - prof - Math.min(0.3, (z.h - prof) / 3);
+      const serre = reste < 1.2 && z.rayonnagesAuFond === true && devant > 0, retrait = reste >= 1.2 ? FILE : serre ? Math.min(0.1 * z.h, 0.2 * devant) : 0.1 * z.h;
+      const hl = reste >= 1.2 ? reste : serre ? Math.min(z.h * 0.45, devant - retrait) : Math.max(0.3, z.h * 0.45), wl = Math.max(0.3, z.w - 2 * Math.min(BORD, z.w * 0.2));
       for (const l of libres) l.forme = formeIlot(l.poste, l.n, hl);
-      const xl = z.x + (z.w - wl) / 2, yl = z.bande === 0 ? z.y + z.h - (reste >= 1.2 ? FILE : 0.1 * z.h) - hl : z.y + (reste >= 1.2 ? FILE : 0.1 * z.h);
+      const xl = z.x + (z.w - wl) / 2, yl = z.bande === 0 ? z.y + z.h - retrait - hl : z.y + retrait;
       // Les îlots en rangées, dans l'ordre des réglages ; s'ils ne tiennent pas, ils se resserrent tous ensemble.
       let k = 1, rangees = null;
       for (let essai = 0; essai < 80; essai++, k *= 0.93) {
