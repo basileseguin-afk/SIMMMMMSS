@@ -188,7 +188,7 @@
 
   /**
    * Les îlots du site : un par atelier réglé, ni plus ni moins, dans la zone de son service (un atelier robot : à sa
-   * ligne, dans la zone FOOD). `ateliers` : ceux des réglages ; `personnes(id)` : les personnes de chacun (saisies ou
+   * ligne, dans la zone qui la porte). `ateliers` : ceux des réglages ; `personnes(id)` : les personnes de chacun (saisies ou
    * calculées) — sans elle, celles du réglage. Chaque îlot : { atelier, nom, service, zone, poste, x, y, w, h, echelle,
    * tables, rangs, places, trolleys, ancre } — son emprise, ses tables (ou ses rangs de rayonnages), une place par
    * personne. Si les îlots d'une zone n'y tiennent pas, ils se resserrent (`echelle` < 1) : aucun n'est supprimé, aucun
@@ -197,9 +197,9 @@
   function ilots(site, ateliers, personnes) {
     const zones = (site && site.zones) || [], out = [], nb = a => Math.max(0, Math.round(personnes ? personnes(a.id) ?? a.personnes : a.personnes) || 0);
     const zoneDe = a => {
-      // Un atelier robot travaille à sa ligne, dans la zone FOOD ; les autres dans la zone de leur service.
-      const food = zones.find(z => (z.lignes || []).some(l => l.ateliers.includes(a.id)));
-      return (posteDe(a) === 'machine' && food) || zones.find(z => z.services.includes(a.service)) || null;
+      // Un atelier robot travaille à sa ligne, dans la zone qui la porte ; les autres dans la zone de leur service.
+      const saLigne = zones.find(z => (z.lignes || []).some(l => l.ateliers.includes(a.id)));
+      return (posteDe(a) === 'machine' && saLigne) || zones.find(z => z.services.includes(a.service)) || null;
     };
     const parZone = new Map(zones.map(z => [z.id, []]));
     for (const a of ateliers || []) { const z = zoneDe(a); if (z) parZone.get(z.id).push(a); }
@@ -529,13 +529,19 @@
       }
       out.tunnels = [...new Set(lavages.filter(x => x.etat === 'lave').map(x => (tunnelDe(x.tunnel) || {}).nom).filter(n => n != null))];
     }
-    // Les lignes robotisées : au travail quand leur équipe a un lot en cours, avec sa cadence en clair.
-    const food = zones.find(z => (z.lignes || []).length);
-    if (food) for (const x of E.robotsA(r, t)) {
-      const i = food.lignes.findIndex(l => l.ateliers.includes(x.atelier)); if (i < 0) continue;
-      const l = food.lignes[i], texte = x.debit ? Math.round(x.debit) + ' plateaux par heure' : 'au travail';
-      out.lignes.push({ ligne: i, atelier: x.atelier, debit: x.debit, lot: x.lot });
-      out.marques.push({ x: l.x + l.w / 2, y: l.y + l.h / 2, z: H.bras + 0.3, texte, ton: 'travail', ligne: i });
+    // Les lignes robotisées : au travail quand une de leurs équipes a un lot en cours, avec sa cadence en clair. Chaque zone a
+    // les siennes (évolution 20 a) ; deux équipes du même robot au travail en même temps : une seule ligne, leurs cadences s'ajoutent.
+    const auTravail = new Map();
+    for (const x of E.robotsA(r, t)) {
+      const z = zones.find(q => (q.lignes || []).some(l => l.ateliers.includes(x.atelier))); if (!z) continue;
+      const i = z.lignes.findIndex(l => l.ateliers.includes(x.atelier)), cle = z.id + ':' + i, deja = auTravail.get(cle);
+      if (deja) deja.debit = deja.debit != null && x.debit != null ? deja.debit + x.debit : deja.debit ?? x.debit;
+      else auTravail.set(cle, { ligne: i, atelier: x.atelier, debit: x.debit, lot: x.lot, zone: z.id });
+    }
+    for (const x of auTravail.values()) {
+      const l = zones.find(q => q.id === x.zone).lignes[x.ligne], texte = x.debit ? Math.round(x.debit) + ' plateaux par heure' : 'au travail';
+      out.lignes.push(x);
+      out.marques.push({ x: l.x + l.w / 2, y: l.y + l.h / 2, z: H.bras + 0.3, texte, ton: 'travail', ligne: x.ligne, zone: x.zone });
     }
     // Les avions : chacun à sa place ; il décolle à son départ. Les véhicules : du quai aux avions, et retour.
     const aire = scene.aire, places = scene.places || E.placesDesVols(r);

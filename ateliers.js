@@ -473,12 +473,17 @@
     const surfaces = Object.fromEntries(Object.entries(brut.surfaces && typeof brut.surfaces === 'object' && !Array.isArray(brut.surfaces) ? brut.surfaces : {})
       .filter(([k, x]) => k && k.length <= 160 && (typeof x === 'number' || (typeof x === 'string' && x.trim() !== '')) && Number.isFinite(+x) && +x > 0 && +x <= 100).slice(0, 500)
       .map(([k, x]) => [k, Math.round(+x * 10) / 10]).filter(([, x]) => x > 0));
+    // Le service dont un service partage la zone, dans la vue en direct (évolution 20 a) : { service: service }. Un réglage
+    // d'affichage : il ne change aucun calcul. Sans lui (une sauvegarde d'avant), chaque service a sa zone. Une boucle se
+    // relit telle quelle : le site ne la joue pas, et la nomme (moteur/site.js).
+    const partages = Object.fromEntries(Object.entries(brut.partages && typeof brut.partages === 'object' && !Array.isArray(brut.partages) ? brut.partages : {})
+      .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
-      ...(Object.keys(surfaces).length ? { surfaces } : {}) };
+      ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -885,12 +890,44 @@
         if (Object.keys(e).length) this.state.surfaces = e; else delete this.state.surfaces;
       }, nom + ' : ' + (p === null ? 'la part de surface par défaut.' : String(p).replace('.', ',') + ' % de la surface, dans la vue en direct.'));
     }
+    /** Le service dont `service` partage la zone dans la vue en direct (évolution 20 a) ; null : aucun. */
+    partage(service) { const x = (this.state.partages || {})[service]; return typeof x === 'string' && x !== '' ? x : null; }
+    /** Les annexes rattachées à un service, d'après le plan : { annexe: service } — elles sont dans la zone de leur parent. */
+    parentsDuSite() {
+      const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null), u = this.a.unite ? this.a.unite() : null;
+      return S && u ? S.parentsDuPlan(u.zones, u.base) : {};
+    }
+    /**
+     * Règle « `service` partage la zone de `hote` », dans la vue en direct ; `hote` vide : aucun. Une boucle (A partage la
+     * zone de B, B celle de A) est refusée en la nommant : rend { refus: la phrase }, sans rien changer. Sinon { ok: true }.
+     * Un réglage d'affichage : il ne change aucun calcul.
+     */
+    reglePartage(service, hote) {
+      const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
+      const h = hote === null || hote === undefined || String(hote) === '' ? null : String(hote);
+      const services = this.a.services(), nomDe = id => (services.find(x => x.id === id) || {}).nom || id;
+      if (h !== null) {
+        // Le service choisi est un service de l'unité ; un réglage resté sur un service supprimé ne compte pas dans la boucle.
+        const parents = this.parentsDuSite(), connus = new Set([...services.map(x => x.id), ...Object.keys(parents), ...Object.values(parents)]);
+        if (h !== service && !services.some(x => x.id === h)) return { refus: 'Refusé : ce service n’existe plus.' };
+        const tour = S ? S.boucle({ partages: this.state.partages, parents }, service, h, x => connus.has(x)) : (h === service ? [service, h] : null);
+        if (tour) return { refus: h === service ? 'Refusé : un service ne partage pas sa propre zone.'
+          : 'Refusé : ' + nomDe(h) + ' est déjà dans la zone de ' + nomDe(service) + ' — ce serait une boucle : ' + tour.map(nomDe).join(' → ') + '.' };
+      }
+      if (h === this.partage(service)) return { ok: true };
+      this.changer(() => {
+        const e = { ...(this.state.partages || {}) };
+        if (h === null) delete e[service]; else e[service] = h;
+        if (Object.keys(e).length) this.state.partages = e; else delete this.state.partages;
+      }, nomDe(service) + ' : ' + (h === null ? 'sa propre zone, dans la vue en direct.' : 'dans la zone de ' + nomDe(h) + ', dans la vue en direct.'));
+      return { ok: true };
+    }
     /** Le site de la vue en direct, généré à partir des réglages (moteur/site.js) ; `regime` : la règle de poste générale. */
     site(regime) {
       const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
       if (!S) return null;
       return S.generer({ ateliers: this.state.ateliers, parcours: this.state.parcours, surfaces: this.state.surfaces, regime,
-        noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])) });
+        noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])), parents: this.parentsDuSite(), partages: this.state.partages });
     }
 
     regleEncadrement(service, n) {

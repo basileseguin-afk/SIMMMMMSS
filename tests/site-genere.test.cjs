@@ -104,17 +104,20 @@ test('la préparation et le montage sont dans la même zone, « FOOD », avec le
   assert.deepEqual(['magasin', 'armement', 'plonge', 'quais'].map(id => zone(site, id).role), ['magasin', 'armement', 'plonge', 'quai']);
 });
 
-test('la ligne robotisée : aucune sans atelier robot ; une pour deux équipes qui se succèdent ; deux pour deux équipes en même temps ; dans la zone FOOD', () => {
+test('la ligne robotisée : aucune sans atelier robot ; une par service robot, que ses équipes se succèdent ou soient là en même temps ; dans la zone FOOD', () => {
   assert.deepEqual(zone(generer(UNITE()), 'food').lignes, []);
   // Deux équipes robot qui se succèdent (03:00 → 11:00, 11:00 → 19:00) : la même ligne.
   const suite = generer(UNITE([atelier('rb1', 'prepa', 'robot', '03:00', 2), atelier('rb2', 'prepa', 'robot', '11:00', 2)]));
   assert.deepEqual(zone(suite, 'food').lignes.map(l => l.ateliers), [['rb1', 'rb2']]);
-  // En même temps (03:00 → 11:00 et 06:00 → 14:00) : deux lignes.
+  // En même temps (03:00 → 11:00 et 06:00 → 14:00) : la même ligne encore — il n'y a qu'un robot (évolution 20 a).
   const ensemble = generer(UNITE([atelier('rb1', 'prepa', 'robot', '03:00', 2), atelier('rb2', 'prepa', 'robot', '06:00', 2)]));
-  assert.deepEqual(zone(ensemble, 'food').lignes.map(l => l.ateliers), [['rb1'], ['rb2']]);
-  // Trois équipes : deux en même temps, la troisième reprend la première ligne libre.
+  assert.deepEqual(zone(ensemble, 'food').lignes.map(l => l.ateliers), [['rb1', 'rb2']]);
+  // Trois équipes du même robot, dont deux en même temps : une ligne, ses équipes dans l'ordre de leur arrivée.
   const trois = generer(UNITE([atelier('rb1', 'prepa', 'robot', '03:00', 2), atelier('rb2', 'prepa', 'robot', '06:00', 2), atelier('rb3', 'prepa', 'robot', '11:00', 2)]));
-  assert.deepEqual(zone(trois, 'food').lignes.map(l => l.ateliers), [['rb1', 'rb3'], ['rb2']]);
+  assert.deepEqual(zone(trois, 'food').lignes.map(l => l.ateliers), [['rb1', 'rb2', 'rb3']]);
+  // Deux services robot : chacun sa ligne.
+  const deux = generer(UNITE([atelier('rb1', 'prepa', 'robot', '03:00', 2), atelier('rbc', 'cuisine', 'robot', '11:00', 2)]));
+  assert.deepEqual(zone(deux, 'food').lignes.map(l => l.ateliers), [['rb1'], ['rbc']]);
   // Dans une zone étroite et profonde, une machine se pose dans le sens de la profondeur, à sa taille.
   {
     const etroite = generer([atelier('cu', 'cuisine', 'manuel', '04:00', 60), atelier('pl', 'plonge', 'lavage', '06:00', 2, { parVol: true, tunnels: [T('Tunnel 1')] }), atelier('mag', 'magasin', 'dispo', '02:00', 1)]);
@@ -185,8 +188,8 @@ const disjoints = l => l.every((p, i) => l.every((q, j) => j <= i || p.x + p.w <
 const machines = z => [...(z.lignes || []), ...(z.tunnels || []), ...(z.rayonnages || [])];
 
 test('quatre lignes, quatre tunnels, six tunnels : chaque machine dans sa zone, aucune sur une autre', () => {
-  // Quatre équipes robot en même temps (03:00, 04:00, 05:00, 06:00, huit heures chacune) : quatre lignes.
-  const robots = [3, 4, 5, 6].map(h => atelier('rb' + h, 'prepa', 'robot', '0' + h + ':00', 2));
+  // Quatre services robot (une équipe chacun) : quatre lignes.
+  const robots = [3, 4, 5, 6].map(h => atelier('rb' + h, 'robot' + h, 'robot', '0' + h + ':00', 2));
   const food = zone(generer(UNITE(robots)), 'food');
   assert.equal(food.lignes.length, 4);
   assert.ok(food.lignes.every(l => dans(l, food)) && disjoints(food.lignes), 'les quatre lignes tiennent dans la zone FOOD, sans se recouvrir');
@@ -229,15 +232,16 @@ test('une part réglée minuscule n’agrandit pas tout le site ; aucune part ne
 test('des équipes à cheval sur minuit, à J−1 ou J+1, sans règle de présence', () => {
   const lignes = robots => zone(generer(UNITE(robots)), 'food').lignes.map(l => l.ateliers);
   const rb = (id, debut, jour, p = {}) => atelier(id, 'prepa', 'robot', debut, 2, { jour, ...p });
-  // 22:00 → 06:00 le lendemain : une équipe de J+1 à 05:00 la croise (deux lignes), à 06:00 la suit (une ligne).
-  assert.deepEqual(lignes([rb('soir', '22:00', 0), rb('matin', '05:00', 1)]), [['soir'], ['matin']]);
+  // Les équipes d'un même robot partagent sa ligne, qu'elles se croisent ou se suivent (évolution 20 a) — dans l'ordre de
+  // leur arrivée, le jour compris : 22:00 → 06:00 le lendemain, puis une équipe de J+1 à 05:00 ou à 06:00.
+  assert.deepEqual(lignes([rb('matin', '05:00', 1), rb('soir', '22:00', 0)]), [['soir', 'matin']]);
   assert.deepEqual(lignes([rb('soir', '22:00', 0), rb('matin', '06:00', 1)]), [['soir', 'matin']]);
-  // Une équipe de la veille (J−1, 22:00 → 06:00) et une du jour à 06:00 : la même ligne ; à 04:00 : deux.
-  assert.deepEqual(lignes([rb('veille', '22:00', -1), rb('jour', '06:00', 0)]), [['veille', 'jour']]);
-  assert.deepEqual(lignes([rb('veille', '22:00', -1), rb('jour', '04:00', 0)]), [['veille'], ['jour']]);
-  // Une équipe sans règle de présence (son régime coupé) est là 24 h : deux équipes du même jour se croisent.
+  // Une équipe de la veille (J−1, 22:00 → 06:00) arrive avant une du jour, à 06:00 comme à 04:00.
+  assert.deepEqual(lignes([rb('jour', '06:00', 0), rb('veille', '22:00', -1)]), [['veille', 'jour']]);
+  assert.deepEqual(lignes([rb('veille', '22:00', -1), rb('jour', '04:00', 0)]), [['veille', 'jour']]);
+  // Une équipe sans règle de présence (son régime coupé) est là 24 h : la même ligne.
   const libre = { regime: { actif: false } };
-  assert.deepEqual(lignes([rb('a', '03:00', 0, libre), rb('b', '11:00', 0, libre)]), [['a'], ['b']]);
+  assert.deepEqual(lignes([rb('a', '03:00', 0, libre), rb('b', '11:00', 0, libre)]), [['a', 'b']]);
   // Sans règle générale donnée, celle du moteur vaut : huit heures, les deux équipes se suivent.
   const sans = S.generer({ ateliers: UNITE([rb('a', '03:00', 0), rb('b', '11:00', 0)]), noms: NOMS, parcours: CHEMIN });
   assert.deepEqual(zone(sans, 'food').lignes.map(l => l.ateliers), [['a', 'b']]);

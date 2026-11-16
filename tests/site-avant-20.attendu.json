@@ -1,0 +1,1377 @@
+{
+ "sites": {
+  "petite unité": {
+   "largeur": 36.3318042491699,
+   "profondeur": 19.51445647689541,
+   "surface": 600,
+   "couloir": {
+    "x": 0,
+    "y": 7.706746355884524,
+    "w": 36.3318042491699,
+    "h": 3
+   },
+   "entree": {
+    "x": 0,
+    "y": 9.206746355884524
+   },
+   "pause": {
+    "x": -7,
+    "y": 10.706746355884524,
+    "w": 7,
+    "h": 8
+   },
+   "emprise": {
+    "x0": -7,
+    "y0": 0,
+    "x1": 36.3318042491699,
+    "y1": 19.51445647689541
+   },
+   "avions": "droite",
+   "zones": [
+    {
+     "id": "magasin",
+     "nom": "Magasin",
+     "role": "magasin",
+     "services": [
+      "magasin"
+     ],
+     "ateliers": [
+      "mag"
+     ],
+     "personnes": 2,
+     "part": 0.2,
+     "surface": 120,
+     "minimum": 34.56,
+     "bande": 0,
+     "x": 0,
+     "y": 0,
+     "w": 15.570773249644242,
+     "h": 7.706746355884524,
+     "porte": {
+      "x": 7.785386624822121,
+      "y": 7.706746355884524
+     },
+     "rayonnages": [
+      {
+       "x": 1,
+       "y": 0.6,
+       "w": 13.570773249644242,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 2.8000000000000003,
+       "w": 13.570773249644242,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 5,
+       "w": 13.570773249644242,
+       "h": 1
+      }
+     ]
+    },
+    {
+     "id": "cuisine",
+     "nom": "Cuisine",
+     "role": "autre",
+     "services": [
+      "cuisine"
+     ],
+     "ateliers": [
+      "cu"
+     ],
+     "personnes": 6,
+     "part": 0.20000000000000004,
+     "surface": 120.00000000000003,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 0,
+     "y": 10.706746355884524,
+     "w": 13.624426593438715,
+     "h": 8.807710121010885,
+     "porte": {
+      "x": 6.812213296719357,
+      "y": 10.706746355884524
+     }
+    },
+    {
+     "id": "food",
+     "nom": "FOOD",
+     "role": "food",
+     "services": [
+      "preparation",
+      "prepa"
+     ],
+     "ateliers": [
+      "pr",
+      "mo"
+     ],
+     "personnes": 14,
+     "part": 0.2,
+     "surface": 120,
+     "minimum": 62.92,
+     "bande": 0,
+     "x": 15.570773249644242,
+     "y": 0,
+     "w": 15.570773249644242,
+     "h": 7.706746355884524,
+     "porte": {
+      "x": 23.356159874466364,
+      "y": 7.706746355884524
+     },
+     "lignes": []
+    },
+    {
+     "id": "armement",
+     "nom": "Armement",
+     "role": "armement",
+     "services": [
+      "armement"
+     ],
+     "ateliers": [
+      "ar"
+     ],
+     "personnes": 5,
+     "part": 0.2,
+     "surface": 120,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 13.624426593438715,
+     "y": 10.706746355884524,
+     "w": 13.624426593438713,
+     "h": 8.807710121010885,
+     "porte": {
+      "x": 20.43663989015807,
+      "y": 10.706746355884524
+     }
+    },
+    {
+     "id": "quais",
+     "nom": "Quais",
+     "role": "quai",
+     "services": [
+      "quais"
+     ],
+     "ateliers": [
+      "h"
+     ],
+     "personnes": 2,
+     "part": 0.06666666666666667,
+     "surface": 40,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 31.141546499288484,
+     "y": 0,
+     "w": 5.190257749881414,
+     "h": 7.706746355884524,
+     "porte": {
+      "x": 33.73667537422919,
+      "y": 7.706746355884524
+     }
+    },
+    {
+     "id": "plonge",
+     "nom": "Plonge",
+     "role": "plonge",
+     "services": [
+      "plonge"
+     ],
+     "ateliers": [
+      "pl"
+     ],
+     "personnes": 4,
+     "part": 0.13333333333333333,
+     "surface": 80,
+     "minimum": 59.28,
+     "bande": 1,
+     "x": 27.248853186877426,
+     "y": 10.706746355884524,
+     "w": 9.082951062292475,
+     "h": 8.807710121010885,
+     "porte": {
+      "x": 31.790328718023662,
+      "y": 10.706746355884524
+     },
+     "tunnels": [
+      {
+       "nom": "Tunnel 1",
+       "x": 28.540328718023662,
+       "y": 17.61445647689541,
+       "w": 6.5,
+       "h": 1.3
+      },
+      {
+       "nom": "Tunnel 2",
+       "x": 28.540328718023662,
+       "y": 15.014456476895411,
+       "w": 6.5,
+       "h": 1.3
+      }
+     ]
+    }
+   ]
+  },
+  "petite unité, un robot, des parts réglées": {
+   "largeur": 39.71317161849454,
+   "profondeur": 21.051441644770243,
+   "surface": 716.88,
+   "couloir": {
+    "x": 0,
+    "y": 8.022862953231218,
+    "w": 39.71317161849454,
+    "h": 3
+   },
+   "entree": {
+    "x": 0,
+    "y": 9.522862953231218
+   },
+   "pause": {
+    "x": -7,
+    "y": 11.022862953231218,
+    "w": 7,
+    "h": 8
+   },
+   "emprise": {
+    "x0": -7,
+    "y0": 0,
+    "x1": 39.71317161849454,
+    "y1": 21.051441644770243
+   },
+   "avions": "droite",
+   "zones": [
+    {
+     "id": "magasin",
+     "nom": "Magasin",
+     "role": "magasin",
+     "services": [
+      "magasin"
+     ],
+     "ateliers": [
+      "mag"
+     ],
+     "personnes": 2,
+     "part": 0.08333333333333334,
+     "surface": 59.74000000000001,
+     "minimum": 34.56,
+     "bande": 0,
+     "x": 0,
+     "y": 0,
+     "w": 7.446219678467728,
+     "h": 8.022862953231218,
+     "porte": {
+      "x": 3.723109839233864,
+      "y": 8.022862953231218
+     },
+     "rayonnages": [
+      {
+       "x": 1,
+       "y": 0.6,
+       "w": 5.446219678467728,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 2.8000000000000003,
+       "w": 5.446219678467728,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 5,
+       "w": 5.446219678467728,
+       "h": 1
+      }
+     ]
+    },
+    {
+     "id": "cuisine",
+     "nom": "Cuisine",
+     "role": "autre",
+     "services": [
+      "cuisine"
+     ],
+     "ateliers": [
+      "cu"
+     ],
+     "personnes": 6,
+     "part": 0.25,
+     "surface": 179.22,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 7.446219678467728,
+     "y": 0,
+     "w": 22.33865903540318,
+     "h": 8.022862953231218,
+     "porte": {
+      "x": 18.61554919616932,
+      "y": 8.022862953231218
+     }
+    },
+    {
+     "id": "food",
+     "nom": "FOOD",
+     "role": "food",
+     "services": [
+      "preparation",
+      "prepa"
+     ],
+     "ateliers": [
+      "pr",
+      "mo",
+      "rb1",
+      "rb2"
+     ],
+     "personnes": 18,
+     "part": 0.16666666666666669,
+     "surface": 119.48000000000002,
+     "minimum": 119.48,
+     "bande": 1,
+     "x": 0,
+     "y": 11.022862953231218,
+     "w": 11.913951485548363,
+     "h": 10.028578691539025,
+     "porte": {
+      "x": 5.956975742774182,
+      "y": 11.022862953231218
+     },
+     "lignes": [
+      {
+       "x": 1.4569757427741816,
+       "y": 18.85144164477024,
+       "w": 9,
+       "h": 1.6,
+       "ateliers": [
+        "rb1",
+        "rb2"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "armement",
+     "nom": "Armement",
+     "role": "armement",
+     "services": [
+      "armement"
+     ],
+     "ateliers": [
+      "ar"
+     ],
+     "personnes": 5,
+     "part": 0.16666666666666669,
+     "surface": 119.48000000000002,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 11.913951485548363,
+     "y": 11.022862953231218,
+     "w": 11.913951485548363,
+     "h": 10.028578691539025,
+     "porte": {
+      "x": 17.870927228322543,
+      "y": 11.022862953231218
+     }
+    },
+    {
+     "id": "quais",
+     "nom": "Quais",
+     "role": "quai",
+     "services": [
+      "quais"
+     ],
+     "ateliers": [
+      "h"
+     ],
+     "personnes": 2,
+     "part": 0.11111111111111112,
+     "surface": 79.65333333333334,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 29.784878713870906,
+     "y": 0,
+     "w": 9.928292904623635,
+     "h": 8.022862953231218,
+     "porte": {
+      "x": 34.749025166182726,
+      "y": 8.022862953231218
+     }
+    },
+    {
+     "id": "plonge",
+     "nom": "Plonge",
+     "role": "plonge",
+     "services": [
+      "plonge"
+     ],
+     "ateliers": [
+      "pl"
+     ],
+     "personnes": 4,
+     "part": 0.22222222222222224,
+     "surface": 159.30666666666667,
+     "minimum": 59.28,
+     "bande": 1,
+     "x": 23.827902971096727,
+     "y": 11.022862953231218,
+     "w": 15.885268647397815,
+     "h": 10.028578691539025,
+     "porte": {
+      "x": 31.770537294795634,
+      "y": 11.022862953231218
+     },
+     "tunnels": [
+      {
+       "nom": "Tunnel 1",
+       "x": 28.520537294795634,
+       "y": 19.15144164477024,
+       "w": 6.5,
+       "h": 1.3
+      },
+      {
+       "nom": "Tunnel 2",
+       "x": 28.520537294795634,
+       "y": 16.551441644770243,
+       "w": 6.5,
+       "h": 1.3
+      }
+     ]
+    }
+   ]
+  },
+  "plan rejoué fictif": {
+   "largeur": 36.3318042491699,
+   "profondeur": 19.51445647689541,
+   "surface": 600,
+   "couloir": {
+    "x": 0,
+    "y": 8.544944781973516,
+    "w": 36.3318042491699,
+    "h": 3
+   },
+   "entree": {
+    "x": 0,
+    "y": 10.044944781973516
+   },
+   "pause": {
+    "x": -7,
+    "y": 11.544944781973516,
+    "w": 7,
+    "h": 7.969511694921895
+   },
+   "emprise": {
+    "x0": -7,
+    "y0": 0,
+    "x1": 36.3318042491699,
+    "y1": 19.51445647689541
+   },
+   "avions": "droite",
+   "zones": [
+    {
+     "id": "decontam",
+     "nom": "LÉGUMERIE",
+     "role": "autre",
+     "services": [
+      "decontam"
+     ],
+     "ateliers": [
+      "leg"
+     ],
+     "personnes": 2,
+     "part": 0.05504818825631803,
+     "surface": 33.028912953790815,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 0,
+     "y": 11.544944781973516,
+     "w": 4.144408618515054,
+     "h": 7.969511694921895,
+     "porte": {
+      "x": 2.072204309257527,
+      "y": 11.544944781973516
+     }
+    },
+    {
+     "id": "cuisine",
+     "nom": "CUISINE FROIDE",
+     "role": "autre",
+     "services": [
+      "cuisine"
+     ],
+     "ateliers": [
+      "cu1",
+      "cu2"
+     ],
+     "personnes": 3,
+     "part": 0.05504818825631803,
+     "surface": 33.028912953790815,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 4.144408618515054,
+     "y": 11.544944781973516,
+     "w": 4.144408618515054,
+     "h": 7.969511694921895,
+     "porte": {
+      "x": 6.21661292777258,
+      "y": 11.544944781973516
+     }
+    },
+    {
+     "id": "food",
+     "nom": "FOOD",
+     "role": "food",
+     "services": [
+      "preparation",
+      "prepa"
+     ],
+     "ateliers": [
+      "pr",
+      "mo",
+      "mo2",
+      "rb"
+     ],
+     "personnes": 15,
+     "part": 0.20000000000000004,
+     "surface": 120.00000000000003,
+     "minimum": 109.34,
+     "bande": 1,
+     "x": 8.288817237030107,
+     "y": 11.544944781973516,
+     "w": 15.057384265646164,
+     "h": 7.969511694921895,
+     "porte": {
+      "x": 15.81750936985319,
+      "y": 11.544944781973516
+     },
+     "lignes": [
+      {
+       "x": 11.31750936985319,
+       "y": 17.31445647689541,
+       "w": 9,
+       "h": 1.6,
+       "ateliers": [
+        "rb"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "plonge",
+     "nom": "PLONGE",
+     "role": "plonge",
+     "services": [
+      "plonge"
+     ],
+     "ateliers": [
+      "pl1",
+      "pl2"
+     ],
+     "personnes": 5,
+     "part": 0.11743333333333335,
+     "surface": 70.46000000000001,
+     "minimum": 70.46000000000001,
+     "bande": 1,
+     "x": 27.490610121191327,
+     "y": 11.544944781973516,
+     "w": 8.841194127978572,
+     "h": 7.969511694921895,
+     "porte": {
+      "x": 31.911207185180615,
+      "y": 11.544944781973516
+     },
+     "tunnels": [
+      {
+       "nom": "T1",
+       "x": 28.661207185180615,
+       "y": 17.61445647689541,
+       "w": 6.5,
+       "h": 1.3
+      },
+      {
+       "nom": "T2",
+       "x": 28.661207185180615,
+       "y": 15.014456476895411,
+       "w": 6.5,
+       "h": 1.3
+      }
+     ]
+    },
+    {
+     "id": "dotation",
+     "nom": "DOTATION",
+     "role": "autre",
+     "services": [
+      "dotation"
+     ],
+     "ateliers": [
+      "do"
+     ],
+     "personnes": 1,
+     "part": 0.05504818825631803,
+     "surface": 33.028912953790815,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 14.043390924322058,
+     "y": 0,
+     "w": 3.865316136795743,
+     "h": 8.544944781973516,
+     "porte": {
+      "x": 15.97604899271993,
+      "y": 8.544944781973516
+     }
+    },
+    {
+     "id": "magasin",
+     "nom": "MAGASIN",
+     "role": "magasin",
+     "services": [
+      "magasin"
+     ],
+     "ateliers": [
+      "mag"
+     ],
+     "personnes": 1,
+     "part": 0.2,
+     "surface": 120,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 0,
+     "y": 0,
+     "w": 14.043390924322058,
+     "h": 8.544944781973516,
+     "porte": {
+      "x": 7.021695462161029,
+      "y": 8.544944781973516
+     },
+     "rayonnages": [
+      {
+       "x": 1,
+       "y": 0.6,
+       "w": 12.043390924322058,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 2.8000000000000003,
+       "w": 12.043390924322058,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 5,
+       "w": 12.043390924322058,
+       "h": 1
+      }
+     ]
+    },
+    {
+     "id": "armement",
+     "nom": "ARMEMENT",
+     "role": "armement",
+     "services": [
+      "armement"
+     ],
+     "ateliers": [
+      "ar"
+     ],
+     "personnes": 1,
+     "part": 0.2,
+     "surface": 120,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 17.908707061117802,
+     "y": 0,
+     "w": 14.043390924322058,
+     "h": 8.544944781973516,
+     "porte": {
+      "x": 24.93040252327883,
+      "y": 8.544944781973516
+     }
+    },
+    {
+     "id": "quais",
+     "nom": "QUAIS · RÉCEPTION",
+     "role": "quai",
+     "services": [
+      "quais"
+     ],
+     "ateliers": [
+      "h"
+     ],
+     "personnes": 4,
+     "part": 0.062373913641394586,
+     "surface": 37.42434818483675,
+     "minimum": 33.028912953790815,
+     "bande": 0,
+     "x": 31.95209798543986,
+     "y": 0,
+     "w": 4.379706263730043,
+     "h": 8.544944781973516,
+     "porte": {
+      "x": 34.141951117304885,
+      "y": 8.544944781973516
+     }
+    },
+    {
+     "id": "local-mvez9n7o-42v2y",
+     "nom": "Montage bis",
+     "role": "autre",
+     "services": [
+      "local-mvez9n7o-42v2y"
+     ],
+     "ateliers": [
+      "mob"
+     ],
+     "personnes": 0,
+     "part": 0.05504818825631803,
+     "surface": 33.028912953790815,
+     "minimum": 33.028912953790815,
+     "bande": 1,
+     "x": 23.346201502676273,
+     "y": 11.544944781973516,
+     "w": 4.144408618515054,
+     "h": 7.969511694921895,
+     "porte": {
+      "x": 25.4184058119338,
+      "y": 11.544944781973516
+     }
+    }
+   ]
+  },
+  "unité de 15 services": {
+   "largeur": 58.28984433538622,
+   "profondeur": 29.495383788811914,
+   "surface": 1544.411796656162,
+   "couloir": {
+    "x": 0,
+    "y": 15.46308725715468,
+    "w": 58.28984433538622,
+    "h": 3
+   },
+   "entree": {
+    "x": 0,
+    "y": 16.96308725715468
+   },
+   "pause": {
+    "x": -7,
+    "y": 18.46308725715468,
+    "w": 7,
+    "h": 8
+   },
+   "emprise": {
+    "x0": -7,
+    "y0": 0,
+    "x1": 58.28984433538622,
+    "y1": 29.495383788811914
+   },
+   "avions": "droite",
+   "zones": [
+    {
+     "id": "appros",
+     "nom": "RÉCEPTION / APPROS",
+     "role": "autre",
+     "services": [
+      "appros"
+     ],
+     "ateliers": [
+      "apr"
+     ],
+     "personnes": 1,
+     "part": 0.03158234692952147,
+     "surface": 48.77614916404048,
+     "minimum": 48.77614916404048,
+     "bande": 1,
+     "x": 0,
+     "y": 18.46308725715468,
+     "w": 4.421214479150108,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 2.210607239575054,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "decontam",
+     "nom": "LÉGUMERIE",
+     "role": "autre",
+     "services": [
+      "decontam"
+     ],
+     "ateliers": [
+      "leg"
+     ],
+     "personnes": 2,
+     "part": 0.03158234692952147,
+     "surface": 48.77614916404048,
+     "minimum": 48.77614916404048,
+     "bande": 1,
+     "x": 4.421214479150108,
+     "y": 18.46308725715468,
+     "w": 4.421214479150108,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 6.631821718725162,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "cuisine",
+     "nom": "CUISINE FROIDE",
+     "role": "autre",
+     "services": [
+      "cuisine"
+     ],
+     "ateliers": [
+      "cu1",
+      "cu2",
+      "cu3"
+     ],
+     "personnes": 4,
+     "part": 0.03158234692952147,
+     "surface": 48.77614916404048,
+     "minimum": 48.77614916404048,
+     "bande": 1,
+     "x": 8.842428958300216,
+     "y": 18.46308725715468,
+     "w": 4.421214479150108,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 11.05303619787527,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "food",
+     "nom": "FOOD",
+     "role": "food",
+     "services": [
+      "preparation",
+      "prepa"
+     ],
+     "ateliers": [
+      "pr",
+      "mo",
+      "mo2",
+      "rb",
+      "mo-9"
+     ],
+     "personnes": 18,
+     "part": 0.16945117912632973,
+     "surface": 261.70240000000007,
+     "minimum": 127.28,
+     "bande": 1,
+     "x": 13.263643437450323,
+     "y": 18.46308725715468,
+     "w": 23.721479861336544,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 25.124383368118593,
+      "y": 18.46308725715468
+     },
+     "lignes": [
+      {
+       "x": 20.624383368118593,
+       "y": 27.29538378881191,
+       "w": 9,
+       "h": 1.6,
+       "ateliers": [
+        "rb"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "plonge",
+     "nom": "PLONGE",
+     "role": "plonge",
+     "services": [
+      "plonge"
+     ],
+     "ateliers": [
+      "pl1",
+      "pl2"
+     ],
+     "personnes": 5,
+     "part": 0.04562254714225468,
+     "surface": 70.46000000000001,
+     "minimum": 70.46000000000001,
+     "bande": 1,
+     "x": 51.90314145826407,
+     "y": 18.46308725715468,
+     "w": 6.386702877122153,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 55.09649289682515,
+      "y": 18.46308725715468
+     },
+     "tunnels": [
+      {
+       "nom": "T1",
+       "x": 53.14649289682515,
+       "y": 22.395383788811912,
+       "w": 1.3,
+       "h": 6.5
+      },
+      {
+       "nom": "T2",
+       "x": 55.74649289682515,
+       "y": 22.395383788811912,
+       "w": 1.3,
+       "h": 6.5
+      }
+     ]
+    },
+    {
+     "id": "dotation",
+     "nom": "DOTATION",
+     "role": "autre",
+     "services": [
+      "dotation"
+     ],
+     "ateliers": [
+      "dotation-1",
+      "dotation-2",
+      "dotation-3",
+      "dotation-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 16.924330545888363,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 18.69823245459733,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "magasin",
+     "nom": "MAGASIN",
+     "role": "magasin",
+     "services": [
+      "magasin"
+     ],
+     "ateliers": [
+      "mag"
+     ],
+     "personnes": 1,
+     "part": 0.16945117912632973,
+     "surface": 261.70240000000007,
+     "minimum": 48.77614916404048,
+     "bande": 0,
+     "x": 0,
+     "y": 0,
+     "w": 16.924330545888363,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 8.462165272944182,
+      "y": 15.46308725715468
+     },
+     "rayonnages": [
+      {
+       "x": 1,
+       "y": 0.6,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 2.8000000000000003,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 5,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 7.2,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 9.4,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 11.6,
+       "w": 14.924330545888363,
+       "h": 1
+      },
+      {
+       "x": 1,
+       "y": 13.8,
+       "w": 14.924330545888363,
+       "h": 1
+      }
+     ]
+    },
+    {
+     "id": "local-controle",
+     "nom": "Contrôle qualité",
+     "role": "autre",
+     "services": [
+      "local-controle"
+     ],
+     "ateliers": [
+      "local-controle-1",
+      "local-controle-2",
+      "local-controle-3",
+      "local-controle-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 20.4721343633063,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 22.246036272015267,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "local-emballage",
+     "nom": "Emballage",
+     "role": "autre",
+     "services": [
+      "local-emballage"
+     ],
+     "ateliers": [
+      "local-emballage-1",
+      "local-emballage-2",
+      "local-emballage-3",
+      "local-emballage-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 24.019938180724235,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 25.793840089433203,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "local-pesee",
+     "nom": "Pesée",
+     "role": "autre",
+     "services": [
+      "local-pesee"
+     ],
+     "ateliers": [
+      "local-pesee-1",
+      "local-pesee-2",
+      "local-pesee-3",
+      "local-pesee-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 27.56774199814217,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 29.34164390685114,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "local-etiquetage",
+     "nom": "Étiquetage",
+     "role": "autre",
+     "services": [
+      "local-etiquetage"
+     ],
+     "ateliers": [
+      "local-etiquetage-1",
+      "local-etiquetage-2",
+      "local-etiquetage-3",
+      "local-etiquetage-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 1,
+     "x": 36.98512329878687,
+     "y": 18.46308725715468,
+     "w": 4.972672719825734,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 39.471459658699736,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "local-chariots",
+     "nom": "Mise en chariot",
+     "role": "autre",
+     "services": [
+      "local-chariots"
+     ],
+     "ateliers": [
+      "local-chariots-1",
+      "local-chariots-2",
+      "local-chariots-3",
+      "local-chariots-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 31.115545815560107,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 32.889447724269075,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "local-scelles",
+     "nom": "Scellés",
+     "role": "autre",
+     "services": [
+      "local-scelles"
+     ],
+     "ateliers": [
+      "local-scelles-1",
+      "local-scelles-2",
+      "local-scelles-3",
+      "local-scelles-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 1,
+     "x": 41.9577960186126,
+     "y": 18.46308725715468,
+     "w": 4.972672719825734,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 44.44413237852547,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "local-filmage",
+     "nom": "Filmage",
+     "role": "autre",
+     "services": [
+      "local-filmage"
+     ],
+     "ateliers": [
+      "local-filmage-1",
+      "local-filmage-2",
+      "local-filmage-3",
+      "local-filmage-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 0,
+     "x": 34.66334963297804,
+     "y": 0,
+     "w": 3.547803817417935,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 36.437251541687004,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "local-expedition",
+     "nom": "Expédition",
+     "role": "autre",
+     "services": [
+      "local-expedition"
+     ],
+     "ateliers": [
+      "local-expedition-1",
+      "local-expedition-2",
+      "local-expedition-3",
+      "local-expedition-4"
+     ],
+     "personnes": 7,
+     "part": 0.035521614195630026,
+     "surface": 54.86,
+     "minimum": 54.86,
+     "bande": 1,
+     "x": 46.930468738438336,
+     "y": 18.46308725715468,
+     "w": 4.972672719825734,
+     "h": 11.032296531657234,
+     "porte": {
+      "x": 49.416805098351205,
+      "y": 18.46308725715468
+     }
+    },
+    {
+     "id": "armement",
+     "nom": "ARMEMENT",
+     "role": "armement",
+     "services": [
+      "armement"
+     ],
+     "ateliers": [
+      "ar"
+     ],
+     "personnes": 1,
+     "part": 0.16945117912632973,
+     "surface": 261.70240000000007,
+     "minimum": 48.77614916404048,
+     "bande": 0,
+     "x": 38.211153450395976,
+     "y": 0,
+     "w": 16.924330545888363,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 46.67331872334016,
+      "y": 15.46308725715468
+     }
+    },
+    {
+     "id": "quais",
+     "nom": "QUAIS · RÉCEPTION",
+     "role": "quai",
+     "services": [
+      "quais"
+     ],
+     "ateliers": [
+      "h"
+     ],
+     "personnes": 4,
+     "part": 0.03158234692952147,
+     "surface": 48.77614916404048,
+     "minimum": 48.77614916404048,
+     "bande": 0,
+     "x": 55.135483996284336,
+     "y": 0,
+     "w": 3.1543603391018857,
+     "h": 15.46308725715468,
+     "porte": {
+      "x": 56.71266416583528,
+      "y": 15.46308725715468
+     }
+    }
+   ]
+  },
+  "sans équipe": {
+   "largeur": 0,
+   "profondeur": 3,
+   "surface": 0,
+   "couloir": {
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 3
+   },
+   "entree": {
+    "x": 0,
+    "y": 1.5
+   },
+   "pause": {
+    "x": -7,
+    "y": 0,
+    "w": 7,
+    "h": 3
+   },
+   "emprise": {
+    "x0": -7,
+    "y0": 0,
+    "x1": 0,
+    "y1": 3
+   },
+   "avions": "droite",
+   "zones": []
+  }
+ },
+ "empreintes": {
+  "tirée 0": "12608e3f281a6e335d19a63912f3ca05bc07816aca342221bea9e95056f73dff",
+  "tirée 1": "129d61368d820164e5805c09367685ea41cbc0e746e315f57e3ea42d59c6d8ba",
+  "tirée 2": "cbb9375c5c1fb77f8c4d9413b8bb317d632abd2635176c0ed60e9fdcd4d99564",
+  "tirée 3": "584fe57279fba8a411205ff1167d91a50c74cc0fee0325f8af95716fd376f962",
+  "tirée 4": "41af527fe7b2f5d8953f31c637b46927c56484cd33a22dd337e931b934ec816b",
+  "tirée 5": "909a241e389af55fa0eb969809f6075844b218802157d0e2c7f368e389d7090e",
+  "tirée 6": "186096a3a0a4a759f6bc4bb1664712715a6ed15eb61d831035ccb70d0c549091",
+  "tirée 7": "b8d7cfed3087008284fa4805c8c7c9796245fc9f1262639e63586978ec534584",
+  "tirée 8": "7ab1a5494cdfa6f1cbacd18beaf1fbc7e5f89ade32fb2f86597157ca14cf6d44",
+  "tirée 9": "77af8199549928dae386e56a3011a1e3f5ac167a18073375099d8bf3dcbdd583",
+  "tirée 10": "8293f760113f4ebf68ca6b3f569b3f5c3b12c11dad612eaca7019c9319c1b868",
+  "tirée 11": "91fe4db40044b07d5f556e4bc431f09eb49f3fdc6af4059b6f1971060d7b02a5",
+  "tirée 12": "c003cbf1b96641ff8698afb645a05153ef86160b05d7ffe51d57c8928a3c1f46",
+  "tirée 13": "ae1c1b256b122bffb39f535e8a2a302bf28e0de88eefaf345187c3128bcdff6d",
+  "tirée 14": "5ebd8043db2dc7b387ad6d7855990499c4d649fd2e263cbca4f6686e5887cae5",
+  "tirée 15": "f60120d6058f093cae1dcd0fbbfb5600acfaf2e0b90b3a628256ac62cb0326c6",
+  "tirée 16": "d41f4ff96a6929725b7021d1a0311de54b8859aeded805da0cd845cec18f5d6e",
+  "tirée 17": "afa41395e781f279beecb7610a9fd48f4ccaa9feaadaef162553c674444bed5e",
+  "tirée 18": "40f460cbface21ca9d96e642f80fe325774ebf65a4b045ec7d73c7fc93ba07a5",
+  "tirée 19": "7be2429b026d01393372b49a8f37f7704b44410d370df56f47081385ae9e4b4c",
+  "tirée 20": "cc293b059fc3458d073c91bca592d7990e16156888e88cde5ca1240ed9ba8d6e",
+  "tirée 21": "76735437c7f28c315cb5daadc1a159561f699a0e196b3355c83a96d91568e682",
+  "tirée 22": "8b9fb21d9e40dbc682a1973806615ab85167eb137943c014fa8705cf37273a4d",
+  "tirée 23": "fc96c6d93411de6a23579ec5eec746962dc3634525da6234b12f696ccead0cb3",
+  "tirée 24": "48afc89fd3b7459d5b093eb0a14f413edb40da64d4babe22073038fc47224f87",
+  "tirée 25": "589a0a947ef2b347e176a2f8b758f351c194fe76e6578dc7ea1e576def53a0cf",
+  "tirée 26": "5a8c110464cc0a3f3bb08ba55a48e921e6a6ea3ab41cfa11c2d24c9b49cdcb3f",
+  "tirée 27": "efce978b617e8d06879b45ffec98afb1efa22bfe323b0dc50778bffa72bc329f",
+  "tirée 28": "bd1fc5a10788bb5a27143c029202b417509b92e5ddac018ebb9d1142e5d46b57",
+  "tirée 29": "345b6b1c1136dc0770c3a14eea21c8345eb818b78f20f6cac0b65da66166de0e",
+  "tirée 30": "08a2b8f4669de5af5dd7fe17e2170efc78adeb854227554be420a87782787491",
+  "tirée 31": "124d346bbc783ce86e3ef6de25b267f3dca945db6ac70d74062dffddaf061887",
+  "tirée 32": "06172e5bede4245b5a39ca49e3b6f1bbbc4c834558e048b7c7ec2dcdac7cf67d",
+  "tirée 33": "d98538fb13c98951dd43c4b206ee121465b509b3eb2d8da25da2994e806bd700",
+  "tirée 34": "5ea88ab09bf0b2e0917a09f0a07b8f2b82bb9ca0a778e618a132d5e532710f42",
+  "tirée 35": "0956f96426ce79d12ccf1ce021f61736dec65ea2b86e838318a3116970212277",
+  "tirée 36": "513fdbfb51dbac5df45c50b1e9e942707de8afc4e98c2a579de0c0aa39b3c540",
+  "tirée 37": "a56f42a3f5778b5d1a456d74ff3517ec73b9435ca3040595a42be0f40fb79234",
+  "tirée 38": "f19568a2ca3c3240d786af69fc7ae10400cfe1c67265d212dcdf800b14ff992c",
+  "tirée 39": "c069ca0b40dbdf7e1d16b49385c1e745f96b17ffa5ab60e91a1372b973d8edb8",
+  "tirée 40": "efbf7fee7c15f5d100fb7f445b8bc197b4e0e060e356415808823196c20f3567",
+  "tirée 41": "e4a735d839a00c01446b05d0536b3c32bfdb9a750ff5f63d3a3d8e7864c67572",
+  "tirée 42": "f1770b5fb7b9861ab44c5ae17a2dce530baa1fc0fc969030f557cbf8a5846ff4",
+  "tirée 43": "09a5e158ef7a4679c8f57b0abab2ef708ba05af4c64d3297e610171f626f1572",
+  "tirée 44": "e826b2f79292ce6278bc37d00c760f0e80283f3e1f00862a6a1646de60f6057e",
+  "tirée 45": "1baf6046bd79ed2c77d29373aad404a0088b1de332a11361356388d934b69713",
+  "tirée 46": "32561f9e3f6f8d6af514f5aaac53dbcf14b734b005456c4143f16c7aedc9221d",
+  "tirée 47": "a06319a6b547ac9ea254c60260bbf62b89ffa24f86786cffcdea74f32d9675e8",
+  "tirée 48": "44d6f3b5be8dc47a1af2024e323a310bf205c2e6fe8c6e1c97172df470b93c32",
+  "tirée 49": "cd5c0df8a4970cf835d7d66eb0030c13a05429defd56bf0e30c2478918524275",
+  "tirée 50": "c60260e03d25bf9842e06f601e41acebd9ef11cd8f6ff081a0315bd821018652",
+  "tirée 51": "a23ec55513ed65992e746d0956ca8cedc162482dbb152b867ba78c584d140f44",
+  "tirée 52": "e47d6116131715437eba1e86958e2a021d44d20c431da5cc711e14aedfa73bc3",
+  "tirée 53": "d6eb1865c0219194c7b030d7789a9ecd4e8cf6779c486bd03f2fdc8dad892e62",
+  "tirée 54": "e4cc47f3ad93ffc6e7f7d85b2bf5b65dedaf953d1b0d9d60235a4a0361ecf7fe",
+  "tirée 55": "ce74815782b9ccad498e9adef0601e7eb1faa78dda8c39c787776b339c033529",
+  "tirée 56": "ec4f2966dce6e77688b8b9771167bfa45678265ec4d7152feb8b944337373c47",
+  "tirée 57": "e60957fcea0f30755ae6fb14a58951f7e66cdb05cfb228bf7b12113667f0f923",
+  "tirée 58": "903cbf0a263afe43429b06c8b3a06258f79b214c53f9dda24d65e281eb42488b",
+  "tirée 59": "a99ae0b57cc6127c8dc49b68277367add5ef16adce1813cc076f1b62388837ec"
+ }
+}

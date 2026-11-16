@@ -2267,14 +2267,16 @@ function initPleinEcran() {
     .observe(document.body, { attributes: true, attributeFilter: ['data-sous', 'data-direct'] });
 }
 let siteGarde = null;
-/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste ne changent. */
+/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste, ni les zones partagées ne changent. */
 function siteDeLaVue() {
   const at = Sim.ateliers; if (!at || !window.OrlySite) return null;
   const noms = Object.fromEntries(servicesDisponibles().map(x => [x.id, nomLisible(x.nom)]));
   const regime = Sim.reglages && Sim.reglages.etat ? Sim.reglages.etat.regime : undefined;
-  const cle = JSON.stringify([noms, regime || null, at.state.surfaces || null, at.state.ateliers.length]);
+  // Qui partage la zone de qui (évolution 20 a) : les annexes rattachées, d'après le plan, et le réglage des fiches.
+  const parents = at.parentsDuSite(), partages = at.state.partages || null;
+  const cle = JSON.stringify([noms, regime || null, at.state.surfaces || null, at.state.ateliers.length, parents, partages]);
   if (siteGarde && siteGarde.r === at.resultat && siteGarde.cle === cle) return siteGarde.site;
-  siteGarde = { r: at.resultat, cle, site: OrlySite.generer({ ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime }) };
+  siteGarde = { r: at.resultat, cle, site: OrlySite.generer({ ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime, parents, partages }) };
   return siteGarde.site;
 }
 /** « En relief » ou « À plat » : le choix de la page, gardé le temps de la visite. */

@@ -278,3 +278,8 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
   body[data-direct="relief"][data-sous="j-plan"]:not(.editing) .app>.col-plan{height:100%}
   body[data-direct="relief"][data-sous="j-plan"]:not(.editing) .app>.workbench{border-left:0;border-top:1px solid var(--ds-bordure);overflow:visible}
 }
+
+/* La fiche du service : « Dans la vue en direct, partage la zone de » (site-reglages.js, évolution 20 a). Le champ est un
+   choix parmi les services : il a la place d'un nom, pas celle d'un nombre. */
+.mu-encadrement.site-partage{grid-template-columns:max-content minmax(160px,300px) 1fr}
+.mu-encadrement.site-partage select{width:100%;min-width:0}

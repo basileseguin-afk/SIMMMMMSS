@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 20 (a) : les zones de la vue en direct, qui partage la zone de qui
+
+Première partie de l'évolution 20 (la disposition du site, dans la vue en
+direct). Aucun calcul ne change ; la version 2 n'est pas touchée.
+
+- **Une annexe rattachée n'a pas de zone à elle** : dans le plan, une annexe
+  qui a un parent et qui n'est pas « à part entière » ; ses équipes et ses
+  machines sont dans la zone de son parent. Une ligne robotisée annexe de la
+  production se dessine donc une seule fois, dans la zone de production.
+- **« Dans la vue en direct, partage la zone de »** : un réglage de plus dans
+  la fiche d'un service, section « Avancé », sous la part de surface (aucun,
+  ou un autre service). Les deux services forment une seule zone, au nom du
+  service choisi ; leurs équipes y gardent leurs îlots ; leurs parts de
+  surface s'additionnent. Une boucle est refusée en la nommant.
+- **Une ligne par robot** : les équipes d'un même service robot se partagent
+  une seule ligne, même présentes en même temps ; deux services robot ont
+  chacun la leur. Les tunnels de lavage ne changent pas.
+- À côté de la scène, rien ne change : chaque service garde sa ligne.
+- Sans réglage, le site est celui d'avant, champ par champ — sauf la zone
+  d'une annexe rattachée et le nombre de lignes de robots.
+
+Fichiers : `moteur/site.js`, `ateliers.js`, `site-reglages.js`, `sim.js`,
+`direct-scene.js`, `direct-vue.js`, `direct.css`, `index.html`,
+`tests/site-zones.test.cjs`, `tests/site-zones-browser.cjs`,
+`tests/site-unites.cjs`, `tests/site-avant-20.attendu.json` (nouveaux),
+`tests/site-genere.test.cjs`, `README.md`, `docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-16 — Évolution 19, retouches : une valeur masquée gardée par Excel, le repli « Information », la vue en direct sur un portable
 
 Trois retouches demandées après l'évolution 19. Aucun calcul ne change ; le

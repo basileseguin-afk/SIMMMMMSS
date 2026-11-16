@@ -192,7 +192,7 @@
         G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
         const a = anime.h == null ? 0.45 : 0.3 + 0.25 * (0.5 + 0.5 * Math.sin(anime.h * VAGUE.temps - (o.enLong ? o.y : o.x) * VAGUE.espace));
         G().sol(ctx, p, o.bx, o.by, o.w, o.d, pal.voile('travail', a), null, 0, o.z + o.h);
-      } else if (o.quoi === 'ligne' && anime.lignes.has(o.ref)) {
+      } else if (o.quoi === 'ligne' && anime.lignes.has(o.zone + ':' + o.ref)) {
         // Une ligne robotisée au travail : ses plateaux avancent sur le convoyeur.
         G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
         const l = anime.ligneDe(o), enLong = l.h > l.w, de = enLong ? o.by - l.y : o.bx - l.x, a0 = enLong ? o.d : o.w, large = Math.min(PLATEAUX.taille, (enLong ? o.w : o.d) * 0.7);
@@ -204,7 +204,7 @@
         }
       } else if (o.quoi === 'bras') {
         // Le bras de la ligne : à la couleur du travail quand son équipe travaille, au repos sinon.
-        const actif = anime.lignes.has(o.ref), dz = actif && anime.h != null ? 0.08 * Math.sin(anime.h * 4) : 0;
+        const actif = anime.lignes.has(o.zone + ':' + o.ref), dz = actif && anime.h != null ? 0.08 * Math.sin(anime.h * 4) : 0;
         G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h + dz, pal.boite(actif ? 'bras' : 'machine'));
       } else G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
     }
@@ -261,8 +261,9 @@
         v.circule = D().circulation({ site: v.site, ilots: v.ilots, aire: v.aire, places: v.places, tranche: v.tranche }, v.journee, v.t);
         circuleDe = { journee: v.journee, t: v.t, ilots: v.ilots };
       }
-      const c = v.circule, zoneFood = c.lignes.length ? v.site.zones.find(z => (z.lignes || []).length) : null;
-      const anime = { h: bouge ? ts / 1000 : null, tunnels: new Set(c.tunnels), lignes: new Set(c.lignes.map(l => l.ligne)), ligneDe: o => zoneFood.lignes[o.ref], suivi: v.suivi && LIRE() ? v.suivi : null };
+      // Les lignes au travail : chacune par sa zone et son rang — plusieurs zones peuvent en porter (évolution 20 a).
+      const c = v.circule, zoneDe = c.lignes.length ? new Map(v.site.zones.map(z => [z.id, z])) : null;
+      const anime = { h: bouge ? ts / 1000 : null, tunnels: new Set(c.tunnels), lignes: new Set(c.lignes.map(l => l.zone + ':' + l.ligne)), ligneDe: o => zoneDe.get(o.zone).lignes[o.ref], suivi: v.suivi && LIRE() ? v.suivi : null };
       const extras = v.extras ? v.extras(v) : null;
       const mobiles = [].concat(v.personnes, c.pousseurs, c.chariots, c.vehicules, c.avions, extras || []);
       for (const o of C().ordre(v.cam, mobiles.length ? boites.concat(mobiles) : boites)) objet(o, p, devant, pal, anime);

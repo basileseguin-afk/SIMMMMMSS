@@ -691,6 +691,27 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
   côté ; les avions sont du côté droit.
 - **Une zone par service qui a au moins un atelier.** La préparation et le
   montage partagent une seule grande zone, « FOOD ».
+- **Qui partage la zone de qui** (évolution 20 a) :
+  - une **annexe rattachée** à un service (dans le plan : une zone de
+    production qui a un parent, et qui n'est pas « à part entière ») n'a pas
+    de zone à elle : ses équipes et ses machines sont dans la zone de son
+    parent. Une annexe à part entière garde la sienne ;
+  - un réglage de la fiche d'un service (Équipes › Services, section
+    « Avancé », sous la part de surface) : **« Dans la vue en direct, partage
+    la zone de »** — aucun, ou un autre service. Les deux services forment
+    alors une seule zone, qui porte le nom du service choisi (« FOOD », si
+    c'est la préparation ou le montage) ; leurs équipes y gardent leurs
+    îlots ; leurs parts de surface s'additionnent — partager une zone ne
+    change ni la taille du site, ni la part des autres. De proche en proche,
+    trois services peuvent n'en faire qu'une. Une **boucle** (A partage la
+    zone de B, B celle de A) est refusée en la nommant, sous le champ. Le
+    réglage d'une annexe rattachée l'emporte sur son rattachement : elle
+    n'a toujours pas de zone à elle ;
+  - la zone prend la place du premier de ses services dans le chemin ; elle
+    est le quai si l'un d'eux a l'équipe de handling ;
+  - le réglage se sauvegarde avec les équipes ; une sauvegarde d'avant se
+    relit sans lui ; il ne change aucun calcul. À côté de la scène, **chaque
+    service garde sa ligne** dans « En ce moment » et dans les réponses.
 - **Chaque service a une part de surface**, un réglage de sa fiche (Équipes ›
   Services, section « Avancé » : « Part de surface, dans la vue en direct »,
   en %). Vide, la part par défaut : le magasin un cinquième du site, la
@@ -701,17 +722,23 @@ même façon (`moteur/site.js`, un module sans navigateur). Les règles :
   réglée trop petite n'agrandit pas tout le site). Le réglage se sauvegarde
   avec les ateliers (« Tout sauvegarder », « Restaurer ») ; une sauvegarde
   d'avant prend les défauts ; il ne change aucun calcul.
-- **Le robot** : dès qu'un atelier de type robot existe, une ligne robotisée
-  se dessine dans la zone FOOD, quel que soit son service ; autant de lignes
-  que d'ateliers robot présents en même temps (deux équipes qui se succèdent
-  partagent la même ligne).
+- **Le robot** : **une ligne robotisée par service robot** (évolution 20 a).
+  Les équipes d'un même robot se partagent sa ligne, qu'elles se succèdent
+  ou qu'elles soient là en même temps : il n'y a qu'un robot ; au travail
+  ensemble, leurs cadences s'ajoutent au-dessus de la ligne. Deux services
+  robot ont chacun la leur. La ligne se dessine dans la zone FOOD ; si le
+  service du robot est accueilli par une autre zone (une annexe rattachée,
+  un service qui partage), elle est dans cette zone, avec ses équipes.
 - **La plonge** montre le nombre de tunnels des réglages : le plus grand
   nombre de tunnels tenus en même temps (des équipes qui se succèdent
   partagent les mêmes tunnels) ; un quai qui a sa propre équipe de lavage
   montre les siens. **Le magasin** est un entrepôt : des rangées de
   rayonnages. Les machines se rangent depuis le fond de leur zone, en rangs
   puis en colonnes, dans le sens de la profondeur si la zone est étroite :
-  jamais l'une sur l'autre, jamais hors de la zone.
+  jamais l'une sur l'autre, jamais hors de la zone. Dans une zone que des
+  services partagent, les sortes de machines se rangent l'une devant
+  l'autre — les rayonnages au fond, puis les lignes, puis les tunnels — et
+  les rayonnages du magasin ne prennent que le fond.
 - **Le placement** suit le chemin, de l'amont vers l'aval : le magasin
   d'abord (côté arrivées), la production au milieu, le quai du handling au
   bout (côté avions), la plonge au bout de l'autre bande, près du quai des
@@ -1605,7 +1632,7 @@ aucun vol.
 | `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
-| `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une, deux), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
+| `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une par service robot), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
 | `tests/direct-camera.test.cjs` | La caméra de la vue en direct (v1, évolution 16 b), sans navigateur : la projection de la maquette (isométrique) et à plusieurs angles, son inverse au sol ; sans fuite de perspective ; les bornes (360°, de 25° à 80°) ; glisser, zoomer autour du pointeur, tourner ; « Tout voir » à 24 px des bords à tout angle, à 1 280 et 1 920 px ; l’ordre de dessin du fond vers l’avant ; les boîtes longues en tronçons ; les murs du fond à tout angle ; d’un angle à l’autre par le plus court ; les étiquettes à leur taille, sans recouvrement |
 | `tests/direct-scene.test.cjs` | La scène de la vue en direct et ce qu’elle lit de la journée (v1, évolution 16 b), sans navigateur, sur l’unité fictive : des personnes entières par état, celles des créneaux des indicateurs, équipe par équipe et à chaque créneau ; les lots qui attendent devant un service, ceux des séjours en stock ; le décor (sols, murs bas sauf du côté du couloir, machines des réglages) ; les murs du fond seulement ; les étiquettes (« n au travail / n présents », « n lots à faire ») ; à « Tout voir », aucune étiquette n’en recouvre une autre, à 1 280 et 1 920 px, à quatre angles |
 | `tests/direct-ilots.test.cjs` | Les ateliers et les personnes de la vue en direct (v1, évolution 16 c), sans navigateur, sur l’unité fictive : un îlot par atelier réglé, dans la zone de son service ; un atelier ajouté ou retiré ; à chaque créneau de la journée, les personnages de chaque atelier égaux à ses présents aux indicateurs, état par état ; la couleur de l’état, la pause dans l’aire de pause, l’arrivée et le départ en chemin ; une équipe d’appui, une mise à disposition ; une équipe en heures sup après son horaire ; le poste de travail (cinq choix ; trois tables pour cinq personnes, aucune aux trolleys) ; les défauts par type et par service ; le réglage gardé, une sauvegarde d’avant aux défauts ; le poste ne change ni le résultat ni les indicateurs ; des îlots qui se resserrent sans sortir de leur zone |
@@ -1622,6 +1649,8 @@ aucun vol.
 | `tests/non-regression-16.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 16 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs (« Réponses » comprise), ont les empreintes calculées sur le commit d’avant l’évolution ; sur la journée fictive que la vue rejoue, avec et sans retard, le résultat du moteur, les indicateurs de charge et les réponses à deux jeux de seuils aussi ; tout ce que la vue lit, à chaque demi-heure, ne change rien à la journée |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à sa marge des bords (24 px, 4 % du petit côté au plus) ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
+| `tests/site-zones.test.cjs` | Qui partage la zone de qui (v1, évolution 20 a), sans navigateur : une annexe rattachée n’a pas de zone, ses équipes et sa ligne sont dans celle de son parent ; une annexe à part entière garde la sienne, le plan dit qui est rattaché à qui ; deux services partagent une zone (son nom, ses équipes et leurs îlots, les parts qui s’additionnent, de proche en proche, la production, le quai, la plonge) ; la boucle refusée en la nommant ; une ligne par robot (deux équipes en même temps : une ligne ; deux robots : deux lignes) ; dans la scène, chaque ligne s’anime dans sa zone ; des machines de plusieurs sortes sans recouvrement ; 200 unités tirées d’une graine fixe ; sans réglage, le site d’avant, champ par champ (`tests/site-avant-20.attendu.json`, calculé sur le commit d’avant par `tests/site-unites.cjs`) ; le réglage gardé dans la sauvegarde |
+| `tests/site-zones-browser.cjs` | Le choix « Dans la vue en direct, partage la zone de » dans la fiche d’un service (v1, évolution 20 a), sur l’unité fictive : l’annexe rattachée dans la zone de son service, une seule ligne robotisée ; une zone pour deux services, la journée inchangée, chaque service à sa ligne à côté de la scène ; la boucle refusée sous le champ ; « Annuler », le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans ce champ |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |
 | `tests/plonge-reprise-browser.cjs` | La reprise et le reste du lendemain dans les pages (v1, correction 19), sur une unité fictive : la reprise sur les deux lignes du planning, avec son trou et ses mots (« arrêté à 21:00, repris par … à 22:00 ») ; un reste que le matin n’absorbe pas : la Synthèse (la phrase, la case en alerte, la carte) et le plan rejoué |
