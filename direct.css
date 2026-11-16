@@ -330,3 +330,6 @@ body.direct-dispose[data-direct="relief"][data-sous="j-plan"] #direct-panneau{di
    la légende se pose alors au-dessus d'elle. */
 .direct{container-type:inline-size}
 @container (max-width: 980px){.direct-coin{bottom:calc(var(--ds-e-3) + var(--ds-h-compact) + 18px)}}
+/* Pendant « Disposer les zones », sur une toile étroite (un portable), la légende cacherait le site qu'on dispose : elle
+   laisse la place à la scène, et revient à la fermeture du panneau (un défaut que les captures de contrôle ont montré). */
+@container (max-width: 980px){body.direct-dispose .direct-coin{display:none}}

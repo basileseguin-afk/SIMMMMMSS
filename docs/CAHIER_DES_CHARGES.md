@@ -123,6 +123,35 @@ de relire le cahier des charges initial :
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
 | V8 | **Temporalité** : le temps entre la fin d'un atelier et le début du suivant est un **stock** ; les retours plus rapides que la plonge forment un **bouchon** | 24/09 | ✅ | Stocks par séjour, par lien et devant chaque service (et avant le chargement) ; file de sale, attente, heures en dépassement ; affichés sur le chemin, la frise, l'onglet « Stocks et retours » et le plan rejoué |
 
+### Les règles du site de la vue en direct (version 1, évolutions 16 et 20)
+
+La vue en direct (« En relief ») ne recopie pas le plan dessiné : elle génère
+un site schématique à partir des réglages (`moteur/site.js`). Les mêmes
+réglages donnent toujours le même site. **La disposition d'une unité est un
+réglage de l'utilisateur, jamais une valeur du code.** Ce tableau dit, pour
+chaque chose montrée, ce qui vient d'un réglage et ce qui est automatique.
+
+| Ce que le site montre | Automatique | Ce que l'utilisateur règle, et où |
+|---|---|---|
+| **Les zones** | Une par service qui a une équipe ; la préparation et le montage réunis dans la zone « FOOD » ; une annexe rattachée à un service (dans le plan) est dans la zone de son parent | « Dans la vue en direct, partage la zone de » (fiche du service, « Avancé », évolution 20 a) : deux services, une seule zone, au nom du service choisi. Une boucle est refusée en la nommant |
+| **La taille d'une zone** | Par défaut : le magasin, la production et l'armement un cinquième chacun, les autres services le reste, au prorata de leurs personnes. Jamais moins que la place de ses équipes et de ses machines ; les parts se ramènent à 100 % ; dans une zone partagée, elles s'additionnent | « Part de surface, dans la vue en direct », en % (fiche du service, « Avancé », évolution 16 a) |
+| **La place des zones** | Deux bandes de part et d'autre d'un couloir, dans l'ordre du chemin : le magasin d'abord, le quai au bout, côté avions, la plonge au bout de l'autre bande | « Disposer les zones » (dans « En direct », évolution 20 b) : des colonnes, de gauche à droite, chacune avec ses zones de haut en bas ; des rangées du bas, chacune avec les colonnes qu'elle longe. Les tailles viennent toujours des parts : quand elles ne tombent pas juste, ce sont les largeurs des colonnes qui s'ajustent |
+| **Les allées, l'entrée, l'aire de pause, les avions** | Toujours : le couloir central, ou — dans un site disposé — une allée en haut, une à gauche de chaque colonne, une au-dessus de chaque rangée du bas ; l'entrée et l'aire de pause au bord ; les avions à droite, ou le long du bord extérieur de la zone du quai | — |
+| **Les lignes robotisées, les tunnels** | D'après les équipes : une ligne par service robot ; pour une plonge, le plus grand nombre de tunnels tenus en même temps | Les équipes, leurs tunnels (page « Équipes ») |
+| **Les rayonnages** | Le magasin en a toujours : seul, c'est un entrepôt | « Des rayonnages dans sa zone » (fiche du service, « Avancé », évolution 20 d) : au fond de la zone, les postes des équipes devant, la place des deux |
+| **Le poste de travail d'une équipe** | Par défaut : une machine pour un robot ou une plonge ; des trolleys pour l'armement et la dotation ; des rayonnages pour le magasin ; des tables pour les autres | « Poste de travail, dans la vue en direct » (fiche de l'équipe, évolution 16 c) |
+| **Où attend ce qui est prêt** | Un lot attend dans la zone du service qui va le prendre ; ce qui attend le chargement, au quai. Aucune autre aire de stockage | « Ce qui attend le chargement se range dans la zone de : » (fiche de l'équipe de handling, évolution 20 c) |
+| **Les personnes, les chariots, les véhicules, les avions** | Leurs nombres, leurs heures et leurs états sont lus dans le résultat de la journée ; leurs trajets sont une mise en scène | — (ce sont des résultats) |
+| **Ce que la page signale** | Une zone absente de la disposition (rangée à la fin de la dernière colonne), citée deux fois ou disparue (ignorée), une rangée réduite, une boucle de zones partagées : dites en phrases dans « Disposer les zones » | — |
+
+Ces réglages sont des réglages d'affichage : **aucun ne change un calcul**
+(tests/non-regression-20.test.cjs : les résultats, les indicateurs, les
+réponses et les classeurs, feuille par feuille, sont les mêmes avec et
+sans). Ils se gardent avec les équipes (« Tout sauvegarder », « Restaurer »)
+et s'annulent. **Une sauvegarde d'avant se relit et donne le site
+automatique**, champ par champ (tests/site-avant-20.attendu.json). La
+version 2, gelée, n'a pas cette vue.
+
 ## 6 bis. Contrat des résultats
 
 Les résultats d'une journée répondent à **cinq questions, dans cet ordre**. Tout

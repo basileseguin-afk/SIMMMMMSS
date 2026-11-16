@@ -809,6 +809,26 @@ ouvre un panneau à côté d'elle, à la place de « En ce moment ».
   colonne ; une zone citée deux fois, ou qui n'existe plus, est ignorée. Le
   bouton porte alors un nombre, et le panneau le dit en phrases — comme une
   boucle de zones partagées. Le premier geste range tout.
+- **Sur un portable**, le panneau ouvert laisse une toile étroite : la
+  légende s'efface le temps de disposer les zones, pour ne pas cacher le
+  site ; elle revient à la fermeture du panneau (évolution 20 e).
+
+**Les réglages du site, en un coup d'œil** (évolution 20). Tout ce qui
+place et meuble les zones est un réglage de l'utilisateur ou une règle
+automatique — jamais une valeur du code :
+
+| Pour… | Où |
+|---|---|
+| dire qu'un service partage la zone d'un autre | fiche du service, « Avancé » : « Dans la vue en direct, partage la zone de » |
+| régler la taille d'une zone | fiche du service, « Avancé » : « Part de surface, dans la vue en direct » |
+| dire où va chaque zone | « En direct » : « Disposer les zones » |
+| mettre des rayonnages dans une zone | fiche du service, « Avancé » : « Des rayonnages dans sa zone » |
+| dire où attend ce qui est prêt | fiche de l'équipe de handling : « Ce qui attend le chargement se range dans la zone de : » |
+| choisir le poste de travail d'une équipe | fiche de l'équipe : « Poste de travail, dans la vue en direct » |
+
+Aucun de ces réglages ne change un calcul ; sans eux, une sauvegarde
+d'avant donne le site automatique. Le détail, règle par règle :
+docs/CAHIER_DES_CHARGES.md, « Les règles du site de la vue en direct ».
 
 ### Où attend ce qui est prêt (évolution 20 c)
 
@@ -1795,6 +1815,8 @@ aucun vol.
 | `tests/direct-attente-browser.cjs` | Le choix « Ce qui attend le chargement se range dans la zone de : » dans la fiche de l’équipe de handling (v1, évolution 20 c), sur l’unité fictive : « le quai » par défaut, puis les autres zones ; dans la scène, les lots en attente de chargement au quai, puis dans la zone choisie, autant de chariots ; la journée inchangée ; « Annuler » et « Rétablir » ; une zone partagée, un site disposé ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; une zone inconnue refusée, un nom de zone échappé ; la version 2 sans ce champ. |
 | `tests/site-rayonnages.test.cjs` | Des rayonnages et des postes dans la même zone (v1, évolution 20 d), sans navigateur : sans le réglage, le site de référence et ses îlots, champ par champ ; avec, des rayonnages au fond de la zone, les tables de ses équipes devant, les deux dessinés, sans chevauchement, la moitié de la profondeur au plus, une place minimale plus grande ; des chariots, une machine, une équipe sans poste, une équipe aux rayonnages ; les tunnels et la ligne robotisée devant les rayonnages ; le magasin seul, l’entrepôt d’aujourd’hui quel que soit le poste de ses équipes ; une zone partagée ; un site disposé, une part de surface minuscule, une zone de moins d’un mètre de profondeur ; 200 unités tirées d’une graine fixe, des réglages au hasard : jamais un îlot sur une machine ni hors de sa zone ; le réglage gardé par la sauvegarde. |
 | `tests/site-rayonnages-browser.cjs` | La case « Des rayonnages dans sa zone » dans la fiche d’un service (v1, évolution 20 d), sur l’unité fictive : non cochée par défaut, après la part de surface et la zone partagée ; le magasin sans case ; cochée, des rayonnages au fond de la zone et les tables devant, dans la scène ; la journée inchangée ; « Annuler » et « Rétablir » (la case se remet à jour) ; un service dont la zone a déjà des rayonnages par un autre ; le magasin seul, inchangé ; le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans cette case. |
+| `tests/non-regression-20.test.cjs` | La non-régression de l’évolution 20 (v1, partie e), sans navigateur : avec ses quatre réglages (zone partagée, disposition, zone d’attente du chargement, rayonnages), le JSON des outils d’une journée et d’une période et chaque feuille de leurs classeurs sont ceux d’une sauvegarde sans réglage ; sur la journée fictive du plan rejoué, le même résultat, les mêmes indicateurs, les mêmes réponses ; une sauvegarde d’avant se relit sans aucun de ces réglages et donne le site de référence ; les réglages jouent (un autre site), sans rien changer d’autre à l’état des équipes ni à ce que le calcul lit. |
+| `tests/captures-disposition-browser.cjs` | Les captures de contrôle de la disposition du site (v1, évolution 20 e), sur l’unité fictive, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 : la disposition automatique ; quatre colonnes et deux rangées du bas ; le panneau « Disposer les zones » ouvert (sur un portable, la légende s’efface) ; une zone partagée ; une zone avec rayonnages et tables. Chaque capture vérifiée (sa taille, ce qu’elle montre, la page sur la largeur) et gardée hors du dépôt (`$ORY_CAPTURES`). Dans la page : le résultat, les indicateurs, les réponses et l’export de la journée identiques sans réglage, avec tous, et une fois retirés. |
 | `tests/site-zones-browser.cjs` | Le choix « Dans la vue en direct, partage la zone de » dans la fiche d’un service (v1, évolution 20 a), sur l’unité fictive : l’annexe rattachée dans la zone de son service, une seule ligne robotisée ; une zone pour deux services, la journée inchangée, chaque service à sa ligne à côté de la scène ; la boucle refusée sous le champ ; « Annuler », le rechargement, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant ; la version 2 sans ce champ |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |

@@ -33,14 +33,15 @@ const avecLesMotsDAvant = lignes => lignes.map(l => l.map(c => (typeof c === 'st
  * Les empreintes, avec les modules de `racine` : { journee (le JSON de simuler-journee), classeurJournee (chaque feuille du
  * classeur de la journée, relue), periode (le JSON de simuler-periode), classeurPeriode (chaque feuille, relue) }.
  * `retouche` (facultatif) : ce qu'on fait des lignes d'une feuille avant son empreinte (`avecLesMotsDAvant`).
+ * `sauvegarde` (facultatif) : la sauvegarde à jouer, à la place de celle de la référence (la même, avec des réglages de plus).
  */
-async function empreintes(racine, retouche = lignes => lignes) {
+async function empreintes(racine, retouche = lignes => lignes, sauvegarde = S.sauvegarde) {
   const OJ = require(path.join(racine, 'outils/simuler-journee.cjs')), OP = require(path.join(racine, 'outils/simuler-periode.cjs'));
   const T = require(path.join(racine, 'tableur.js'));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ory-empreintes-'));
   try {
     const f = (nom, texte) => { const x = path.join(dir, nom); fs.writeFileSync(x, texte); return x; };
-    const sv = f('unite-fictive.json', JSON.stringify(S.sauvegarde));
+    const sv = f('unite-fictive.json', JSON.stringify(sauvegarde));
     const jour = f('vols-fictifs.csv', TETE + '\n' + S.args.vols.map(LIGNE).join('\n') + '\n');
     const semaine = f('semaine-fictive.csv', 'date,' + TETE + '\n' + JOURS.flatMap((d, i) => S.args.vols.filter(v => !(i % 2 && v.id === 'NO101')).map(v => d + ',' + LIGNE(v))).join('\n') + '\n');
     const j = await OJ.simulerJournee(sv, jour);
@@ -69,6 +70,6 @@ function empreintesDuDirect(racine) {
   return out;
 }
 
-module.exports = { empreintes, empreintesDuDirect, LE, MOTS_D_AVANT, avecLesMotsDAvant };
+module.exports = { empreintes, empreintesDuDirect, LE, MOTS_D_AVANT, avecLesMotsDAvant, SAUVEGARDE: S.sauvegarde };
 
 if (require.main === module) empreintes(path.resolve(process.argv[2] || path.join(__dirname, '..'))).then(e => console.log(JSON.stringify(e, null, 2)));

@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-16 — Évolution 20 (e) : contrôle et doc
+
+Dernière partie de l'évolution 20. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Captures de contrôle** sur l'unité fictive, à 1 366 × 768 et
+  1 920 × 1 080, en thème clair et sombre : la disposition automatique ;
+  quatre colonnes et deux rangées du bas ; le panneau « Disposer les zones »
+  ouvert ; une zone partagée ; une zone avec rayonnages et tables. Chacune
+  est vérifiée et gardée hors du dépôt.
+- **Un défaut que ces captures ont montré** : sur un portable, le panneau
+  « Disposer les zones » ouvert, la légende cachait une partie du site qu'on
+  dispose. Elle s'efface maintenant le temps du panneau.
+- **Non-régression** : avec les quatre réglages de l'évolution, les
+  résultats, les indicateurs, les réponses et les classeurs (feuille par
+  feuille) sont ceux d'avant ; une sauvegarde d'avant se relit et donne le
+  site automatique.
+- **Doc** : README (« Disposer les zones » : les réglages du site en un coup
+  d'œil) ; docs/CAHIER_DES_CHARGES.md (« Les règles du site de la vue en
+  direct » : ce qui vient des réglages, ce qui est automatique).
+
+Fichiers : `direct.css`, `index.html` (empreintes),
+`tests/captures-disposition-browser.cjs`,
+`tests/non-regression-20.test.cjs` (nouveaux),
+`tests/empreintes-resultats.cjs`, `README.md`,
+`docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-16 — Évolution 20 (d) : des rayonnages et des postes dans la même zone
 
 Quatrième partie de l'évolution 20. Aucun calcul ne change ; la version 2
