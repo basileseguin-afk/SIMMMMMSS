@@ -213,7 +213,8 @@ function sauvegarde(){
   await changer('pl1',a=>{a.parVol=true;});await changer('pl2',a=>{a.parVol=true;});await attendre();
 
   // 6. « Liens entre services » : toutes les commandes ont un chemin, la page n'est pas au menu ; « Aller à… » y mène.
-  const entrees=async()=>{await nav.aller(page,'mu-flux');return page.locator('#sous-onglets [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet));};
+  //    (Depuis l'évolution 22 a, « au menu » veut dire : parmi les onglets de l'entrée « Chemins ».)
+  const entrees=async()=>{await nav.aller(page,'mu-flux');return page.locator('#onglets-internes [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet));};
   assert.equal(await page.evaluate(()=>OrlyOnglets.conditions.liens()),false,'aucune commande sans chemin');
   assert.ok(!(await entrees()).includes('u-liens'),'pas au menu : '+await entrees());
   await page.keyboard.press('Control+k');await page.keyboard.type('Liens entre services');await attendre(200);
@@ -222,7 +223,8 @@ function sauvegarde(){
   assert.ok(i>=0,'« Aller à… » la propose');
   await options.nth(i).click();await attendre(300);
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-liens','« Aller à… » y mène');
-  assert.ok((await page.locator('#sous-onglets [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet))).includes('u-liens'),'tant qu’on y est, le menu la montre');
+  assert.ok((await page.locator('#onglets-internes [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet))).includes('u-liens'),'tant qu’on y est, son onglet est là');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:chemins','et « Chemins » est marquée');
   assert.ok(!(await entrees()).includes('u-liens'),'on la quitte : elle quitte le menu');
   // Une commande sans chemin (sa classe n'a plus de chemin, elle n'en a pas à elle) : la page revient au menu.
   const sansChemin=await page.evaluate(()=>{const at=Sim.ateliers,c=at.classes.find(x=>!x.categorie&&!(at.state.parcoursClasse||{})[x.id]),avant=at.state.parcoursCabine[c.cabine];

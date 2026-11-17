@@ -114,7 +114,7 @@
         + '<p class="mini-note dq-montre" role="status">' + esc(x.montre === 'A' ? 'La scène rejoue la référence (l’essai A), à la même heure.' : x.montre === 'B' ? 'La scène rejoue l’essai (l’essai B), à la même heure.'
           : 'La scène rejoue la journée en cours. Choisissez « Référence » ou « Essai » pour rejouer l’un des deux, à la même heure.') + '</p>'
         + '<div class="dq-carte">' + carte.corps + '</div>'
-      : '<p class="mini-note">Retenez deux essais (Résultats › Comparer deux essais) : la scène rejouera l’un ou l’autre à la même heure.</p>';
+      : '<p class="mini-note">Retenez deux essais (Lire › Comparer) : la scène rejouera l’un ou l’autre à la même heure.</p>';
     return '<section class="dq-question" data-question="5" aria-labelledby="dq-titre-5"><h3 id="dq-titre-5">5. Ce que change l’essai</h3>' + corps + '</section>';
   }
 

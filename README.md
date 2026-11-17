@@ -106,19 +106,37 @@ chaque vol emporte ses repas, des équipes les préparent de service en service,
 et le site calcule à quelle heure chaque repas est prêt.** L’accueil la
 raconte en quatre images.
 
-**Le menu.** Le site s’ouvre sur une **page d’accueil à tuiles** : une tuile par
-partie du travail, avec son état en clair (✓ fait, · à faire, ~ provisoire —
-des chiffres d’exemple, par exemple —, ! à vérifier, réservé aux vrais
-problèmes), ses pages, et ce qu’il y a « à faire ensuite ». Les parties sont
-rangées dans l’ordre du travail, **un sujet chacune** (refonte du 05/10) :
-les vols, par où passe chaque commande, qui la prépare, la simulation, ce que
-la journée donne. Une page ne mélange jamais deux sujets, et deux pages n’ont
-jamais un nom qui se ressemble.
+**Le menu** (version 1, évolution 22 a). La **barre latérale** montre toutes ses
+entrées, sans partie à ouvrir ni mention « Plus » : quatorze, en deux blocs.
 
-La **barre latérale** (refonte du 08/10) garde l’accueil, les cinq parties et,
-à son pied, les **Problèmes**, la **Sauvegarde** et le passage à la version 2.
-La partie ouverte **déplie ses pages** juste sous elle : une seule est
-affichée ; un nombre sur une page compte les problèmes qui s’y règlent.
+| Bloc | Espace | Entrées |
+|---|---|---|
+| **Lire** | | Synthèse, En direct, Planning, Période (seulement avec un programme daté), Détails (quatre onglets), Comparer |
+| **Régler** | Vols | Programme, Retours |
+| | L’unité | Services et équipes, Chemins, Plan |
+| | Simulation | Réglages, Contrôles |
+| en bas | | Fichiers |
+
+Une entrée est une page, ou un **groupe** de pages qui se suivent en onglets
+internes, en tête de page : « Détails », et — en attendant leur fusion par les
+parties suivantes de l’évolution 22 — « Services et équipes » (six pages),
+« Chemins » (cinq) et « Contrôles » (deux). Aucune page n’a disparu ; chacune
+garde son identifiant, et ses anciens noms se cherchent toujours par
+« Aller à… », comme le nom des parties d’avant (« Résultats », « Équipes »,
+« Sauvegarde »).
+
+L’application **s’ouvre sur la Synthèse** quand une journée se calcule ; sinon
+sur l’**accueil**, que la marque, en haut de la barre, rouvre à tout moment.
+L’accueil suit le rangement du menu : deux blocs, une tuile par espace, avec
+son état en clair (✓ fait, · à faire, ~ provisoire — des chiffres d’exemple,
+par exemple —, ! à vérifier, réservé aux vrais problèmes), ses entrées, et ce
+qu’il y a « à faire ensuite ».
+
+La **pastille des problèmes** est sur l’entrée « Contrôles », et nulle part
+ailleurs : elle compte les points bloquants et à corriger de toute l’unité,
+jamais les informations. Au pied de la barre : **Fichiers**, les **Problèmes**
+(jusqu’à l’évolution 22 d) et le thème. La version 2, gelée, garde le menu
+d’avant : cinq parties, celle qui est ouverte dépliant ses pages.
 
 **Problèmes** est le seul compte de ce qui reste à faire (refonte du 09/10) :
 il s’ouvre à côté de la barre et range chaque problème en trois niveaux — **à
@@ -1873,9 +1891,10 @@ aucun vol.
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
-| `demarrage.js` / `histoire.css` | L’accueil : une tuile par partie avec son état, « à faire ensuite », l’histoire en quatre images, le menu de la barre latérale (la partie ouverte déplie ses pages) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `demarrage.js` / `histoire.css` | L’accueil : l’histoire en quatre images, « à faire ensuite », puis les deux blocs du menu, une tuile par espace avec son état et ses entrées (v1, évolution 22 a) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
-| `onglets.js` | Le menu : les cinq parties et leurs pages (chacune est un sous-onglet d’une vue), les outils « Plus », la règle qui masque les autres, le clavier, la page retenue par partie ; une page conditionnelle (la Période, avec un programme daté) |
+| `onglets.js` | Le menu (v1, évolution 22 a) : deux blocs (`BLOCS`), leurs espaces (`PARTIES`) et leurs quatorze entrées, toutes visibles — une page, ou un groupe de pages en onglets internes (`GROUPES`) ; `menu`, `entrees`, `entreeDe` ; chaque page est un sous-onglet d’une vue ; la règle qui masque les autres, le clavier, la dernière page choisie de chaque espace et de chaque groupe (la page ouverte au démarrage n’en est pas une) ; une page conditionnelle (la Période, avec un programme daté) |
+| `menu.css` | Le menu de la version 1 : les deux blocs, les titres des espaces, les entrées, la barre repliée pendant la modification du plan ; les blocs de l’accueil. Les couleurs sont celles de la barre latérale de `ds.css`, qu’elle ne modifie pas |
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent. **Version 2** ; la version 1 a le sien, `avis.js` (évolution 19 d) |
 | `avis.js` / `avis.css` | Les avis en trois niveaux (v1, évolution 19 d) : « bloquant », « à corriger », « information ». `niveauDuCode` donne le niveau d’un point du calcul ; `lister` fait le registre (du bloquant à l’information) ; `compte` ne compte que les deux premiers ; `panneau` et `blocs` écrivent le panneau des Problèmes et les avis d’une page, informations repliées ; `Registre` tient le panneau, le nombre du menu et ceux des onglets |
@@ -2045,7 +2064,7 @@ aucun vol.
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
-| `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu à cinq parties (Vols, Chemins, Équipes, Simulation, Résultats), les onglets « Plus » de chaque partie, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/menu-browser.cjs` | Le menu de la version 1 (évolution 22 a) : sur un site neuf, l’accueil (deux blocs, une tuile par espace, états, « à faire ensuite »), les entrées du menu en deux blocs et trois espaces, sans « Plus » ni partie à ouvrir, chaque entrée et ses onglets internes, la nature de chaque page, les outils qui suivent la page, le clavier d’un bloc à l’autre, la page retenue, « Fichiers », le menu grisé pendant la modification du plan (même après un recalcul), la hauteur des bandeaux, l’écran de 1 024 px ; sur l’unité fictive avec un programme daté, à 1 366 × 768 et 1 920 × 1 080 : les quatorze entrées dans l’ordre, sans défilement du menu, une seule pastille (sur « Contrôles », bloquants plus à corriger), chaque ancien nom de page par « Aller à… », l’ouverture sur la Synthèse quand une journée se calcule, sans effacer la dernière page choisie |
 | `tests/liaisons-browser.cjs` | Une donnée, partout la même : barème, récap des man-minutes, récap des cases, fiches, chemin, « Qui prépare quoi », calcul, Excel, renommage, Annuler — changée à un endroit, vérifiée à tous les autres |
 | `tests/fantome-browser.cjs` | Un service qu'on ne retrouve pas : « Armement » sans équipe, ses salles au travail — la note des Contrôles et « Supprimer », la recherche, les salles qui gardent ses liens, un service supprimé encore cité (« Effacer partout », « Passer dans… », « Remettre ») |
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
@@ -2054,7 +2073,7 @@ aucun vol.
 | `tests/planche-browser.cjs` | Vols › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+1, délai), rechargement, « ⇄ Comparer J+1 et planche retour » |
 | `tests/lisibilite-browser.cjs` | Ce qui se lisait mal : message qui s’efface, heures du planning espacées (jour écrit une fois), cause d’une commande pas finie, « en retard » ≠ « pas finie », durées en heures, horloge « J 00:00 », Contrôles (à corriger / ce que la journée montre, badge) |
 | `tests/robot-ligne-browser.cjs` | La ligne robot : matin et après-midi sur une seule ligne (l’après-midi attend), arrêt 12:15–13:00 valable pour les deux équipes, second robot à sa propre ligne, récap, rechargement |
-| `tests/mon-unite-browser.cjs` | Le menu à cinq parties (Chemins s’ouvre sur les flux, Simulation sur « Prêt à simuler ? »), le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils « Plus » des Équipes, rechargement |
+| `tests/mon-unite-browser.cjs` | Le menu en deux blocs (« Chemins » s’ouvre sur la vue d’ensemble, « Contrôles » sur « Prêt à simuler ? »), le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils « Plus » des Équipes, rechargement |
 | `tests/fusion-browser.cjs` | Deux étapes à la chaîne : « Montage AF » fait aussi la Prépa depuis sa fiche, AF quitte la case de la Prépa, durée à 1 et 2 personnes, récap, « Qui prépare quoi », chemin, fusion visible (halos et trait dans le diagramme, liste et fiches des services, badge et réglage de l’équipe, planning), retour à deux cases, rechargement |
 | `tests/condition-browser.cjs` | Règle ⚡ (v1 et v2) : bouton, phrase pré-remplie pour aujourd’hui, seuil au-dessus des vols du jour → l’équipe ne travaille pas, ses commandes et sa personne passent au montage général (badge, constat, calcul), repas, retrait, équipe seule dans son service |
 | `tests/flux-retrait-browser.cjs` | Retirer un service d’un flux ou un atelier d’un chemin (v1 et v2) : ses équipes lâchent les commandes, cases hors flux non cochables, « Faire passer un flux par ici », ancienne saisie signalée et retirée en un clic |
@@ -2068,7 +2087,7 @@ aucun vol.
 | `tests/notifications-browser.cjs` | Le retour des gestes (v1 et v2) : supprimer une case sans question, « Annuler » qui la rend ; une notification par source et par geste, trois au plus ; refus annoncé, routine muette ; un geste sur deux historiques défait d’un bloc ; la question pour supprimer un service et ses équipes (Échap, « Ne rien changer », puis « Supprimer le service » et « Annuler ») ; aucune boîte du navigateur |
 | `tests/problemes-browser.cjs` | Le registre des Problèmes (v1 et v2) : le nombre au pied de la barre, les trois niveaux, les nombres des onglets qui en dérivent, « Contrôles détaillés » qui compte pareil, un problème qui mène à sa page (un service à sa fiche), Échap, l’attente pendant l’édition du plan |
 | `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet ; une source en panne ne le bloque pas |
-| `tests/plan-unite-browser.cjs` | Le plan de l’unité a sa page (v1 et v2) : Équipes › Plan de l’unité ouvre l’édition, le menu attend, « Terminer » ramène à la page d’avant, la page n’est pas retenue ; calques à gauche, toile au centre (barre d’outils flottante), inspecteur à droite ; calques par type, cadenas en pictogramme ; poignées carrées de 8 px à tout zoom, taille affichée, zone fixée expliquée ; contours constants ; « Modifier le plan » et la fiche d’un service y mènent. Aucune capture d’écran |
+| `tests/plan-unite-browser.cjs` | Le plan de l’unité a sa page (v1 et v2) : L’unité › Plan (v1), Équipes › Plan de l’unité (v2) ouvre l’édition, le menu attend, « Terminer » ramène à la page d’avant, la page n’est pas retenue ; calques à gauche, toile au centre (barre d’outils flottante), inspecteur à droite ; calques par type, cadenas en pictogramme ; poignées carrées de 8 px à tout zoom, taille affichée, zone fixée expliquée ; contours constants ; « Modifier le plan » et la fiche d’un service y mènent. Aucune capture d’écran |
 | `tests/rejeu-browser.cjs` | Rejouer la journée (v1 et v2, sans le plan privé et avec une tuile fictive hors du dépôt, `tests/plan-fictif.cjs` : la même mise en page) : le plan occupe au moins 75 % de la hauteur utile, la barre de lecture en bas, indicateurs, légende et zoom posés sur le plan ; « En ce moment » se replie et le choix est retenu ; replié d’office sur un écran étroit ; l’édition garde son panneau ; rien à relire, la barre dit pourquoi. Aucune capture d’écran |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |

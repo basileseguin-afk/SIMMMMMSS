@@ -1224,7 +1224,7 @@
 </div>
 <div id="at-liste" data-sous="at-equipes"></div>
 <p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
-  <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>
+  <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages →</button></p>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="hors-page"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 <section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
@@ -2070,7 +2070,7 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push(corriger((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à corriger dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.'));
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à corriger dans L’unité › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.'));
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
@@ -2079,7 +2079,7 @@
           + [f.cases ? f.cases + (f.cases > 1 ? ' équipes' : ' équipe') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
-          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Équipes › Liste des services →</button>'));
+          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Services et équipes › Liste des services →</button>'));
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
@@ -2167,7 +2167,7 @@
       <button class="lien-discret" data-page="v-planche">Ouvrir la planche retour (Données) →</button>`
     : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
   <p class="mini-note at-retours-comparer">Pour choisir en connaissance de cause :
-    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Planche retour)"'}>${pic('echanger')}Comparer J+1 et planche retour</button></p>
+    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Retours)"'}>${pic('echanger')}Comparer J+1 et planche retour</button></p>
   <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
     ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
   ${this.champSaleVeille(m)}
@@ -2218,7 +2218,7 @@
       const box = document.getElementById('at-liste');
       if (!montrer.length) {
         box.innerHTML = '<p class="at-vide">Aucune équipe' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
-          + '. Les équipes se créent dans Équipes › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
+          + '. Les équipes se créent dans L’unité › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
           + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Une commande » →</button></p>';
         return;
       }
@@ -2959,7 +2959,7 @@
       const cases = this.state.ateliers.slice()
         .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
         .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
-      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune équipe pour l’instant : décrivez vos équipes (Équipes › Services et équipes).</p>'; return; }
+      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune équipe pour l’instant : décrivez vos équipes (L’unité › Services et équipes).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
       const jours = (v, attrs, plonge) => `<select ${attrs}>${(plonge ? [-1, 0, 1] : [0, -1, -2, -3]).map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${jourEcrit(j)}</option>`).join('')}</select>`;
       // Une commande mène à son chemin, ouvert sur le service de cette case :

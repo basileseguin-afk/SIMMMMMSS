@@ -110,16 +110,21 @@ test('« Comment ça marche » raconte l’histoire en quatre images', () => {
   assert.deepEqual(D.COMMENT.map(c => c.picto), ['avion', 'plateau', 'equipe', 'horloge']);
 });
 
-test('les tuiles de l’accueil regroupent les étapes par partie, avec leur état', () => {
+test('les tuiles de l’accueil suivent le rangement du menu : ce qu’on lit, puis ce qu’on règle, avec leur état', () => {
   const t = D.tuiles({ vols: { total: 18, departs: 12, source: 'demo' }, ateliers: { total: 0, fabriquent: 0 },
     bareme: { calibre: false }, journee: {}, plan: { services: 12, approx: 0 }, flux: { liaisons: 16, alertes: 0 },
+    chemins: { flux: 2, variantes: 1, sansChemin: 3 },
     reglages: { delai: 50, decalage: -10, rendement: 0.9, pauses: 2 } });
   const par = Object.fromEntries(t.map(x => [x.partie, x]));
-  assert.deepEqual(t.map(x => x.partie), ['donnees', 'chemins', 'organisation', 'reglages', 'resultats']);
+  // Une tuile par espace du menu, dans son ordre (évolution 22 a) : Lire ; Vols, L'unité, Simulation.
+  assert.deepEqual(t.map(x => x.partie), ['resultats', 'donnees', 'organisation', 'reglages']);
+  assert.deepEqual(t.map(x => x.partie), require('../onglets.js').PARTIES.filter(p => !p.cache).map(p => p.id));
   assert.equal(par.donnees.etat, 'provisoire', 'des exemples, pas une alerte');
   assert.match(par.donnees.lignes.map(l => l.texte).join(' | '), /Vols : 12 départs · exemple/);
-  // Les heures de travail se règlent dans la fiche de chaque service : Équipes.
+  // « L'unité » : ses équipes, ses temps par vol, ses chemins (ils en font partie), ses services.
+  assert.deepEqual(par.organisation.lignes.map(l => l.texte.split(' : ')[0]), ['Équipes', 'Temps par vol', 'Chemins', '3 commandes sans chemin', 'Unité']);
   assert.match(par.organisation.lignes.map(l => l.texte).join(' | '), /Temps par vol : chiffres d’exemple/);
+  assert.match(par.organisation.lignes.map(l => l.texte).join(' | '), /Chemins : 2 chemins · 1 variante/);
   assert.equal(par.organisation.etat, 'afaire', 'la pire de ses lignes');
   assert.match(par.reglages.lignes[0].texte, /Repas prêts 50 min avant le départ · vols décalés de -10 min/);
   assert.match(par.reglages.lignes[1].texte, /Rythme 0,9 · 2 pauses par poste/);
@@ -129,9 +134,9 @@ test('les tuiles de l’accueil regroupent les étapes par partie, avec leur ét
 test('ce qu’il y a à faire ensuite mène à une page qui existe', () => {
   const O = require('../onglets.js');
   for (const page of Object.values(D.PAGE_DE_VUE)) assert.ok(O.page(page), page);
-  // Ce qu'on décrit mène à la fiche des services, jamais à un outil « Plus » ;
-  // les alertes de l'unité, à la liste de ce qu'il reste à faire avant de simuler.
-  for (const v of ['ateliers', 'reglages']) assert.equal(O.partieDe(D.PAGE_DE_VUE[v]).id, 'organisation', v);
+  // Ce qu'on décrit mène à la fiche des services (la première page de « Services et équipes ») ;
+  // les alertes de l'unité, à la liste de ce qu'il reste à faire avant de simuler (la première de « Contrôles »).
+  for (const v of ['ateliers', 'reglages']) assert.equal(D.PAGE_DE_VUE[v], O.pagesDuGroupe('services')[0].id, v);
   assert.equal(D.PAGE_DE_VUE.flux, 'mu-pas');
-  for (const page of Object.values(D.PAGE_DE_VUE)) assert.ok(!O.page(page).plus, page);
+  assert.equal(D.PAGE_DE_VUE.flux, O.pagesDuGroupe('controles')[0].id);
 });

@@ -1,26 +1,26 @@
-/* Le menu : Accueil, puis cinq parties, dans l'ordre du travail (refonte du
- * 05/10 : « des onglets qui se ressemblent mais n'ont pas la même utilité ; ce
- * n'est pas intuitif ; mieux catégoriser »).
+/* Le menu : deux blocs, quatorze entrées, toutes visibles (évolution 22 a ;
+ * « une chose se règle à un seul endroit »).
  *
- *   Vols        ce qui part et ce qui revient
- *   Chemins     par où passe chaque commande
- *   Équipes     qui prépare quoi, quand, en combien de temps
- *   Simulation  vérifier, régler, lancer
- *   Résultats   ce que la journée donne
+ *   Lire      Synthèse, En direct, Planning, Période, Détails, Comparer
+ *   Régler    Vols        Programme, Retours
+ *             L’unité     Services et équipes, Chemins, Plan
+ *             Simulation  Réglages, Contrôles
+ *   en bas    Fichiers
  *
- * Une partie, un sujet. Les outils fins d'un sujet ne sont plus cachés dans
- * une partie à part (« Outils avancés ») : ils suivent ses pages, après la
- * mention « Plus » (`plus: true`). Aucune page n'a disparu : seuls leur
- * rangement et leur nom ont changé ; leurs identifiants restent les mêmes.
+ * Plus de partie à ouvrir, plus de mention « Plus » : une entrée est une page,
+ * ou un groupe de pages (`GROUPES`) qui se suivent en onglets internes, en tête
+ * de page. Aucune page n'a disparu : leurs identifiants restent les mêmes, et
+ * leurs anciens noms se cherchent toujours (« Aller à… »).
  *
  * Une page EST un sous-onglet d'une vue : les éléments d'une vue portent
  * `data-sous="<page>"` (ou plusieurs, séparés par des espaces), et une règle
  * de style masque ceux qui n'appartiennent pas à la page ouverte. Un élément
- * sans `data-sous` reste visible dans toutes les pages de sa vue. Les parties
- * ne déplacent rien : elles regroupent des pages de vues différentes.
- * La dernière page ouverte de chaque partie est retenue d'une visite à l'autre,
- * sauf une page de passage (`passage: true`) : le plan de l'unité, qu'on ouvre
- * pour le modifier et qu'on quitte par « Terminer » (refonte, étape 5).
+ * sans `data-sous` reste visible dans toutes les pages de sa vue. Les espaces
+ * (`PARTIES`) ne déplacent rien : ils regroupent des pages de vues différentes.
+ * La dernière page ouverte de chaque espace et de chaque groupe est retenue
+ * d'une visite à l'autre, sauf une page de passage (`passage: true`) : le plan
+ * de l'unité, qu'on ouvre pour le modifier et qu'on quitte par « Terminer »
+ * (refonte, étape 5).
  * Une page conditionnelle (`si: '<condition>'`) ne se montre que si sa
  * condition, posée par la page (`conditions`), est vraie : la période ne
  * paraît qu'avec un programme de vols daté (banc d'essai, évolution 10).
@@ -77,74 +77,88 @@
     ]
   };
 
-  /* Les parties du menu, dans l'ordre du travail. `intro` : une phrase, pas
-   * un paragraphe. `plus` : un outil fin, rangé après la mention « Plus ».
-   * `cache` : une partie qu'on ouvre depuis l'en-tête, sans tuile. */
+  /* Les deux blocs du menu (évolution 22 a) : ce qu'on lit, ce qu'on règle. */
+  const BLOCS = [
+    { id: 'lire', nom: 'Lire' },
+    { id: 'regler', nom: 'Régler' }
+  ];
+
+  /* Les espaces du menu, dans son ordre : celui du bloc « Lire », les trois du
+   * bloc « Régler », puis « Fichiers », en bas (`bas`, sans tuile à l'accueil :
+   * `cache`). `intro` : une phrase, pas un paragraphe. `court` : le nom de
+   * l'entrée au menu, quand il est plus court que celui de la page ; `ico` :
+   * son pictogramme au menu, quand deux entrées porteraient le même ;
+   * `ancien` : le nom de la partie d'avant, qui se cherche toujours.
+   * `groupe` : la page est un onglet interne de cette entrée (`GROUPES`). */
   const PARTIES = [
-    { id: 'donnees', nom: 'Vols', ico: 'avion', couleur: 'var(--c-vols)',
-      resume: 'Ce qui part et ce qui revient',
-      pages: [
-        { id: 'v-programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
-        { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
-      ] },
-    { id: 'chemins', nom: 'Chemins', ico: 'fleche', couleur: 'var(--c-chemins)',
-      resume: 'Par où passe chaque commande',
-      pages: [
-        { id: 'mu-carte', intro: 'Tous les chemins d’un coup d’œil : une colonne par chemin, une ligne par service, rangée par étape.' },
-        { id: 'mu-flux', intro: 'Les chemins de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
-        { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
-        // Un réglage (évolution 15 c) : elle quitte les Résultats pour les Chemins.
-        { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
-        // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. Au menu seulement s'il y en a une
-        // (`conditions.liens`, posée par la page) ; sinon la page reste ouverte à « Aller à… » et à ses liens.
-        { id: 'u-liens', plus: true, menuSi: 'liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }
-      ] },
-    { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
-      resume: 'Qui prépare quoi, quand, en combien de temps',
-      pages: [
-        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
-        { id: 'at-recap', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
-        { id: 'rg-recap', intro: 'Tous les temps par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
-        { id: 'u-plan', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' },
-        { id: 'u-services', plus: true, intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
-        { id: 'at-equipes', plus: true, intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
-        { id: 'rg-minutes', plus: true, intro: 'Les temps par vol, service par service, et leur classeur Excel (importer, exporter, chiffres d’exemple).' }
-      ] },
-    { id: 'reglages', nom: 'Simulation', ico: 'sablier', couleur: 'var(--c-temps)',
-      resume: 'Vérifier, régler, lancer',
-      pages: [
-        { id: 'mu-pas', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
-        { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
-        { id: 'u-lecture', plus: true, intro: 'Ce que le calcul comprend de votre organisation, point par point, et ce qu’il faut corriger.' }
-      ] },
-    { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
+    { id: 'resultats', nom: 'Lire', ancien: 'Résultats', bloc: 'lire', ico: 'journee', couleur: 'var(--c-journee)',
       resume: 'Ce que la journée donne',
       pages: [
         { id: 'j-chiffres', intro: 'Combien de personnes il faut, où ça coince, quand chaque service finit, ce qui part en retard, ce que change un essai.' },
-        // « En direct » vient juste après la Synthèse (évolution 16 g), avant la période.
+        // « En direct » vient juste après la Synthèse (évolution 16 g).
         { id: 'j-plan', intro: 'La journée en direct : qui travaille, qui attend, ce qui circule, où ça coince.' },
-        { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         // Le planning occupe sa page (correction 18 b) : sa phrase n'est pas affichée (`sansIntro`).
-        { id: 'at-planning', sansIntro: true, intro: 'Qui travaille quand : toute l’unité sur un écran, une ligne par service, de l’amont vers l’aval ; un clic déplie ses équipes ; un jour à la fois, trois zooms, l’axe des heures toujours visible ; le tableau des équipes dessous.' },
+        { id: 'at-planning', court: 'Planning', sansIntro: true, intro: 'Qui travaille quand : toute l’unité sur un écran, une ligne par service, de l’amont vers l’aval ; un clic déplie ses équipes ; un jour à la fois, trois zooms, l’axe des heures toujours visible.' },
+        { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         // « Détails » (évolution 15 c) : quatre pages en onglets internes, une seule entrée au menu (GROUPES).
         { id: 'at-repas', groupe: 'details', intro: 'Chaque commande : les exceptions d’abord ; celles qui sont à l’heure se déplient.' },
         { id: 'v-departs', groupe: 'details', intro: 'Chaque vol : les exceptions d’abord ; ceux qui sont chargés à l’heure se déplient.' },
         { id: 'j-stocks', groupe: 'details', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
         { id: 'j-details', groupe: 'details', intro: 'Les heures supplémentaires et les renforts, équipe par équipe.' },
-        { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
+        { id: 'j-comparer', court: 'Comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
-    { id: 'fichier', nom: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true,
+    { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)',
+      resume: 'Ce qui part et ce qui revient',
+      pages: [
+        { id: 'v-programme', court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
+        { id: 'v-planche', court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
+      ] },
+    { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)',
+      resume: 'Qui prépare quoi, quand, par où',
+      pages: [
+        // « Services et équipes » : six pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 b).
+        { id: 'mu-services', groupe: 'services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
+        { id: 'at-recap', groupe: 'services', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
+        { id: 'rg-recap', groupe: 'services', intro: 'Tous les temps par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
+        { id: 'u-services', groupe: 'services', intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
+        { id: 'at-equipes', groupe: 'services', intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
+        { id: 'rg-minutes', groupe: 'services', intro: 'Les temps par vol, service par service, et leur classeur Excel (importer, exporter, chiffres d’exemple).' },
+        // « Chemins » : cinq pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 c).
+        { id: 'mu-carte', groupe: 'chemins', intro: 'Tous les chemins d’un coup d’œil : une colonne par chemin, une ligne par service, rangée par étape.' },
+        { id: 'mu-flux', groupe: 'chemins', intro: 'Les chemins de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
+        { id: 'at-chemins', groupe: 'chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
+        { id: 'at-grille', groupe: 'chemins', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
+        // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. Parmi les onglets de « Chemins » seulement
+        // s'il y en a une (`conditions.liens`, posée par la page) ; sinon la page reste ouverte à « Aller à… » et à ses liens.
+        { id: 'u-liens', groupe: 'chemins', menuSi: 'liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
+        { id: 'u-plan', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' }
+      ] },
+    { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
+      resume: 'Régler, vérifier',
+      pages: [
+        { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
+        // « Contrôles » : deux pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 d).
+        { id: 'mu-pas', groupe: 'controles', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
+        { id: 'u-lecture', groupe: 'controles', intro: 'Ce que le calcul comprend de votre organisation, point par point, et ce qu’il faut corriger.' }
+      ] },
+    { id: 'fichier', nom: 'Fichiers', ancien: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true, bas: true,
       resume: 'Votre travail dans un fichier',
       pages: [
-        { id: 'u-sauvegarde', intro: 'Enregistrez tout votre travail dans un fichier, et relisez-le plus tard.' }
+        { id: 'u-sauvegarde', court: 'Fichiers', intro: 'Enregistrez tout votre travail dans un fichier, et relisez-le plus tard.' }
       ] }
   ];
   const CLE = 'ory-menu-pages';
   /**
    * Les groupes de pages (évolution 15 c) : une seule entrée au menu, ses pages en onglets internes, en tête de page.
-   * « Détails » : les commandes, les vols, les stocks et les heures sup, derrière la Synthèse.
+   * « Détails » : les commandes, les vols, les stocks et les heures sup, derrière la Synthèse. « Services et équipes »,
+   * « Chemins » et « Contrôles » (évolution 22 a) rassemblent les pages d'aujourd'hui que les parties suivantes fusionnent.
    */
-  const GROUPES = { details: { nom: 'Détails', ico: 'info' } };
+  const GROUPES = {
+    details: { nom: 'Détails', ico: 'info' },
+    services: { nom: 'Services et équipes', ico: 'service' },
+    chemins: { nom: 'Chemins', ico: 'reseau' },
+    controles: { nom: 'Contrôles', ico: 'alerte' }
+  };
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -173,7 +187,7 @@
   /** Les pages d'un groupe qui se montrent, dans l'ordre du menu. */
   const pagesDuGroupe = g => PARTIES.flatMap(p => pagesDe(p.id)).filter(x => x.groupe === g);
   /**
-   * Les entrées du menu d'une partie : ses pages, un groupe une seule fois (à la place de sa première page), avec son
+   * Les entrées du menu d'un espace : ses pages, un groupe une seule fois (à la place de sa première page), avec son
    * nom et son pictogramme ; `cible` : la page qu'il ouvre (la dernière ouverte du groupe, sinon la première).
    * `ouverte` : la page ouverte — une page hors du menu y figure tant qu'on y est.
    */
@@ -183,11 +197,30 @@
       if (!o.groupe) { out.push(o); continue; }
       if (vus.has(o.groupe)) continue;
       vus.add(o.groupe);
-      const pages = pagesDuGroupe(o.groupe), c = choix['groupe:' + o.groupe];
+      const pages = pagesDuGroupe(o.groupe).filter(x => auMenu(x.id, ouverte)), c = choix['groupe:' + o.groupe];
       out.push({ ...GROUPES[o.groupe], groupe: o.groupe, id: pages.some(x => x.id === c) ? c : o.id, pages: pages.map(x => x.id) });
     }
     return out;
   }
+  /** Le nom d'une entrée au menu : son nom court, sinon celui de sa page ou de son groupe. */
+  const libelle = o => o.court || o.nom;
+  /**
+   * Le menu entier (évolution 22 a) : ses deux blocs, leurs espaces et leurs entrées, puis les entrées du bas.
+   * Un espace qui porte le nom de son bloc (« Lire ») n'a pas de titre à lui (`titre: false`).
+   * @returns {{blocs: {id, nom, espaces: {id, nom, titre, entrees: object[]}[]}[], bas: object[]}}
+   */
+  function menu(choix = {}, ouverte) {
+    const blocs = BLOCS.map(b => ({ ...b, espaces: PARTIES.filter(p => p.bloc === b.id)
+      .map(p => ({ id: p.id, nom: p.nom, titre: p.nom !== b.nom, entrees: menuDe(p.id, choix, ouverte) })) }));
+    return { blocs, bas: PARTIES.filter(p => p.bas).flatMap(p => menuDe(p.id, choix, ouverte)) };
+  }
+  /** Les entrées du menu à la suite, dans son ordre : celles des blocs, puis celles du bas. */
+  function entrees(choix = {}, ouverte) {
+    const m = menu(choix, ouverte);
+    return [...m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees)), ...m.bas];
+  }
+  /** L'entrée du menu qui mène à une page : elle-même, ou son groupe. */
+  const entreeDe = (id, choix = {}) => { const o = page(id); return o ? entrees(choix, id).find(x => o.groupe ? x.groupe === o.groupe : x.id === id) || null : null; };
 
   /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
    * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
@@ -198,9 +231,12 @@
 
   class SousOnglets {
     /* a = {
-     *   hote()        — la barre où dessiner les onglets
+     *   hote()        — la barre où dessiner le menu
+     *   interne()     — facultatif : la barre des onglets internes d'un groupe, en tête de page
      *   vue()         — la vue affichée ('accueil' : aucune page)
-     *   badge(id)     — facultatif : { n, ton } à afficher sur l'onglet, ou rien
+     *   badge(cle)    — facultatif : { n, ton, titre } à afficher sur une entrée (son identifiant de page, ou
+     *                   « groupe:<groupe> »), ou rien
+     *   verrou()      — facultatif : vrai tant que le menu attend (le plan en modification) : ses entrées sont grisées
      *   change(vue,id)— facultatif : appelé quand la page change (la vue suit)
      *   apres(id)     — facultatif : appelé une fois la page ouverte et dessinée
      * } */
@@ -218,7 +254,8 @@
       if (h) {
         h.addEventListener('click', e => {
           const b = e.target.closest('[data-sous-onglet]'); if (!b) return;
-          this.choisir(b.dataset.sousOnglet);
+          // Au clavier (Entrée sur une entrée), le focus reste dans le menu, sur l'entrée ouverte.
+          this.choisir(b.dataset.sousOnglet, root.document && document.activeElement === b ? h : undefined);
         });
         h.addEventListener('keydown', e => this.clavier(e));
       }
@@ -244,9 +281,13 @@
         const p = partieDe(this.page), autre = p && pagesDe(p.id).find(x => x.vue === vue);
         if (autre) return autre.id;
       }
+      // Arrivé par un lien vers la vue : la dernière page choisie de cette vue.
+      return this.retenue(vue);
+    }
+
+    /** La dernière page choisie d'une vue (une vue porte des pages de plusieurs espaces), si elle se montre encore ; sinon sa première. */
+    retenue(vue) {
       if (!ONGLETS[vue]) return null;
-      // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue
-      // (une vue porte des pages de plusieurs parties : Chemins, Équipes, Simulation).
       const pv = (this.parVue || {})[vue];
       const deja = (pv && vueDe(pv) === vue && montree(pv) ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue && montree(id));
       return deja || defaut(vue);
@@ -255,12 +296,14 @@
     /** Ouvre une partie, sur sa dernière page. */
     ouvrir(partie) { const id = this.actifDe(partie); if (id) this.choisir(id); }
 
-    /* Ouvre une page, de la vue affichée ou d'une autre (la vue suivra). */
-    choisir(id, focus) {
+    /* Ouvre une page, de la vue affichée ou d'une autre (la vue suivra). `ouverture` : la page que l'application ouvre
+     * d'elle-même à son démarrage (la Synthèse, évolution 22 a) — ce n'est pas un choix, elle n'est pas retenue. */
+    choisir(id, focus, ouverture) {
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
       this.page = id;
-      // Une page de passage n'est pas retenue : sa partie et sa vue rouvrent la page d'avant.
-      if (!ONGLETS[vue].find(o => o.id === id).passage) {
+      this.ouverture = !!ouverture;
+      // Une page de passage n'est pas retenue : son espace et sa vue rouvrent la page d'avant.
+      if (!ouverture && !ONGLETS[vue].find(o => o.id === id).passage) {
         this.choix[p.id] = id;
         const g = page(id).groupe;
         if (g) this.choix['groupe:' + g] = id;
@@ -289,36 +332,34 @@
       }
       this.rendreInterne(actif);
       const h = this.a.hote(); if (!h) return;
-      const liste = p ? menuDe(p.id, this.choix, actif) : [], dans = actif ? (page(actif) || {}).groupe : null;
-      const I = root.OrlyIcones;
-      const html = liste.map((o, i) => {
-        const on = o.groupe ? o.groupe === dans : o.id === actif, b = !o.groupe && this.a.badge ? this.a.badge(o.id) : null;
-        // Les outils fins du sujet, après la mention « Plus » (05/10).
-        const sep = o.plus && !(liste[i - 1] || {}).plus ? '<span class="so-plus" aria-hidden="true">Plus</span>' : '';
-        return sep + `<button type="button" role="tab" class="so-onglet${on ? ' actif' : ''}${o.plus ? ' so-secondaire' : ''}" data-sous-onglet="${o.id}"
-          aria-selected="${on}" tabindex="${on ? 0 : -1}">${I ? I.ico(o.ico) : ''}<span>${esc(o.nom)}</span>${
+      // Le menu entier, toujours : deux blocs, leurs espaces, leurs entrées (évolution 22 a). L'entrée « Fichiers », en
+      // bas de la barre, est un bouton de la page : elle ne se dessine pas ici.
+      const m = menu(this.choix, actif), dans = actif ? (page(actif) || {}).groupe : null;
+      const toutes = m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees));
+      const ouverte = o => o.groupe ? o.groupe === dans : o.id === actif;
+      // Une seule entrée prend le focus au clavier (les flèches mènent aux autres) : celle qui est ouverte, sinon la première.
+      const prise = toutes.find(ouverte) || toutes[0];
+      const I = root.OrlyIcones, verrou = !!(this.a.verrou && this.a.verrou());
+      const bouton = o => {
+        const on = ouverte(o), cle = o.groupe ? 'groupe:' + o.groupe : o.id, b = this.a.badge ? this.a.badge(cle) : null;
+        return `<button type="button" role="tab" class="menu-entree${on ? ' actif' : ''}" data-sous-onglet="${o.id}" data-entree="${cle}"
+          aria-selected="${on}" tabindex="${o === prise ? 0 : -1}"${verrou ? ' disabled' : ''}>${I ? I.ico(o.ico) : ''}<span>${esc(libelle(o))}</span>${
           b && b.n ? `<b class="so-badge ${esc(b.ton || '')}" title="${esc(b.titre || '')}">${esc(b.n)}</b>` : ''}</button>`;
-      }).join('');
-      // Redessiner seulement si quelque chose a changé : sinon l'onglet qui a
+      };
+      const html = m.blocs.map(b => `<div class="menu-bloc" data-bloc="${b.id}"><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>${
+        b.espaces.map(e => `<div class="menu-espace" data-espace="${e.id}" role="tablist" aria-orientation="vertical" aria-label="${esc(e.titre ? b.nom + ' : ' + e.nom : b.nom)}">${
+          e.titre ? `<p class="menu-espace-titre" aria-hidden="true">${esc(e.nom)}</p>` : ''}${e.entrees.map(bouton).join('')}</div>`).join('')}</div>`).join('');
+      // Redessiner seulement si quelque chose a changé : sinon l'entrée qui a
       // le focus clavier le perdrait à chaque recalcul de la journée.
       const boite = h.querySelector('.so-liste') || h;
       const redessine = this.dessin !== html || (html && !boite.firstChild);
       if (redessine) { boite.innerHTML = html; this.dessin = html; }
-      h.hidden = !liste.length;
       // Rien n'a bougé (un recalcul de la journée) : rien à mesurer. Lire les
       // tailles forcerait une mise en page au milieu du calcul (étape 10).
       if (!redessine && this.vu === actif) return;
-      // Sur téléphone la barre défile : l'onglet ouvert doit y rester visible.
-      const on = boite.querySelector('.actif');
-      if (on && boite.scrollWidth > boite.clientWidth) {
-        const g = on.offsetLeft - boite.offsetLeft, d = g + on.offsetWidth;
-        if (g < boite.scrollLeft) boite.scrollLeft = g - 16;
-        else if (d > boite.scrollLeft + boite.clientWidth) boite.scrollLeft = d - boite.clientWidth + 16;
-      }
-      // Dans la barre latérale (refonte du 08/10), les pages se suivent en
-      // colonne et la barre défile en hauteur : la page ouverte y reste visible,
+      // Si la barre défile en hauteur (un écran très bas), l'entrée ouverte y reste visible,
       // une fois, quand elle change (on ne reprend pas la main à qui fait défiler).
-      const zone = on && on.closest('.barre-defile');
+      const on = boite.querySelector('.actif'), zone = on && on.closest('.barre-defile');
       if (zone && this.vu !== actif && zone.scrollHeight > zone.clientHeight) {
         const r = on.getBoundingClientRect(), z = zone.getBoundingClientRect();
         if (r.top < z.top) zone.scrollTop -= z.top - r.top + 8;
@@ -330,7 +371,8 @@
     /** Les onglets internes d'un groupe (« Détails ») : en tête de page, seulement sur une page du groupe. */
     rendreInterne(actif) {
       const n = this.a.interne ? this.a.interne() : null; if (!n) return;
-      const g = actif ? (page(actif) || {}).groupe : null, pages = g ? pagesDuGroupe(g) : [];
+      // Une page hors du menu (« Liens entre services » quand toutes les commandes ont un chemin) n'a son onglet que tant qu'on y est.
+      const g = actif ? (page(actif) || {}).groupe : null, pages = g ? pagesDuGroupe(g).filter(x => auMenu(x.id, actif)) : [];
       n.hidden = !pages.length;
       const html = pages.map(o => `<button type="button" role="tab" class="oi-onglet${o.id === actif ? ' actif' : ''}" data-sous-onglet="${o.id}"
         aria-selected="${o.id === actif}" tabindex="${o.id === actif ? 0 : -1}">${esc(o.nom)}</button>`).join('');
@@ -351,7 +393,7 @@
     }
   }
 
-  const api = { ONGLETS, PARTIES, GROUPES, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, regles, SousOnglets };
+  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

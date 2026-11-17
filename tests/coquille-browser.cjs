@@ -1,8 +1,10 @@
-/* La coquille (refonte du 08/10) : une barre latérale — les parties dans
- * l'ordre du travail, celle qui est ouverte déplie ses pages —, une barre du
+/* La coquille (refonte du 08/10) : une barre latérale — le menu —, une barre du
  * haut — le fil d'Ariane et un seul Annuler / Rétablir —, puis le titre de la
- * page et ses outils.
- *   1. Toute page s'atteint en deux clics : sa partie, puis elle.
+ * page et ses outils. En version 1 (évolution 22 a), le menu montre toutes ses
+ * entrées, en deux blocs ; en version 2 (gelée), les parties dans l'ordre du
+ * travail, celle qui est ouverte dépliant ses pages.
+ *   1. Toute page s'atteint en deux clics au plus : son entrée, puis son onglet
+ *      interne si elle en est un (v1) ; sa partie, puis elle (v2).
  *   2. Annuler agit sur ce que la page ouverte modifie (les cases et équipes,
  *      le barème, le plan en édition), au bouton comme au clavier ; dans un
  *      champ de texte, Ctrl Z reste celui du champ.
@@ -18,12 +20,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=150)=>page.waitForTimeout(ms);
- const actif=()=>page.locator('#sous-onglets [aria-selected=true]').getAttribute('data-sous-onglet');
  const eteint=sel=>page.locator(sel).isDisabled();
  const equipes=()=>page.evaluate(()=>Sim.ateliers.state.ateliers.length);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
-   const V=version+' : ';
+   const V=version+' : ',v1=version==='v1';
+   const actif=()=>v1?page.evaluate(()=>document.body.dataset.sous):page.locator('#sous-onglets [aria-selected=true]').getAttribute('data-sous-onglet');
+   // Une entrée du menu qui attend : celle des vols (v1), la partie des vols (v2).
+   const VOLS=v1?'#menu [data-entree="v-programme"]':'#menu [data-vers-partie=donnees]';
    await page.setViewportSize({width:1440,height:900});
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(300);
@@ -32,7 +36,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    //    toute la hauteur ; la barre du haut commence à côté d'elle.
    assert.equal(await page.locator('#view-title').textContent(),'Accueil');
    assert.equal(await page.locator('#ariane-partie').isVisible(),false,V+'pas de partie sur l’accueil');
-   assert.equal(await page.locator('#sous-onglets').isVisible(),false);
+   // v1 : le menu est entier dès l'accueil ; v2 : aucune partie n'est ouverte, pas de pages dépliées.
+   assert.equal(await page.locator('#sous-onglets').isVisible(),v1);
+   if(v1)assert.equal(await page.locator('#menu [aria-selected=true]').count(),0,V+'aucune entrée ouverte sur l’accueil');
    assert.equal(await eteint('#btn-annuler'),true);assert.equal(await eteint('#btn-retablir'),true);
    assert.match(await page.locator('#btn-annuler').getAttribute('title'),/Rien à annuler/);
    const b=await page.locator('#barre').boundingBox(),h=await page.locator('header.haut').boundingBox();
@@ -45,7 +51,32 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    //    Les pages au menu (v1, évolution 19 b) : « Liens entre services » n'y est que si une commande n'a pas de chemin.
    const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).filter(x=>!OrlyOnglets.auMenu||OrlyOnglets.auMenu(x.id)).map(x=>x.id),
      groupes:Object.fromEntries(OrlyOnglets.pagesDe(p.id).filter(x=>x.groupe).map(x=>[x.id,OrlyOnglets.GROUPES[x.groupe].nom]))})));
-   for(const p of parties){
+   // v1 (évolution 22 a) : chaque entrée du menu est à un clic, où que l'on soit ; ses pages, s'il s'agit d'un groupe,
+   // à un clic de plus, par ses onglets internes. « Terminer » ramène du plan à la page d'avant.
+   if(v1){
+    const entrees=await page.evaluate(()=>OrlyOnglets.entrees().filter(o=>!OrlyOnglets.partieDe(o.id).bas).map(o=>({cle:o.groupe?'groupe:'+o.groupe:o.id,
+      titre:o.groupe?o.nom:OrlyOnglets.page(o.id).nom,espace:OrlyOnglets.partieDe(o.id).nom,pages:o.groupe?o.pages:[o.id]})));
+    assert.equal(entrees.length,12,V+'douze entrées dans les deux blocs (sans « Période », sans programme daté)');
+    let avant=null;
+    for(const e of entrees){
+     const bouton=page.locator(`#menu [data-entree="${e.cle}"]`);
+     assert.equal(await bouton.isVisible(),true,V+e.cle+' : à un clic');
+     await bouton.click();await attendre(100);
+     for(const id of e.pages){
+      if(e.pages.length>1){await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();await attendre(100);}
+      assert.equal(await actif(),id);
+      assert.equal(await bouton.getAttribute('aria-selected'),'true',V+id+' : son entrée est marquée');
+      assert.equal(await page.locator('#ariane-partie').textContent(),e.espace);
+      assert.equal(await page.locator('#view-title').textContent(),e.titre);
+      if(id==='u-plan'){
+       assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true,V+'le plan de l’unité s’ouvre en édition');
+       await page.locator('#edit-done').click();await attendre(150);
+       assert.equal(await actif(),avant,V+'« Terminer » ramène à « '+avant+' »');
+      }else avant=id;
+     }
+    }
+   }
+   for(const p of v1?[]:parties){
     await page.locator(`#menu [data-vers-partie=${p.id}]`).click();await attendre();
     assert.equal(await page.evaluate(()=>{const on=document.querySelector('#menu .menu-partie.actif');
       return !!on&&on.nextElementSibling===document.getElementById('sous-onglets');}),true,V+p.id+' : ses pages sous elle');
@@ -76,19 +107,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // La partie, dans le fil d'Ariane, mène à sa première page.
    await nav.aller(page,'at-recap');
    await page.locator('#ariane-partie').click();await attendre();
-   assert.equal(await actif(),'mu-services',V+'Équipes mène à sa première page');
-   // Au clavier, les pages se suivent en colonne : bas et haut, le focus suit.
+   assert.equal(await actif(),'mu-services',V+'l’espace (v1), la partie (v2) mène à sa première page');
+   // Au clavier, les entrées se suivent en colonne : bas et haut, le focus suit.
    await page.locator('#sous-onglets [data-sous-onglet=mu-services]').focus();await page.keyboard.press('ArrowDown');await attendre();
-   assert.equal(await actif(),'at-recap');
-   assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'at-recap','le focus suit');
+   if(v1){
+    // v1 : l'entrée suivante est « Chemins », qui rouvre sa dernière page.
+    assert.equal(await page.evaluate(()=>OrlyOnglets.page(document.body.dataset.sous).groupe),'chemins');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.entree),'groupe:chemins','le focus suit');
+   }else{
+    assert.equal(await actif(),'at-recap');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'at-recap','le focus suit');
+   }
    await page.keyboard.press('ArrowUp');await attendre();
    assert.equal(await actif(),'mu-services');
    // La sauvegarde, au pied de la barre : marquée quand on y est, sans être une partie du travail.
    await page.locator('#btn-sauvegarde').click();await attendre();
    assert.equal(await actif(),'u-sauvegarde');
    assert.equal(await page.locator('#btn-sauvegarde').getAttribute('aria-current'),'page');
-   assert.equal(await page.locator('#menu [aria-current=page]').count(),0);
-   assert.equal(await page.locator('#sous-onglets').isVisible(),false,V+'une seule page : pas de liste à déplier');
+   assert.equal(await page.locator('#menu [aria-current=page], #menu [aria-selected=true]').count(),0);
+   // v1 : le menu reste entier ; v2 : une seule page, pas de liste à déplier.
+   assert.equal(await page.locator('#sous-onglets').isVisible(),v1);
 
    // 2. Un seul Annuler, pour ce que la page ouverte modifie.
    await nav.aller(page,'v-programme');
@@ -132,7 +170,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'j-plan');
    await page.locator('#btn-edit').click();await attendre(300);
    assert.ok((await page.locator('#barre').boundingBox()).width<=60,V+'la barre se replie');
-   assert.equal(await eteint('#menu [data-vers-partie=donnees]'),true,V+'le menu attend la fin de l’édition');
+   assert.equal(await eteint(VOLS),true,V+'le menu attend la fin de l’édition');
    assert.equal(await eteint('#ariane-partie'),true);
    const nomCuisine=()=>page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='cuisine').nom);
    const avant=await nomCuisine();
@@ -142,7 +180,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await nomCuisine(),avant,V+'Annuler défait le plan, pendant l’édition');
    await page.locator('#edit-done').click();await attendre(300);
    assert.ok((await page.locator('#barre').boundingBox()).width>=200,V+'la barre revient');
-   assert.equal(await eteint('#menu [data-vers-partie=donnees]'),false);
+   assert.equal(await eteint(VOLS),false);
 
    // 4. Rien de coupé : à 1 280 px et à 1 024 px, aucune page ne déborde, ni la
    //    barre du haut, ni le titre de la page et ses outils.

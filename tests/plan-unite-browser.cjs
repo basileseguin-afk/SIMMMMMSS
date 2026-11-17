@@ -30,13 +30,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre(300);
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
 
-   // 1. Équipes › Plan de l'unité ouvre l'édition.
-   await page.locator('#menu [data-vers-partie=organisation]').click();await attendre();
+   // 1. L'unité › Plan (v1), Équipes › Plan de l'unité (v2) ouvre l'édition.
+   await nav.entree(page,'groupe:services','organisation');await attendre();
    assert.equal(await actif(),'mu-services');
    await page.locator('#sous-onglets [data-sous-onglet=u-plan]').click();await attendre(300);
    assert.equal(await actif(),'u-plan');
    assert.equal(await edition(),true,V+'la page ouvre l’édition');
-   assert.equal(await page.locator('#ariane-partie').textContent(),'Équipes');
+   assert.equal(await page.locator('#ariane-partie').textContent(),version==='v1'?'L’unité':'Équipes');
    assert.equal(await page.locator('#view-title').textContent(),'Plan de l’unité');
    assert.equal(await page.locator('#btn-problemes').isDisabled(),true,V+'le menu attend la fin de l’édition');
    assert.equal(await page.locator('#en-ce-moment').getAttribute('aria-label'),'La zone choisie');
@@ -89,8 +89,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await edition(),false);
    assert.equal(await actif(),'mu-services',V+'« Terminer » ramène à la page d’avant');
    await nav.aller(page,'j-chiffres');
-   await page.locator('#menu [data-vers-partie=organisation]').click();await attendre();
-   assert.equal(await actif(),'mu-services',V+'Équipes rouvre la page d’avant, pas le plan');
+   await nav.entree(page,'groupe:services','organisation');await attendre();
+   assert.equal(await actif(),'mu-services',V+'« Services et équipes » (v1), Équipes (v2) rouvre la page d’avant, pas le plan');
 
    // Les contours du plan rejoué gardent leur épaisseur à tout zoom.
    await nav.aller(page,'j-plan');

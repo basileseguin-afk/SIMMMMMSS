@@ -101,15 +101,17 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services','la fiche du service');
   assert.equal(await page.evaluate(()=>Sim.unite.choisi),'prepa');
 
-  // 4. Le nombre d'un onglet : les problèmes qui se règlent sur sa page, sans les informations.
+  // 4. La pastille du menu (évolution 22 a) : une seule, sur « Contrôles » — les problèmes de toute l'unité, sans les
+  //    informations. Les autres entrées n'en portent plus ; le compte par page reste celui du registre.
   for(const id of ['mu-services','mu-pas','at-chemins']){
     await nav.aller(page,id);
-    const badges=await page.evaluate(()=>[...document.querySelectorAll('#sous-onglets [data-sous-onglet]')].map(b=>{
-      const n=b.querySelector('.so-badge');return [b.dataset.sousOnglet,n?+n.textContent:0,OrlyAvis.compte(Sim.problemes.liste,b.dataset.sousOnglet),n?n.title:''];}));
-    for(const [onglet,vu,attendu,bulle] of badges){
-      assert.equal(vu,attendu,onglet+' : son nombre dérive du registre');
-      if(vu)assert.match(bulle,/(bloquants?|à corriger), à régler ici$/,onglet+' : '+bulle);
-    }
+    const pastilles=await page.evaluate(()=>[...document.querySelectorAll('#menu [data-sous-onglet]')].filter(b=>b.querySelector('.so-badge')).map(b=>{
+      const n=b.querySelector('.so-badge');return [b.dataset.entree,+n.textContent,n.title];}));
+    const attendu=await page.evaluate(()=>OrlyAvis.compte(Sim.problemes.liste));
+    assert.ok(attendu>0,'l’unité a des problèmes');
+    assert.deepEqual(pastilles.map(x=>x.slice(0,2)),[['groupe:controles',attendu]],id+' : une seule pastille, sur « Contrôles », dérivée du registre');
+    assert.match(pastilles[0][2],/(bloquants?|à corriger)$/,'sa bulle dit quoi : '+pastilles[0][2]);
+    assert.doesNotMatch(pastilles[0][2],/information/,'jamais les informations');
   }
   const ici=await page.evaluate(()=>({services:OrlyAvis.compte(Sim.problemes.liste,'mu-services'),
     avecInfos:Sim.problemes.liste.filter(p=>p.page==='mu-services').length}));

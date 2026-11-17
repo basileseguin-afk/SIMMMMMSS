@@ -57,7 +57,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*Équipes › Services et équipes/,'les étapes sans équipe renvoient au tableau');
+  assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*L’unité › Services et équipes/,'les étapes sans équipe renvoient au tableau');
 
   // Une commande qui suit le flux de sa classe peut avoir sa variante, copiée du flux.
   await nav.aller(page,'at-chemins');await attendre();
@@ -190,7 +190,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-qf=remplir]').count(),0);
   // Une cellule ouvre le chemin de sa commande, sur son service.
   await kase('FWI/BC','cuisine').click();await attendre();
-  assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'FWI/BC');
   // Le tableau se relit.
   await nav.aller(page,'at-grille');await attendre();

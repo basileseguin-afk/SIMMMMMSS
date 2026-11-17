@@ -22,9 +22,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const registre=()=>page.evaluate(()=>Sim.problemes.liste.map(p=>({niveau:p.niveau,titre:p.titre,page:p.page,service:p.service||null})));
  const compteBarre=()=>page.evaluate(()=>{const c=document.querySelector('#btn-problemes .pb-compte');return c.hidden?0:+c.textContent;});
  const ouvert=()=>page.evaluate(()=>document.getElementById('problemes').matches(':popover-open'));
- // Les nombres des onglets de la partie ouverte, et ce que le registre en dit.
+ // Les nombres du menu, et ce que le registre en dit. En v2 (gelée) : sur chaque onglet de la partie ouverte, les problèmes
+ // qui se règlent sur sa page. En v1 (évolution 22 a) : une seule pastille, sur « Contrôles » — tous les problèmes de l'unité.
  const badges=()=>page.evaluate(()=>[...document.querySelectorAll('#sous-onglets [data-sous-onglet]')].map(b=>{
-   const n=b.querySelector('.so-badge');return [b.dataset.sousOnglet,n?+n.textContent:0,(window.OrlyAvis||OrlyProblemes).compte(Sim.problemes.liste,b.dataset.sousOnglet)];}));
+   const n=b.querySelector('.so-badge'),v1=typeof OrlyOnglets.entrees==='function',compte=(window.OrlyAvis||OrlyProblemes).compte;
+   return [v1?b.dataset.entree:b.dataset.sousOnglet,n?+n.textContent:0,v1?(b.dataset.entree==='groupe:controles'?compte(Sim.problemes.liste):0):compte(Sim.problemes.liste,b.dataset.sousOnglet)];}));
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    const V=version+' : ',v1=version==='v1';

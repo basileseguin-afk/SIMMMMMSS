@@ -1,17 +1,17 @@
 /* ==========================================================================
- *  L'ACCUEIL — le menu principal, et l'état de chaque partie
+ *  L'ACCUEIL — l'état de chaque espace du menu
  *
  *  Quelqu'un qui n'est pas du métier de l'informatique doit comprendre, d'un
- *  coup d'œil, ce que fait ce site et où il en est. L'accueil montre quatre
- *  tuiles, une par partie du travail :
+ *  coup d'œil, ce que fait ce site et où il en est. L'accueil suit le
+ *  rangement du menu (évolution 22 a) : deux blocs, une tuile par espace.
  *
- *      Vols           ce qu'on importe : le programme, la planche retour
- *      Chemins        par où passe chaque commande
- *      Équipes        qui prépare quoi, quand, en combien de temps
- *      Simulation     vérifier, régler (horaires, rythme, pauses), lancer
- *      Résultats      ce que la journée donne
+ *      Lire                   ce que la journée donne
+ *      Régler   Vols          ce qui part et ce qui revient
+ *               L'unité       qui prépare quoi, quand, par où
+ *               Simulation    régler (horaires, rythme, pauses), vérifier
  *
- *  Chaque tuile porte son état en clair (fait, exemple, à faire) et ses pages.
+ *  Chaque tuile porte son état en clair (fait, exemple, à faire) et ses
+ *  entrées du menu. Le menu lui-même est dessiné par onglets.js.
  *  L'histoire « Comment ça marche » y est racontée en quatre images ; elle
  *  n'encombre plus le haut de chaque page.
  *
@@ -142,19 +142,20 @@
     const chemins = [{ texte: 'Chemins : ' + pluriel(c.flux || 0, 'chemin', 'chemins') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
       etat: c.flux ? 'fait' : 'afaire' }];
     if (c.sansChemin) chemins.push({ texte: pluriel(c.sansChemin, 'commande') + ' sans chemin', etat: 'afaire' });
-    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Temps par vol'), ligne('unite', 'Unité')];
+    // « L'unité » : ses équipes, ses temps par vol, ses chemins, ses services (évolution 22 a : les chemins en font partie).
+    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Temps par vol'), ...chemins, ligne('unite', 'Unité')];
     const reglages = [
       { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
         + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },
       { texte: 'Rythme ' + String(r.rendement ?? 1).replace('.', ',')
         + ' · ' + pluriel(r.pauses ?? 0, 'pause') + ' par poste', etat: 'fait' }];
     const resultats = [ligne('journee', 'Journée')];
+    // Dans l'ordre du menu : ce qu'on lit, puis ce qu'on règle.
     return [
+      { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats },
       { partie: 'donnees', etat: pire(donnees.map(l => l.etat)), lignes: donnees },
-      { partie: 'chemins', etat: pire(chemins.map(l => l.etat)), lignes: chemins },
       { partie: 'organisation', etat: pire(organisation.map(l => l.etat)), lignes: organisation },
-      { partie: 'reglages', etat: 'fait', lignes: reglages },
-      { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats }
+      { partie: 'reglages', etat: 'fait', lignes: reglages }
     ];
   }
 
@@ -186,50 +187,21 @@
   class Accueil {
     /**
      * @param {object} a adaptateur :
-     *   menu()          — le <nav> de la barre latérale où dessiner les parties
-     *   pages()         — facultatif : la liste des pages de la partie ouverte
-     *                     (dessinée par OrlyOnglets), à déplier sous elle
      *   accueil()       — l'élément où dessiner la page d'accueil
      *   etat()          — l'objet attendu par `tuiles()`
-     *   partie()        — la partie ouverte ('accueil' sur l'accueil)
      * Les boutons portent `data-vers-partie` ou `data-page` : c'est la page
-     * qui écoute les clics, pour l'en-tête comme pour l'accueil.
+     * qui écoute les clics.
      */
     constructor(a) {
       this.a = a;
       this.rendre();
     }
 
-    rendre() { this.rendreMenu(); this.rendreAccueil(); }
-
-    /* La barre latérale : l'accueil, puis les parties ; celle qui est ouverte
-     * est marquée, et ses pages se déplient juste dessous (refonte du 08/10).
-     * La liste des pages est déplacée, jamais recréée : elle garde ses
-     * écouteurs et son focus. Sans partie ouverte (l'accueil, la sauvegarde),
-     * elle attend après le menu. */
-    rendreMenu() {
-      const m = this.a.menu && this.a.menu(); if (!m || !O()) return;
-      const ouverte = this.a.partie ? this.a.partie() : null;
-      const bouton = (id, nom, ico, couleur) => {
-        const on = id === ouverte;
-        return `<button type="button" class="menu-partie${on ? ' actif' : ''}" data-vers-partie="${id}" style="--c:${couleur}"
-          ${on ? 'aria-current="page"' : ''}>${icone(ico)}<span>${esc(nom)}</span></button>`;
-      };
-      const html = bouton('accueil', 'Accueil', 'unite', 'var(--accent)')
-        + O().PARTIES.filter(p => !p.cache).map(p => bouton(p.id, p.nom, p.ico, p.couleur)).join('');
-      const pages = this.a.pages ? this.a.pages() : null;
-      if (this.dessin !== html || !m.firstElementChild) {
-        if (pages && m.contains(pages)) m.after(pages);
-        m.innerHTML = html; this.dessin = html;
-      }
-      if (!pages) return;
-      const on = m.querySelector('.menu-partie.actif:not([data-vers-partie="accueil"])');
-      if (on) { if (on.nextElementSibling !== pages) on.after(pages); }
-      else if (pages.parentNode === m) m.after(pages);
-    }
+    rendre() { this.rendreAccueil(); }
 
     /* La page d'accueil : l'histoire en quatre images, ce qu'il y a à faire
-     * ensuite, puis une tuile par partie avec son état et ses pages. */
+     * ensuite, puis les deux blocs du menu, une tuile par espace avec son état
+     * et ses entrées ; « Fichiers », en bas, comme au menu. */
     rendreAccueil() {
       const h = this.a.accueil && this.a.accueil(); if (!h || !O()) return;
       const e = this.a.etat(), etat = Object.fromEntries(tuiles(e).map(t => [t.partie, t]));
@@ -240,8 +212,8 @@
         : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
       const tuile = p => {
         const t = etat[p.id];
-        // Les pages au menu : une page hors du menu (« Liens entre services » sans commande sans chemin) n'a pas son raccourci.
-        const pages = O().pagesDe(p.id).filter(x => O().auMenu(x.id)).map(x => `<button type="button" class="acc-page${x.plus ? ' acc-plus' : ''}" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
+        // Les entrées du menu de cet espace : une page, ou un groupe (qui rouvre sa première page).
+        const pages = O().menuDe(p.id).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(O().libelle(x))}</button>`).join('');
         return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
           <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
             <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>
@@ -252,6 +224,14 @@
           <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
         </article>`;
       };
+      const bloc = b => {
+        const espaces = O().PARTIES.filter(p => p.bloc === b.id && !p.cache);
+        return `<section class="acc-bloc" data-bloc="${b.id}" aria-label="${esc(b.nom)}">
+          <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
+          <div class="acc-tuiles">${espaces.map(tuile).join('')}</div>
+        </section>`;
+      };
+      const bas = O().menu().bas.map(x => `<button type="button" class="btn btn-sm" data-page="${x.id}">${icone(x.ico)} ${esc(O().libelle(x))} : sauvegarde et limites du calcul</button>`).join('');
       const html = `<div class="acc">
         <section class="acc-histoire" aria-label="Comment ça marche">
           <h1>Simuler une journée de repas à bord</h1>
@@ -260,8 +240,8 @@
             <b>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
         </section>
         ${suiteHtml}
-        <div class="acc-tuiles">${O().PARTIES.filter(p => !p.cache).map(tuile).join('')}</div>
-        <p class="acc-pied"><button type="button" class="btn btn-sm" data-page="u-sauvegarde">${icone('boite')} Sauvegarde et limites du calcul</button></p>
+        <div class="acc-blocs">${O().BLOCS.map(bloc).join('')}</div>
+        <p class="acc-pied">${bas}</p>
       </div>`;
       if (h.innerHTML !== html) h.innerHTML = html;
     }

@@ -51,7 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-equipes');await attendre();
   assert.match(await page.locator('#at-liste').textContent(),/Montage TX BC/,'la case est dans « Les cases »');
   await page.locator(`#at-liste [data-at="${kase.id}"] .at-carte-nom`).click();await attendre();
-  assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
+  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
 
   // 2. La case s'ouvre dans une fenêtre à droite, fiche complète, en vue sans défiler.
   assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de « Les cases », la case est ouverte');
@@ -132,7 +132,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-grille');await attendre();
   assert.match(await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').textContent(),/Montage TX BC/);
   await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').click();await attendre();
-  assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/BC');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true,'le service cliqué est choisi');
   assert.equal(await page.locator(fiche).isVisible(),true);

@@ -60,7 +60,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(vide[0].nom,'Rejouer la journée');
    assert.ok(vide[0].choisi,V+'la première proposition est choisie');
    for(const p of ['Synthèse','Planning des équipes','Horaires des équipes','Programme des vols'])
-     assert.ok(vide.some(o=>o.nom===p),V+'la page « '+p+' »');
+     assert.ok(vide.some(o=>o.nom===p||o.nom.endsWith('› '+p)),V+'la page « '+p+' » (avec son entrée du menu devant, en v1 : « Services et équipes › … »)');
    // Une équipe, sans accents ni majuscules.
    await page.keyboard.type('MONTAGE DU');await attendre(page,100);
    let o=await options();

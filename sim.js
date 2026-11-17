@@ -426,7 +426,7 @@ function actionService(action,id){
     // là où on le voit (un service du plan d'origine se retire, et se remet).
     const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
     Promise.resolve(z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id)).then(fait=>{
-      if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Équipes › Liste des services.':'.'),{parDefaut:true});
+      if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Services et équipes › Liste des services.':'.'),{parDefaut:true});
       if(document.body.dataset.sous==='u-services')renderServices();});
   }
 }
@@ -636,7 +636,7 @@ function lectureDuGraphe(){
   const orphelines=equipesOrphelines();
   if(orphelines.length)alertes.push({grave:true,orphelines:true,
     texte:orphelines.map(a=>a.nom).join(', ')+(orphelines.length>1?' travaillent':' travaille')+' dans un service qui n’existe plus sur le plan. '
-      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Équipes › Liste des services).'});
+      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Services et équipes › Liste des services).'});
   // Un service supprimé qui reste une étape de chemins : l'étape est sautée,
   // et l'alerte du calcul le nomme sans qu'on puisse le retrouver nulle part.
   const fantomes=servicesFantomes().filter(f=>f.chemins);
@@ -644,7 +644,7 @@ function lectureDuGraphe(){
   if(fantomes.length)alertes.push({grave:true,fantomes:true,
     texte:fantomes.map(f=>f.nom).join(', ')+(fantomes.length>1?' restent des étapes':' reste une étape')+' de '
       +nChemins+(nChemins>1?' chemins':' chemin')+'. Effacez-'+(fantomes.length>1?'les':'le')+' partout, ou faites passer '
-      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Équipes › Liste des services, en tête de page).'});
+      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Services et équipes › Liste des services, en tête de page).'});
   // Un cycle bloquerait la fabrication sans jamais rien dire.
   const fourn=MoteurProduction.fournisseurs(liens);
   for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
@@ -848,10 +848,14 @@ function renderControles(){
     +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
       :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
 }
-/* Le nombre d'un onglet : les problèmes (bloquants, à corriger) qui se règlent
- * sur sa page. Il dérive du registre (avis.js) : un seul compte, partout
- * (refonte du 08/10) ; une information n'y compte pas (évolution 19 d). */
-function badgeOnglet(id){return Sim.problemes?Sim.problemes.badge(id):null;}
+/* La pastille du menu (évolution 22 a) : une seule, sur l'entrée « Contrôles » — le nombre des problèmes (bloquants et à
+ * corriger) de toute l'unité. Il dérive du registre (avis.js) : un seul compte, partout (refonte du 08/10) ; une
+ * information n'y compte pas (évolution 19 d). Les autres entrées n'en portent plus. */
+function badgeOnglet(cle){
+  if(cle!=='groupe:controles'||!Sim.problemes)return null;
+  const pb=Sim.problemes.liste.filter(OrlyAvis.estProbleme);
+  return pb.length?{n:pb.length,ton:OrlyAvis.ton(pb),titre:OrlyAvis.resume(pb)}:null;
+}
 /* Les sources du registre des problèmes : celles que le site montre déjà
  * ailleurs (contrôles du calcul, services supprimés encore cités, liens de
  * l'unité quand ils servent, étapes de « Prêt à simuler ? ») ; rien de plus.
@@ -909,7 +913,7 @@ async function supprimerServiceUnite(id){
   const dansChemins=(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id));
   if(cases||dansChemins){
     const oui=await OrlyNotif.demander((cases?'Ses '+cases+(cases>1?' équipes sont supprimées':' équipe est supprimée')+(dansChemins?', et ses étapes de chemin retirées.':'.'):'Ses étapes de chemin sont retirées.')
-      +(z.kind==='service'?' Le service, lui, se remet depuis Équipes › Liste des services.':''),
+      +(z.kind==='service'?' Le service, lui, se remet depuis Services et équipes › Liste des services.':''),
       {titre:'Supprimer le service « '+nom+' » ?',oui:'Supprimer le service',danger:true});
     if(!oui)return false;
     reaffecterService(id,null,nom);
@@ -1027,8 +1031,10 @@ function initOnglets(){
     interne:()=>document.getElementById('onglets-internes'),
     vue:()=>activeView,
     badge:badgeOnglet,
-    // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
-    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();majHauteurEntete();
+    // Pendant la modification du plan, le menu attend : ses entrées sont grisées.
+    verrou:()=>editMode,
+    // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
+    apres:id=>{afficherTitre();if(id==='u-services')renderServices();majHauteurEntete();
       // Le plan de l'unité (refonte, étape 5) : y arriver ouvre l'édition ;
       // ailleurs, on retient la page, pour que « Terminer » y ramène.
       if(id==='u-plan'){if(!editMode)basculerEdition();}else Sim.pageAvantPlan=id;},
@@ -1063,14 +1069,19 @@ function initDemarrage(){
   if(window.OrlyIcones)document.querySelectorAll('[data-ico]').forEach(e=>{if(!e.firstChild)e.innerHTML=OrlyIcones.ico(e.dataset.ico);});
   if(!window.OrlyDemarrage)return;
   Sim.demarrage=new OrlyDemarrage.Accueil({
-    menu:()=>document.getElementById('menu'),
-    pages:()=>document.getElementById('sous-onglets'),
     accueil:()=>document.getElementById('view-accueil'),
-    etat:etatDemarrage,
-    partie:()=>activeView==='accueil'?'accueil':(document.body.dataset.partie||null)
+    etat:etatDemarrage
   });
-  // On arrive sur l'accueil : l'état de chaque partie, et ce qu'il y a à faire.
+  // L'application s'ouvre sur la Synthèse quand une journée se calcule (évolution 22 a) ; sinon sur l'accueil :
+  // l'état de chaque espace, et ce qu'il y a à faire.
   showView('accueil');
+  // Ce n'est pas un choix : la dernière page ouverte de chaque espace reste celle qu'on avait choisie.
+  if(journeeCalculee()&&Sim.onglets)Sim.onglets.choisir('j-chiffres',null,true);
+}
+/** Une journée se calcule : le calcul va au bout, et au moins une commande est préparée (comme « Calcul à jour »). */
+function journeeCalculee(){
+  const r=Sim.ateliers&&Sim.ateliers.resultat;
+  return !!r&&r.ok!==false&&(r.lots||[]).length>0;
 }
 /* Le menu : ouvrir une page, une partie, ou revenir à l'accueil. Pendant
  * l'édition du plan, on ne s'en va pas : il faut d'abord la terminer. */
@@ -1103,9 +1114,11 @@ function afficherTitre(){
     if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
   }
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg&&!pg.sansIntro?pg.intro:'';
-  // La sauvegarde n'est pas une partie du travail : son bouton, au pied de la barre, dit qu'on y est.
+  // « Fichiers », en bas du menu : son bouton dit qu'on y est. De même la marque, pour l'accueil.
   const sv=document.getElementById('btn-sauvegarde');
   if(sv){const ici=!!partie&&partie.id==='fichier';sv.classList.toggle('actif',ici);if(ici)sv.setAttribute('aria-current','page');else sv.removeAttribute('aria-current');}
+  const marque=document.getElementById('btn-accueil');
+  if(marque){if(accueil)marque.setAttribute('aria-current','page');else marque.removeAttribute('aria-current');}
   majAnnuler();
 }
 
@@ -1213,8 +1226,9 @@ function elementsPalette(){
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
   out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
+  // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
-    indice:p.nom,ico:pg.ico,...(pg.ancien?{mots:pg.ancien}:{}),faire:()=>vers(pg.id)});
+    indice:p.nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
   const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
   for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
   for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
@@ -2945,7 +2959,7 @@ function capturer(slot, silencieux) {
 function comparerRetours() {
   const sa = Sim.ateliers; if (!sa) return;
   const m = sa.state.materiel;
-  if (!(m.planche || []).length) { toast('La planche retour est vide : saisissez-la ou importez-la d’abord (Vols › Planche retour).'); allerPage('v-planche'); return; }
+  if (!(m.planche || []).length) { toast('La planche retour est vide : saisissez-la ou importez-la d’abord (Vols › Retours).'); allerPage('v-planche'); return; }
   try {
     for (const [slot, src] of [['A', 'j1'], ['B', 'planche']]) { sa.state.materiel = { ...m, retours: src }; sa.calculer(); capturer(slot, true); }
   } finally { sa.state.materiel = m; sa.calculer(); }
@@ -3544,6 +3558,7 @@ function updateRunState() {
   } else if (Sim.vue) Sim.vue.rendreTransport();
   // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
   document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde,#btn-problemes').forEach(b => b.disabled = editMode);
+  if (Sim.onglets) Sim.onglets.rendre();
   majAnnuler();
 }
 
@@ -3687,7 +3702,7 @@ function migrerRobot(){
   at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
-    +'. Une seule équipe Robot les prépare, à régler (débit par commande, personnes) dans Équipes › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
+    +'. Une seule équipe Robot les prépare, à régler (débit par commande, personnes) dans L’unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
 }
 
 

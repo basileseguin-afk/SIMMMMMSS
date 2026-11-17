@@ -23,7 +23,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
 
    // 1. Chemins s'ouvre sur la vue d'ensemble : une colonne par flux.
-   await page.locator('#menu [data-vers-partie=chemins]').click();await attendre();
+   await nav.entree(page,'groupe:chemins','chemins');await attendre();
    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte',version+' : Chemins s’ouvre sur la vue d’ensemble');
    const flux=await page.evaluate(()=>OrlyParcours.types(Sim.ateliers.state).map(t=>t.id));
    assert.deepEqual(await page.locator(`${C} [data-mu-carte-flux]`).evaluateAll(bs=>bs.map(b=>b.dataset.muCarteFlux)),flux,version+' : une colonne par flux');

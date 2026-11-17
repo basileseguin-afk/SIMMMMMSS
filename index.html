@@ -136,21 +136,20 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="6e3c333dfb"/>
+<meta name="ory-version" content="ac2601c16e"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
-<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=dca99aa3" rel="stylesheet"/><link href="charge.css?v=2183cba1" rel="stylesheet"/><link href="plan-rejoue.css?v=8d5656e7" rel="stylesheet"/><link href="plan-flux.css?v=72eea07c" rel="stylesheet"/><link href="direct.css?v=7bba733f" rel="stylesheet"/><link href="planning-vue.css?v=27fd1c3f" rel="stylesheet"/><link href="resultats-vue.css?v=76f9ddaf" rel="stylesheet"/><link href="synthese-vue.css?v=c48132ac" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/><link href="jouent.css?v=e8644013" rel="stylesheet"/><link href="avis.css?v=f8b612b4" rel="stylesheet"/><link href="vols-page.css?v=33776ea0" rel="stylesheet"/></head>
+<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=dca99aa3" rel="stylesheet"/><link href="charge.css?v=2183cba1" rel="stylesheet"/><link href="plan-rejoue.css?v=8d5656e7" rel="stylesheet"/><link href="plan-flux.css?v=72eea07c" rel="stylesheet"/><link href="direct.css?v=7bba733f" rel="stylesheet"/><link href="planning-vue.css?v=27fd1c3f" rel="stylesheet"/><link href="resultats-vue.css?v=76f9ddaf" rel="stylesheet"/><link href="synthese-vue.css?v=c48132ac" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/><link href="jouent.css?v=e8644013" rel="stylesheet"/><link href="avis.css?v=f8b612b4" rel="stylesheet"/><link href="vols-page.css?v=33776ea0" rel="stylesheet"/><link href="menu.css?v=15992ebc" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
-<!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
+<!-- ============ NAVIGATION : la marque (l’accueil), le menu en deux blocs — Lire, Régler — toutes ses entrées visibles, puis Fichiers ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
 <button class="marque" data-vers-partie="accueil" id="btn-accueil" title="Revenir à l’accueil" type="button"><span class="brand-mark">N</span><span class="marque-txt">Production ORY<small>Simulation d’une journée de repas à bord</small></span></button>
 <div class="barre-defile">
-<nav aria-label="Menu principal" class="menu-parties" id="menu"></nav>
-<div class="sous-onglets" id="sous-onglets"><div aria-label="Les pages de cette partie" aria-orientation="vertical" class="so-liste" role="tablist"></div></div>
+<nav aria-label="Menu principal" class="menu" id="menu"><div class="menu-liste" id="sous-onglets"><div class="so-liste"></div></div></nav>
 </div>
 <div class="barre-pied">
+<button class="barre-lien" data-page="u-sauvegarde" id="btn-sauvegarde" title="Fichiers : enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span><span>Fichiers</span></button>
 <button aria-controls="problemes" class="barre-lien" id="btn-problemes" popovertarget="problemes" title="Ce qui bloque le calcul et ce qui est à corriger ; les informations se lisent dessous" type="button"><span data-ico="alerte"></span><span>Problèmes</span><b class="so-badge pb-compte" hidden=""></b></button>
 <div aria-labelledby="problemes-titre" class="problemes" id="problemes" popover="" role="dialog"></div>
-<button class="barre-lien" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span><span>Sauvegarde</span></button>
 <button aria-pressed="false" class="barre-lien" data-ui-theme="" id="btn-theme" title="Passer au thème sombre" type="button"><span data-ico="lune"></span><span>Thème sombre</span></button>
 </div>
 </aside>
@@ -255,8 +254,8 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="champs.js?v=acec5c92"></script>
 <script src="ds.js?v=2acdca0d"></script>
 <script src="palette.js?v=7712201e"></script>
-<script src="onglets.js?v=92897a74"></script>
-<script src="avis.js?v=728497fb"></script>
+<script src="onglets.js?v=cb67e791"></script>
+<script src="avis.js?v=f1cbba5c"></script>
 <script src="vols-page.js?v=332c5561"></script>
 <script src="notifications.js?v=c02682a3"></script>
 <script src="icones.js?v=a3450299"></script>
@@ -271,15 +270,15 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="mots/echanges.js?v=bdc02f25"></script>
 <script src="mots-moteur.js?v=b4d5d690"></script>
 <script src="jouent.js?v=6f7d1a25"></script><script src="plan-menage.js?v=1e70f2de"></script><script src="jouent-vue.js?v=ec423f3c"></script>
-<script src="ateliers.js?v=ee9be3f4"></script>
+<script src="ateliers.js?v=713c6564"></script>
 <script src="mots/reglages.js?v=069addc3"></script>
-<script src="moteur/journee.js?v=ccc447bf"></script><script src="moteur/indicateurs.js?v=51eb5358"></script><script src="moteur/ordre-services.js?v=9dfb062a"></script><script src="moteur/disposition.js?v=17d434ae"></script><script src="moteur/site.js?v=d01f0835"></script><script src="site-reglages.js?v=7ccf3447"></script><script src="moteur/reponses.js?v=356ba510"></script><script src="seuils-vue.js?v=8422c92b"></script><script src="moteur/periode.js?v=4b188df1"></script><script src="periode-courbe.js?v=d9588778"></script><script src="periode-vue.js?v=cc05fbd0"></script><script src="charge-vue.js?v=e96e987d"></script><script src="planning-ensemble.js?v=e733fb6b"></script><script src="planning-vue.js?v=63e2741c"></script><script src="resultats-vue.js?v=2161f5f7"></script><script src="synthese-vue.js?v=9e6cd2f7"></script><script src="comparer-vue.js?v=e1e055ad"></script><script src="plan-rejoue.js?v=8fb26f05"></script><script src="plan-flux.js?v=6b4464bc"></script><script src="direct-camera.js?v=fc7ad4b7"></script><script src="direct-etat.js?v=2e209f1b"></script><script src="direct-allees.js?v=56057456"></script><script src="direct-scene.js?v=622eef16"></script><script src="direct-lire.js?v=1926b605"></script><script src="direct-temps.js?v=81a75daf"></script><script src="direct-panneau.js?v=2b5aa1d6"></script><script src="direct-questions.js?v=5bc1914e"></script><script src="direct-dessin.js?v=6cdd4a9f"></script><script src="direct-vue.js?v=38a1ba77"></script><script src="direct-disposer.js?v=77bcc129"></script><script src="echanges-charge.js?v=15bcfa71"></script><script src="echanges-reponses.js?v=aa524fd3"></script><script src="classeur-compresse.js?v=74f3647d"></script><script src="moteur/import-flights.js?v=7440280d"></script><script src="echanges-import-flights.js?v=401f6644"></script><script src="import-flights-vue.js?v=79070d93"></script><script src="moteur/reel.js?v=31e25810"></script><script src="moteur/planning.js?v=6d8ac712"></script><script src="moteur/calage-travail.js?v=6f307d8d"></script><script src="moteur/calage-formes.js?v=2019896e"></script><script src="moteur/calage-statut.js?v=0b1c62f1"></script><script src="moteur/calage-periode.js?v=205dc845"></script><script src="echanges-calage.js?v=cf16af6a"></script><script src="calage-nuage.js?v=5c4f801a"></script><script src="calage-vue.js?v=21206571"></script>
+<script src="moteur/journee.js?v=ccc447bf"></script><script src="moteur/indicateurs.js?v=51eb5358"></script><script src="moteur/ordre-services.js?v=9dfb062a"></script><script src="moteur/disposition.js?v=17d434ae"></script><script src="moteur/site.js?v=d01f0835"></script><script src="site-reglages.js?v=7ccf3447"></script><script src="moteur/reponses.js?v=356ba510"></script><script src="seuils-vue.js?v=8422c92b"></script><script src="moteur/periode.js?v=4b188df1"></script><script src="periode-courbe.js?v=d9588778"></script><script src="periode-vue.js?v=cc05fbd0"></script><script src="charge-vue.js?v=e96e987d"></script><script src="planning-ensemble.js?v=e733fb6b"></script><script src="planning-vue.js?v=63e2741c"></script><script src="resultats-vue.js?v=2161f5f7"></script><script src="synthese-vue.js?v=9e6cd2f7"></script><script src="comparer-vue.js?v=e1e055ad"></script><script src="plan-rejoue.js?v=8fb26f05"></script><script src="plan-flux.js?v=6b4464bc"></script><script src="direct-camera.js?v=fc7ad4b7"></script><script src="direct-etat.js?v=2e209f1b"></script><script src="direct-allees.js?v=56057456"></script><script src="direct-scene.js?v=622eef16"></script><script src="direct-lire.js?v=1926b605"></script><script src="direct-temps.js?v=81a75daf"></script><script src="direct-panneau.js?v=2b5aa1d6"></script><script src="direct-questions.js?v=89bb76a9"></script><script src="direct-dessin.js?v=6cdd4a9f"></script><script src="direct-vue.js?v=38a1ba77"></script><script src="direct-disposer.js?v=77bcc129"></script><script src="echanges-charge.js?v=15bcfa71"></script><script src="echanges-reponses.js?v=aa524fd3"></script><script src="classeur-compresse.js?v=74f3647d"></script><script src="moteur/import-flights.js?v=7440280d"></script><script src="echanges-import-flights.js?v=401f6644"></script><script src="import-flights-vue.js?v=79070d93"></script><script src="moteur/reel.js?v=31e25810"></script><script src="moteur/planning.js?v=6d8ac712"></script><script src="moteur/calage-travail.js?v=6f307d8d"></script><script src="moteur/calage-formes.js?v=2019896e"></script><script src="moteur/calage-statut.js?v=0b1c62f1"></script><script src="moteur/calage-periode.js?v=205dc845"></script><script src="echanges-calage.js?v=cf16af6a"></script><script src="calage-nuage.js?v=5c4f801a"></script><script src="calage-vue.js?v=21206571"></script>
 <script src="mots/unite.js?v=39dc7445"></script>
-<script src="demarrage.js?v=08235d9d"></script>
+<script src="demarrage.js?v=9cc36ea3"></script>
 <script src="mots/temps.js?v=8aa19886"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="mots/simulation.js?v=de67ac5e"></script>
 <script src="mots/comparaison.js?v=845b3e25"></script>
-<script src="sim.js?v=3d8d427d"></script>
+<script src="sim.js?v=4757c1d4"></script>
 </body>
 </html>

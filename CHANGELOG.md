@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 22 (a) : le menu en deux blocs, quatorze entrées
+
+Première partie de l’étape B de l’audit de l’interface (« regrouper : une
+chose se règle à un seul endroit »). Aucun calcul ne change, ni le format de
+la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Le menu montre toutes ses entrées**, sans partie à ouvrir ni mention
+  « Plus » : le bloc « Lire » (Synthèse, En direct, Planning, Période,
+  Détails, Comparer), le bloc « Régler » en trois espaces — Vols (Programme,
+  Retours), L’unité (Services et équipes, Chemins, Plan), Simulation
+  (Réglages, Contrôles) —, et « Fichiers » en bas. Vingt-quatre entrées
+  avant, quatorze après.
+- **Les pages d’aujourd’hui restent toutes là**, sous leur identifiant : celles
+  que les parties suivantes fusionnent se suivent, en attendant, en onglets
+  internes de leur entrée (« Services et équipes », six ; « Chemins », cinq ;
+  « Contrôles », deux), comme celles de « Détails ».
+- **L’application s’ouvre sur la Synthèse** quand une journée se calcule,
+  sinon sur l’accueil ; la marque, en haut de la barre, mène à l’accueil.
+  Cette ouverture n’est pas retenue comme « dernière page ouverte ».
+- **L’accueil suit le même rangement** : deux blocs, une tuile par espace ;
+  les chemins rejoignent la tuile de l’unité.
+- **Une seule pastille**, sur « Contrôles » : les points bloquants et à
+  corriger de toute l’unité. Les autres entrées n’en portent plus.
+- **« Aller à… »** trouve chaque page par son nom d’avant, par le nom court
+  de son entrée (« Retours ») et par le nom de sa partie d’avant
+  (« Résultats », « Équipes », « Sauvegarde »).
+
+Fichiers : `onglets.js`, `demarrage.js`, `sim.js`, `avis.js`, `ateliers.js`,
+`direct-questions.js`, `index.html`, `menu.css` (nouveau) ; `tests/nav.cjs`,
+`tests/onglets.test.cjs`, `tests/demarrage.test.cjs`,
+`tests/menu-browser.cjs` et les tests navigateur qui cliquaient l’ancien
+menu ; `README.md`.
+
+---
+
 ## 2026-11-17 — Correction 22 (b) : la page ne touche plus son stockage trop tôt
 
 Seconde partie de la correction 22. Aucun calcul ne change, ni aucune donnée

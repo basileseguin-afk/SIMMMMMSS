@@ -18,14 +18,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
 
-  // 1. Le menu : cinq parties, un sujet chacune ; le chemin d'une commande est dans Chemins.
-  assert.deepEqual(await page.locator('#menu [data-vers-partie]').allInnerTexts(),['Accueil','Vols','Chemins','Équipes','Simulation','Résultats']);
-  await page.locator('#menu [data-vers-partie=chemins]').click();await attendre();
+  // 1. Le menu (évolution 22 a) : deux blocs, trois espaces sous « Régler » ; le chemin d'une commande est dans « Chemins ».
+  assert.deepEqual(await page.locator('#menu .menu-bloc-titre, #menu .menu-espace-titre').allInnerTexts().then(t=>t.map(x=>x.toLowerCase())),['lire','régler','vols','l’unité','simulation']);
+  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]>span:not(.so-badge)').allInnerTexts(),['Services et équipes','Chemins','Plan']);
+  await page.locator('#menu [data-entree="groupe:chemins"]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte','Chemins s’ouvre sur la vue d’ensemble');
-  const onglets=await page.locator('#sous-onglets [data-sous-onglet]').allInnerTexts();
+  const onglets=await page.locator('#onglets-internes [data-sous-onglet]').allInnerTexts();
   assert.ok(onglets.includes('Chemin d’une commande'),onglets.join(', '));
-  await page.locator('#menu [data-vers-partie=reglages]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','Simulation s’ouvre sur « Prêt à simuler ? »');
+  await page.locator('#menu [data-entree="groupe:controles"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','Contrôles s’ouvre sur « Prêt à simuler ? »');
 
   // 2. Le pas à pas : les vols d'exemple, puis les services sans équipe.
   const pas=await page.locator('#mu-pas').innerText();
@@ -184,12 +185,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#mu-flux [data-mu-flux-suivre="AF/BC"]').click();await attendre();
   assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id),cf,'elle reprend le flux de sa classe');
 
-  // 13. Les outils d'avant restent à portée : des onglets « Plus » des Équipes.
+  // 13. Les outils d'avant restent à portée : des onglets de « Services et équipes ».
   await nav.aller(page,'mu-services');
-  await page.locator('#sous-onglets [data-sous-onglet=at-equipes]').click();await attendre();
+  await page.locator('#onglets-internes [data-sous-onglet=at-equipes]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
-  assert.equal(await page.locator('#menu [aria-current=page]').getAttribute('data-vers-partie'),'organisation','la partie reste marquée');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:services','l’entrée reste marquée');
 
   // 14. Tout survit au rechargement.
   await page.reload();await attendre();

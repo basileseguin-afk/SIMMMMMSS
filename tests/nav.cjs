@@ -1,5 +1,7 @@
-/* Aller à une page du menu, comme on le ferait à la main : la partie dans
- * l'en-tête, puis l'onglet de la page. Partagé par les tests navigateur.
+/* Aller à une page du menu, comme on le ferait à la main : son entrée dans le
+ * menu, puis son onglet interne si elle en est un (la version 1, évolution
+ * 22 a) ; la partie, puis l'onglet de la page (la version 2). Partagé par les
+ * tests navigateur.
  *
  * `vue(page, v)` garde l'ancienne écriture des tests (« aller à la vue des
  * ateliers ») : elle ouvre la page qui était la première de cette vue. */
@@ -24,38 +26,58 @@ async function vueDuPlan(page, mode) {
  * relief demandent `{ relief: true }`. En relief, sous 1 500 px de large, « En ce moment » est replié à l'ouverture
  * (évolution 16, retouches) : ces tests lisent le panneau, il s'ouvre donc par son bouton, comme à la main — sauf avec
  * `{ panneau: false }`, pour les tests qui regardent la page telle qu'elle s'ouvre. */
+/* « Aller à… » : chercher une page par son nom, et l'ouvrir — pour une page hors du menu. */
+async function parAllerA(page, id) {
+  const nom = await page.evaluate(id => OrlyOnglets.page(id).nom, id);
+  await page.keyboard.press('Control+k'); await page.waitForSelector('dialog.palette [role=option]');
+  await page.keyboard.type(nom); await page.waitForTimeout(200);
+  const options = page.locator('dialog.palette [role=option]');
+  const i = (await options.evaluateAll(os => os.map(o => (o.querySelector('.pal-nom') || o).textContent.trim()))).findIndex(t => t === nom || t.endsWith('› ' + nom));
+  if (i < 0) throw new Error('page introuvable par « Aller à… » : ' + id);
+  await options.nth(i).click(); await page.waitForTimeout(150);
+}
+/* Le menu de la version 1 (évolution 22 a) : toutes ses entrées sont visibles. Une page est une entrée, ou un onglet
+ * interne de son entrée (« Services et équipes », « Chemins », « Contrôles », « Détails ») ; « Fichiers » est en bas ;
+ * une page hors du menu (« Liens entre services » quand toutes les commandes ont un chemin) s'ouvre par « Aller à… ». */
+async function parLeMenu(page, id) {
+  if (await page.evaluate(() => document.body.dataset.sous) === id) return;
+  const e = await page.evaluate(id => {
+    const o = OrlyOnglets.page(id);
+    if (!OrlyOnglets.auMenu(id, document.body.dataset.sous)) return { allerA: true };
+    if (OrlyOnglets.partieDe(id).bas) return { bas: true };
+    return { cle: o.groupe ? 'groupe:' + o.groupe : id };
+  }, id);
+  if (e.allerA) return parAllerA(page, id);
+  await page.locator(e.bas ? '#btn-sauvegarde' : `#menu [data-entree="${e.cle}"]`).click(); await page.waitForTimeout(120);
+  if (await page.evaluate(() => document.body.dataset.sous) !== id) await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();
+}
 async function aller(page, id, options) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
   if (id !== 'u-plan') await terminerPlan(page);
-  if (partie !== 'fichier') {
-    const actif = await page.evaluate(() => document.body.dataset.partie);
-    if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }
-  } else {
-    await page.locator('#btn-sauvegarde').click(); await page.waitForTimeout(120);
-  }
-  if (await page.evaluate(() => document.body.dataset.sous) !== id) {
-    const direct = page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
-    if (await direct.count()) await direct.click();
-    else if (await page.evaluate(id => typeof OrlyOnglets.auMenu === 'function' && !OrlyOnglets.page(id).groupe && !OrlyOnglets.auMenu(id), id)) {
-      // Une page hors du menu (v1, évolution 19 b : « Liens entre services » quand toutes les commandes ont un chemin) :
-      // « Aller à… » y mène encore — on y va par là, comme à la main.
-      const nom = await page.evaluate(id => OrlyOnglets.page(id).nom, id);
-      await page.keyboard.press('Control+k'); await page.waitForSelector('dialog.palette [role=option]');
-      await page.keyboard.type(nom); await page.waitForTimeout(200);
-      const options = page.locator('dialog.palette [role=option]');
-      const i = (await options.evaluateAll(os => os.map(o => (o.querySelector('.pal-nom') || o).textContent.trim()))).findIndex(t => t === nom || t.endsWith('› ' + nom));
-      if (i < 0) throw new Error('page introuvable par « Aller à… » : ' + id);
-      await options.nth(i).click(); await page.waitForTimeout(150);
+  if (await page.evaluate(() => typeof OrlyOnglets.entrees === 'function')) await parLeMenu(page, id);
+  else {
+    // La version 2 (gelée) : la partie dans le menu, puis l'onglet de la page.
+    if (partie !== 'fichier') {
+      const actif = await page.evaluate(() => document.body.dataset.partie);
+      if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }
     } else {
-      // Une page d'un groupe (« Détails », évolution 15 c) : son entrée au menu, puis son onglet interne, comme à la main.
-      const entree = await page.evaluate(id => {
-        const g = OrlyOnglets.page(id).groupe, o = g && OrlyOnglets.menuDe(document.body.dataset.partie, Sim.onglets.choix).find(x => x.groupe === g);
-        return o ? o.id : null;
-      }, id);
-      if (!entree) throw new Error('page absente du menu : ' + id);
-      await page.locator(`#sous-onglets [data-sous-onglet=${entree}]`).click(); await page.waitForTimeout(120);
-      if (await page.evaluate(() => document.body.dataset.sous) !== id) await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();
+      await page.locator('#btn-sauvegarde').click(); await page.waitForTimeout(120);
+    }
+    if (await page.evaluate(() => document.body.dataset.sous) !== id) {
+      const direct = page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
+      if (await direct.count()) await direct.click();
+      else if (await page.evaluate(id => typeof OrlyOnglets.auMenu === 'function' && !OrlyOnglets.page(id).groupe && !OrlyOnglets.auMenu(id), id)) await parAllerA(page, id);
+      else {
+        // Une page d'un groupe (« Détails », évolution 15 c) : son entrée au menu, puis son onglet interne, comme à la main.
+        const entree = await page.evaluate(id => {
+          const g = OrlyOnglets.page(id).groupe, o = g && OrlyOnglets.menuDe(document.body.dataset.partie, Sim.onglets.choix).find(x => x.groupe === g);
+          return o ? o.id : null;
+        }, id);
+        if (!entree) throw new Error('page absente du menu : ' + id);
+        await page.locator(`#sous-onglets [data-sous-onglet=${entree}]`).click(); await page.waitForTimeout(120);
+        if (await page.evaluate(() => document.body.dataset.sous) !== id) await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();
+      }
     }
   }
   await page.waitForTimeout(150);
@@ -68,8 +90,11 @@ async function aller(page, id, options) {
  * dernière page ouverte (sinon sa première) ; y être déjà ne change rien. */
 async function vue(page, v) {
   if (!PREMIERE[v]) return aller(page, v);
-  if (await page.evaluate(() => document.body.dataset.vue) === v) return;
-  const id = await page.evaluate(v => Sim.onglets.actif(v), v);
+  // Y être par l'ouverture de l'application sur la Synthèse (v1, évolution 22 a) n'est pas y être allé : on retrouve
+  // alors la dernière page choisie de la vue, comme en arrivant de l'accueil.
+  const ici = await page.evaluate(() => ({ vue: document.body.dataset.vue, ouverture: !!Sim.onglets.ouverture }));
+  if (ici.vue === v && !ici.ouverture) return;
+  const id = await page.evaluate(([v, o]) => (o ? Sim.onglets.retenue(v) : Sim.onglets.actif(v)), [v, ici.ouverture]);
   await aller(page, id);
 }
 /* L'effectif saisi à la main partout (05/10) : depuis l'effectif calculé, un
@@ -83,6 +108,13 @@ async function effectifSaisi(page) {
     Sim.ateliers.state.effectifs = Object.fromEntries(Sim.ateliers.a.services().map(s => [s.id, 'impose']));
   }, ''));
   await page.waitForTimeout(100);
+}
+/* Ouvrir une entrée du menu, comme à la main : en version 1 (évolution 22 a), l'entrée `v1` — un identifiant de page, ou
+ * « groupe:<groupe> » pour une entrée qui réunit plusieurs pages ; en version 2 (gelée), la partie `v2`. */
+async function entree(page, v1, v2) {
+  const neuf = await page.evaluate(() => typeof OrlyOnglets.entrees === 'function');
+  await page.locator(neuf ? `#menu [data-entree="${v1}"]` : `#menu [data-vers-partie=${v2}]`).click();
+  await page.waitForTimeout(150);
 }
 const accueil = async page => { await terminerPlan(page); await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
@@ -133,4 +165,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { aller, vue, vueDuPlan, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { aller, vue, vueDuPlan, entree, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

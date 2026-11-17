@@ -254,7 +254,7 @@
     }
   }
 
-  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
+  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, estProbleme, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyAvis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

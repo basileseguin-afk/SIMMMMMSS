@@ -28,7 +28,8 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
  const ch=await F.charger(page,nav,site.url('index.html'),{pageId:'j-chiffres'});
  try{
   // 1. Le menu des Résultats et les onglets de « Détails ».
-  assert.deepEqual(await page.locator('#sous-onglets [data-sous-onglet]').allTextContents(),['Synthèse','En direct','Planning des équipes','Détails','Comparer deux essais']);
+  // Le bloc « Lire » du menu (évolution 22 a) : ses entrées, sous leur nom court.
+  assert.deepEqual(await page.locator('#menu [data-bloc=lire] [data-sous-onglet]>span:not(.so-badge)').allTextContents(),['Synthèse','En direct','Planning','Détails','Comparer']);
   await page.locator('#sous-onglets [data-sous-onglet]').filter({hasText:'Détails'}).click();await attendre();
   assert.equal(await sous(),'at-repas','« Détails » s’ouvre sur les commandes');
   assert.equal(await page.locator('#view-title').textContent(),'Détails');
@@ -45,9 +46,10 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   // « Détails » rouvre le dernier onglet ouvert.
   await nav.aller(page,'j-chiffres');await page.locator('#sous-onglets [data-sous-onglet]').filter({hasText:'Détails'}).click();await attendre();
   assert.equal(await sous(),'j-stocks');
-  // « Étapes de chaque commande » : dans Chemins.
+  // « Étapes de chaque commande » : un onglet de « Chemins », dans « L'unité » (évolution 22 a).
   await nav.aller(page,'at-grille');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'chemins');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:chemins');
 
   // 2. Les anciens identifiants et « Aller à… ».
   for(const id of ['at-repas','v-departs','j-stocks','j-details']){
