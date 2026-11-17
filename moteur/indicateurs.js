@@ -119,6 +119,17 @@
     }
     return passes || repris ? { passes, repris, minutes } : null;
   }
+  /**
+   * L'avance sur la ligne d'un robot (évolution 21) : les vols que l'équipe a avancés pour la suivante (`avances`) et son
+   * travail sur ces vols (`minutes`, de ligne) ; les vols de ses propres commandes que l'équipe d'avant a déjà faits
+   * (`deja`) ; null si elle n'a ni l'un ni l'autre.
+   */
+  function avanceDe(v, r) {
+    let avances = 0, minutes = 0, deja = 0;
+    for (const l of v.lots || []) { const p = partDe(l, v); if (p && p.avance) { avances += (p.vols || []).length; minutes += p.travail; } }
+    for (const l of (r && r.lots) || []) if (l.atelier === v.id && !l.retourVol && Array.isArray(l.parts)) for (const p of l.parts) if (p.avance) deja += (p.vols || []).length;
+    return avances || deja ? { avances, deja, minutes } : null;
+  }
   /** La fin de la présence d'une équipe : son début de poste + sa présence + ses heures sup ; sans présence, la fin de son travail. */
   function finPresence(v) {
     if (fini(v.presence)) return v.debutPoste + v.presence + (v.heuresSup || 0);
@@ -184,8 +195,11 @@
       return vols.map(l => ({ de: l.arrivee, a: fini(l.debut) ? l.debut : finPresence(v), lot: l }));
     }
     // Un lot sans fournisseur est prêt dès l'arrivée de l'équipe ; un lot jamais prêt n'a pas l'instant `pret`.
-    return v.lots.filter(l => !l.dispo && 'pret' in l && fini(l.debut))
-      .map(l => ({ de: Math.max(fini(l.pret) ? l.pret : v.debutPoste, v.debutPoste), a: l.debut, lot: l }));
+    // Une commande du robot passée en relais (évolution 21) attend l'équipe qui l'a dans sa liste, jusqu'au début de sa
+    // part ; elle n'est pas dans la file de l'équipe qui l'avance.
+    const debutPour = l => { const p = partDe(l, v); return p === undefined ? l.debut : p && !p.avance ? p.debut : null; };
+    return v.lots.filter(l => !l.dispo && 'pret' in l && fini(l.debut) && fini(debutPour(l)))
+      .map(l => ({ de: Math.max(fini(l.pret) ? l.pret : v.debutPoste, v.debutPoste), a: debutPour(l), lot: l }));
   }
 
   /** La plus longue file, et son premier instant. */
@@ -221,8 +235,12 @@
         l: v.lots.filter(l => fini(l.fin) && fini_(l)).map(l => ({ t: l.fin, n: parVol ? 1 : (+l.unites || 0), debut: part(l) ? part(l).debut : l.debut })) };
     }
     if (v.type !== 'manuel' && v.type !== 'robot') return { unite: null, l: [] };
-    return { unite: UNITES[v.type], l: v.lots.filter(l => fini(l.fin) && !l.dispo)
-      .map(l => ({ t: l.fin, n: v.type === 'robot' && fini(l.plateaux) ? l.plateaux : somme(l.classes || [], id => pax.get(id)), debut: l.debut })) };
+    // Une commande du robot passée en relais (évolution 21) : chaque équipe finit les plateaux de sa part, à la fin de sa part.
+    const enRelais = v.lots.filter(l => !l.dispo && partDe(l, v)).map(l => partDe(l, v)).filter(p => p.plateaux > 0)
+      .map(p => ({ t: p.fin, n: p.plateaux, debut: p.debut }));
+    return { unite: UNITES[v.type], l: v.lots.filter(l => fini(l.fin) && !l.dispo && partDe(l, v) === undefined)
+      .map(l => ({ t: l.fin, n: v.type === 'robot' && fini(l.plateaux) ? l.plateaux : somme(l.classes || [], id => pax.get(id)), debut: l.debut }))
+      .concat(enRelais).sort((x, y) => x.t - y.t) };
   }
 
   /** Les homme-minutes des lots : le barème d'un lot à la main ; ailleurs, sa durée × les personnes qui le tiennent. */
@@ -291,6 +309,9 @@
     // Une plonge par vol (évolution 18) : ses relais — seulement si elle en a.
     const relais = v.type === 'lavage' ? relaisDe(v) : null;
     if (relais) e.relais = relais;
+    // Une ligne de robot (évolution 21) : ce qu'elle avance pour la suivante, ce qu'on a avancé pour elle — seulement s'il y en a.
+    const avance = v.type === 'robot' ? avanceDe(v, r) : null;
+    if (avance) e.avance = avance;
     return { e, jour, series: seriesDe(v, jour, presents, t, pauses, file, fin.l, occupe, fin.unite) };
   }
 

@@ -547,6 +547,9 @@
    * Une plonge par vol (évolution 18) : la fin d'une équipe est la fin de sa dernière part ; `relais`, seulement s'il y en a,
    * liste ses lavages passés en relais ou arrêtés à une fin de présence — [{ vol, debut, fin (null : arrêté), reste, parts:
    * [{ id, nom, debut, fin, travail }] }], sur la ligne de l'équipe qui a commencé le vol.
+   * Une ligne de robot (évolution 21) : la fin d'une équipe est aussi la fin de sa dernière part ; `avances`, seulement
+   * s'il y en a, liste les commandes qu'une équipe a avancées pour la suivante — [{ commande, equipe: { id, nom } (celle
+   * qui l'a dans sa liste), fin (null : pas finie), parts: [{ id, nom, debut, fin, travail, vols, plateaux, avance }] }].
    */
   function fins(r, args, k) {
     const nom = nomDe(args), defs = new Map((args.ateliers || []).map(a => [a.id, a]));
@@ -554,6 +557,10 @@
     const relaisDe = eqs => { const ids = new Set(eqs.map(v => v.id)); return (r.lots || []).filter(l => l.retourVol && Array.isArray(l.parts) && l.parts.length && ids.has(l.parts[0].atelier))
       .map(l => ({ vol: l.vol, debut: l.debut, fin: fini(l.fin) ? l.fin : null, reste: +l.reste || 0,
         parts: l.parts.map(p => ({ id: p.atelier, nom: nomEquipe.get(p.atelier) || p.atelier, debut: p.debut, fin: p.fin, travail: p.travail, ...(p.reprise ? { reprise: true } : {}) })) })); };
+    const avancesDe = eqs => { const ids = new Set(eqs.map(v => v.id)); return (r.lots || []).filter(l => !l.retourVol && Array.isArray(l.parts) && l.parts.some(p => p.avance) && ids.has(l.atelier))
+      .map(l => ({ commande: l.nom, equipe: { id: l.atelier, nom: nomEquipe.get(l.atelier) || l.atelier }, fin: fini(l.fin) ? l.fin : null,
+        parts: l.parts.map(p => ({ id: p.atelier, nom: nomEquipe.get(p.atelier) || p.atelier, debut: p.debut, fin: p.fin, travail: p.travail, vols: (p.vols || []).length, plateaux: p.plateaux || 0,
+          ...(p.avance ? { avance: true } : {}) })) })); };
     const max = l => (l.length ? Math.max(...l) : null);
     const services = k.services.map(s => {
       const eqs = equipesDe(r, s), travail = eqs.filter(travailleCeJour);
@@ -562,11 +569,11 @@
       const hs = { equipes: net(somme(eqs, heuresSupDe)), renforts: net(somme(eqs, v => v.renfortsHeuresSup)), chauffeurs: net(somme(eqs, v => v.heuresSupChauffeurs)) };
       // L'équipe qui dépasse le plus ; à égalité, la première de la liste.
       const pire = parEquipe.reduce((m, e) => (e.depasse > EPS && (!m || e.depasse > m.depasse + EPS) ? e : m), null);
-      const relais = relaisDe(eqs);
+      const relais = relaisDe(eqs), avances = avancesDe(eqs);
       return { service: s.service, nom: nom(s.service), jour: s.jour, fin: max(parEquipe.map(e => e.fin).filter(fini)),
         finHoraire: max(parEquipe.map(e => e.finHoraire).filter(fini)), depasse: max(parEquipe.map(e => e.depasse).filter(fini)),
         equipeQuiDepasse: pire ? { ...pire } : null, heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe,
-        ...(relais.length ? { relais } : {}) };
+        ...(relais.length ? { relais } : {}), ...(avances.length ? { avances } : {}) };
     });
     return { services };
   }

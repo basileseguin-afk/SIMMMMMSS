@@ -5,6 +5,36 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (c) : le relais du robot dans les résultats
+
+Troisième partie de l'évolution 21. Aucun calcul de la journée ne change :
+ce qui se lit du relais suit les parts. La version 2 n'est pas touchée.
+
+- **Les indicateurs de charge et les réponses lisent les parts** : chaque
+  équipe est au travail pendant la sienne ; ses plateaux finis, sa file et sa
+  fin suivent. « Où ça coince » ne cite plus le robot quand le relais suffit
+  à tenir les deux postes, et le cite encore quand il ne suffit pas.
+- **Le planning des équipes** : la commande en relais sur les deux lignes,
+  chacune pour sa part, avec le repère de relais de la plonge ; au survol,
+  « avancé par … : n vols, de hh:mm à hh:mm » et « repris par … à hh:mm ».
+- **La Synthèse et le récapitulatif des équipes** : « … avance n vols
+  de … » ; « n vols déjà faits par … ».
+- **Le plan rejoué et la vue en direct** : la ligne tourne pendant l'avance,
+  avec l'équipe qui avance.
+- **Les classeurs** : une ligne « Commande avancée » dans la feuille
+  « Réponses » ; trois colonnes de plus dans la feuille « Charge »,
+  seulement s'il y a une avance.
+- **Sans relais**, aucun champ ni aucune colonne de plus.
+
+Fichiers : `moteur/indicateurs.js`, `moteur/reponses.js`,
+`planning-vue.js`, `synthese-vue.js`, `synthese-vue.css`, `ateliers.js`,
+`direct-etat.js`, `echanges-reponses.js`, `echanges-charge.js`,
+`index.html` (empreintes), `tests/robot-relais-fictif.cjs`,
+`tests/robot-relais-resultats.test.cjs`, `tests/robot-relais-browser.cjs`
+(nouveaux), `README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (b) : l'effectif calculé d'un robot ne dépasse pas ses postes de travail
 
 Deuxième partie de l'évolution 21. Le calcul ne change que pour une équipe

@@ -197,6 +197,21 @@
     const i = l.parts.findIndex(p => p.atelier === a.id), n = l.parts.length;
     if (i < 0) return null;
     const p = l.parts[i], nom = id => (nomEquipe ? nomEquipe(id) : id) || id, dernier = i === n - 1;
+    // Une commande de robot en relais (évolution 21) : la première équipe avance des vols de la suivante, qui reprend au
+    // premier vol non fait. `robot` : les vols de cette part ; qui a avancé avant elle (`de`), pour qui elle avance
+    // (`pour`), qui reprend après elle et quand (`vers`, si la suivante y a travaillé).
+    if (!l.retourVol) {
+      // (Deux équipes arrivées à la même heure peuvent avancer la même suivante : l'une n'a rien reçu de l'autre.)
+      const avant = p.avance ? [] : l.parts.slice(0, i).filter(x => x.avance), apres = l.parts.slice(i + 1).find(x => !x.avance && x.travail > 0);
+      return { ...l, debut: p.debut, fin: p.fin, duree: p.travail, arret: p.arret, attente: p.avance ? 0 : l.attente,
+        // (`de` et `vers` posent le repère de relais, comme à la plonge : au début de la part de l'équipe qui reprend, au
+        // bout de celle de l'équipe qui avance.)
+        relais: { rang: i, n, de: avant.length ? { nom: nom(avant[0].atelier) } : null, vers: p.avance ? { nom: nom(l.atelier), a: apres ? apres.debut : p.fin } : null,
+          arrete: null, propre: null,
+          robot: { vols: (p.vols || []).length, plateaux: p.plateaux || 0, avance: !!p.avance, pour: p.avance ? nom(l.atelier) : null, entier: n === 1,
+            de: avant.map(x => ({ nom: nom(x.atelier), vols: (x.vols || []).length, debut: x.debut, fin: x.fin })),
+            vers: p.avance && apres ? { nom: nom(apres.atelier), a: apres.debut } : null } } };
+    }
     return { ...l, debut: p.debut, fin: p.fin, duree: p.travail, arret: p.arret, attente: i ? 0 : l.attente,
       // `vers.a` : l'heure où l'équipe suivante le prend — la fin de la part pour un relais ; son arrivée pour une reprise (correction 19).
       relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier), ...(p.reprise ? { arrete: l.parts[i - 1].fin } : {}) } : null,
@@ -210,6 +225,14 @@
    */
   function motsDuRelais(x) {
     const h = t => P().hhmm(t);
+    // Sur la ligne du robot (évolution 21) : « avancé par … : n vols, de hh:mm à hh:mm » sur la part de l'équipe qui
+    // reprend ; « avance pour … », « repris par … à hh:mm » sur celle de l'équipe qui avance.
+    if (x.robot) {
+      const vols = k => k + (k > 1 ? ' vols' : ' vol'), R = x.robot;
+      return R.de.map(d => '\nAvancé par ' + d.nom + ' : ' + vols(d.vols) + ', de ' + h(d.debut) + ' à ' + h(d.fin)).join('')
+        + (R.avance ? '\nAvance pour ' + R.pour + ' : ' + vols(R.vols) + (R.entier ? ', toute la commande' : '') : '')
+        + (R.vers ? '\nRepris par ' + R.vers.nom + ' à ' + h(R.vers.a) : '');
+    }
     return (x.de ? (x.de.arrete != null ? '\nReprise : commencé par ' + x.de.nom + ', arrêté à ' + h(x.de.arrete) : '\nEn relais : commencé par ' + x.de.nom) : '')
       + (x.vers ? (x.vers.arrete != null ? '\nArrêté à ' + h(x.vers.arrete) + ', repris par ' + x.vers.nom + ' à ' + h(x.vers.a) : '\nEn relais : repris par ' + x.vers.nom + ' à ' + h(x.vers.a)) : '')
       + (x.arrete ? '\nArrêté à ' + P().hhmm(x.arrete.a) + ', à la fin de la présence : reste ' + P().dureeLisible(x.arrete.reste) + ' à laver le lendemain'
@@ -296,7 +319,7 @@
     ['retard', 'en retard', 'Contour et alerte : le lot finit après la limite de sa commande.', '.pg-lot.retard'],
     ['limite', 'prête avant', 'Le petit trait après la barre : la limite de la commande. L’écart, c’est la marge.', '.pg-limite'],
     ['fleche', 'limite plus tard', 'Une flèche au bord droit : la limite de la commande est après la fenêtre affichée. Au survol : son heure.', '.pg-fleche'],
-    ['relais', 'relais', 'Un petit triangle à la jointure : à la plonge, le lavage passe d’une équipe à la suivante, sur le même tunnel. Avec un trou entre les deux barres : le lavage s’est arrêté, l’équipe qui arrive le reprend. Au survol : qui l’a commencé, qui le reprend.', '.pg-relais'],
+    ['relais', 'relais', 'Un petit triangle à la jointure : à la plonge, le lavage passe d’une équipe à la suivante, sur le même tunnel. Avec un trou entre les deux barres : le lavage s’est arrêté, l’équipe qui arrive le reprend. Au survol : qui l’a commencé, qui le reprend. Sur la ligne d’un robot : une équipe a avancé des vols de la suivante ; au survol, combien de vols, de quand à quand, et qui reprend.', '.pg-relais'],
     ['arrete', 'lavage arrêté', 'Un petit carré au bout de la barre : le lavage s’arrête à la fin de la présence, et aucune équipe ne le reprend ce jour-là ; le reste se lave le lendemain.', '.pg-arrete'],
     ['maintenant', 'heure rejouée', 'Le trait vertical : l’heure où en est le rejeu.', '.pg-maintenant:not([hidden])']
   ];

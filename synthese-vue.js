@@ -236,9 +236,14 @@
     const reste = x ? '<small class="sy-lendemain" title="Les vols qui ne sont pas propres à la fin de la journée : ils sont lavés le lendemain, d’abord ; un lavage arrêté, pour sa seule durée restante. '
       + (x.absorbe ? 'L’équipe du matin les lave pendant sa présence : le fonctionnement ordinaire.' : 'C’est ' + PLUS_QUE_LE_MATIN + ' : la plonge coince.') + '">reste à laver le lendemain : '
       + esc(motsDuLendemain(x)) + '</small>' : '';
+    // La ligne d'un robot (évolution 21) : qui a avancé le travail de l'équipe suivante, et de combien de vols.
+    const avances = new Map();
+    for (const c of (f && f.avances) || []) for (const p of c.parts) if (p.avance) { const k = p.nom + '\u0000' + c.equipe.nom; avances.set(k, (avances.get(k) || 0) + p.vols); }
+    const relais = [...avances].map(([k, n]) => { const [qui, pour] = k.split('\u0000'); return '<small class="sy-avance" title="Sur la ligne du robot, une équipe qui a fini ses commandes avance celles de la suivante, vol par vol.">'
+      + esc(qui) + ' avance ' + n + (n > 1 ? ' vols' : ' vol') + ' de ' + esc(pour) + '</small>'; }).join('');
     // Signalée pour ce seul reste, la case n'a pas de seuil à dépasser : un lecteur d'écran entend « à signaler ».
     const depasse = f && f.depasse >= REP().DEPASSEMENT_MIN - EPS;
-    return '<td class="sy-fin"' + marque(ton, fin + hs + reste, x && !x.absorbe && !depasse ? 'à signaler : ' : undefined) + '</td>';
+    return '<td class="sy-fin"' + marque(ton, fin + hs + reste + relais, x && !x.absorbe && !depasse ? 'à signaler : ' : undefined) + '</td>';
   }
 
   /** Le tableau « Les services ». Un clic sur une ligne ouvre ce service dans « Planning des équipes ». */

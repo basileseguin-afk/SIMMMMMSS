@@ -71,6 +71,12 @@
 .sy-table small.sy-depasse{white-space:normal;max-width:21ch}
 /* La plonge par vol (évolution 18) : ce qu'elle laisse à laver le lendemain — sur deux lignes au plus, dans la largeur de la colonne. */
 .sy-table small.sy-lendemain{white-space:normal;max-width:24ch}
+/* La ligne d'un robot (évolution 21) : qui avance le travail de l'équipe suivante. */
+.sy-table small.sy-avance{white-space:normal;max-width:24ch}
+/* Le récapitulatif des équipes dit la même chose, équipe par équipe (ateliers.css, commun avec la version 2, n'est pas
+   touché) : un nom d'équipe long passe à la ligne. */
+.rc-quand.rc-relais,.mini-note.rc-avance{white-space:normal}
+.mini-note.rc-avance{display:block}
 .sy-table tbody td:nth-child(2) small{white-space:normal;max-width:13ch;margin-left:auto}
 .sy-table td.sy-fin[data-ton="attente"] small{color:inherit}
 .sy-arrivage{white-space:nowrap}

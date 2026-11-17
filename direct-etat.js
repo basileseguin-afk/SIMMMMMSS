@@ -146,7 +146,19 @@
   function lotsEnCours(resultat, t, n) {
     const tr = n || tranche(resultat), pax = new Map(((resultat && resultat.classes) || []).map(c => [c.id, +c.pax || 0])), out = [];
     for (const l of (resultat && resultat.lots) || []) {
-      if (l.dispo || l.handling || l.retourVol || !Number.isFinite(l.debut) || !Number.isFinite(l.fin) || !(t >= l.debut && t < l.fin)) continue;
+      if (l.dispo || l.handling || l.retourVol) continue;
+      // Une commande du robot en relais (évolution 21) est en cours pendant chaque part, dans l'atelier de l'équipe qui
+      // la tient alors, avec les plateaux de cette part : la ligne tourne avec l'équipe qui avance, et ses plateaux
+      // sortent à la fin de sa part.
+      if (Array.isArray(l.parts)) {
+        for (const p of l.parts) {
+          if (!(p.travail > 0) || !(t >= p.debut && t < p.fin)) continue;
+          out.push({ atelier: p.atelier, service: l.service, nom: l.nom, classes: l.classes || [], repas: p.plateaux || 0, chariots: chariotsPour(p.plateaux, tr), nature: natureDe(resultat, (l.classes || [])[0]),
+            debut: p.debut, fin: p.fin, ...(Number.isFinite(l.debit) ? { debit: l.debit } : {}) });
+        }
+        continue;
+      }
+      if (!Number.isFinite(l.debut) || !Number.isFinite(l.fin) || !(t >= l.debut && t < l.fin)) continue;
       const repas = (l.classes || []).reduce((s, c) => s + (pax.get(c) || 0), 0);
       out.push({ atelier: l.atelier, service: l.service, nom: l.nom, classes: l.classes || [], repas, chariots: chariotsPour(repas, tr), nature: natureDe(resultat, (l.classes || [])[0]),
         debut: l.debut, fin: l.fin, ...(Number.isFinite(l.debit) ? { debit: l.debit } : {}) });

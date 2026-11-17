@@ -158,7 +158,12 @@
         ...(s.relais || []).map(x => ligne(2, s.nom, j, x.fin === null ? 'Lavage arrêté' : x.parts.some(p => p.reprise) ? 'Lavage repris' : 'Lavage en relais',
           entier(x.parts.reduce((n, p) => n + p.travail, 0)), 'min', null, null,
           x.vol + ' : ' + x.parts.map((p, i) => (p.reprise ? 'arrêté à ' + heure(x.parts[i - 1].fin) + ', repris par ' : '') + p.nom + ' ' + heure(p.debut) + ' → ' + heure(p.fin) + ' (' + entier(p.travail) + ' min)').join(', ')
-          + (x.fin === null ? ' ; reste ' + entier(x.reste) + ' min à laver le lendemain' : ' ; propre à ' + heure(x.fin))))];
+          + (x.fin === null ? ' ; reste ' + entier(x.reste) + ' min à laver le lendemain' : ' ; propre à ' + heure(x.fin)))),
+        // La ligne d'un robot (évolution 21) : les commandes qu'une équipe a avancées pour la suivante — les parts de chacune.
+        ...(s.avances || []).map(x => ligne(2, s.nom, j, 'Commande avancée', entier(x.parts.filter(p => p.avance).reduce((n, p) => n + p.travail, 0)), 'min', null, null,
+          x.commande + ' (' + x.equipe.nom + ') : ' + x.parts.filter(p => p.avance || p.travail > 0).map(p => (p.avance ? 'avancée par ' : 'reprise par ') + p.nom + ' ' + heure(p.debut) + ' → ' + heure(p.fin)
+            + ' (' + p.vols + (p.vols > 1 ? ' vols, ' : ' vol, ') + entier(p.travail) + ' min)').join(', ')
+          + (x.fin === null ? ' ; pas finie' : ' ; finie à ' + heure(x.fin))))];
     });
   }
 

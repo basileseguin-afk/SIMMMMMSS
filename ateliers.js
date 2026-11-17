@@ -2984,13 +2984,28 @@
         const lignes = (a.lots || []).filter(l => l.length);
         if (!lignes.length) return '<span class="mini-note">aucune commande : rattachez-la dans un chemin</span>';
         let k = 0;
+        // Sur la ligne d'un robot, une commande peut être en relais (évolution 21) : une équipe avance des vols de la
+        // suivante. Les lots d'une équipe se lisent alors par leur nom : ceux qu'elle a dans sa liste, pas ceux qu'elle avance.
+        const journal = (this.resultat && this.resultat.lots) || [], nomDe = id => (this.state.ateliers.find(x => x.id === id) || {}).nom || id;
+        const vols = n => n + (n > 1 ? ' vols' : ' vol');
+        const relais = a.type === 'robot' && (vue.lots || []).concat(journal.filter(x => x.atelier === a.id)).some(x => !x.retourVol && Array.isArray(x.parts));
+        const siens = relais ? new Map(journal.filter(x => x.atelier === a.id && !x.dispo).map(x => [x.nom, x])) : null;
+        const propres = relais ? null : vue.lots;
+        // « avance n vols de … » : ce que cette équipe a avancé pour la suivante.
+        const avances = new Map();
+        if (relais) for (const x of vue.lots) for (const p of (Array.isArray(x.parts) ? x.parts : [])) if (p.avance && p.atelier === a.id) avances.set(x.atelier, (avances.get(x.atelier) || 0) + (p.vols || []).length);
+        const motAvance = [...avances].map(([id, n]) => `<span class="mini-note rc-avance">avance ${vols(n)} de ${esc(nomDe(id))}</span>`).join('');
         return `<ol class="rc-seq">${(a.lots || []).map(l => {
           if (!l.length) return '';
-          const lot = vue.lots[k++];
+          const lot = siens ? siens.get(l.join(' + ')) : propres[k++];
+          // « n vols déjà faits par … » : la part de l'équipe d'avant ; l'heure est celle de la part de cette équipe.
+          const faits = lot && Array.isArray(lot.parts) ? lot.parts.filter(p => p.avance) : [], sienne = lot && Array.isArray(lot.parts) ? lot.parts.find(p => !p.avance && p.atelier === a.id && p.travail > 0) : null;
+          const deja = faits.map(p => `<small class="rc-quand rc-relais">${sienne ? vols((p.vols || []).length) + ' déjà faits' : 'déjà faite'} par ${esc(nomDe(p.atelier))}</small>`).join('');
           const quand = !lot ? '' : lot.impossible ? '<small class="rc-quand ko">ne se fait pas</small>'
+            : faits.length ? (sienne ? `<small class="rc-quand">${hh(sienne.debut)}–${hh(sienne.fin)}</small>` : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}</small>`)
             : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}</small>`;
-          return `<li class="${l.length > 1 ? 'ens' : ''}">${l.length > 1 ? '<span class="rc-ens-tete">ensemble</span>' : ''}<span class="rc-cmds">${l.map(chip).join('')}</span>${quand}</li>`;
-        }).join('<li class="rc-fleche" aria-hidden="true">→</li>')}</ol>`;
+          return `<li class="${l.length > 1 ? 'ens' : ''}">${l.length > 1 ? '<span class="rc-ens-tete">ensemble</span>' : ''}<span class="rc-cmds">${l.map(chip).join('')}</span>${quand}${deja}</li>`;
+        }).join('<li class="rc-fleche" aria-hidden="true">→</li>')}</ol>${motAvance}`;
       };
       const depart = a => {
         if (a.type === 'dispo') return '<td class="rc-jour">—</td><td class="rc-heure">—</td>';

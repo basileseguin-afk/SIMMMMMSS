@@ -1259,6 +1259,12 @@ service.
   avec son trou ; au survol, « arrêté à hh:mm, repris par … à hh:mm ». Un
   lavage arrêté que personne ne reprend ce jour-là va jusqu'à la fin de la
   présence, avec un petit carré, et dit ce qu'il reste à laver le lendemain.
+- **Le relais sur la ligne du robot** (évolution 21) : une commande qu'une
+  équipe de robot a avancée pour la suivante se dessine sur leurs deux
+  lignes, chacune pour sa part, avec le même petit triangle à la jointure ;
+  au survol, « avance pour … : n vols », « repris par … à hh:mm » sur la
+  part de l'équipe qui avance, « avancé par … : n vols, de hh:mm à hh:mm »
+  sur celle de l'équipe qui reprend.
 - **Déplier** : un clic sur la ligne d'un service montre son résumé en entier,
   puis ses équipes, une ligne chacune, avec leur nombre de personnes ; « Tout
   déplier », « Tout replier ». Le navigateur retient les services dépliés.
@@ -1457,6 +1463,32 @@ Ne changent pas : une équipe seule sur sa ligne, une équipe en « ligne
 propre », le débit, le minimum de personnes, les arrêts de la ligne, les
 renforts, les heures sup d'une équipe sur ses propres commandes, les autres
 équipes. Une journée où rien n'est avancé est celle d'avant, champ par champ.
+
+### Le relais du robot dans les résultats (évolution 21 c)
+
+Tout ce qui se lit de la journée suit les parts d'une commande en relais :
+chaque équipe est au travail pendant la sienne.
+
+- **Les indicateurs de charge** : les personnes au travail, les plateaux
+  finis (chaque équipe pour sa part, à la fin de sa part), la file (la
+  commande attend l'équipe qui l'a dans sa liste, pas celle qui l'avance).
+- **Les réponses** : la fin d'une équipe de robot est la fin de sa dernière
+  part ; « Où ça coince » et « La fin de chaque service » suivent. Le robot
+  n'est plus cité quand le relais suffit à tenir les deux postes ; il l'est
+  encore quand il ne suffit pas.
+- **La Synthèse** : sur la ligne du service, « … avance n vols de … ».
+- **Le récapitulatif des équipes** : « avance n vols de … » pour l'équipe qui
+  avance ; « n vols déjà faits par … » pour la suivante, avec les heures de
+  sa part (« déjà faite par … » quand toute la commande est avancée).
+- **Le planning des équipes** : voir « Lire le plan rejoué et le planning ».
+- **Le plan rejoué et la vue en direct** : la ligne tourne pendant l'avance,
+  avec l'équipe qui avance ; les plateaux avancés sortent à la fin de leur
+  part.
+- **Les classeurs** : la feuille « Réponses » a une ligne « Commande
+  avancée » par commande (les parts de chaque équipe) ; la feuille « Charge »
+  gagne trois colonnes — « Vols avancés pour l'équipe suivante », « Travail
+  en avance (min) », « Vols déjà faits par l'équipe d'avant » —, seulement
+  quand une équipe a avancé des vols.
 
 ### L'effectif calculé d'un robot ne dépasse pas ses postes de travail (évolution 21 b)
 
@@ -1886,6 +1918,8 @@ aucun vol.
 | `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
 | `tests/robot-relais.test.cjs` | Le relais sur la ligne du robot (v1, banc d’essai, évolution 21 a), sur des journées fictives calculées à la main : la première équipe, ses commandes finies, avance les vols de la suivante dans l’ordre des départs ; une seule commande, avec ses parts ; aucun vol fait deux fois, aucun oublié ; la ligne tourne le même temps, la suivante finit plus tôt ; la pause due pendant un vol avancé se prend à sa fin, pour sa durée entière ; un vol qui ne tient pas avant la fin de la présence n’est pas commencé (aucune heure sup) ; la suivante arrive pendant un vol avancé ; sous son minimum, rien n’est avancé ; l’amont pas prêt (ordre strict, ordre souple) ; le matériel qui manque ; le plus petit temps par vol d’abord ; trois équipes ; le même jour de travail, l’équipe sous condition absente ; les renforts ; les non-régressions, champ par champ (sans temps libre, seule sur sa ligne, en « ligne propre », sans robot) |
+| `tests/robot-relais-resultats.test.cjs` | Le relais du robot dans les résultats (v1, évolution 21 c), sur l’unité fictive de `tests/robot-relais-fictif.cjs` : les indicateurs de charge lisent les parts (au travail, plateaux finis sans double compte, file, l’avance de chaque équipe) ; la fin d’une équipe est la fin de sa dernière part ; « Où ça coince » ne cite plus le robot quand le relais suffit, et le cite quand il ne suffit pas ; le planning (les deux parts, le repère, les mots) ; la vue en direct (la ligne tourne avec l’équipe qui avance) ; les feuilles « Réponses » et « Charge » ; sans relais, aucun champ ni colonne de plus |
+| `tests/robot-relais-browser.cjs` | Le relais du robot dans les pages (v1, évolution 21 c), sur la même unité fictive : la commande en relais sur les deux lignes du planning, avec son repère et ses mots au survol ; la Synthèse dit qui avance et combien de vols ; « Où ça coince » ne cite plus le robot quand le relais suffit à tenir les deux postes, et le cite encore quand il ne suffit pas ; le récapitulatif des équipes (« avance n vols de … », « n vols déjà faits par … ») |
 | `tests/robot-plafond.test.cjs` | L’effectif calculé d’un robot ne dépasse pas ses postes de travail (v1, banc d’essai, évolution 21 b), sur une journée fictive calculée à la main : le calcul au-dessus du maximum donne le maximum, sans changer la durée de la ligne ; sous le maximum, le calcul d’avant ; sans maximum, le résultat d’avant, champ par champ ; un maximum sous le minimum ne s’applique pas (le minimum l’emporte, un avis « à corriger » le dit) ; le robot saisi et les équipes à la main ne changent pas ; le besoin, les indicateurs de charge et les réponses lisent l’effectif plafonné ; la sauvegarde, la restauration, l’export et l’import Excel |
 | `tests/robot-plafond-browser.cjs` | Les postes de travail dans la fiche d’une équipe de robot (v1, évolution 21 b), sur les données de démonstration : le champ toujours visible, à côté du minimum, avec ses deux effets (« au plus, renforts compris ») ; pas de champ pour une équipe à la main sans les renforts ; un maximum sous le minimum refusé sous le champ ; l’effectif calculé plafonné, et la fiche le dit ; le minimum ne passe pas au-dessus ; vidé, le calcul d’avant |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
