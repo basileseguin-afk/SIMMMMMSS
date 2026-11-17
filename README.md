@@ -1524,6 +1524,29 @@ Ce que le plafond change aux mesures passées du robot (le besoin, la charge,
 les heures sup en personnes × durée) : [le banc d'essai](docs/BANC_ESSAI.md),
 § 10.
 
+### Une compagnie sans chargement par camion (évolution 21 e)
+
+Pour une compagnie qu'aucun handling ne charge, « Problèmes » affiche l'avis
+« à corriger » « aucun handling ne charge cette compagnie ». Dans une unité,
+c'est parfois voulu : ce qui est produit pour elle ne part pas en camion.
+
+- **L'avis garde son texte et gagne un bouton** : « C'est voulu : pas de
+  chargement pour cette compagnie ». Un clic, et l'avis ne revient plus ; le
+  panneau reste ouvert.
+- **Le choix se retient avec les réglages** : une liste de compagnies
+  (`sansChargement`, dans `ory-ateliers-v1`), vide par défaut. Elle se
+  sauvegarde, se restaure, s'annule et se rétablit comme le reste.
+- **Le calcul ne change pas d'un champ** : les vols de cette compagnie ne
+  sont chargés par personne, comme avant ; seul l'avis s'en va.
+- **La liste se voit et se défait dans la fiche du handling** :
+  « Compagnies sans chargement », avec « remettre l'avis » à côté de chaque
+  compagnie.
+- **Si un handling charge ensuite une compagnie de la liste, elle en sort
+  d'elle-même** : ajoutée à ses « Compagnies chargées », ou sa liste vidée
+  (il charge alors toutes les compagnies).
+
+Sans compagnie dans la liste, rien ne change.
+
 ## Centre des flux
 
 L’onglet **Centre des flux** permet de définir des liaisons par listes
@@ -1936,6 +1959,8 @@ aucun vol.
 | `tests/robot-plafond.test.cjs` | L’effectif calculé d’un robot ne dépasse pas ses postes de travail (v1, banc d’essai, évolution 21 b), sur une journée fictive calculée à la main : le calcul au-dessus du maximum donne le maximum, sans changer la durée de la ligne ; sous le maximum, le calcul d’avant ; sans maximum, le résultat d’avant, champ par champ ; un maximum sous le minimum ne s’applique pas (le minimum l’emporte, un avis « à corriger » le dit) ; le robot saisi et les équipes à la main ne changent pas ; le besoin, les indicateurs de charge et les réponses lisent l’effectif plafonné ; la sauvegarde, la restauration, l’export et l’import Excel |
 | `tests/robot-plafond-browser.cjs` | Les postes de travail dans la fiche d’une équipe de robot (v1, évolution 21 b), sur les données de démonstration : le champ toujours visible, à côté du minimum, avec ses deux effets (« au plus, renforts compris ») ; pas de champ pour une équipe à la main sans les renforts ; un maximum sous le minimum refusé sous le champ ; l’effectif calculé plafonné, et la fiche le dit ; le minimum ne passe pas au-dessus ; vidé, le calcul d’avant |
 | `tests/captures-evolution-21-browser.cjs` | Les captures de contrôle de l’évolution 21 (v1, partie d), sur l’unité fictive de `tests/robot-relais-fictif.cjs`, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 : le planning des équipes avec un relais de robot (la commande sur les deux lignes, le repère à la jointure, la légende), puis avec l’infobulle de la part reprise ; la Synthèse d’une journée où le relais ne suffit pas (la ligne du service du robot, la carte « Où ça coince ») ; seize captures vérifiées (taille, contenu, page qui tient sur la largeur), gardées hors du dépôt (`ORY_CAPTURES`) |
+| `tests/sans-chargement.test.cjs` | Une compagnie sans chargement par camion (v1, évolution 21 e), sur une journée fictive : la compagnie qu’aucun handling ne charge lève l’avis, choisie « sans chargement » elle ne le lève plus ; le résultat est le même avec et sans le choix, à l’avis près ; la liste, vide par défaut, se garde avec les réglages (sauvegarde, restauration) ; une compagnie qu’un handling charge en sort d’elle-même ; la journée jouée depuis la sauvegarde lit la liste ; le panneau des Problèmes : le même avis, avec le bouton « C’est voulu » pour sa compagnie, échappée ; la liste mise au propre (un code à tiret, un code long, plusieurs handlings, un handling qui charge tout, aucun handling) |
+| `tests/sans-chargement-browser.cjs` | Une compagnie sans chargement, dans la page (v1, évolution 21 e), sur l’unité fictive : l’avis et son bouton « C’est voulu » ; l’avis disparaît, le résultat de la journée ne change pas, le panneau reste ouvert et garde le clavier ; la liste dans la fiche du handling, qui se défait (l’avis revient) ; annuler, rétablir, recharger ; une compagnie qu’un handling charge sort de la liste |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
 | `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une par service robot), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
 | `tests/direct-face.test.cjs` | La vue d’ouverture d’un site disposé (v1, correction 21 b), sans navigateur : l’angle d’ouverture — de face (cap 0, deux pas d’inclinaison au-dessus de la maquette) pour un site disposé, celui de la maquette sinon ; à cet angle, les colonnes vont de gauche à droite dans l’ordre où on les a rangées, leurs bords sont verticaux à l’écran, les rangées du bas sont sous les colonnes, la scène tient entière, un mètre de hauteur se voit encore ; sans disposition, la caméra d’avant, champ par champ ; tourner, incliner et « Cadrer » partent de cet angle. |

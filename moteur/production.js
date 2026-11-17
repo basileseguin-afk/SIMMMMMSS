@@ -2855,7 +2855,10 @@
         if (h) volsDe.get(h.id).push(v);
         else sans.set(v.cie, (sans.get(v.cie) || 0) + 1);
       }
-      for (const [cie, n] of sans) anomalies.push({ code: 'handling-sans', compagnie: cie,
+      // Une compagnie que l'on ne charge pas en camion, et c'est voulu (`sansChargement`, évolution 21 e) : pas d'avis.
+      // Le calcul est le même : ses vols ne sont chargés par personne, comme avant.
+      const voulues = new Set((Array.isArray(opts.sansChargement) ? opts.sansChargement : []).map(x => String(x).trim().toUpperCase()));
+      for (const [cie, n] of sans) if (!voulues.has(cie)) anomalies.push({ code: 'handling-sans', compagnie: cie,
         message: n + (n > 1 ? ' vols ' : ' vol ') + cie + ' : aucun handling ne charge cette compagnie. Ajoutez-la à un handling, ou videz sa liste de compagnies.' });
       for (const a of handlings) {
         const manque = [...new Set((volsDe.get(a.id) || []).filter(v => dureeHandling(a, v.cie) == null).map(v => v.cie))];

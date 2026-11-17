@@ -308,6 +308,8 @@
       parcoursClasse: etat.parcoursClasse,
       // Les services qui travaillent par catégories propres (l'armement).
       categories: etat.categories || {},
+      // Les compagnies sans chargement par camion, et c'est voulu (évolution 21 e) : elles ne lèvent plus l'avis. Seulement s'il y en a.
+      ...(Array.isArray(etat.sansChargement) && etat.sansChargement.length ? { sansChargement: etat.sansChargement.slice() } : {}),
       // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
       effectifCalcule: servicesCalcules(etat, services), effectifImpose: servicesImposes(etat),
       // Un robot ne se calcule que sur le barème propre de son service (évolution 9) : par défaut dans un service de

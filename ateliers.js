@@ -498,6 +498,9 @@
     // sauvegarde d'avant), ou vide : la disposition automatique. Sa forme est remise au propre par moteur/disposition.js.
     const DISPOSITION = root.OrlyDisposition || (typeof require === 'function' ? require('./moteur/disposition.js') : null);
     const disposition = DISPOSITION ? DISPOSITION.lire(brut.disposition) : null;
+    // Les compagnies sans chargement par camion, et c'est voulu (évolution 21 e) : une liste de codes, vide par défaut.
+    // Elles ne lèvent plus l'avis « aucun handling ne charge cette compagnie » ; le calcul ne change pas.
+    const sansChargement = sansChargementDe(brut.sansChargement, ateliers);
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
@@ -505,7 +508,19 @@
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
       ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
       ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}),
-      ...(Object.keys(postes).length ? { postes } : {}) };
+      ...(Object.keys(postes).length ? { postes } : {}), ...(sansChargement.length ? { sansChargement } : {}) };
+  }
+  /**
+   * Les compagnies sans chargement (évolution 21 e), mises au propre : des codes de compagnie, une fois chacun, dans
+   * l'ordre. Une compagnie qu'un handling charge en sort d'elle-même : elle est dans sa liste de compagnies, ou un
+   * handling charge toutes les compagnies (sa liste est vide).
+   */
+  function sansChargementDe(liste, ateliers) {
+    const listes = (ateliers || []).filter(a => a && a.type === 'handling').map(a => cies(a.compagnies));
+    if (listes.some(l => !l.length)) return [];
+    const chargees = new Set(listes.flat());
+    // Un code de compagnie s'écrit comme dans la liste d'un handling : sans espaces autour, en majuscules, 40 caractères au plus.
+    return cies((Array.isArray(liste) ? liste : []).filter(c => typeof c === 'string')).filter(c => !chargees.has(c)).sort();
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -1000,6 +1015,17 @@
     }
     /** `service` a-t-il des rayonnages dans sa zone, dans la vue en direct (évolution 20 d) ? Le magasin en a toujours. */
     rayonnages(service) { return service === 'magasin' || (this.state.rayonnages || {})[service] === true; }
+    /** Les compagnies sans chargement par camion, et c'est voulu (évolution 21 e) : elles ne lèvent plus l'avis. */
+    sansChargement() { return Array.isArray(this.state.sansChargement) ? this.state.sansChargement.slice() : []; }
+    /** Dit qu'une compagnie n'a pas de chargement, et que c'est voulu (`voulu`), ou le défait : l'avis revient. */
+    regleSansChargement(compagnie, voulu) {
+      const cie = String(compagnie || '').trim().toUpperCase().slice(0, 40), oui = voulu === true, avant = this.sansChargement();
+      // La liste d'après ; une compagnie qu'un handling charge n'y entre pas : rien ne change, rien à annuler.
+      const apres = sansChargementDe(avant.filter(c => c !== cie).concat(oui ? [cie] : []), this.state.ateliers);
+      if (!cie || JSON.stringify(apres) === JSON.stringify(avant)) return false;
+      return this.changer(() => { if (apres.length) this.state.sansChargement = apres; else delete this.state.sansChargement; },
+        cie + ' : ' + (oui ? 'pas de chargement par camion, c’est voulu. L’avis ne revient plus.' : 'de nouveau à charger : l’avis revient tant qu’aucun handling ne la charge.'));
+    }
     /**
      * Règle « des rayonnages dans sa zone », pour `service` : ils se rangent au fond, les postes de ses équipes devant. Le
      * magasin en a toujours : rien à régler. Un réglage d'affichage : il ne change aucun calcul.
@@ -1408,6 +1434,8 @@
         case 'lot-separer':
           return this.changer(() => { a.lots = this.classes.map(c => [c.id]); },
             'Une ligne par classe, dans l’ordre des échéances.');
+        // Une compagnie sans chargement redevient à charger (évolution 21 e) : l'avis revient.
+        case 'sans-chargement-oter': return this.regleSansChargement(data.cie, false);
         // Les arrêts de la ligne robot : une seule ligne, les mêmes arrêts pour
         // toutes les cases qui y travaillent.
         case 'arret-ligne-ajouter':
@@ -1669,6 +1697,7 @@
           case 'simultanes': a.simultanes = Math.max(1, Math.min(50, parseInt(v, 10) || 1)); break;
           // Saisi en heures, gardé en minutes.
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
+          // (Une compagnie qu'un handling charge sort de la liste « sans chargement » à la validation : évolution 21 e.)
           case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
           // Où se range ce qui attend le chargement, dans la vue en direct (évolution 20 c) : un réglage d'affichage.
           case 'attente': this.regleAttente(a.service, v); break;
@@ -2541,6 +2570,9 @@
             title="Le handling ne commence pas un vol plus tôt que cela avant son départ">`, 'h')}</label>
           <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
             title="Vide : toutes les compagnies. Sinon, par exemple : AF, TX"></label>
+          ${this.sansChargement().length ? `<div class="at-sans-chargement" title="Ce qui est produit pour ces compagnies ne part pas en camion : aucun avis n’est levé. Ôter une compagnie fait revenir l’avis tant qu’aucun handling ne la charge.">
+            <span>Compagnies sans chargement</span>${this.sansChargement().map(c => `<span class="at-sc-cie"><b>${esc(c)}</b><button type="button" class="lien-discret" data-at-action="sans-chargement-oter" data-cie="${esc(c)}"
+              aria-label="${esc(c)} : de nouveau à charger">remettre l’avis</button></span>`).join('')}</div>` : ''}
           ${this.champAttente(a)}
         </div>
         ${h24 ? this.blocTournees(a) : ''}

@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (e) : une compagnie sans chargement par camion ne lève plus d'avis
+
+Cinquième partie de l'évolution 21. Le calcul ne change pas d'un champ : un
+avis de moins, quand c'est voulu. Sans compagnie dans la liste, rien ne
+change. La version 2 n'est pas touchée.
+
+- **L'avis « aucun handling ne charge cette compagnie »** garde son texte et
+  gagne un bouton, dans « Problèmes » : « C'est voulu : pas de chargement
+  pour cette compagnie ».
+- **Le choix se retient avec les réglages** : une liste de compagnies
+  (`sansChargement`), vide par défaut ; elle se sauvegarde et se restaure.
+  Une compagnie de la liste ne lève plus l'avis.
+- **La liste se voit et se défait dans la fiche du handling** :
+  « Compagnies sans chargement », « remettre l'avis ».
+- **Si un handling charge ensuite une compagnie de la liste**, elle en sort
+  d'elle-même.
+
+Fichiers : `moteur/production.js`, `moteur/journee.js`, `ateliers.js`,
+`avis.js`, `avis.css`, `sim.js`, `index.html` (empreintes),
+`tests/sans-chargement.test.cjs`, `tests/sans-chargement-browser.cjs`
+(nouveaux), `README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (d) : contrôle et doc
 
 Quatrième partie de l'évolution 21. Aucun code de la page ni du moteur ne

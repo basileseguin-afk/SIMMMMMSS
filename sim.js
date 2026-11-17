@@ -884,7 +884,9 @@ function initProblemes(){
   if(!bouton||!panneau||!window.OrlyAvis)return;
   Sim.problemes=new OrlyAvis.Registre({bouton,panneau,sources:sourcesProblemes,
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
-    aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);}});
+    aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);},
+    // Une compagnie sans chargement par camion (évolution 21 e) : le bouton « C'est voulu » de son avis retient le choix.
+    voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true))});
   Sim.problemes.maj();
   // Les alertes des liens (flow-center.js, commun) : sous « Information », un geste proposé dit « Facultatif » (évolution 19, retouche).
   const liens=document.getElementById('fc-alertes');

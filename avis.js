@@ -74,8 +74,9 @@
    *   liens     : alertes des liens de l'unité, quand ils servent ({texte, grave}) ;
    *   etapes    : étapes à faire de « Prêt à simuler ? » ({id, titre, texte, page, services?}) ;
    *   enClair   : le texte d'une anomalie, avec les mots de la page (facultatif).
-   * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string}>}
-   *   page : où il se règle ; aussi : les pages qui le montrent aussi (et le comptent).
+   * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string}>}
+   *   page : où il se règle ; aussi : les pages qui le montrent aussi (et le comptent) ; voulu : la compagnie d'un
+   *   avis « aucun handling ne charge cette compagnie », qui propose de dire que c'est voulu (évolution 21 e).
    */
   function lister(s = {}) {
     const clair = typeof s.enClair === 'function' ? s.enClair : (t => t);
@@ -92,7 +93,9 @@
       const resultat = JOURNEE.includes(a.code);
       out.push({ niveau: niveauDuCode(a.code), titre: clair(a.message || a.code || ''), detail: '',
         page: resultat ? 'j-chiffres' : a.service ? 'mu-services' : 'at-chemins', aussi: resultat ? [] : ['u-lecture', 'mu-pas'],
-        service: !resultat && a.service ? a.service : undefined });
+        service: !resultat && a.service ? a.service : undefined,
+        // Une compagnie qu'aucun handling ne charge (évolution 21 e) : l'avis propose de dire que c'est voulu.
+        ...(a.code === 'handling-sans' && a.compagnie ? { voulu: String(a.compagnie) } : {}) });
     }
     // Les liens de l'unité : la page « Contrôles détaillés » dit « à corriger » ce qui est grave ; un service en
     // bout de chaîne ne demande rien. (Une boucle qui arrête le calcul, c'est le calcul qui la dit : bloquant.)
@@ -153,6 +156,8 @@
     return n;
   }
 
+  /** Le bouton d'un avis « aucun handling ne charge cette compagnie » (évolution 21 e). */
+  const VOULU = 'C’est voulu : pas de chargement pour cette compagnie';
   /**
    * Le panneau des problèmes : les bloquants, les points à corriger, puis les
    * informations, repliées.
@@ -162,7 +167,8 @@
   function panneau(liste, nomPage) {
     const item = p => `<li><button type="button" class="pb" data-pb-page="${esc(p.page)}"${p.service ? ` data-pb-service="${esc(p.service)}"` : ''}>`
       + `<span class="pb-corps"><b>${esc(p.titre)}</b>${p.detail ? `<span>${esc(p.detail)}</span>` : ''}`
-      + `<span class="pb-lien">Ouvrir « ${esc(nomPage(p.page))} »${pic('droite')}</span></span></button></li>`;
+      + `<span class="pb-lien">Ouvrir « ${esc(nomPage(p.page))} »${pic('droite')}</span></span></button>`
+      + (p.voulu ? `<button type="button" class="pb-voulu" data-pb-voulu="${esc(p.voulu)}" aria-label="${esc(VOULU + ' (' + p.voulu + ')')}">${esc(VOULU)}</button>` : '') + '</li>';
     const de = id => liste.filter(p => p.niveau === id);
     const problemes = NIVEAUX.filter(nv => nv.probleme).map(nv => {
       const d = de(nv.id);
@@ -194,15 +200,20 @@
 
   /**
    * Le panneau des problèmes, ouvert depuis le pied de la barre latérale.
-   * @param {{sources:Function, aller:Function, nomPage:Function, bouton:HTMLElement, panneau:HTMLElement}} a
+   * @param {{sources:Function, aller:Function, nomPage:Function, voulu?:Function, bouton:HTMLElement, panneau:HTMLElement}} a
    *   sources()            — les sources de `lister` ;
    *   aller(page, service) — ouvrir la page où l'avis se règle ;
-   *   nomPage(page)        — le nom d'une page, pour le lien.
+   *   nomPage(page)        — le nom d'une page, pour le lien ;
+   *   voulu(compagnie)     — retenir qu'une compagnie n'a pas de chargement, et que c'est voulu ; rend vrai si le
+   *                          choix est retenu.
    */
   class Registre {
     constructor(a) {
       this.a = a; this.liste = [];
       a.panneau.addEventListener('click', e => {
+        // « C'est voulu » (évolution 21 e) : le choix se retient, le panneau reste ouvert et se redessine sans l'avis.
+        const v = e.target.closest('[data-pb-voulu]');
+        if (v) { if (typeof a.voulu === 'function') this.reprendre = a.voulu(v.dataset.pbVoulu) === true; return; }
         const b = e.target.closest('[data-pb-page]'); if (!b) return;
         if (a.panneau.hidePopover) a.panneau.hidePopover();
         a.aller(b.dataset.pbPage, b.dataset.pbService || null);
@@ -232,10 +243,18 @@
       return { n: ici.length, ton: ton(ici), titre: resume(ici) + ', à régler ici' };
     }
 
-    rendre() { this.a.panneau.innerHTML = panneau(this.liste, this.a.nomPage); }
+    rendre() {
+      this.a.panneau.innerHTML = panneau(this.liste, this.a.nomPage);
+      // Après « C'est voulu », le bouton est parti avec son avis : le clavier reste dans le panneau, sur son premier bouton.
+      if (this.reprendre) {
+        this.reprendre = false;
+        const b = this.a.panneau.querySelector('button') || this.a.bouton;
+        if (b && typeof b.focus === 'function') b.focus();
+      }
+    }
   }
 
-  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, niveauDuCode, dire, lister, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
+  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyAvis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

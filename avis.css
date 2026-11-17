@@ -35,3 +35,10 @@ details.avis-niveau>summary:hover,details.avis-niveau[open]>summary{color:var(--
 .fc-alerte.avis-information>summary b{display:inline}
 /* Les pages d'équipes : rien que des informations, la boîte perd sa couleur d'alerte. */
 details.at-anomalies.at-informations{border-left-color:var(--ds-bordure-forte);background:var(--ds-surface-2)}
+/* Une compagnie sans chargement par camion (évolution 21 e) : sous son avis, le bouton « C'est voulu »… */
+.pb-voulu{display:block;margin:0 10px 8px;padding:4px 10px;border:1px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2);background:var(--ds-surface-1);
+  font:inherit;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-accent-texte);text-align:left;cursor:pointer}
+.pb-voulu:hover,.pb-voulu:focus-visible{background:var(--ds-surface-2)}
+/* … et, dans la fiche du handling, la liste des compagnies sans chargement, avec de quoi remettre l'avis. */
+.at-sans-chargement{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;grid-column:1/-1;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.at-sans-chargement .at-sc-cie{display:inline-flex;align-items:center;gap:6px}
