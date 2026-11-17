@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 22 (b) : la page ne touche plus son stockage trop tôt
+
+Seconde partie de la correction 22. Aucun calcul ne change, ni aucune donnée
+enregistrée ; la règle d'enregistrement non plus (un réglage accepté est
+écrit dans le geste). La version 2 n'est pas touchée.
+
+- **Le thème** n'est plus lu dans un script en ligne : `index.html` et
+  `accueil.html` appellent `theme-tot.js`, en tête de page. Il se pose
+  toujours avant le premier dessin.
+- **Le premier accès au stockage vient après la lecture de
+  `document.cookie`**, dans `theme-tot.js`, dans le garde (`stockage.js`) et
+  dans la page de secours, qui reste autonome. Un document ne peut plus
+  s'ouvrir coupé de son stockage — un site vierge à l'écran, et rien
+  d'enregistré de la visite.
+- **Le test des onglets** ôte le garde sans toucher le stockage : il ne
+  provoque plus lui-même la course qui le faisait échouer.
+
+Fichiers : `theme-tot.js` (nouveau), `index.html`, `accueil.html`,
+`secours.html`, `stockage.js`, `tests/stockage-tot.test.cjs`,
+`tests/stockage-tot-browser.cjs` (nouveaux),
+`tests/plusieurs-onglets-browser.cjs`, `docs/BANC_ESSAI.md`,
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
+---
+
 ## 2026-11-17 — Correction 22 (a) : la cause de deux tests navigateur instables
 
 Première partie de la correction 22. Aucun code de la page ni du moteur ne

@@ -109,6 +109,11 @@
   /** Dans la page : le garde à la place de `localStorage`, et l'écoute des autres onglets. Faute de pouvoir le poser, la page fait comme avant. */
   function installer(win) {
     var vrai;
+    // Avant de prendre le stockage (correction 22) : un document qui le touche trop tôt, avant que le navigateur ait fini
+    // de l'installer, peut en être détaché — il s'ouvrirait vide et n'enregistrerait rien. Lire document.cookie attend
+    // la réponse du navigateur par la voie du document ; elle ne lit ni n'écrit aucune donnée. (theme-tot.js, en tête de
+    // page, l'a déjà fait : ce garde ne dépend pas de lui.)
+    try { void win.document.cookie; } catch (e) { /* un document sans témoins : rien à attendre */ }
     try { vrai = win.localStorage; if (!vrai) return null; } catch (e) { return null; } // stockage indisponible : le site fait déjà sans
     var g = creerGarde(vrai, { surRetard: function () { montrerBandeau(win.document); } });
     try { Object.defineProperty(win, 'localStorage', { value: g.stockage, configurable: true }); } catch (e) { return null; }

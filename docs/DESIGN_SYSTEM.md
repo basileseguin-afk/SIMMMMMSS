@@ -135,7 +135,9 @@ Clair par défaut ; sombre au choix (« Thème sombre », au pied de la barre
 latérale). Le thème est un attribut, `data-theme="sombre"` sur `<html>`,
 posé avant le premier affichage. Il est retenu sous `ory-ui-theme` : une
 préférence d'affichage, jamais une donnée. En sombre, l'élévation se lit à
-la luminance des surfaces, pas aux ombres.
+la luminance des surfaces, pas aux ombres. Dans la version 1, c'est
+`theme-tot.js`, appelé en tête de page, qui le pose (correction 22) : plus
+de script en ligne qui lit le stockage (`BANC_ESSAI.md`, § 11).
 
 La deuxième passe (15/10) ne concerne que le thème clair. En sombre, les
 jetons de la navigation renvoient aux surfaces et aux textes du thème : la

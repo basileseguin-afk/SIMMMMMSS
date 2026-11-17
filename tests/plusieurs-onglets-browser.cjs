@@ -178,7 +178,12 @@ async function contexte(){const b=await lancer();lances.push(b);return b.newCont
   // 5. Un seul onglet : le même parcours, avec et sans le garde (posé ou non par stockage.js).
   const parcours=async sansGarde=>{
     const c=await contexte();
-    if(sansGarde)await c.addInitScript(()=>{Object.defineProperty(window,'localStorage',{value:window.localStorage,writable:false,configurable:false});});
+    // Sans le garde : la propriété est figée avec son accesseur d'origine, SANS la lire — stockage.js ne peut plus la
+    // remplacer. (Correction 22 : ce script la lisait, au tout début de chaque document ; un document qui touche son
+    // stockage si tôt peut en être détaché — il n'enregistre alors rien —, et le parcours perdait ses clés une fois
+    // sur trois sur une machine lente. docs/BANC_ESSAI.md § 11 ; outils/banc-stockage.cjs.)
+    if(sansGarde)await c.addInitScript(()=>{const d=Object.getOwnPropertyDescriptor(window,'localStorage');
+      Object.defineProperty(window,'localStorage',{get:d.get,set:d.set,enumerable:d.enumerable,configurable:false});});
     const p=await ouvrir(c);
     await p.evaluate(()=>localStorage.clear());await p.reload();await p.waitForTimeout(400);
     assert.equal(await p.evaluate(()=>OrlyStockage.installe),!sansGarde);

@@ -3,8 +3,10 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
-<!-- Le thème choisi (une préférence d'affichage), posé avant tout dessin : pas d'éclair clair au chargement. -->
-<script>try{if(localStorage.getItem('ory-ui-theme')==='sombre')document.documentElement.dataset.theme='sombre';}catch(e){}</script>
+<!-- Le thème choisi (une préférence d'affichage), posé avant tout dessin : pas d'éclair clair au chargement. C'est le
+     premier accès au stockage de la page : il est dans un fichier, pas en ligne, et vient après une lecture de
+     document.cookie — un document qui touche son stockage trop tôt peut en être détaché (correction 22). -->
+<script src="theme-tot.js?v=0541c9b6"></script>
 <meta content="width=1280" name="viewport"/>
 <title>Production ORY — simulation d’une journée de repas à bord</title>
 <meta content="Simulation visuelle des chemins de production d'une unité de catering aérien : goulots, charge par équipe, scénarios what-if." name="description"/>
@@ -134,7 +136,7 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="259ae93621"/>
+<meta name="ory-version" content="6e3c333dfb"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
 <link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=dca99aa3" rel="stylesheet"/><link href="charge.css?v=2183cba1" rel="stylesheet"/><link href="plan-rejoue.css?v=8d5656e7" rel="stylesheet"/><link href="plan-flux.css?v=72eea07c" rel="stylesheet"/><link href="direct.css?v=7bba733f" rel="stylesheet"/><link href="planning-vue.css?v=27fd1c3f" rel="stylesheet"/><link href="resultats-vue.css?v=76f9ddaf" rel="stylesheet"/><link href="synthese-vue.css?v=c48132ac" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/><link href="jouent.css?v=e8644013" rel="stylesheet"/><link href="avis.css?v=f8b612b4" rel="stylesheet"/><link href="vols-page.css?v=33776ea0" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
@@ -246,7 +248,7 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <details class="aide bloc"><summary>Site et fichier local : deux stockages</summary><span class="aide-corps">Une page ouverte depuis <code>github.io</code> et un fichier ouvert depuis votre disque ne partagent pas le même stockage : travaillez toujours au même endroit, ou passez par ce fichier.</span></details>
 </div>
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Temps par vol d’temps par vol <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’une équipe ne va pas aider dans un autre.</li><li>L’export Winrest (onglet Flights) se lit tel quel, mais ne donne que des départs : un programme tiré de lui n’a pas de retours.</li></ul></span></details></div></div></aside></div>
-<script src="stockage.js?v=80051de2"></script>
+<script src="stockage.js?v=a149800f"></script>
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="plan-base.js?v=2e06de39"></script>
 <script src="rendu.js?v=ac16ab27"></script>

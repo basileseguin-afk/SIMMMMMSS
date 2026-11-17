@@ -3054,8 +3054,8 @@ accepte un réglage : `ateliers.js` (`enregistrer`), `plan-editor.js`
 `localStorage.setItem` dans le geste, sans minuterie. Un réglage changé juste
 avant de recharger, de fermer ou de quitter la page est enregistré, avec le
 garde et sans lui ; les cases mises de côté par la page de secours reviennent
-(vérifié dans la page, sans aucune attente entre le réglage et le
-rechargement).
+(`tests/stockage-tot-browser.cjs` le vérifie, sans aucune attente entre le
+réglage et le rechargement).
 
 **La cause : un stockage détaché.** Un document qui touche `localStorage`
 avant que le navigateur ait fini de l'installer peut se retrouver coupé du
@@ -3070,7 +3070,7 @@ fichier).
 
 - **Le premier test la provoquait lui-même.** Pour ôter le garde, il posait
   au tout début de chaque document un script qui lisait `window.localStorage`
-  (ligne 181, `value: window.localStorage`). Quand le document du parcours, ou
+  (`value: window.localStorage`). Quand le document du parcours, ou
   celui qui le relit, était détaché, il ne restait que les clés d'un site
   vierge : celle des équipes, écrite au démarrage, et celles du menu.
 - **La page s'y exposait aussi, plus rarement.** Le premier accès au stockage
@@ -3109,6 +3109,54 @@ rechargement se détache aussi, le parcours « sans le garde » du premier test
 stockage. Cette lecture attend la réponse du navigateur par la voie du
 document lui-même : quand elle revient, le document est installé, et le
 stockage se raccorde. Elle ne lit ni n'écrit aucune donnée.
+
+### La page ne touche plus son stockage trop tôt (correction 22 b)
+
+**La règle d'enregistrement ne change pas** : un réglage accepté par la page
+est écrit dans le geste, avec le garde et sans lui. Ce qui change, c'est le
+premier accès au stockage : il ne peut plus détacher le document.
+
+- **Le thème** n'est plus lu dans un script en ligne. `index.html` et
+  `accueil.html` appellent `theme-tot.js`, en tête, avant les feuilles de
+  style : le thème se pose toujours avant le premier dessin. Ce fichier lit
+  `document.cookie`, puis `localStorage`.
+- **Le garde** (`stockage.js`, `installer`) lit `document.cookie` avant de
+  prendre `localStorage` : il ne dépend pas de `theme-tot.js`.
+- **La page de secours** reste autonome — elle ne charge rien du site — :
+  son script en ligne commence par cette lecture.
+- **La règle**, pour toute page de la version 1 : le premier accès au
+  stockage vient après la lecture de `document.cookie` ; un script en ligne
+  qui touche le stockage commence par elle. `tests/stockage-tot.test.cjs` la
+  tient, page par page.
+
+**Ce que la lecture de `document.cookie` fait.** Rien aux données : le site
+ne pose aucun témoin, et la valeur lue est jetée. Elle sert de barrière : le
+navigateur n'y répond qu'une fois le document installé, par la voie du
+document lui-même ; le stockage, demandé ensuite, se raccorde. Si un
+navigateur n'attend pas cette réponse, la page est comme avant la
+correction, pas pire.
+
+**Le test des onglets** ôte maintenant le garde sans toucher le stockage : il
+fige la propriété `localStorage` de la fenêtre avec son accesseur d'origine,
+sans la lire. Ce qu'il vérifie ne change pas. C'était le seul test
+navigateur à toucher le stockage dans un script posé au début du document.
+
+**La version 2** (gelée) garde son thème dans un script en ligne : elle
+reste exposée, rarement, à un document détaché.
+
+Vérifications — `tests/stockage-tot.test.cjs` : aucune page de la version 1
+ne touche le stockage dans un script en ligne sans la lecture juste avant ;
+dans `index.html` et `accueil.html`, le premier script qui le touche est
+`theme-tot.js`, en tête, avant les feuilles de style ; `theme-tot.js` lit
+`document.cookie` puis le thème, et ne casse rien sans stockage ni sans
+témoins ; `secours.html` ne charge aucun fichier ; le garde lit
+`document.cookie` avant `localStorage`. `tests/stockage-tot-browser.cjs` :
+dans les trois pages, le premier accès au stockage vient juste après la
+lecture de `document.cookie`, du même script (relevé sans toucher le
+stockage) ; le thème sombre est posé avant que le corps de la page existe ;
+un réglage changé juste avant de recharger, de fermer ou de quitter la page
+est enregistré (les équipes, le plan, les liens, le barème), avec le garde et
+sans lui ; les cases de la page de secours reviennent, sans attendre.
 
 ## 12. La batterie passe sans le plan privé (correction 15)
 

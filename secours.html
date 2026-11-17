@@ -70,6 +70,12 @@
 <script>
 (function () {
   'use strict';
+  // Avant le premier accès au stockage (correction 22) : un document qui touche son stockage trop tôt — avant que le
+  // navigateur ait fini de l'installer — peut en être détaché ; cette page dirait alors « Aucune donnée enregistrée »
+  // alors qu'il y en a. Lire document.cookie attend la réponse du navigateur par la voie du document : quand elle
+  // revient, le stockage se raccorde. Cette lecture ne lit ni n'écrit aucune donnée. (La page reste autonome : elle ne
+  // charge aucun fichier du site.)
+  try { void document.cookie; } catch (e) { /* un document sans témoins : rien à attendre */ }
   // Les parties d'une sauvegarde complète (sim.js, PARTIES), dans le même ordre.
   var PARTIES = ['orly-plan-v3', 'ory-ateliers-v1', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1', 'ory-calage-v1'];
   var CASES = ['ory-ateliers-v1', 'ory-ateliers-v1-avant-fonte'];
