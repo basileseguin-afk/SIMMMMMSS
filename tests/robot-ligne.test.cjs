@@ -39,9 +39,14 @@ test('la ligne s’arrête de 12:15 à 13:00, pour toutes les équipes qui y tra
   assert.equal(P.hhmm(lot(r, 'matin').fin), '14:15', '120 min de travail + 45 min d’arrêt');
   assert.equal(lot(r, 'matin').arret, 45);
   assert.equal(P.hhmm(lot(r, 'apm').debut), '14:15');
-  // Seule sur la ligne à midi, l'équipe de l'après-midi s'arrête aussi.
-  const r2 = jouer([robot('matin', '06:00', [['AF/YC']], { arretsLigne: [{ de: '12:15', a: '13:00' }] }), robot('apm', '12:00', [['TX/YC']])]);
+  // Seule sur la ligne à midi, l'équipe de l'après-midi s'arrête aussi. (Le matin part à 08:00, sa commande finie :
+  // resté sans fin de présence, il avancerait la commande de l'après-midi — le relais de l'évolution 21.)
+  const arret = { arretsLigne: [{ de: '12:15', a: '13:00' }] };
+  const r2 = jouer([robot('matin', '06:00', [['AF/YC']], { ...arret, regime: { actif: true, presence: 120, seuils: [] } }), robot('apm', '12:00', [['TX/YC']])]);
   assert.equal(P.hhmm(lot(r2, 'apm').fin), '13:45', '15 min, arrêt, puis 45 min');
+  // Évolution 21 : avec du temps devant lui, le matin avance TX dès 08:00 ; à midi, l'après-midi n'a plus rien à faire.
+  const r3 = jouer([robot('matin', '06:00', [['AF/YC']], arret), robot('apm', '12:00', [['TX/YC']])]);
+  assert.deepEqual([P.hhmm(lot(r3, 'apm').debut), P.hhmm(lot(r3, 'apm').fin), lot(r3, 'apm').parts.map(x => x.atelier)], ['08:00', '09:00', ['matin']]);
 });
 
 test('les arrêts de ligne : chaque jour, fusionnés avec les pauses', () => {

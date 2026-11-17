@@ -2892,6 +2892,7 @@
       minPropre: mat.stockInitial, entrees: 0, lavees: 0, consommees: 0, attente: 0
     };
     const attenteurs = [];      // lots en attente de matériel propre, dans l'ordre
+    const reveilsPropre = [];   // qui attend le prochain matériel propre, hors de la file (évolution 21)
     const reveilsSale = [];     // processus de lavage en attente d'un retour
     // La file de sale devant la plonge, pour la montrer dans le temps : son
     // niveau à chaque changement, et chaque arrivée dans l'ordre (premier
@@ -2913,7 +2914,10 @@
         a.ev.reussir(env.maintenant);
       }
     }
-    function crediter(n) { stock.propre += n; stock.lavees += n; servir(); }
+    // Qui attend du matériel propre sans tenir de place dans la file (une avance sur la ligne du robot, évolution 21) :
+    // réveillé quand du matériel arrive, ou quand quelqu'un quitte la file.
+    function reveillerPropre() { while (reveilsPropre.length) { const ev = reveilsPropre.shift(); if (!ev.declenche) ev.reussir(env.maintenant); } }
+    function crediter(n) { stock.propre += n; stock.lavees += n; servir(); reveillerPropre(); }
 
     /** Prend `besoin` unités propres, en attendant s'il le faut — pas au-delà de `limite` : rend alors null, sans rien prendre. */
     function* prendreMateriel(besoin, contexte, limite = Infinity) {
@@ -2930,7 +2934,7 @@
       yield Number.isFinite(limite) ? env.unDe([ev, env.delai(limite - env.maintenant)]) : ev;
       const attendu = env.maintenant - t0;
       stock.attente += attendu;
-      if (!ev.declenche) { attenteurs.splice(attenteurs.indexOf(w), 1); servir(); return null; }
+      if (!ev.declenche) { attenteurs.splice(attenteurs.indexOf(w), 1); servir(); reveillerPropre(); return null; }
       return attendu;
     }
 
@@ -2990,6 +2994,54 @@
       lignes.get(k).robots.push(a);
     }
     for (const l of lignes.values()) l.arrets = arretsDeLigne(l.robots);
+    /*
+     * LE RELAIS SUR LA LIGNE DU ROBOT (évolution 21). Deux équipes de robot se suivent sur la même ligne. Quand la
+     * première a fini ses propres commandes et qu'il lui reste du temps, elle avance celles de la suivante, vol par
+     * vol, sans jamais s'arrêter au milieu d'un vol ; la suivante reprend là où elle s'est arrêtée. C'est une seule
+     * commande, avec ses parts (`parts`, comme un lavage en relais) : qui a fait quels vols, de quand à quand.
+     */
+    // L'équipe suivante de chaque robot : sur sa ligne, le même jour de travail, celle dont le poste commence juste
+    // après le sien (à la même heure, la première de la liste). Une équipe sous condition qui ne vient pas n'est plus là.
+    const suivanteDe = new Map();
+    for (const l of lignes.values()) for (const a of l.robots) {
+      const d = parId.get(a.id).debut, apres = l.robots.filter(x => x !== a && (x.jour || 0) === (a.jour || 0) && parId.get(x.id).debut > d + 1e-9);
+      const b = apres.reduce((m, x) => (!m || parId.get(x.id).debut < parId.get(m.id).debut - 1e-9 ? x : m), null);
+      if (b) suivanteDe.set(a.id, b);
+    }
+    // Ce que l'équipe d'avant a avancé : équipe suivante → rang du lot → { unites, faits, ligne }.
+    const relais = new Map();
+    /**
+     * Les vols d'un lot de l'équipe `b`, dans l'ordre des départs : l'unité de l'avance. Chacun prend ses plateaux ÷ le
+     * débit que `b` a pour sa commande. null pour un lot qui ne se compte pas en vols (une commande sans vol au
+     * programme, ou dont les plateaux ne sont pas ceux de ses vols) : il ne s'avance pas.
+     */
+    const unitesDuLot = (b, ids) => {
+      const out = [];
+      for (const [i, id] of ids.entries()) {
+        const c = parClasse.get(id), vols = (c && c.vols) || [];
+        if (!vols.length || Math.abs(vols.reduce((n, v) => n + (+v.pax || 0), 0) - c.pax) > 1e-9) return null;
+        vols.forEach((v, k) => out.push({ id, vol: v.id, pax: v.pax, depart: v.depart, cabine: c.cabine, i, k, minutes: v.pax / Math.max(1e-9, debitRobot(b, id)) * 60 }));
+      }
+      return out.sort((x, y) => x.depart - y.depart || x.i - y.i || x.k - y.k);
+    };
+    /** L'état d'un lot de l'équipe `b` dans le relais ; créé à la demande (`ids`), null s'il ne s'avance pas. */
+    const etatRelais = (b, rang, ids) => {
+      if (!relais.has(b.id)) { if (!ids) return null; relais.set(b.id, new Map()); }
+      const m = relais.get(b.id);
+      if (!m.has(rang)) { if (!ids) return null; const unites = unitesDuLot(b, ids); m.set(rang, unites ? { unites, faits: 0, ligne: null } : null); }
+      return m.get(rang);
+    };
+    /** Le lot de rang `rang` de l'équipe `b`, si l'équipe d'avant l'a entamé ; null sinon. */
+    const entame = (b, rang) => { const e = etatRelais(b, rang); return e && e.faits > 0 ? e : null; };
+    /**
+     * L'ordre de l'avance : la commande de l'équipe suivante dont le temps par vol est le plus petit (le barème du
+     * service du robot ; un lot de plusieurs commandes : leur somme), puis la suivante dans cet ordre ; à égalité, la
+     * dernière de sa liste d'abord. Celles qui n'ont pas de temps par vol viennent après, la dernière d'abord.
+     */
+    const ordreDAvance = b => (b.lots || []).map(classesDuLot).filter(ids => ids.length).map((ids, rang) => {
+      const m = ids.map(id => parClasse.get(id)).filter(Boolean).map(c => minutesParVol(bareme[b.service], c)).filter(x => Number.isFinite(x) && x > 0);
+      return { rang, ids, parVol: m.length ? m.reduce((n, x) => n + x, 0) : Infinity };
+    }).sort((x, y) => (x.parVol === y.parVol ? 0 : x.parVol - y.parVol) || y.rang - x.rang);
     /** Prend la ligne, en attendant qu'elle se libère — pas au-delà de `limite` : rend alors false. */
     function* prendreLigne(k, limite = Infinity) {
       const l = lignes.get(k);
@@ -3332,14 +3384,17 @@
      * personne (à la main) ou pour un robot armé, qui sert quand un renfort
      * change l'effectif (évolution 5).
      */
-    function travailDuLot(a, ids) {
+    function travailDuLot(a, ids, rel) {
       const lots = ids.map(id => parClasse.get(id)).filter(Boolean);
       let duree, detail, base;
       if (a.type === 'robot') {
-        // Chaque commande à son débit : ses plateaux ÷ son débit.
-        const plateaux = lots.reduce((n, c) => n + c.pax, 0);
+        // Chaque commande à son débit : ses plateaux ÷ son débit. D'une commande que l'équipe d'avant a entamée
+        // (`rel`, évolution 21), il ne reste que les vols qu'elle n'a pas avancés.
+        const reste = rel ? rel.unites.slice(rel.faits) : null;
+        const paxDe = c => (reste ? reste.reduce((n, u) => n + (u.id === c.id ? u.pax : 0), 0) : c.pax);
+        const plateaux = lots.reduce((n, c) => n + paxDe(c), 0);
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
-        const heures = lots.reduce((n, c) => n + c.pax / Math.max(1e-9, debitRobot(a, c.id)), 0);
+        const heures = lots.reduce((n, c) => n + paxDe(c) / Math.max(1e-9, debitRobot(a, c.id)), 0);
         // Calculé à 0 personne, sans plateau ce jour-là (correction 10) : sa commande se fait en temps nul.
         duree = a.personnes >= mini ? heures * 60 : effectifs[a.id] && !(heures > 0) ? 0 : Infinity;
         detail = { plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : a.debit };
@@ -3635,6 +3690,169 @@
         }
         throw new Error('Trop de changements d’effectif pour achever une tâche.');
       } finally { R.enTache = false; R.segment = null; }
+    }
+
+    /* ---- le relais sur la ligne du robot (évolution 21) ----------------- */
+    const sommeDe = (liste, f) => liste.reduce((n, x) => n + f(x), 0);
+    /**
+     * Une équipe de robot a fini ses propres commandes : tant que l'équipe suivante n'est pas arrivée, que sa présence
+     * n'est pas finie et qu'elle a son minimum de personnes, elle avance les commandes de la suivante, vol par vol,
+     * dans l'ordre de l'avance (`ordreDAvance`) ; dans une commande, dans l'ordre des départs. Un vol ne s'avance que
+     * si son amont est prêt (la règle d'ordre de l'équipe qui avance : stricte, ou souple) et si son matériel est là.
+     * Un vol entamé se finit toujours : il ne s'arrête qu'avec la ligne ; une pause de l'équipe due pendant ce vol se
+     * prend à sa fin, pour sa durée entière. Elle ne commence pas un vol qu'elle ne finirait pas avant la fin de sa
+     * présence (l'avance ne crée jamais d'heure sup), ni aucun vol dès que la suivante est arrivée.
+     * @param o { a, vue, R, regime, prises, cumul, finPresence, souple, pret, attendusDe, servieA, pretDuLot }
+     */
+    function* avancerLaSuivante(o) {
+      const { a, vue, R } = o, b = suivanteDe.get(a.id), k = cleLigne(a);
+      const limite = Math.min(parId.get(b.id).debut, o.finPresence), mini = a.personnesMin === undefined ? 1 : a.personnesMin;
+      const ordre = ordreDAvance(b), stops = lignes.get(k).arrets, fixes = pausesDe(a), seuils = o.regime.actif ? o.regime.seuils : [];
+      const RB = receveurs.get(b.id) || null, fl = fusionDe(b);
+      const dues = [];   // les pauses qu'un vol avancé a reportées à sa fin, en minutes
+      let cumul = o.cumul, enCours = null, entree = false;
+      const repos = function* (duree) {
+        const t = env.maintenant, fin = Math.min(t + duree, o.finPresence);
+        if (!(fin > t + 1e-9)) return;
+        vue.pausesPrises.push({ de: t, a: fin }); vue.arret += fin - t;
+        yield env.delai(fin - t);
+      };
+      // Avant de commencer un vol à l'instant `t0` : la pause à heure fixe ou l'arrêt de la ligne en cours, la pause
+      // de régime due. Rend l'heure où le vol commencerait, les pauses à prendre d'ici là, les seuils qu'elles honorent.
+      const pausesAvant = t0 => {
+        const morceaux = [], pris = [];
+        let u = t0;
+        for (let garde = 0; garde < 1000; garde++) {
+          const fixe = fixes.find(q => u >= q.de - 1e-9 && u < q.a - 1e-9) || stops.find(q => u >= q.de - 1e-9 && u < q.a - 1e-9);
+          if (fixe) { morceaux.push({ de: u, a: fixe.a }); u = fixe.a; continue; }
+          const due = seuils.find(s => cumul >= s.apres && !o.prises.has(s.apres) && !pris.includes(s.apres) && !attendues.pris.includes(s.apres));
+          if (!due) break;
+          pris.push(due.apres); morceaux.push({ de: u, a: u + due.duree }); u += due.duree;
+        }
+        return { fin: u, morceaux, pris };
+      };
+      // Une équipe dont les personnes iraient aider ailleurs (les renforts, évolution 5) n'attend pas : si rien ne
+      // s'avance tout de suite (un amont pas prêt, la ligne prise, du matériel qui manque), elle les prête. Sans
+      // renforts, elle attend, comme une équipe attend aujourd'hui son amont, sa ligne ou son matériel.
+      const patiente = !(REN && pretable(a));
+      // Les pauses prises avant un vol ne comptent que si ce vol commence : sinon elle a seulement attendu, comme avant.
+      let attendues = { morceaux: [], pris: [] };
+      for (let garde = 0; garde < 100000; garde++) {
+        // La pause reportée par le vol qu'elle vient de finir se prend, même si elle n'avance plus rien ensuite.
+        if (dues.length) { yield* repos(dues.shift()); continue; }
+        const t = env.maintenant;
+        if (t >= limite - 1e-9 || !(a.personnes >= mini)) return;
+        const restent = ordre.map(x => ({ ...x, rel: etatRelais(b, x.rang, x.ids) })).filter(x => x.rel && x.rel.faits < x.rel.unites.length);
+        if (!restent.length) return;
+        // La commande entamée se continue ; sinon la première dans l'ordre de l'avance — en ordre souple, la première prête.
+        let x = enCours == null ? null : restent.find(y => y.rang === enCours) || null;
+        if (!x) {
+          x = (o.souple ? restent.find(y => o.pret(y.ids)) : restent[0]) || null;
+          if (!x || !o.pret(x.ids)) {
+            if (!patiente) return;
+            // Son amont n'est pas prêt : elle l'attend, pas au-delà de l'arrivée de la suivante ni de la fin de sa présence.
+            const evs = [env.delai(limite - t)];
+            for (const y of (o.souple ? restent : restent.slice(0, 1))) {
+              const att = o.attendusDe(y.ids);
+              if (!att.every(ev => ev.declenche)) evs.push(env.tousDe(att));
+              else { const ouv = o.servieA(y.ids); if (Number.isFinite(ouv) && ouv > t) evs.push(env.delai(ouv - t)); }
+            }
+            yield env.unDe(evs); continue;
+          }
+        }
+        // Le vol commencerait après les pauses dues. Elle ne commence pas un vol après l'arrivée de la suivante, ni un
+        // vol qu'elle ne finirait pas avant la fin de sa présence : l'avance s'arrête là, sans pause de plus.
+        const u = x.rel.unites[x.rel.faits], avant = pausesAvant(t), f = finAvecPauses(avant.fin, u.minutes, stops);
+        if (avant.fin >= limite - 1e-9 || !(f.fin <= o.finPresence + 1e-9)) return;
+        if (avant.fin > t + 1e-9) {
+          attendues = { morceaux: attendues.morceaux.concat(avant.morceaux), pris: attendues.pris.concat(avant.pris) };
+          yield env.delai(avant.fin - t); continue;
+        }
+        // Sa ligne : libre, ou attendue jusqu'à l'arrivée de la suivante ; après une attente, tout se revérifie.
+        if (!patiente && !lignes.get(k).libre) return;
+        if (!(yield* prendreLigne(k, limite))) return;
+        if (env.maintenant > t + 1e-9) { rendreLigne(k); continue; }
+        // Son matériel n'est pas là : le vol n'est pas avancé. Elle attend le prochain matériel propre, sans prendre
+        // de place dans la file de ceux qui en attendent.
+        const besoin = mat.actif && b.materiel === 'consomme' ? besoinMateriel([{ cabine: u.cabine, vols: [u] }], mat) : 0;
+        if (besoin > 0 && (attenteurs.length || stock.propre < besoin)) {
+          rendreLigne(k);
+          if (!patiente) return;
+          const ev = env.evenement('matériel propre'); reveilsPropre.push(ev);
+          yield env.unDe([ev, env.delai(limite - t)]);
+          if (!ev.declenche) reveilsPropre.splice(reveilsPropre.indexOf(ev), 1);
+          continue;
+        }
+        if (besoin > 0) { stock.propre -= besoin; stock.consommees += besoin; stock.minPropre = Math.min(stock.minPropre, stock.propre); }
+        // Elle se met à avancer : les renforts reçus pour ses propres commandes repartent.
+        if (!entree) { entree = true; if (R) { R.fini = true; for (const h of R.aides.slice()) liberer(h, t, false); repartir(); } }
+        // Les pauses prises juste avant ce vol.
+        for (const s of attendues.pris) o.prises.add(s);
+        vue.pausesPrises.push(...attendues.morceaux); vue.arret += sommeDe(attendues.morceaux, q => q.a - q.de);
+        attendues = { morceaux: [], pris: [] };
+        // Le vol est entamé : il se finit toujours.
+        x.rel.faits++; enCours = x.rel.faits < x.rel.unites.length ? x.rang : null;
+        const reste = x.rel.unites.slice(x.rel.faits);
+        if (RB) RB.bases[x.rang] = sommeDe(reste, y => y.minutes);
+        // La commande, avec ses parts : une ligne, créée à son premier vol avancé (l'équipe suivante, qui arrive pendant
+        // ce vol, la trouve) ; la part de cette équipe s'allonge de vol en vol.
+        let rl = x.rel.ligne;
+        if (!rl) {
+          const us = x.rel.unites, plateaux = sommeDe(us, y => y.pax), heures = sommeDe(us, y => y.minutes) / 60;
+          rl = x.rel.ligne = { atelier: b.id, service: b.service, nom: x.ids.join(' + '), classes: x.ids, debut: t, fin: null, duree: heures * 60,
+            attente: 0, arret: 0, impossible: true, fait: 0, plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : b.debit,
+            pret: o.pretDuLot(x.ids), parts: [] };
+          journal.push(rl);
+        }
+        let p = rl.parts.find(y => y.avance && y.atelier === a.id);
+        if (!p) { p = { atelier: a.id, debut: t, fin: t, travail: 0, arret: 0, plateaux: 0, vols: [], avance: true }; rl.parts.push(p); vue.lots.push(rl); }
+        const ecart = t - p.fin;   // entre deux vols de sa part : une pause, une attente
+        yield env.delai(f.fin - t);
+        rendreLigne(k);
+        cumul += u.minutes; vue.travail += u.minutes; vue.arret += f.arret; vue.fin = f.fin;
+        vue.pausesPrises.push(...pausesTraversees(t, f.fin, stops));
+        p.arret += ecart + f.arret; p.fin = f.fin; p.travail += u.minutes; p.plateaux += u.pax;
+        if (!p.vols.includes(u.vol)) p.vols.push(u.vol);
+        rl.arret = sommeDe(rl.parts, y => y.arret);
+        // Tous ses vols sont faits : la commande est finie, à la fin de cette part ; sinon, elle reste à finir.
+        if (!reste.length) { rl.fin = f.fin; rl.impossible = false; rl.duree = sommeDe(rl.parts, y => y.travail); delete rl.fait; }
+        else rl.fait = sommeDe(rl.parts, y => y.travail);
+        // Une commande dont tous les vols sont faits est livrée à l'aval.
+        for (const id of x.ids) {
+          if (reste.some(y => y.id === id)) continue;
+          livrer(b.service, id);
+          if (fl && fusionPar.get(cle(fl, id)) === b.service) livrer(fl, id);
+        }
+        // Les pauses dues pendant ce vol se prennent à sa fin, pour leur durée entière : une pause à heure fixe commencée
+        // pendant le vol (hors d'un arrêt de la ligne, déjà pris), une pause de régime dont le seuil est passé.
+        for (const q of fixes) {
+          if (!(q.de > t + 1e-9 && q.de < f.fin - 1e-9)) continue;
+          const du = q.a - q.de - sommeDe(stops, s => Math.max(0, Math.min(s.a, q.a, f.fin) - Math.max(s.de, q.de, t)));
+          if (du > 1e-9) dues.push(du);
+        }
+        for (const s of seuils) if (cumul >= s.apres && !o.prises.has(s.apres)) { o.prises.add(s.apres); dues.push(s.duree); }
+      }
+      throw new Error('Trop d’étapes pour avancer les commandes de l’équipe suivante.');
+    }
+    /**
+     * L'équipe suivante reprend une commande entamée en avance : sa part s'ajoute à la ligne de la commande, qui finit
+     * avec elle. `l` : la ligne qu'elle aurait posée pour ce qui restait ; `v` : sa vue.
+     */
+    function reprendreRelais(rel, l, v) {
+      const rl = rel.ligne, reste = rel.unites.slice(rel.faits);
+      const travail = l.impossible ? +l.fait || 0 : l.renfort ? l.fait : l.duree;
+      // Ses vols : ceux qui restaient ; d'un travail coupé, ceux qu'elle a finis.
+      let m = 0;
+      const siens = l.impossible ? reste.filter(u => (m += u.minutes) <= travail + 1e-9) : reste;
+      rl.parts.push({ atelier: v.id, debut: l.debut, fin: Number.isFinite(l.fin) ? l.fin : env.maintenant, travail, arret: l.arret || 0,
+        plateaux: sommeDe(siens, u => u.pax), vols: [...new Set(siens.map(u => u.vol))] });
+      const fait = sommeDe(rl.parts, x => x.travail);
+      Object.assign(rl, { fin: l.fin, impossible: l.impossible, attente: l.attente || 0, arret: sommeDe(rl.parts, x => x.arret) });
+      for (const k of ['attenteMateriel', 'attenteLigne', 'renfort']) if (k in l) rl[k] = l[k];
+      if (l.horsPoste) rl.horsPoste = true; else delete rl.horsPoste;
+      if (l.impossible) rl.fait = fait; else { delete rl.fait; rl.duree = fait; }
+      v.lots.push(rl);
+      return rl;
     }
 
     for (const a of ateliers) {
@@ -4122,6 +4340,9 @@
         const ouvert = servieA(ids), tous = livres.concat(Number.isFinite(ouvert) ? [ouvert] : []);
         return tous.length ? Math.max(...tous) : null;
       };
+      // Pose la ligne d'un lot au journal et dans la liste de l'équipe. Une commande que l'équipe d'avant a entamée
+      // sur la ligne du robot (`rel`, évolution 21) a déjà sa ligne : la part de cette équipe s'y ajoute.
+      const poser = (ligne, rel) => { if (rel) reprendreRelais(rel, ligne, vue); else { journal.push(ligne); vue.lots.push(ligne); } };
       let j = 0;   // le rang du lot en cours, parmi les lots non vides
       const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
@@ -4152,6 +4373,11 @@
           j = rang;
           const ids = aFaire[rang];
           const nom = ids.join(' + ');
+          // Une commande que l'équipe d'avant a entamée sur la ligne (évolution 21) : avancée en entier, il n'y a plus
+          // rien à y faire ; sinon, il en reste les vols qu'elle n'a pas avancés. (L'équipe d'avant ne commence plus
+          // de vol depuis l'arrivée de celle-ci : ce qui est entamé ne change plus.)
+          const rel = a.type === 'robot' ? entame(a, rang) : null;
+          if (rel && rel.faits >= rel.unites.length) { restants.splice(restants.indexOf(rang), 1); continue; }
 
           // Attendre que TOUS les fournisseurs aient livré TOUTES les classes
           // du lot. C'est ici que les branches food, matériel et armement se
@@ -4179,7 +4405,7 @@
               if (R) congedier(R);
               const ligne = { atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant, fin: null, duree: null,
                 attente: env.maintenant - debutAttente, arret: 0, impossible: true, horsPoste: true };
-              journal.push(ligne); vue.lots.push(ligne);
+              poser(ligne, rel);
               return;   // elle part : les lots suivants non plus
             }
           }
@@ -4191,7 +4417,7 @@
           if (env.maintenant < horloge) yield env.delai(horloge - env.maintenant);
 
           // Contenu de travail du lot.
-          const { lots, duree, detail, base } = travailDuLot(a, ids);
+          const { lots, duree, detail, base } = travailDuLot(a, ids, rel);
           // Pas assez de monde (un robot sous son minimum, une équipe sans personne) : une équipe qui
           // peut recevoir des renforts les attend, avant de prendre du matériel ou sa ligne.
           if (!Number.isFinite(duree) && R) {
@@ -4206,16 +4432,14 @@
               }
             } finally { R.attend = false; }
             if (!arme()) {
-              journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: t0,
-                fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA });
-              vue.lots.push(journal[journal.length - 1]);
+              poser({ atelier: a.id, service: a.service, nom, classes: ids, debut: t0,
+                fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA }, rel);
               return;
             }
             attente += env.maintenant - t0;
           } else if (!Number.isFinite(duree)) {
-            journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant,
-              fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA });
-            vue.lots.push(journal[journal.length - 1]);
+            poser({ atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant,
+              fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA }, rel);
             return;   // rien ne sortira de cet atelier : inutile d'enchaîner
           }
 
@@ -4223,10 +4447,10 @@
           // C'est ici que la boucle des retours touche la production.
           let attenteMat = 0, parti = false;
           if (mat.actif && a.materiel === 'consomme') {
-            const besoin = besoinMateriel(lots, mat);
+            const besoin = rel ? besoinMateriel(rel.unites.slice(rel.faits).map(u => ({ cabine: u.cabine, vols: [u] })), mat) : besoinMateriel(lots, mat);
             if (sansAttente && R && !(!attenteurs.length && stock.propre >= besoin)) congedier(R);
             attenteMat = yield* prendreMateriel(besoin,
-              { atelier: a.id, service: a.service, nom, classes: ids }, limiteAttente);
+              { atelier: a.id, service: a.service, nom, classes: ids, ...(rel ? { rel } : {}) }, limiteAttente);
             if (attenteMat === null) { parti = true; attenteMat = 0; }
             horloge = Math.max(horloge, env.maintenant);
           }
@@ -4249,7 +4473,7 @@
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
               debut: env.maintenant, fin: null, duree: null, attente: attente + attenteLigne, arret: 0,
               impossible: true, horsPoste: true, ...detail, pret: pretA };
-            journal.push(ligne); vue.lots.push(ligne);
+            poser(ligne, rel);
             return;
           }
 
@@ -4268,7 +4492,7 @@
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
               debut: debutLot, fin: null, duree: Number.isFinite(duree) ? duree : null, attente, arret,
               fait: t.fait, impossible: true, horsPoste: true, ...detail, pret: pretA };
-            journal.push(ligne); vue.lots.push(ligne);
+            poser(ligne, rel);
             vue.attente += attente; vue.arret += arret; vue.travail += t.fait;
             return;   // l'équipe est partie : les lots suivants non plus
           }
@@ -4285,13 +4509,16 @@
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
             debut: debutLot, fin: env.maintenant, duree: Number.isFinite(duree) ? duree : t.fait, attente, attenteMateriel: attenteMat,
             arret, impossible: false, ...detail, ...(t.aide ? { renfort: true, fait: t.fait } : {}), pret: pretA };
-          journal.push(ligne); vue.lots.push(ligne);
+          poser(ligne, rel);
           vue.travail += aidee ? t.fait : duree; vue.attente += attente; vue.arret += arret;
           vue.fin = env.maintenant;
           horloge = env.maintenant;
           restants.splice(restants.indexOf(rang), 1);
         }
-        // Tous ses lots sont faits avant la fin de sa présence : ses personnes vont aider (évolution 5).
+        // Tous ses lots sont faits. Sur la ligne d'un robot, elle avance d'abord les commandes de l'équipe suivante,
+        // tant que celle-ci n'est pas arrivée (évolution 21).
+        if (a.type === 'robot' && suivanteDe.has(a.id)) yield* avancerLaSuivante({ a, vue, R, regime, prises, cumul, finPresence, souple, pret, attendusDe, servieA, pretDuLot });
+        // Avant la fin de sa présence : ses personnes vont aider (évolution 5).
         if (REN) preter(a, env.maintenant, prises);
       }, a.nom);
       // Une équipe aidée qui s'arrête (ses lots faits, ou son poste fini) libère ses renforts.
@@ -4392,12 +4619,27 @@
       const ligne = { atelier: a.atelier, service: a.service, nom: a.nom, classes: a.classes || [],
         debut: a.depuis, fin: null, duree: null, attente: 0, arret: 0,
         impossible: true, sansMateriel: true, besoin: a.besoin };
-      journal.push(ligne);
-      const vue = parId.get(a.atelier); if (vue) vue.lots.push(ligne);
+      // Une commande entamée en avance sur la ligne du robot (évolution 21) a déjà sa ligne, que l'équipe suivante
+      // tient (plus haut) : c'est le matériel qui lui manque, pas son poste qui finit avant.
+      if (a.rel && a.rel.ligne) Object.assign(a.rel.ligne, { sansMateriel: true, besoin: a.besoin });
+      else { journal.push(ligne); const vue = parId.get(a.atelier); if (vue) vue.lots.push(ligne); }
       anomalies.push({ code: 'materiel', atelier: a.atelier, classes: a.classes || [], cause: 'materiel',
         case: (ateliers.find(x => x.id === a.atelier) || {}).nom,
         message: a.nom + ' dans « ' + nom(a.service) + ' » : ' + Math.round(a.besoin)
           + ' unités de matériel propre manquent et ne sont jamais arrivées.' });
+    }
+
+    // Le relais sur la ligne du robot (évolution 21) : une commande entamée en avance que l'équipe suivante n'a pas
+    // reprise reste la sienne. Elle la tient, sans y avoir travaillé : restée à attendre son matériel (plus haut), ou
+    // partie avant d'y arriver (`nonReprises` : elle ne l'a jamais préparée, et on le dit comme pour ses autres commandes).
+    const nonReprises = new Set();
+    for (const [id, lots] of relais) for (const rel of lots.values()) {
+      const rl = rel && rel.ligne;
+      if (!rl || !rl.impossible || rl.parts[rl.parts.length - 1].atelier === id) continue;
+      const v = parId.get(id), t = Math.max(v.debut, rl.parts[rl.parts.length - 1].fin, ...v.lots.map(l => (Number.isFinite(l.fin) ? l.fin : l.debut)).filter(Number.isFinite));
+      rl.parts.push({ atelier: id, debut: t, fin: t, travail: 0, arret: 0, plateaux: 0, vols: [] });
+      v.lots.push(rl);
+      if (!rl.sansMateriel) nonReprises.add(rl);
     }
 
     // Un lot que le poste n'a pas pu finir n'est pas une erreur de saisie :
@@ -4429,7 +4671,7 @@
     }
     const jamais = new Map();   // atelier → classes qu'il n'a jamais préparées
     for (const [id, ats] of confiees) for (const a of ats) {
-      if (journal.some(l => l.atelier === a.id && (l.classes || []).includes(id))) continue;
+      if (journal.some(l => l.atelier === a.id && (l.classes || []).includes(id) && !nonReprises.has(l))) continue;
       if (!jamais.has(a)) jamais.set(a, []);
       jamais.get(a).push(id);
     }
@@ -4621,7 +4863,10 @@
       const a = atelierDe.get(v.id);
       if (v.presence == null || !Number.isFinite(v.debutPoste) || a.type === 'dispo' || a.type === 'appui' || (a.type === 'lavage' && a.parVol)
         || (a.type === 'handling' && (creneauxDe(a).length || a.handling24h === true))) { v.heuresSup = 0; continue; }
-      const coupee = v.lots.some(l => l.horsPoste && l.fait > 0) ? v.debutPoste + v.presence + SUP : -Infinity;
+      // (Une commande du robot passée en relais, évolution 21 : coupée, elle l'est pour l'équipe qui y travaillait alors —
+      // celle de sa dernière part, si elle y a travaillé ; le travail de l'équipe d'avant ne compte pas pour elle.)
+      const coupeePour = l => { const p = Array.isArray(l.parts) ? l.parts[l.parts.length - 1] : null; return p ? p.atelier === v.id && p.travail > 0 : l.fait > 0; };
+      const coupee = v.lots.some(l => l.horsPoste && coupeePour(l)) ? v.debutPoste + v.presence + SUP : -Infinity;
       const fin = Math.max(v.fin ?? -Infinity, coupee);
       v.heuresSup = Number.isFinite(fin) ? Math.max(0, Math.min(SUP, fin - (v.debutPoste + v.presence))) : 0;
     }

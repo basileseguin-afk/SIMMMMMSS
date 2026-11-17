@@ -1418,6 +1418,46 @@ qui reviennent.
 Le barème des heures de travail est **non calibré** : ses durées ne dimensionnent pas
 une équipe. Voir [la note de modèle](docs/MODELE_ATELIERS.md).
 
+### Le relais sur la ligne du robot (évolution 21 a)
+
+Deux équipes de robot se suivent sur la même ligne (le même service, hors
+« ligne propre »), le même jour de travail. Quand la première a fini ses
+propres commandes et qu'il lui reste du temps, elle **avance le travail de la
+suivante**, vol par vol, autant qu'elle peut. Le relais est automatique, comme
+à la plonge ; aucun réglage ne l'ouvre ni ne le ferme.
+
+- **Qui est la suivante** : sur la ligne, l'équipe dont le poste commence
+  juste après le sien. Une équipe sous condition qui ne vient pas ce jour-là
+  n'en est pas une.
+- **Qui avance** : une équipe qui a fini ses commandes, qui a son minimum de
+  personnes et dont la présence n'est pas finie — tant que la suivante n'est
+  pas arrivée.
+- **Dans quel ordre** : d'abord la commande de la suivante dont le temps par
+  vol est le plus petit (le barème du service du robot), puis la suivante
+  dans cet ordre ; à égalité, ou sans temps par vol, la dernière de sa liste.
+  Dans une commande, les vols s'avancent dans l'ordre des départs. La
+  suivante, elle, fait ses commandes dans l'ordre de sa liste.
+- **L'unité est le vol** : ses plateaux ÷ le débit de la suivante pour cette
+  commande. Un vol ne s'avance que si son amont est prêt et si son matériel
+  est là.
+- **Un vol entamé se finit toujours** : une pause due pendant ce vol se prend
+  à sa fin, pour sa durée entière ; seul un arrêt de la ligne l'arrête.
+- **Jamais d'heure sup** : elle ne commence pas un vol qu'elle ne finirait
+  pas avant la fin de sa présence. Elle n'en commence plus dès que la
+  suivante est arrivée ; elle finit celui en cours, et la suivante attend la
+  ligne.
+- **La suivante reprend au premier vol non fait** ; une commande avancée en
+  entier ne lui laisse rien.
+- **Une seule commande, avec ses parts** (`parts`, comme un lavage en
+  relais) : qui a fait quels vols, de quand à quand, pour combien de
+  plateaux. Chaque équipe est créditée de sa part. La commande est livrée à
+  l'aval à la fin de sa dernière part.
+
+Ne changent pas : une équipe seule sur sa ligne, une équipe en « ligne
+propre », le débit, le minimum de personnes, les arrêts de la ligne, les
+renforts, les heures sup d'une équipe sur ses propres commandes, les autres
+équipes. Une journée où rien n'est avancé est celle d'avant, champ par champ.
+
 ## Centre des flux
 
 L’onglet **Centre des flux** permet de définir des liaisons par listes
@@ -1824,6 +1864,7 @@ aucun vol.
 | `tests/heures-sup-sans-attente.test.cjs` | En heures sup, on ne paie personne à attendre (v1, banc d’essai) : un dernier lot prêt 2 h après la présence est hors poste, sans heure sup ; un lot commencé finit en heures sup ; un lot prêt à la fin de la présence est fait, puis l’équipe part au premier lot pas prêt ; le robot ; le renfort en heures sup ; sans l’option, comme avant |
 | `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
+| `tests/robot-relais.test.cjs` | Le relais sur la ligne du robot (v1, banc d’essai, évolution 21 a), sur des journées fictives calculées à la main : la première équipe, ses commandes finies, avance les vols de la suivante dans l’ordre des départs ; une seule commande, avec ses parts ; aucun vol fait deux fois, aucun oublié ; la ligne tourne le même temps, la suivante finit plus tôt ; la pause due pendant un vol avancé se prend à sa fin, pour sa durée entière ; un vol qui ne tient pas avant la fin de la présence n’est pas commencé (aucune heure sup) ; la suivante arrive pendant un vol avancé ; sous son minimum, rien n’est avancé ; l’amont pas prêt (ordre strict, ordre souple) ; le matériel qui manque ; le plus petit temps par vol d’abord ; trois équipes ; le même jour de travail, l’équipe sous condition absente ; les renforts ; les non-régressions, champ par champ (sans temps libre, seule sur sa ligne, en « ligne propre », sans robot) |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
 | `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une par service robot), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
 | `tests/direct-face.test.cjs` | La vue d’ouverture d’un site disposé (v1, correction 21 b), sans navigateur : l’angle d’ouverture — de face (cap 0, deux pas d’inclinaison au-dessus de la maquette) pour un site disposé, celui de la maquette sinon ; à cet angle, les colonnes vont de gauche à droite dans l’ordre où on les a rangées, leurs bords sont verticaux à l’écran, les rangées du bas sont sous les colonnes, la scène tient entière, un mètre de hauteur se voit encore ; sans disposition, la caméra d’avant, champ par champ ; tourner, incliner et « Cadrer » partent de cet angle. |

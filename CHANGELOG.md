@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (a) : le relais sur la ligne du robot
+
+Première partie de l'évolution 21. Un calcul du moteur change, et un seul :
+les équipes de robot d'une même ligne. La version 2 n'est pas touchée.
+
+- **Deux équipes de robot se suivent sur la même ligne** : quand la première
+  a fini ses propres commandes et qu'il lui reste du temps, elle avance
+  celles de la suivante, vol par vol, tant que celle-ci n'est pas arrivée.
+- **L'ordre de l'avance** : la commande au plus petit temps par vol (le
+  barème du service du robot) d'abord ; à égalité, la dernière de la liste ;
+  dans une commande, les vols dans l'ordre des départs.
+- **Un vol entamé se finit toujours** : la pause due pendant ce vol se prend
+  à sa fin, pour sa durée entière. Aucun vol n'est commencé s'il ne finit pas
+  avant la fin de la présence : l'avance ne crée jamais d'heure sup.
+- **La suivante reprend au premier vol non fait.** Une seule commande, avec
+  ses parts (`parts`) : qui a fait quels vols, de quand à quand, pour
+  combien de plateaux ; chaque équipe est créditée de sa part.
+- **Ne changent pas** : une équipe seule sur sa ligne, une « ligne propre »,
+  le débit, le minimum de personnes, les arrêts de la ligne, les renforts,
+  les heures sup d'une équipe sur ses propres commandes, les autres équipes.
+  Une journée où rien n'est avancé est celle d'avant, champ par champ.
+
+Test dont la valeur attendue change : `tests/robot-ligne.test.cjs`, « la
+ligne s'arrête de 12:15 à 13:00 » — la commande de l'après-midi finissait à
+13:45 ; le matin, sans fin de présence, l'avance désormais de 08:00 à 09:00.
+Le test garde son objet (l'arrêt de la ligne vaut pour l'après-midi) en
+donnant au matin une présence qui finit avec sa commande.
+
+Fichiers : `moteur/production.js`, `index.html` (empreintes),
+`tests/robot-relais.test.cjs` (nouveau), `tests/robot-ligne.test.cjs`,
+`README.md`.
+
+---
+
 ## 2026-11-17 — Correction 21 (d) : la légende ne cache pas la scène ; contrôle
 
 Dernière partie de la correction 21. Aucun calcul ne change ; la version 2
