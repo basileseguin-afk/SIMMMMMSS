@@ -173,6 +173,10 @@ const ANGLES=[
     const heure=await page.evaluate(()=>Sim.vue.t);
     await page.locator('#direct-choix [data-direct-mode=plat]').click();
     await page.waitForFunction(()=>document.getElementById('direct').offsetParent===null&&document.querySelectorAll('#plan .zone[data-au-travail]').length>0);
+    // Caché pendant la vue en relief, le plan à plat ne se repeint pas : quand il reparaît, il montre encore l'heure où on
+    // l'a quitté, jusqu'à son premier tracé. On attend qu'il montre l'heure rejouée — son effet, pas un délai. S'il ne la
+    // montre jamais, l'attente s'arrête et les comparaisons ci-dessous disent quel service diffère.
+    await page.waitForFunction(r=>[...document.querySelectorAll('#plan .zone[data-au-travail]')].every(z=>+z.dataset.auTravail===r[z.dataset.id]),enRelief,{timeout:15000}).catch(()=>{});
     const aPlat=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#plan .zone[data-au-travail]')].map(z=>[z.dataset.id,+z.dataset.auTravail])));
     assert.equal(await page.evaluate(()=>Sim.vue.t),heure,V+'à plat : la même heure');
     assert.ok(Object.keys(aPlat).length>=4,V+'à plat : les services dessinés');

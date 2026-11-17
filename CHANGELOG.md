@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 21 (a) : les files d'une même zone ne se superposent plus
+
+Première partie de la correction 21 (la vue en direct, quatre retouches).
+Aucun calcul ne change ; la version 2 n'est pas touchée.
+
+- **Une zone n'a qu'une file.** Dans une zone qui réunit plusieurs services
+  (la préparation et le montage, ou deux services qui partagent une zone),
+  les chariots qui attendent se rangent à la suite, service après service —
+  comme dans la zone choisie pour le chargement. Aucun chariot n'en recouvre
+  un autre.
+- De même dans la zone de la plonge (les retours sales à la suite de ce qui
+  attend un service de la zone) et au quai (une commande sans handling à la
+  suite de ce que le handling va charger).
+- **Le compte des chariots dessinés ne change pas** ; une zone où une seule
+  chose attend ne bouge pas.
+
+Fichiers : `direct-scene.js`, `index.html` (empreintes),
+`tests/direct-files-zone.test.cjs` (nouveau),
+`tests/captures-direct-browser.cjs` (rendu indépendant de la charge),
+`tests/menage-browser.cjs` (rendu indépendant de l'empreinte de la page),
+`README.md`.
+
+---
+
 ## 2026-11-16 — Évolution 20 (e) : contrôle et doc
 
 Dernière partie de l'évolution 20. Aucun calcul ne change ; la version 2

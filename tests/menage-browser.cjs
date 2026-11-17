@@ -123,8 +123,10 @@ const ATTENTE=/\d+\s*min d’attente|\(attente\s*\d+\)|attend\s+\d+\s*min|Attend
 
   // 3. Le menu de la version 1 : plus de mention « Version 2, en construction ».
   assert.equal(await page.locator('#barre .btn-version').count(),0,'plus de lien « Version 2 » dans la barre');
-  assert.doesNotMatch(await page.locator('#barre').innerText(),/Version 2|en construction/i);
-  assert.match(await page.locator('#barre .marque-version').innerText(),/^version /,'la version servie se lit toujours sous la marque');
+  // La version servie (« version » + l'empreinte de la page) se lit à part : une empreinte qui commence par 2 n'est pas une mention « Version 2 ».
+  const servie=await page.locator('#barre .marque-version').innerText();
+  assert.match(servie,/^version [0-9a-f]+$/,'la version servie se lit toujours sous la marque');
+  assert.doesNotMatch((await page.locator('#barre').innerText()).replace(servie,''),/Version 2|en construction/i);
 
   // 4. Plus aucune attente en minutes dans les pages de réglage des équipes ; l'heure de fin reste, avec un lien vers le planning.
   const attentes=await page.evaluate(()=>(Sim.ateliers.resultat.ateliers||[]).filter(a=>a.attente>=1).map(a=>a.id));
