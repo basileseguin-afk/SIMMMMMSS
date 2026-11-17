@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 22 (a) : la cause de deux tests navigateur instables
+
+Première partie de la correction 22. Aucun code de la page ni du moteur ne
+change : la cause, et de quoi la mesurer. La version 2 n'est pas touchée.
+
+- **La cause** : un document qui touche `localStorage` avant que le
+  navigateur ait fini de l'installer peut se retrouver avec un stockage
+  détaché — il ne lit rien de ce qui est enregistré, n'enregistre rien, et
+  ne s'en remet pas. Ce n'est pas un délai trop court : la page écrit dans le
+  geste même.
+- `tests/plusieurs-onglets-browser.cjs` provoquait lui-même cette course, en
+  lisant `window.localStorage` au tout début de chaque document pour ôter le
+  garde. La page s'y exposait aussi, plus rarement : le thème, lu dans un
+  script en ligne en tête de page.
+- **Le banc du stockage** : `node outils/banc-stockage.cjs` mesure la course
+  et sa parade (lire `document.cookie` avant le premier accès), sur des pages
+  minuscules ; `--site`, sur les pages du dépôt.
+
+Fichiers : `outils/banc-stockage.cjs` (nouveau), `docs/BANC_ESSAI.md`,
+`README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (f) : la vue en direct, trois retouches d'affichage
 
 Dernière partie de l'évolution 21. Aucun calcul ne change. Sans disposition

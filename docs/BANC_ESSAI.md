@@ -3040,6 +3040,76 @@ restaurer à son tour, avant la question et après ; la version 2 ouverte à
 côté, sans bandeau ; la page de secours qui augmente la révision ; un seul
 onglet : le même parcours avec et sans le garde, identique champ par champ.
 
+### Un document qui touche son stockage trop tôt peut en être détaché (correction 22 a)
+
+Deux tests navigateur échouaient de temps en temps, sur l'enregistrement des
+données, sur une machine plus lente que celle où ils avaient été écrits :
+`tests/plusieurs-onglets-browser.cjs` (le parcours « sans le garde » ne
+retrouvait que les clés d'un site vierge) et, bien plus rarement,
+`tests/secours-browser.cjs` (« les cases sont revenues »).
+
+**Ce n'est pas un délai trop court.** La page écrit au moment même où elle
+accepte un réglage : `ateliers.js` (`enregistrer`), `plan-editor.js`
+(`persist`), `flow-center.js` (`save`), `reglages.js` (`enregistrer`) appellent
+`localStorage.setItem` dans le geste, sans minuterie. Un réglage changé juste
+avant de recharger, de fermer ou de quitter la page est enregistré, avec le
+garde et sans lui ; les cases mises de côté par la page de secours reviennent
+(vérifié dans la page, sans aucune attente entre le réglage et le
+rechargement).
+
+**La cause : un stockage détaché.** Un document qui touche `localStorage`
+avant que le navigateur ait fini de l'installer peut se retrouver coupé du
+stockage : il ne lit rien de ce qui est enregistré, rien de ce qu'il écrit
+n'est gardé, il ne reçoit pas l'événement `storage` des autres onglets, et il
+ne s'en remet pas — seul un rechargement le rétablit. Ce qu'il écrit se relit
+dans le même document : rien ne signale la coupure. C'est une course dans le
+navigateur (Chromium), entre l'installation du document et le premier accès au
+stockage ; elle dépend de la machine, et de la façon dont le document arrive
+(le premier document d'un onglet, un rechargement, l'arrivée d'un autre
+fichier).
+
+- **Le premier test la provoquait lui-même.** Pour ôter le garde, il posait
+  au tout début de chaque document un script qui lisait `window.localStorage`
+  (ligne 181, `value: window.localStorage`). Quand le document du parcours, ou
+  celui qui le relit, était détaché, il ne restait que les clés d'un site
+  vierge : celle des équipes, écrite au démarrage, et celles du menu.
+- **La page s'y exposait aussi, plus rarement.** Le premier accès au stockage
+  de `index.html` et de `accueil.html` était le thème, lu dans un script en
+  ligne en tête de page ; celui de `secours.html`, son script en ligne en fin
+  de corps. Un site détaché s'ouvre comme un site vierge, et rien de la visite
+  n'est enregistré : c'est ce que le second test a vu une fois.
+
+**La mesure.** `node outils/banc-stockage.cjs` (`--passes N`, `--site`)
+rejoue la course sur des pages minuscules, dans un dossier temporaire : une
+page témoin, qui ne touche le stockage qu'une fois chargée, enregistre une
+valeur ; la page à l'essai s'ouvre, est rechargée, puis rejointe depuis un
+autre fichier ; elle est comptée détachée si elle ne lit pas la valeur ou si
+la page témoin ne lit pas ce qu'elle écrit. Sur la machine de développement,
+200 passes par cas (600 documents) :
+
+| Cas | Détachés |
+|---|---|
+| Un accès au stockage, dans un script posé au tout début du document | 20 / 600 |
+| La propriété figée en la lisant (le test des onglets, avant) | 26 / 600 |
+| La propriété figée sans la lire (le test des onglets, après) | 0 / 600 |
+| `document.cookie` lu, puis l'accès | 0 / 600 |
+| Une page qui lit son stockage dans un script en ligne, en tête | 0 / 600 (1 / 1 500 sous charge) |
+| … dans un script en ligne, en fin de corps | 1 / 600 |
+| … en fin de corps, après avoir lu `document.cookie` | 0 / 600 |
+| … dans un script externe, en tête | 0 / 600 |
+| … seulement une fois chargée | 0 / 600 |
+
+Sur cette machine, seul le premier document d'un onglet se détache ; les deux
+tests y passent donc 30 fois sur 30, seuls, et encore sur un seul cœur occupé
+ou avec le navigateur dans un seul processus. Sur une machine où un
+rechargement se détache aussi, le parcours « sans le garde » du premier test
+— deux documents rechargés — perd ses clés à peu près une fois sur trois.
+
+**La parade** : lire `document.cookie` juste avant le premier accès au
+stockage. Cette lecture attend la réponse du navigateur par la voie du
+document lui-même : quand elle revient, le document est installé, et le
+stockage se raccorde. Elle ne lit ni n'écrit aucune donnée.
+
 ## 12. La batterie passe sans le plan privé (correction 15)
 
 Le dépôt est public : un clone n'a ni le plan privé (`plan-prive/`), ni les
