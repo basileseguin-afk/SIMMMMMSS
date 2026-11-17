@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (b) : l'effectif calculé d'un robot ne dépasse pas ses postes de travail
+
+Deuxième partie de l'évolution 21. Le calcul ne change que pour une équipe
+de robot dont l'effectif est calculé et qui a des postes de travail ; sans
+eux, rien ne change. La version 2 n'est pas touchée.
+
+- **Le réglage « Postes de travail »** (`personnesMax`), qui ne limitait que
+  les renforts, **plafonne aussi l'effectif calculé d'une équipe de robot** :
+  entre son minimum et ce maximum. La durée de la ligne ne change pas.
+- **Dans la fiche d'une équipe de robot**, le champ est toujours visible, à
+  côté du minimum : « au plus, renforts compris ». Un maximum sous le
+  minimum est refusé, sous le champ ; venu d'un fichier d'avant, il ne
+  s'applique pas (le minimum l'emporte) et un avis « à corriger » le dit.
+- **Le besoin du service, les indicateurs de charge et les classeurs** lisent
+  l'effectif plafonné ; la fiche dit « au plus n postes ».
+- **Ne changent pas** : un robot saisi, les équipes à la main, un calcul qui
+  n'atteint pas le maximum.
+
+Fichiers : `moteur/production.js`, `moteur/periode.js`,
+`moteur/reponses.js`, `ateliers.js`, `avis.js`, `index.html` (empreintes),
+`tests/robot-plafond.test.cjs`, `tests/robot-plafond-browser.cjs`
+(nouveaux), `README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (a) : le relais sur la ligne du robot
 
 Première partie de l'évolution 21. Un calcul du moteur change, et un seul :

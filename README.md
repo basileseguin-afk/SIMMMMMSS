@@ -1458,6 +1458,27 @@ propre », le débit, le minimum de personnes, les arrêts de la ligne, les
 renforts, les heures sup d'une équipe sur ses propres commandes, les autres
 équipes. Une journée où rien n'est avancé est celle d'avant, champ par champ.
 
+### L'effectif calculé d'un robot ne dépasse pas ses postes de travail (évolution 21 b)
+
+L'effectif d'une équipe de robot se calcule au barème de son service, avec
+un minimum (« Minimum pour tourner »). Le réglage **« Postes de travail »**,
+qui ne limitait que ses renforts, le plafonne aussi : l'effectif calculé va
+de son minimum à ce maximum. Des personnes en plus n'accélèrent pas la
+ligne : sa durée ne change pas.
+
+- Dans la fiche d'une équipe de robot, le champ est toujours là, à côté du
+  minimum : « Postes de travail — au plus, renforts compris ». Vide : pas de
+  plafond, comme avant.
+- Un maximum sous le minimum est refusé, sous le champ ; le minimum ne passe
+  pas non plus au-dessus du maximum. Venu d'un fichier d'avant, il ne
+  s'applique pas : le minimum l'emporte, la journée se joue, et un avis « à
+  corriger » le dit.
+- Plafonné, l'effectif le dit dans la fiche (« au plus n postes »). Le
+  besoin du service, les indicateurs de charge et les classeurs lisent
+  l'effectif plafonné.
+- Ne changent pas : un robot dont l'effectif est saisi, les équipes à la
+  main, un calcul qui n'atteint pas le maximum.
+
 ## Centre des flux
 
 L’onglet **Centre des flux** permet de définir des liaisons par listes
@@ -1865,6 +1886,8 @@ aucun vol.
 | `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
 | `tests/robot-relais.test.cjs` | Le relais sur la ligne du robot (v1, banc d’essai, évolution 21 a), sur des journées fictives calculées à la main : la première équipe, ses commandes finies, avance les vols de la suivante dans l’ordre des départs ; une seule commande, avec ses parts ; aucun vol fait deux fois, aucun oublié ; la ligne tourne le même temps, la suivante finit plus tôt ; la pause due pendant un vol avancé se prend à sa fin, pour sa durée entière ; un vol qui ne tient pas avant la fin de la présence n’est pas commencé (aucune heure sup) ; la suivante arrive pendant un vol avancé ; sous son minimum, rien n’est avancé ; l’amont pas prêt (ordre strict, ordre souple) ; le matériel qui manque ; le plus petit temps par vol d’abord ; trois équipes ; le même jour de travail, l’équipe sous condition absente ; les renforts ; les non-régressions, champ par champ (sans temps libre, seule sur sa ligne, en « ligne propre », sans robot) |
+| `tests/robot-plafond.test.cjs` | L’effectif calculé d’un robot ne dépasse pas ses postes de travail (v1, banc d’essai, évolution 21 b), sur une journée fictive calculée à la main : le calcul au-dessus du maximum donne le maximum, sans changer la durée de la ligne ; sous le maximum, le calcul d’avant ; sans maximum, le résultat d’avant, champ par champ ; un maximum sous le minimum ne s’applique pas (le minimum l’emporte, un avis « à corriger » le dit) ; le robot saisi et les équipes à la main ne changent pas ; le besoin, les indicateurs de charge et les réponses lisent l’effectif plafonné ; la sauvegarde, la restauration, l’export et l’import Excel |
+| `tests/robot-plafond-browser.cjs` | Les postes de travail dans la fiche d’une équipe de robot (v1, évolution 21 b), sur les données de démonstration : le champ toujours visible, à côté du minimum, avec ses deux effets (« au plus, renforts compris ») ; pas de champ pour une équipe à la main sans les renforts ; un maximum sous le minimum refusé sous le champ ; l’effectif calculé plafonné, et la fiche le dit ; le minimum ne passe pas au-dessus ; vidé, le calcul d’avant |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
 | `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une par service robot), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
 | `tests/direct-face.test.cjs` | La vue d’ouverture d’un site disposé (v1, correction 21 b), sans navigateur : l’angle d’ouverture — de face (cap 0, deux pas d’inclinaison au-dessus de la maquette) pour un site disposé, celui de la maquette sinon ; à cet angle, les colonnes vont de gauche à droite dans l’ordre où on les a rangées, leurs bords sont verticaux à l’écran, les rangées du bas sont sous les colonnes, la scène tient entière, un mètre de hauteur se voit encore ; sans disposition, la caméra d’avant, champ par champ ; tourner, incliner et « Cadrer » partent de cet angle. |

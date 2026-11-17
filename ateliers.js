@@ -887,9 +887,10 @@
       const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
       const pourquoi = h(e.hommeMinutes) + ' de travail (heures par vol × vols de chaque compagnie) ÷ ' + h(e.poste)
         + ' travaillées par personne pendant son poste' + (e.rendement !== 1 ? ' × rendement ' + Math.round(e.rendement * 100) + ' %' : '')
-        + ', arrondi au-dessus. Pour le saisir à la main, cochez « Effectif constant » dans la fiche du service.';
+        + ', arrondi au-dessus' + (e.plafond ? ', sans dépasser ses ' + e.plafond + ' postes de travail' : '')
+        + '. Pour le saisir à la main, cochez « Effectif constant » dans la fiche du service.';
       return `<span${cls ? ` class="${classe} at-pers-calc"` : ' class="at-pers-calc"'} title="${esc(pourquoi)}">Personnes
-        <output data-at-calcule="${esc(a.id)}">${e.personnes}</output><small>calculé · ${esc(h(e.hommeMinutes))} ÷ ${esc(h(e.poste))}</small></span>`;
+        <output data-at-calcule="${esc(a.id)}">${e.personnes}</output><small>calculé · ${esc(h(e.hommeMinutes))} ÷ ${esc(h(e.poste))}${e.plafond ? ' · au plus ' + e.plafond + ' postes' : ''}</small></span>`;
     }
 
     /* Une mise à disposition a des gens qui y travaillent (retour d'usage du
@@ -1582,7 +1583,13 @@
             if (Object.keys(d).length) a.debits = d; else delete a.debits;
             break;
           }
-          case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
+          case 'personnesMin': {
+            const n = Math.max(0, parseInt(v, 10) || 0);
+            // Entre son minimum et ses postes de travail (évolution 21 b) : le minimum ne passe pas au-dessus.
+            if (Number.isInteger(a.personnesMax) && n > a.personnesMax) throw new Error('Minimum pour tourner : au plus ses postes de travail (' + a.personnesMax + '). Augmentez-les d’abord, ou videz-les.');
+            a.personnesMin = n;
+            break;
+          }
           // Ne vient que s'il reste du sale (évolution 6) : la case, l'heure, le seuil.
           case 'sale-condition': if (el.checked) a.condition = { mesure: 'sale' }; else delete a.condition; break;
           // La règle : le sale à une heure, ou le retard que le matin n'absorbe pas ; l'une remplace l'autre.
@@ -1611,6 +1618,8 @@
             const n = +v;
             if (v === '') delete a.personnesMax;
             else if (!Number.isInteger(n) || n < 1 || n > 999) throw new Error('Postes de travail : un nombre entier de 1 à 999, ou vide.');
+            // Un robot (évolution 21 b) : son effectif calculé va de son minimum à ses postes de travail.
+            else if (a.type === 'robot' && n < (a.personnesMin === undefined ? 1 : a.personnesMin)) throw new Error('Postes de travail : au moins son minimum pour tourner (' + (a.personnesMin === undefined ? 1 : a.personnesMin) + '), ou vide.');
             else a.personnesMax = n;
             break;
           }
@@ -2320,8 +2329,9 @@
           ${a.type === 'robot' ? `
           ${o.compact ? '' : `<label>Débit du robot${avecUnite(`<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)">`, 'pl/h')}</label>`}
-          <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>` : ''}
-          ${(a.type === 'manuel' || a.type === 'robot') && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
+          <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>
+          <label title="Autour de la ligne, jamais plus de personnes que de postes de travail : son effectif calculé s’y arrête, et les renforts ne la portent pas au-delà. Des personnes en plus n’accélèrent pas la ligne. Vide : pas de limite">Postes de travail <small>au plus, renforts compris</small>${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
+          ${a.type === 'manuel' && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
           <label title="Les renforts ne la portent pas au-delà de ses postes de travail. Vide : pas de limite">Postes de travail${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
           ${(a.type === 'manuel' || a.type === 'robot') && !o.compact ? this.champOrdre(a) : ''}
           ${o.compact ? '' : this.champPoste(a)}

@@ -285,7 +285,9 @@
     const equipes = (r.ateliers || []).map(a => {
       const ls = parEquipe.get(a.id) || [], e = effectifs[a.id], cies = {};
       // Le besoin exact : homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon.
-      const besoin = e && e.poste > 0 ? e.hommeMinutes / e.poste / (e.rendement || 1) : (a.personnes || 0);
+      // (Le besoin d'un robot ne dépasse pas ses postes de travail — `plafond`, quand son calcul les atteint : évolution 21 b.)
+      const exact = e && e.poste > 0 ? e.hommeMinutes / e.poste / (e.rendement || 1) : (a.personnes || 0);
+      const besoin = e && e.plafond > 0 ? Math.min(exact, e.plafond) : exact;
       const cie = k => (cies[k] = cies[k] || { classes: {}, vols: [], hommeMinutes: 0, retardMax: null });
       const vol = (x, id) => { if (id != null && !x.vols.includes(String(id))) x.vols.push(String(id)); };
       const tard = new Set();

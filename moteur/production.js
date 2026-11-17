@@ -2571,6 +2571,8 @@
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
       'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs',
       'plonge-duree', 'plonge-vol', 'plonge-mixte',
+      // Des postes de travail sous le minimum d'un robot calculé (évolution 21 b) : le plafond ne s'applique pas.
+      'personnesMax',
       // Une case sans personne, un robot sous son effectif, une plonge dont aucun
       // tunnel ne tourne : cette case ne produit rien, et on le dit — mais le reste
       // de la journée se calcule. Mettre une case à 0 effaçait tous les résultats.
@@ -2728,7 +2730,17 @@
       // Un robot ne tourne qu'à partir de son minimum : au moins `personnesMin` dès qu'il a du travail. Sa ligne
       // va toujours à son débit : des personnes en plus ne l'accélèrent pas.
       if (a.type === 'robot' && n > 0) n = Math.max(n, a.personnesMin === undefined ? 1 : a.personnesMin);
-      effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement };
+      // … et jamais plus que ses postes de travail (`personnesMax`, évolution 21 b), qui ne limitaient que ses renforts.
+      // `plafond` : le calcul les atteignait ; le besoin, les indicateurs et les classeurs lisent l'effectif plafonné.
+      // Un maximum sous le minimum (la fiche le refuse ; il peut venir d'un fichier d'avant) ne s'applique pas : le
+      // minimum l'emporte, comme avant, et un avis à corriger le dit — la journée se joue.
+      const max = a.type === 'robot' && n > 0 && Number.isInteger(a.personnesMax) && a.personnesMax > 0 ? a.personnesMax : null;
+      const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
+      if (max !== null && max < mini) anomalies.push({ code: 'personnesMax', atelier: a.id,
+        message: (a.nom || a.id) + ' : Postes de travail (' + max + ') sous le minimum pour tourner (' + mini + '). Le plafond n’est pas appliqué : augmentez les postes de travail, ou baissez le minimum.' });
+      const postes = max !== null && max >= mini && n > max ? max : null;
+      if (postes !== null) n = postes;
+      effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement, ...(postes !== null ? { plafond: postes } : {}) };
       a.personnes = n;
     }
     // L'équipe d'appui calculée : ses minutes par vol × les vols de chaque compagnie.

@@ -49,7 +49,9 @@
   /* Le calcul se fait, mais il est faux pour une part. */
   const A_CORRIGER = ['doublon', 'bareme', 'bareme-classe', 'lots', 'lot-vide', 'dispo', 'compagnie-inconnue',
     'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'handling-duree', 'handling-sans',
-    'plonge-duree', 'plonge-mixte', 'sans-personne', 'robot-arret', 'plonge-arret'];
+    'plonge-duree', 'plonge-mixte', 'sans-personne', 'robot-arret', 'plonge-arret',
+    // Des postes de travail sous le minimum d'un robot calculé (évolution 21 b) : le plafond ne s'applique pas.
+    'personnesMax'];
   const PAR_CODE = new Map(INFORMATIONS.map(c => [c, 'information']).concat(A_CORRIGER.map(c => [c, 'corriger'])));
 
   /** Le niveau d'un point du calcul. Un code que le moteur ne laisse pas passer,

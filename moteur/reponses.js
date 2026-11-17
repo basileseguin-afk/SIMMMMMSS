@@ -135,7 +135,11 @@
    * charge mesurée (aucun travail, une mise à disposition, une équipe d'appui, le handling) : null.
    */
   function tetesDe(v, def, e, ke, lots, args) {
-    if (e) return e.poste > 0 && e.hommeMinutes > 0 ? e.hommeMinutes / e.poste / (e.rendement > 0 ? e.rendement : 1) : null;
+    if (e) {
+      const exact = e.poste > 0 && e.hommeMinutes > 0 ? e.hommeMinutes / e.poste / (e.rendement > 0 ? e.rendement : 1) : null;
+      // Un robot dont le calcul atteint ses postes de travail (`plafond`, évolution 21 b) : son besoin s'y arrête.
+      return exact !== null && e.plafond > 0 ? Math.min(exact, e.plafond) : exact;
+    }
     const poste = posteDe(def, args.regime);
     if (!(poste > 0)) return null;
     if (v.type === 'robot' || v.type === 'lavage') return ke && ke.hommeMinutes > 0 ? ke.hommeMinutes / poste : null;
