@@ -2351,12 +2351,23 @@ function choisirVueDirect(mode) {
 function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
-  // La légende se pose dans un coin de la toile (évolution 19, retouche) : dépliée à l'ouverture, on la replie d'un clic ;
-  // le choix est retenu dans ce navigateur, comme celui de « En ce moment ».
+  // La légende se pose dans un coin de la toile (évolution 19, retouche). Sans choix retenu, elle s'ouvre dépliée sur un
+  // grand écran et repliée sous 1 500 px de large (correction 21 d) : sur un portable, elle ne cache pas la scène. On la
+  // déplie ou on la replie d'un geste ; ce choix est retenu dans ce navigateur, comme celui de « En ce moment ».
   const coin = document.getElementById('direct-coin');
   if (coin) {
-    try { if (localStorage.getItem(CLE_LEGENDE_DIRECT) === 'repliee') coin.open = false; } catch (e) { /* stockage indisponible : dépliée */ }
-    coin.addEventListener('toggle', () => { try { localStorage.setItem(CLE_LEGENDE_DIRECT, coin.open ? 'ouverte' : 'repliee'); } catch (e) { /* le choix vaut pour la visite */ } });
+    let choix = null;
+    try { const c = localStorage.getItem(CLE_LEGENDE_DIRECT); choix = c === 'ouverte' || c === 'repliee' ? c : null; } catch (e) { /* stockage indisponible : selon l'écran */ }
+    coin.open = choix ? choix === 'ouverte' : !window.matchMedia || matchMedia('(min-width: ' + LARGEUR_EN_CE_MOMENT.relief + 'px)').matches;
+    // Seul un geste sur son titre (un clic, Entrée, Espace) est un choix : l'état pris à l'ouverture ne s'enregistre pas.
+    let geste = false;
+    const titre = coin.querySelector('summary');
+    if (titre) titre.addEventListener('click', () => { geste = true; });
+    coin.addEventListener('toggle', () => {
+      if (!geste) return;
+      geste = false;
+      try { localStorage.setItem(CLE_LEGENDE_DIRECT, coin.open ? 'ouverte' : 'repliee'); } catch (e) { /* le choix vaut pour la visite */ }
+    });
   }
   initPleinEcran();
   initDisposer();

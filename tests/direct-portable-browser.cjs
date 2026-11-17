@@ -8,7 +8,8 @@
  *      moins 560 px de haut, et le bâtiment occupe au moins 70 % de sa largeur
  *      ou de sa hauteur ; le titre, le choix de la journée de vols et « En
  *      relief / À plat » tiennent sur une ligne ; la légende est dans un coin
- *      de la toile, repliable, et le choix est retenu ; « Plein écran » masque
+ *      de la toile, repliable, et le choix est retenu (sous 1 500 px de large,
+ *      elle est repliée à l'ouverture — correction 21 d) ; « Plein écran » masque
  *      le menu et l'en-tête, Échap en sort ; sous 1 500 px de large, « En ce
  *      moment » est replié à l'ouverture — un bouton l'ouvre, le choix est
  *      retenu ;
@@ -92,13 +93,21 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
     assert.ok(tete.ligne&&tete.hauteur<=44&&tete.titre==='En direct',V+'le titre et « En relief / À plat » sur une seule ligne ('+tete.hauteur+' px)');
     assert.ok(!tete.bande&&tete.colle<=1,V+'la scène commence sous l’en-tête : plus de bande entre les deux');
     assert.ok(tete.intro,V+'l’introduction n’est plus à l’écran ; les lecteurs d’écran la lisent encore');
-    // La légende : dans un coin de la toile, dépliée à l'ouverture, repliable ; le choix est retenu.
+    // La légende : dans un coin de la toile, repliable ; le choix est retenu. À l'ouverture, sans choix retenu, elle est
+    // dépliée sur un grand écran et repliée sous 1 500 px de large (correction 21 d) : un clic la déplie.
     const coin=async()=>page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),d=document.getElementById('direct-coin'),c=b('#direct-coin'),t=b('#direct-toile');
       return {ouverte:d.open,dans:c.left>=t.left&&c.right<=t.right&&c.top>=t.top&&c.bottom<=t.bottom,coin:c.left-t.left<=16&&t.bottom-c.bottom<=16,part:c.width*c.height/(t.width*t.height),
         legende:document.getElementById('direct-legende').checkVisibility(),note:document.getElementById('direct-note').checkVisibility(),aide:document.getElementById('direct-aide').checkVisibility(),
         titre:d.querySelector('summary').textContent,choix:localStorage.getItem('ory-ui-direct-legende')};});
     let lg=await coin();
-    assert.ok(lg.ouverte&&lg.legende&&lg.note&&lg.aide&&lg.titre==='Légende',V+'la légende, dépliée à l’ouverture : '+JSON.stringify(lg));
+    assert.equal(lg.choix,null,V+'aucun choix retenu à l’ouverture');
+    if(etroit){
+      assert.ok(!lg.ouverte&&!lg.legende&&lg.titre==='Légende'&&lg.dans&&lg.coin&&lg.part<0.012,V+'la légende, repliée à l’ouverture sur un portable : '+JSON.stringify(lg));
+      await page.locator('#direct-coin > summary').click();
+      await page.waitForFunction(()=>document.getElementById('direct-coin').open&&localStorage.getItem('ory-ui-direct-legende')==='ouverte');
+      lg=await coin();
+    }
+    assert.ok(lg.ouverte&&lg.legende&&lg.note&&lg.aide&&lg.titre==='Légende',V+'la légende, dépliée : '+JSON.stringify(lg));
     assert.ok(lg.dans&&lg.coin&&lg.part<0.15,V+'dans le coin de la toile ('+pourcent(lg.part)+' de la toile)');
     await page.locator('#direct-coin > summary').click();
     await page.waitForFunction(()=>!document.getElementById('direct-coin').open&&localStorage.getItem('ory-ui-direct-legende')==='repliee');

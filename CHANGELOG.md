@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 21 (d) : la légende ne cache pas la scène ; contrôle
+
+Dernière partie de la correction 21. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Sous 1 500 px de large, la légende est repliée à l'ouverture** : sur un
+  portable, elle ne recouvre plus le bas gauche du site. Sur un grand écran,
+  elle reste dépliée.
+- **Le choix de l'utilisateur est retenu** (un clic, ou Entrée, sur son
+  titre) ; l'état pris à l'ouverture n'en est pas un : rien n'est enregistré.
+- **Dépliée, elle ne recouvre jamais plus de 20 % de la toile** : au plus
+  40 % de sa largeur et la moitié de sa hauteur ; son contenu défile sur une
+  petite toile.
+- **Captures de contrôle des quatre parties**, sur l'unité fictive, à
+  1 366 × 768 et 1 920 × 1 080, en thème clair et sombre.
+
+Fichiers : `sim.js`, `direct.css`, `index.html` (empreintes),
+`tests/direct-legende-browser.cjs`,
+`tests/captures-correction-21-browser.cjs` (nouveaux),
+`tests/direct-portable-browser.cjs`, `README.md`.
+
+---
+
 ## 2026-11-17 — Correction 21 (c) : le poste de travail, pour tout un service d'un coup
 
 Troisième partie de la correction 21. Aucun calcul ne change ; la version 2
