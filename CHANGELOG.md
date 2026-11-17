@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 21 (b) : un site disposé s'ouvre de face
+
+Deuxième partie de la correction 21. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Quand l'utilisateur a disposé les zones, la scène s'ouvre comme il les a
+  rangées** : la vue d'ouverture et « Tout voir » regardent le site de face —
+  les colonnes de gauche à droite, les rangées du bas en bas de l'écran —,
+  de trois quarts haut.
+- La caméra reste libre ensuite ; « Cadrer » garde l'angle choisi.
+- Sans disposition réglée, l'angle d'aujourd'hui.
+
+Fichiers : `direct-camera.js`, `direct-vue.js`, `index.html` (empreintes),
+`tests/direct-face.test.cjs`, `tests/direct-face-browser.cjs` (nouveaux),
+`README.md`.
+
+---
+
 ## 2026-11-17 — Correction 21 (a) : les files d'une même zone ne se superposent plus
 
 Première partie de la correction 21 (la vue en direct, quatre retouches).

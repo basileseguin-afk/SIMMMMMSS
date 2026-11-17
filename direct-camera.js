@@ -4,7 +4,9 @@
  *  La vue en relief se regarde par une projection orthogonale : sans fuite de
  *  perspective, le dessin reste schématique et les tailles comparables. La
  *  caméra tourne autour du site (son cap, sur 360°), s'incline (son site, de
- *  25° à 80° au-dessus de l'horizon), se déplace et zoome.
+ *  25° à 80° au-dessus de l'horizon), se déplace et zoome. Elle s'ouvre à
+ *  l'angle de la maquette ; devant un site que l'utilisateur a disposé, de
+ *  face (correction 21 b).
  *
  *  Le repère de la scène : x le long du site (les avions du côté des grands
  *  x), y dans sa profondeur, z vers le haut, en mètres. Une caméra :
@@ -32,6 +34,14 @@
   const margeDe = ecran => { const e = ecran || {}, c = Math.min(e.w || 0, e.h || 0); return c > 0 ? Math.min(MARGE, c * PART_DE_MARGE) : MARGE; };
   /** Un pas de rotation et d'inclinaison (les boutons, les touches), en degrés ; un pas de zoom. */
   const PAS_CAP = 15, PAS_SITE = 10, PAS_ZOOM = 1.25;
+  /**
+   * L'angle d'un site que l'utilisateur a disposé (correction 21 b) : de face — ses colonnes vont de gauche à droite, ses
+   * rangées du bas sont en bas de l'écran, comme dans « Disposer les zones » —, de trois quarts haut : deux pas
+   * d'inclinaison au-dessus de la maquette, on voit encore les personnes et les chariots.
+   */
+  const CAP_DE_FACE = 0, SITE_DE_FACE = SITE_MAQUETTE + 2 * PAS_SITE;
+  /** L'angle d'ouverture d'un site ({ cap, site }), et de « Tout voir » : de face s'il est disposé, sinon celui de la maquette. */
+  const ouverture = dispose => (dispose === true ? { cap: CAP_DE_FACE, site: SITE_DE_FACE } : { cap: CAP_MAQUETTE, site: SITE_MAQUETTE });
 
   const fini = x => Number.isFinite(x);
   const borne = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -202,7 +212,7 @@
     return l;
   }
 
-  const api = { CAP_MAQUETTE, SITE_MAQUETTE, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PART_DE_MARGE, margeDe, PAS_CAP, PAS_SITE, PAS_ZOOM,
+  const api = { CAP_MAQUETTE, SITE_MAQUETTE, CAP_DE_FACE, SITE_DE_FACE, ouverture, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PART_DE_MARGE, margeDe, PAS_CAP, PAS_SITE, PAS_ZOOM,
     camera, visible, projecteur, projeter, auSol, deplacer, zoomer, tourner, incliner, emprise, cadrer, tient, mursDuFond, facesDevant,
     ordre, decouper, entre, placerEtiquettes, recouvrements };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

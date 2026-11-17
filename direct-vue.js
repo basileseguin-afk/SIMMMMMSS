@@ -12,7 +12,9 @@
  *    — à l'écran : tourner à gauche, à droite, incliner, −, +, « Cadrer » (le
  *      service choisi), « Tout voir ».
  *  À l'ouverture et sur « Tout voir », la caméra revient à l'angle de la
- *  maquette et cadre le bâtiment et les avions présents à cette heure — pas
+ *  maquette — devant un site que l'utilisateur a disposé, à la vue de face :
+ *  ses colonnes de gauche à droite, ses rangées du bas en bas de l'écran
+ *  (correction 21 b) — et cadre le bâtiment et les avions présents à cette heure — pas
  *  l'aire vide (évolution 19, retouche) — dans la zone visible, à la marge du
  *  cadrage près ; tant qu'on n'a ni déplacé ni zoomé, ce cadre y tient encore
  *  à tout angle, et il suit les avions : un avion qui arrive hors du cadre
@@ -105,12 +107,14 @@
     const incliner = (d, anime) => allerA(recadree(C().incliner(but(), d)), anime);
     function zoomer(f, X, Y, anime) { v.ajustee = false; allerA(C().zoomer(but(), ecran, f, X, Y), anime); }
     function deplacer(dX, dY, anime) { v.ajustee = false; allerA(C().deplacer(but(), ecran, dX, dY), anime); }
-    /** « Tout voir » : l'angle de la maquette, le bâtiment et les avions présents, à la marge du cadrage près. */
+    /** L'angle d'ouverture du site : celui de la maquette ; de face, si l'utilisateur a disposé ses zones (correction 21 b). */
+    const angleDOuverture = () => C().ouverture(!!(v.site && v.site.disposition));
+    /** « Tout voir » : l'angle d'ouverture, le bâtiment et les avions présents, à la marge du cadrage près. */
     function toutVoir(anime) {
       v.ajustee = true;
       if (!v.site) { demander(); return; }
       v.cadre = presents();
-      allerA(C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite()), anime);
+      allerA(C().cadrer(C().camera(angleDOuverture()), ecran, boite()), anime);
     }
     /** « Cadrer » : la zone du service choisi, à l'angle courant ; sans service choisi, tout. */
     function cadrer(anime) {
@@ -149,9 +153,10 @@
       const sansHeure = !Number.isFinite(v.t);
       if (x.journee !== v.journee || x.t !== v.t) { v.journee = x.journee || null; v.t = x.t; v.etat = v.journee && Number.isFinite(x.t) ? E().etatA(v.journee, x.t) : null; }
       if (nouveauSite) {
-        // Un site nouveau : l'angle de la maquette, le bâtiment et les avions présents.
+        // Un site nouveau : son angle d'ouverture, le bâtiment et les avions présents. La toile pas encore mesurée (la page
+        // s'ouvre) : l'angle est pris tout de suite, le cadrage se fera à sa taille.
         v.ajustee = true; anim = null; v.cadre = presents();
-        if (v.site && ecran.w) v.cam = C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite());
+        if (v.site) v.cam = ecran.w ? C().cadrer(C().camera(angleDOuverture()), ecran, boite()) : C().camera(angleDOuverture());
       } else if (v.ajustee && v.site && ecran.w) {
         // La scène encore cadrée suit les avions : ceux qui sont là ne sont jamais hors du cadre. Une autre journée, ou la
         // première heure rejouée, se recadre d'un coup ; un avion qui arrive ou qui part, en glissant.
