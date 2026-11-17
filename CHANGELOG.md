@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Correction 21 (c) : le poste de travail, pour tout un service d'un coup
+
+Troisième partie de la correction 21. Aucun calcul ne change ; la version 2
+n'est pas touchée.
+
+- **Un réglage de plus dans la fiche d'un service**, section « Avancé », à
+  côté de « Des rayonnages dans sa zone » : « Poste de travail de ses
+  équipes, dans la vue en direct » — laisser à chaque équipe (par défaut),
+  ou des tables, des trolleys, une machine, des rayonnages, aucun.
+- **Le choix s'applique aux équipes du service qui n'ont pas leur propre
+  réglage** ; une équipe peut toujours avoir le sien. Sa fiche dit « celui
+  de son service » tant qu'elle n'en a pas.
+- Sauvegardé avec les équipes ; sans lui, la scène d'aujourd'hui.
+
+Fichiers : `direct-scene.js`, `ateliers.js`, `site-reglages.js`, `sim.js`,
+`direct.css`, `index.html` (empreintes), `tests/direct-postes.test.cjs`,
+`tests/site-postes-browser.cjs` (nouveaux), `README.md`,
+`docs/CAHIER_DES_CHARGES.md`.
+
+---
+
 ## 2026-11-17 — Correction 21 (b) : un site disposé s'ouvre de face
 
 Deuxième partie de la correction 21. Aucun calcul ne change ; la version 2

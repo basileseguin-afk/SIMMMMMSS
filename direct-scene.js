@@ -129,6 +129,17 @@
   }
   /** Le poste de travail d'un atelier : son réglage (`poste`), sinon le défaut. */
   const posteDe = a => (POSTES.includes(a.poste) ? a.poste : posteParDefaut(a));
+  /**
+   * Les équipes telles que la vue les dessine (correction 21 c) : chacune avec son poste de travail — le sien, sinon celui
+   * que son service donne à ses équipes (`postes` : { service: poste }, le réglage de la fiche du service), sinon le
+   * défaut. Sans réglage qui joue : la liste elle-même. Sinon une liste neuve, où seules les équipes concernées sont
+   * copiées, avec leur poste ; les réglages ne sont pas touchés.
+   */
+  function avecPostes(ateliers, postes) {
+    if (!Array.isArray(ateliers) || !postes || typeof postes !== 'object' || Array.isArray(postes)) return ateliers;
+    const duService = a => (a && !POSTES.includes(a.poste) && Object.prototype.hasOwnProperty.call(postes, a.service) && POSTES.includes(postes[a.service]) ? postes[a.service] : null);
+    return ateliers.some(duService) ? ateliers.map(a => { const p = duService(a); return p ? { ...a, poste: p } : a; }) : ateliers;
+  }
 
   /** Les mesures d'un îlot, en mètres : une table pour deux personnes ; la place d'une personne ; la bande gardée devant
    *  une zone pour ce qui attend (la file) ; l'écart entre deux îlots. */
@@ -741,7 +752,7 @@
 
   const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteCadree, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, HEURE_DES_VOLS, VOLS_ETIQUETES, volsEtiquetes, tailleEtiquette, poserEtiquettes, pluriel,
     ROUTE, AVION, PAS_FILE, aireDe, bandeDeFile, placesDeFile, placesDansIlot, circulation, etiquettesDesVols, avanceDuConvoi,
-    posteParDefaut, posteDe, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
+    posteParDefaut, posteDe, avecPostes, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDirectScene = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -7,7 +7,9 @@
  *  section « Avancé » : un champ en %, vide pour la part par défaut ; un choix
  *  « Dans la vue en direct, partage la zone de » (aucun, ou un autre service) ;
  *  une case « Des rayonnages dans sa zone » (évolution 20 d ; le magasin en a
- *  toujours : sa fiche le dit, sans case).
+ *  toujours : sa fiche le dit, sans case) ; un choix « Poste de travail de ses
+ *  équipes, dans la vue en direct » (correction 21 c : laisser à chaque équipe,
+ *  ou un poste pour toutes celles qui n'ont pas leur propre réglage).
  *  La fiche est dessinée par unite.js, commun aux deux versions : ce module de
  *  la version 1 y ajoute ses champs après chaque dessin, sans toucher au
  *  fichier commun. Les réglages se sauvegardent avec les ateliers ; ils ne
@@ -92,6 +94,25 @@
       + '<span>Des rayonnages dans sa zone</span></label><small id="site-rayonnages-mot">' + esc(motRayonnages(e)) + '</small></div>';
   }
 
+  /** Ce que le choix du poste de travail explique ; `e.propres` : celles de ses équipes qui ont leur propre réglage (leur nombre), `e.equipes` : ses équipes. */
+  function motPoste(e) {
+    const n = e.propres || 0, m = e.equipes || 0;
+    return 'Ce sur quoi ses équipes travaillent, dans la vue en direct. Le choix vaut pour les équipes du service qui n’ont pas leur propre réglage ; '
+      + 'une équipe peut toujours avoir le sien, dans sa fiche. '
+      + (m ? (n ? (n > 1 ? n + ' de ses ' + m + ' équipes ont' : n + ' de ses ' + m + ' équipes a') + ' son propre réglage. ' : '') : 'Ce service n’a pas d’équipe. ') + 'Ce réglage ne change aucun calcul.';
+  }
+  /**
+   * Le choix « Poste de travail de ses équipes, dans la vue en direct », pour la fiche du service `e.service` (correction
+   * 21 c). `e` : { service, poste (le poste choisi, ou null), postes ([{ id, nom }], les postes possibles — les mots de
+   * la fiche d'une équipe), equipes, propres }.
+   */
+  function choixPoste(e) {
+    return '<label class="mu-encadrement site-poste">Poste de travail de ses équipes, dans la vue en direct'
+      + '<select data-site-poste="' + esc(e.service) + '" aria-describedby="site-poste-mot"><option value="">laisser à chaque équipe</option>'
+      + e.postes.map(x => '<option value="' + esc(x.id) + '"' + (x.id === e.poste ? ' selected' : '') + '>' + esc(x.nom) + '</option>').join('') + '</select>'
+      + '<small id="site-poste-mot">' + esc(motPoste(e)) + '</small></label>';
+  }
+
   /** Le service de la fiche affichée : sa part réglée, la part et le nom de sa zone, le service dont il partage la zone, ceux qui sont avec lui. */
   function etatDe(section, a, regime) {
     const repere = section.querySelector('[data-mu-encadrement]'), service = repere && repere.dataset.muEncadrement;
@@ -103,15 +124,22 @@
       partage: { service, hote: a.partage ? a.partage(service) : null, parent: parent ? nomDe(parent) : null, services, zone: z ? z.nom : null,
         avec: z ? z.services.filter(x => x !== service).map(nomDe) : [] },
       rayonnages: { service, oui: a.rayonnages ? a.rayonnages(service) : false,
-        par: z && a.rayonnages ? z.services.filter(x => x !== service && a.rayonnages(x)).map(nomDe) : [] } };
+        par: z && a.rayonnages ? z.services.filter(x => x !== service && a.rayonnages(x)).map(nomDe) : [] },
+      poste: posteDe(a, service) };
+  }
+  /** Le poste de travail des équipes du service de la fiche : le choix gardé, les postes possibles, ses équipes et celles qui ont leur propre réglage. */
+  function posteDe(a, service) {
+    const postes = a.postesPossibles ? a.postesPossibles() : [], equipes = ((a.state && a.state.ateliers) || []).filter(x => x.service === service);
+    return { service, poste: a.posteDuService ? a.posteDuService(service) : null, postes, equipes: equipes.length, propres: equipes.filter(x => postes.some(p => p.id === x.poste)).length };
   }
 
-  /** Ajoute les champs à la section « Avancé » de la fiche affichée dans `box`, s'ils n'y sont pas : la part de surface, la zone partagée, les rayonnages. */
+  /** Ajoute les champs à la section « Avancé » de la fiche affichée dans `box`, s'ils n'y sont pas : la part de surface, la zone partagée, les rayonnages, le poste de travail. */
   function completer(box, at, regime) {
     const section = box && box.querySelector('[data-mu-section="avance"]'), a = at && at();
     if (!section || !a || section.querySelector('[data-site-surface]')) return;
     const e = etatDe(section, a, regime);
-    if (e) section.insertAdjacentHTML('beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : '') + (a.regleRayonnages ? caseRayonnages(e.rayonnages) : ''));
+    if (e) section.insertAdjacentHTML('beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : '') + (a.regleRayonnages ? caseRayonnages(e.rayonnages) : '')
+      + (a.reglePosteDuService ? choixPoste(e.poste) : ''));
   }
 
   /** Après un réglage, la fiche n'est pas redessinée : le champ reprend la valeur gardée, et dit la place d'aujourd'hui. */
@@ -124,6 +152,10 @@
     const valeur = e.reglee === null ? '' : String(e.reglee);
     if (el.value !== valeur) el.value = valeur;
     if (mot) mot.textContent = explication(e.part, e.zone);
+    // Le poste de travail de ses équipes : le choix gardé, et combien d'équipes ont leur propre réglage.
+    const poste = section.querySelector('[data-site-poste]'), motDuPoste = section.querySelector('#site-poste-mot');
+    if (poste && poste.value !== (e.poste.poste || '')) poste.value = e.poste.poste || '';
+    if (poste && motDuPoste) motDuPoste.textContent = motPoste(e.poste);
     // Les rayonnages : la case dit ce qui est gardé ; dessous, si sa zone en a déjà par un autre service.
     const coche = section.querySelector('[data-site-rayonnages]'), motCase = section.querySelector('#site-rayonnages-mot');
     if (coche && coche.checked !== e.rayonnages.oui) coche.checked = e.rayonnages.oui;
@@ -162,6 +194,11 @@
         setTimeout(() => actualiser(box, at, regime), 0);
         return;
       }
+      if (el.dataset.sitePoste !== undefined) {
+        const service = el.dataset.sitePoste, poste = el.value;
+        setTimeout(() => { at().reglePosteDuService(service, poste); actualiser(box, at, regime); }, 0);
+        return;
+      }
       if (el.dataset.siteRayonnages !== undefined) {
         const service = el.dataset.siteRayonnages, oui = el.checked;
         setTimeout(() => { at().regleRayonnages(service, oui); actualiser(box, at, regime); }, 0);
@@ -175,7 +212,7 @@
     completer(box, at, regime);
   }
 
-  const api = { ecouter, completer, actualiser, champ, partDe, choix, explicationPartage, motAucun, caseRayonnages, motRayonnages };
+  const api = { ecouter, completer, actualiser, champ, partDe, choix, explicationPartage, motAucun, caseRayonnages, motRayonnages, choixPoste, motPoste };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlySiteReglages = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

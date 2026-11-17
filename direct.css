@@ -281,8 +281,8 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 
 /* La fiche du service : « Dans la vue en direct, partage la zone de » (site-reglages.js, évolution 20 a). Le champ est un
    choix parmi les services : il a la place d'un nom, pas celle d'un nombre. */
-.mu-encadrement.site-partage{grid-template-columns:max-content minmax(160px,300px) 1fr}
-.mu-encadrement.site-partage select{width:100%;min-width:0}
+.mu-encadrement.site-partage,.mu-encadrement.site-poste{grid-template-columns:max-content minmax(160px,300px) 1fr}
+.mu-encadrement.site-partage select,.mu-encadrement.site-poste select{width:100%;min-width:0}
 /* « Des rayonnages dans sa zone » (évolution 20 d) : une case et son nom ; dessous, ce qu'elle fait ; pour le magasin, une phrase. */
 .site-rayonnages{margin:12px 0 0;max-width:620px;font-size:var(--ds-t-14)}
 .site-rayonnages label{display:inline-flex;align-items:center;gap:8px}

@@ -483,6 +483,11 @@
     // sauvegarde d'avant), au quai. Il ne joue que pour un service qui a une équipe de handling (moteur/site.js).
     const attentes = Object.fromEntries(Object.entries(brut.attentes && typeof brut.attentes === 'object' && !Array.isArray(brut.attentes) ? brut.attentes : {})
       .filter(([k, x]) => k && k.length <= 160 && typeof x === 'string' && x !== '' && x.length <= 160 && x !== k).slice(0, 500));
+    // Le poste de travail que chaque service donne à ses équipes, dans la vue en direct (correction 21 c) : { service:
+    // poste }. Il vaut pour les équipes du service qui n'ont pas leur propre réglage. Un réglage d'affichage : il ne
+    // change aucun calcul. Sans lui (une sauvegarde d'avant), chaque équipe a le sien ou le défaut.
+    const postes = Object.fromEntries(Object.entries(brut.postes && typeof brut.postes === 'object' && !Array.isArray(brut.postes) ? brut.postes : {})
+      .filter(([k, x]) => k && k.length <= 160 && POSTES_DIRECT.includes(x)).slice(0, 500));
     // Les services qui ont des rayonnages dans leur zone, dans la vue en direct (évolution 20 d) : { service: true }. Un
     // réglage d'affichage : il ne change aucun calcul. Sans lui (une sauvegarde d'avant), seul le magasin en a — il en a
     // toujours : rien à garder pour lui.
@@ -499,7 +504,8 @@
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
       ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
-      ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}) };
+      ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}),
+      ...(Object.keys(postes).length ? { postes } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -737,8 +743,33 @@
     champPoste(a) {
       const D = root.OrlyDirectScene, defaut = D ? D.posteParDefaut(a) : 'tables', v = POSTES_DIRECT.includes(a.poste) ? a.poste : '';
       const opt = (x, lib) => `<option value="${x}"${x === v ? ' selected' : ''}>${lib}</option>`;
+      // Sans réglage à elle : le poste que son service donne à ses équipes (correction 21 c), sinon le défaut.
+      const duService = this.posteDuService(a.service), sinon = duService ? 'celui de son service (' + LIBELLES_POSTES[duService] + ')' : 'par défaut (' + LIBELLES_POSTES[defaut] + ')';
       return `<label title="Ce sur quoi l’équipe travaille, dans la vue en direct. Ce réglage ne change aucun calcul">Poste de travail, dans la vue en direct<select data-at-champ="poste">
-        ${opt('', 'par défaut (' + LIBELLES_POSTES[defaut] + ')')}${POSTES_DIRECT.map(p => opt(p, LIBELLES_POSTES[p])).join('')}</select></label>`;
+        ${opt('', sinon)}${POSTES_DIRECT.map(p => opt(p, LIBELLES_POSTES[p])).join('')}</select></label>`;
+    }
+    /** Les postes de travail qu'on peut choisir, avec leur nom : [{ id, nom }] — les mêmes mots dans la fiche d'une équipe et dans celle d'un service. */
+    postesPossibles() { return POSTES_DIRECT.map(p => ({ id: p, nom: LIBELLES_POSTES[p] })); }
+    /** Le poste de travail que `service` donne à ses équipes, dans la vue en direct (correction 21 c) ; null : chaque équipe a le sien, ou le défaut. */
+    posteDuService(service) { const x = (this.state.postes || {})[service]; return POSTES_DIRECT.includes(x) ? x : null; }
+    /**
+     * Règle le poste de travail des équipes de `service` (correction 21 c) ; `poste` vide : laisser à chaque équipe. Il vaut
+     * pour ses équipes qui n'ont pas leur propre réglage. Un réglage d'affichage : il ne change aucun calcul.
+     */
+    reglePosteDuService(service, poste) {
+      const p = POSTES_DIRECT.includes(poste) ? poste : null, nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      if (p === this.posteDuService(service)) return false;
+      this.changer(() => {
+        const e = { ...(this.state.postes || {}) };
+        if (p) e[service] = p; else delete e[service];
+        if (Object.keys(e).length) this.state.postes = e; else delete this.state.postes;
+      }, nom + ' : ' + (p ? 'ses équipes travaillent sur ' + (p === 'aucun' ? 'aucun poste' : LIBELLES_POSTES[p]) + ', dans la vue en direct.' : 'le poste de travail est laissé à chaque équipe.'));
+      return true;
+    }
+    /** Les équipes telles que la vue en direct les dessine : chacune avec son poste, le sien ou celui de son service (direct-scene.js). */
+    ateliersDeLaVue() {
+      const D = root.OrlyDirectScene || (typeof require === 'function' ? require('./direct-scene.js') : null);
+      return D && D.avecPostes ? D.avecPostes(this.state.ateliers, this.state.postes) : this.state.ateliers;
     }
 
     /** Les renforts (banc d'essai, évolution 5) sont-ils actifs ? Ils montrent les postes de travail des équipes. */

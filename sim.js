@@ -2392,7 +2392,20 @@ function journeeMontree() {
   const d = essaiMontre && snaps[essaiMontre] && snaps[essaiMontre].direct;
   if (d) return { ...d, essai: essaiMontre };
   if (essaiMontre) essaiMontre = null;
-  return { j: journeeLue(), site: siteDeLaVue(), ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, noms: nomsDesServices(), essai: null };
+  return { j: journeeLue(), site: siteDeLaVue(), ateliers: ateliersDeLaVue(), noms: nomsDesServices(), essai: null };
+}
+let ateliersGardes = null;
+/**
+ * Les équipes telles que la vue en direct les dessine : chacune avec son poste de travail — le sien, sinon celui que son
+ * service donne à ses équipes (correction 21 c). La même liste tant que ni la journée ni les équipes ne changent : la vue
+ * ne refait ses îlots que si elle change.
+ */
+function ateliersDeLaVue() {
+  const at = Sim.ateliers; if (!at) return null;
+  if (!at.state.postes || !at.ateliersDeLaVue) return at.state.ateliers;
+  if (ateliersGardes && ateliersGardes.r === at.resultat && ateliersGardes.source === at.state.ateliers && ateliersGardes.cle === JSON.stringify(at.state.postes)) return ateliersGardes.liste;
+  ateliersGardes = { r: at.resultat, source: at.state.ateliers, cle: JSON.stringify(at.state.postes), liste: at.ateliersDeLaVue() };
+  return ateliersGardes.liste;
 }
 /** « Référence » (l'essai A) ou « Essai » (l'essai B) : la scène rejoue l'un ou l'autre, à la même heure ; le même choix revient à la journée en cours. */
 function montrerEssai(cle) {
@@ -2900,7 +2913,7 @@ function capturer(slot, silencieux) {
   snaps[slot].reponses = reponsesDuJour();
   // Évolution 16 f : de quoi rejouer l'essai dans la vue en direct — sa journée lue, son site, ses ateliers, les noms.
   const lue = journeeLue();
-  snaps[slot].direct = lue ? { j: lue, site: siteDeLaVue(), ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)), noms: nomsDesServices() } : null;
+  snaps[slot].direct = lue ? { j: lue, site: siteDeLaVue(), ateliers: JSON.parse(JSON.stringify(ateliersDeLaVue())), noms: nomsDesServices() } : null;
   if (silencieux) return;
   majCompare();
   toast('Scénario ' + slot + ' capturé');
