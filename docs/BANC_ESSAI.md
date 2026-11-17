@@ -661,6 +661,154 @@ condition ; la condition sur le retard ; deux jours ; la durée restante dans
 une sauvegarde ; `partsDuLot` ; la période ; les indicateurs de charge ; les
 empreintes de quatre journées d'avant ; le déterminisme).
 
+### Le relais sur la ligne du robot (évolution 21 a, c)
+
+Sur le terrain, deux équipes de robot se suivent sur la même ligne. Quand la
+première a fini ses propres commandes et qu'il lui reste du temps, elle
+avance le travail de la suivante, vol par vol, autant qu'elle peut ; elle ne
+s'arrête jamais au milieu d'un vol ; la suivante reprend là où elle s'est
+arrêtée. Le moteur faisait faire chaque commande (compagnie × classe) en
+entier par une seule équipe : l'équipe qui porte plus de plateaux que la
+ligne n'en fait pendant son poste dépassait son horaire, alors que celle
+d'avant finissait bien avant la fin du sien, et « Où ça coince » désignait le
+robot pour un dépassement que le terrain évite. La règle est automatique,
+comme à la plonge : aucun réglage. Elle ne change qu'un calcul, les équipes
+de robot qui **partagent une ligne** (la même clé de ligne qu'avant : le même
+service, hors « ligne propre »), le même jour de travail.
+
+- **L'équipe suivante** d'une équipe est celle dont le poste commence juste
+  après le sien sur cette ligne (à la même heure, la première de la liste des
+  équipes). Une équipe sous condition qui ne vient pas ce jour-là n'est pas
+  une équipe suivante.
+- **Qui avance.** Une équipe qui a fini ses propres commandes, qui est armée
+  (son minimum de personnes) et dont la présence n'est pas finie avance les
+  commandes de la suivante, tant que celle-ci n'est pas arrivée.
+- **Dans quel ordre.** D'abord la commande de la suivante dont le temps par
+  vol est le plus petit (le barème du service du robot), puis la suivante
+  dans cet ordre ; à égalité, ou sans temps par vol, la dernière de la liste
+  de la suivante d'abord. La suivante, elle, fait ses commandes dans l'ordre
+  de sa liste, comme avant. Dans une commande, les vols s'avancent dans
+  l'ordre des départs.
+- **L'unité de l'avance est le vol** : ses plateaux ÷ le débit que la
+  suivante a pour cette commande (c'est la même ligne). Un vol ne s'avance
+  que si ce qu'il attend en amont est prêt et si son matériel est là, selon
+  les règles de toujours. **L'ordre** : un vol dont l'amont n'est pas prêt
+  n'est pas avancé, et le suivant dans l'ordre non plus — l'avance attend,
+  comme une équipe attend son lot ; en « ordre souple » (§ 8), elle passe à
+  la première commande prête, dans l'ordre de l'avance. Le matériel ne
+  s'attend pas : s'il n'est pas là tout de suite, le vol n'est pas avancé.
+- **Un vol entamé en avance se finit toujours** : une pause due pendant ce
+  vol se prend à la fin du vol, pour sa durée entière. Seul un arrêt de la
+  ligne l'arrête, et il reprend avec elle. Les propres commandes d'une équipe
+  gardent leurs pauses d'avant.
+- **L'avance ne crée jamais d'heure sup** : l'équipe ne commence pas un vol
+  qu'elle ne peut pas finir avant la fin de sa présence. Elle ne commence
+  plus de vol dès que la suivante est arrivée ; elle finit celui en cours.
+- **La suivante prend la ligne quand elle est libre** (l'attente de la ligne
+  existait déjà). Elle fait ses commandes dans son ordre, sans les vols déjà
+  avancés : dans la commande entamée, elle reprend au premier vol non fait ;
+  une commande avancée en entier ne lui laisse rien.
+- **Une seule commande, avec ses parts.** Le journal garde une ligne par
+  commande, au nom de l'équipe qui l'a dans sa liste, avec `parts` (comme un
+  lavage en relais) : pour chaque part, l'équipe, le début, la fin, le
+  travail, l'arrêt, les plateaux, les vols, et `avance: true` pour la part
+  faite en avance. Chaque équipe est créditée de sa part ; la somme des
+  plateaux des parts est celle de la commande ; aucun vol n'est fait deux
+  fois, aucun n'est oublié.
+- **L'aval.** L'aval lit la commande d'un bloc : elle lui est livrée à la fin
+  de sa dernière part — à la fin de l'avance quand elle est avancée en
+  entier. Les vols d'une part ne partent pas vers l'aval avant.
+- **L'effectif calculé** de chaque équipe reste calculé sur ses propres
+  commandes, au barème (son plafond : § 10).
+- **Ne changent pas** : une équipe seule sur sa ligne, une équipe en « ligne
+  propre », le débit, le minimum de personnes, les arrêts de la ligne, les
+  renforts, les heures sup d'une équipe sur ses propres commandes, les autres
+  types d'équipe. Une journée où rien n'est avancé rend le résultat d'avant,
+  champ par champ.
+
+**Dans les résultats (21 c).** Tout ce qui se lit de la journée suit les
+parts : chaque équipe est au travail pendant la sienne. La fin d'une équipe
+de robot est la fin de sa dernière part ; « Où ça coince » et « La fin de
+chaque service » suivent. Les indicateurs de charge comptent les plateaux
+d'une part pour l'équipe qui les a faits, à la fin de sa part ; dans la file,
+la commande attend l'équipe qui l'a dans sa liste. Le planning des équipes
+dessine la commande sur les deux lignes, chacune pour sa part, avec le repère
+de relais de la plonge ; au survol, « Avancé par … : n vols, de hh:mm à
+hh:mm », « Avance pour … : n vols », « Repris par … à hh:mm ». La Synthèse
+dit « … avance n vols de … » ; le récapitulatif des équipes, « avance n vols
+de … » et « n vols déjà faits par … ». Le plan rejoué et la vue en direct
+font tourner la ligne pendant l'avance, avec l'équipe qui avance. Les
+classeurs : une ligne « Commande avancée » dans la feuille « Réponses »,
+trois colonnes de plus dans la feuille « Charge », seulement s'il y a une
+avance (`FORMATS_EXCEL.md` § 6 et 8).
+
+**Ce que le relais change aux mesures passées du robot.** Seules bougent les
+journées où deux équipes de robot partagent une ligne et où la première a du
+temps devant elle après ses commandes. Ces jours-là :
+
+- **La fin des équipes.** L'équipe suivante finit plus tôt, de la durée
+  avancée ; la ligne tourne le même temps au total. L'équipe qui avance finit
+  plus tard qu'avant — à la fin de son dernier vol avancé —, toujours dans sa
+  présence.
+- **Les dépassements.** Les heures sup de l'équipe suivante baissent de ce
+  qui a été avancé, ou disparaissent ; l'équipe qui avance n'en gagne aucune.
+  « Où ça coince » ne cite plus le robot quand le relais suffit à tenir les
+  deux postes ; il le cite encore, avec un dépassement plus court, quand il
+  ne suffit pas.
+- **Le besoin.** Le relais ne change pas le besoin : l'effectif calculé de
+  chaque équipe reste celui de ses propres commandes. L'occupation, elle, se
+  déplace : l'équipe qui avance travaille plus longtemps dans sa présence, la
+  suivante moins.
+- **L'aval.** Une commande entamée en avance est livrée plus tôt, ou à la
+  même heure. Quand la suivante arrive pendant un vol avancé, elle attend la
+  ligne : la commande qu'elle fait en premier peut être livrée plus tard, au
+  plus de la durée qui restait à ce vol. Les services qui suivent le robot
+  bougent d'autant ces jours-là.
+
+Les mesures du robot faites avant cette version (fins, heures sup, « Où ça
+coince », comparaison au réel du service du robot) sont donc à refaire sur
+ces journées ; le calage qui s'appuie sur les heures sup simulées du robot
+aussi.
+
+**Limite.** L'effectif calculé d'une équipe ne suit pas ses parts : quand une
+grande part des commandes de la suivante est avancée, la suivante garde
+l'effectif de toute sa liste alors qu'elle n'en fait qu'une partie, et
+l'équipe qui avance garde le sien alors qu'elle fait tourner la ligne plus
+longtemps. Le temps de la ligne n'en dépend pas (elle va à son débit) ; le
+besoin en personnes de chaque équipe, lui, est celui de sa liste, pas celui
+du travail qu'elle fait ce jour-là.
+
+Vérifications : `tests/robot-relais.test.cjs` (journées fictives calculées à
+la main : deux équipes sur une ligne, la première avance les vols de la
+dernière commande de la suivante dans l'ordre des départs, aucun vol fait
+deux fois ni oublié, la somme des plateaux des parts ; la ligne tourne le
+même temps au total, la suivante finit plus tôt de la durée avancée ; une
+pause due au milieu d'un vol avancé ; un vol qui ne tient pas avant la fin de
+la présence ; la suivante qui arrive pendant un vol avancé ; la première
+équipe sous son minimum ; un vol dont l'amont n'est pas prêt, avec et sans
+ordre souple ; un vol dont le matériel n'est pas là ; l'ordre des commandes
+avancées ; trois équipes sur une ligne ; le jour de travail, l'équipe sous
+condition qui ne vient pas ; la suivante qui ne finit pas, ou qui part sans
+avoir repris ; un arrêt de la ligne pendant un vol avancé ; les renforts ;
+la non-régression, champ par champ : sans temps libre, seule sur sa ligne, en
+« ligne propre », sans robot) ; `tests/robot-ligne.test.cjs` ;
+`tests/robot-relais-resultats.test.cjs` (sur l'unité fictive de
+`tests/robot-relais-fictif.cjs` : les indicateurs de charge, les réponses,
+« Où ça coince » avec un relais qui suffit et un relais qui ne suffit pas, le
+planning, le plan rejoué et la vue en direct, les feuilles « Réponses » et
+« Charge ») ; `tests/robot-relais-browser.cjs` (la commande en relais sur les
+deux lignes du planning avec son repère et ses mots, la Synthèse, « Où ça
+coince », le récapitulatif des équipes).
+
+**Contrôle** : `tests/captures-evolution-21-browser.cjs` fait seize captures
+sur une unité fictive, en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080 —
+le planning des équipes avec un relais de robot (la commande sur les deux
+lignes, le repère à la jointure, la légende), puis avec l'infobulle de la
+part reprise ; la Synthèse d'une journée où le relais ne suffit pas (la ligne
+du service du robot, la carte « Où ça coince »). Chacune est vérifiée (sa
+taille, ce qu'elle montre, la page qui tient sur la largeur) et gardée hors
+du dépôt (`ORY_CAPTURES`).
+
 ## 3. Le handling 24 h/24 : des tournées qui chargent puis déchargent
 
 Le handling travaille jour et nuit. Il charge les vols au départ et décharge
@@ -1872,6 +2020,56 @@ Vérifications :
   5 personnes ; le classeur du barème lui donne ses lignes ; après
   rechargement, le même calcul ; ses heures par vol retirées, ses
   5 personnes reviennent, dans la journée affichée aussi.
+
+### L'effectif calculé d'un robot ne dépasse pas ses postes de travail (évolution 21 b)
+
+Autour d'une ligne de robot, il y a toujours entre un minimum et un maximum
+de personnes, quel que soit le nombre de vols. L'effectif d'une équipe de
+robot se calculait au barème, avec un minimum (`personnesMin`) mais sans
+maximum : les jours chargés, le calcul mettait autour de la ligne plus de
+personnes qu'elle n'a de postes, alors que des personnes en plus ne
+l'accélèrent pas.
+
+- **Le réglage « Postes de travail »** d'une équipe (`personnesMax`), qui ne
+  limitait que ses renforts, plafonne aussi l'effectif **calculé** d'une
+  équipe de robot : de son minimum à ce maximum. Vide : pas de plafond, comme
+  avant. Plafonné, l'effectif le dit (`effectifs[équipe].plafond`).
+- **La durée de la ligne ne change pas** : elle va à son débit.
+- **Dans la fiche** d'une équipe de robot, le champ est toujours visible, à
+  côté du minimum : « au plus, renforts compris ». Un maximum sous le minimum
+  est refusé, sous le champ, et le minimum ne passe pas au-dessus du maximum.
+  Venu d'un fichier d'avant, un maximum sous le minimum ne s'applique pas :
+  le minimum l'emporte, la journée se joue, et un avis « à corriger » le dit.
+- **Le besoin du service, les indicateurs de charge et les classeurs** lisent
+  l'effectif plafonné.
+- **Ne changent pas** : un robot dont l'effectif est saisi, les équipes à la
+  main, un calcul qui n'atteint pas le maximum.
+
+**Ce que le plafond change aux mesures passées du robot.** Seules bougent les
+journées où l'effectif calculé d'une équipe de robot dépassait ses postes de
+travail. Le réglage existait déjà : une équipe de robot qui avait des postes
+de travail pour ses renforts est plafonnée dès cette version, sans rien
+régler. Ces jours-là :
+
+- **Le besoin** de l'équipe et celui de son service baissent jusqu'au
+  maximum ; les présents, la charge en ETP et l'arrondi au service suivent.
+- **La fin des équipes et les dépassements en durée** ne changent pas : la
+  ligne tourne le même temps. Ce qui se compte en personnes × durée baisse
+  avec le nombre de personnes : les heures sup, les minutes au travail, la
+  présence. L'occupation, leur rapport, ne change pas.
+- **La comparaison au réel** du service du robot, et une politique d'effectif
+  gardée avant cette version, sont à refaire : le simulé a changé.
+
+Vérifications : `tests/robot-plafond.test.cjs` (une journée fictive calculée
+à la main : un calcul au-dessus du maximum donne le maximum, la durée de la
+ligne ne change pas ; sous le maximum, et au maximum, le calcul d'avant,
+champ par champ ; sans maximum, l'empreinte du résultat d'avant ; un maximum
+sous le minimum : non appliqué, un avis « à corriger », la journée se joue ;
+le robot saisi et les équipes à la main ; le besoin, les indicateurs de
+charge et les réponses ; la sauvegarde, la restauration, l'export et l'import
+Excel) ; `tests/robot-plafond-browser.cjs` (le champ toujours visible à côté
+du minimum, avec ses deux effets ; les deux refus ; « au plus n postes » ;
+l'annulation).
 
 ### La charge de chaque équipe, et l'arrondi au service (évolution 11 a)
 

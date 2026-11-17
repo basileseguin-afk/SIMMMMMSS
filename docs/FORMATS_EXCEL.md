@@ -124,7 +124,7 @@ classeur ; l'import la relit, et un nom seul ambigu est signalé avec la clé à
 | Pas avant départ (h) | handling seulement : il ne commence pas un vol plus tôt (3 h par défaut) |
 | Compagnies chargées | handling seulement : `toutes`, ou `AF, TX` |
 | Vagues | mise à disposition non permanente : `J-1 14:00; J 04:00` ; vide = celles du site. Elle prime sur « Horaires », qui ne donne que la première. Ouverte comme une boutique (Permanent = oui) : `ouvert 07:00-18:00` |
-| Postes de travail | équipe qui prépare ou robot (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 5) : ses postes de travail ; les renforts ne la portent pas au-delà. Vide = pas de limite. La colonne n'est écrite que si une équipe en a ; sans elle, l'import garde ceux du site |
+| Postes de travail | équipe qui prépare ou robot (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 5) : ses postes de travail ; les renforts ne la portent pas au-delà. Pour un robot dont l'effectif est calculé, ils plafonnent aussi cet effectif, de son minimum à ce maximum (évolution 21 b, `BANC_ESSAI.md` § 10) ; un maximum sous le minimum ne s'applique pas, et un avis « à corriger » le dit. Vide = pas de limite. La colonne n'est écrite que si une équipe en a ; sans elle, l'import garde ceux du site |
 | Ordre des lots | équipe qui prépare ou robot (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 8) : `souple` (un lot prêt n'attend pas un lot en retard) ou `strict` (l'ordre de la liste) ; vide = le réglage général. La colonne n'est écrite que si une équipe a le sien ; sans elle, l'import garde celui du site |
 
 ### Feuille « Fabrications »
@@ -756,6 +756,18 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
   plonge lisent les parts : `Au travail`, `Homme-minutes` et `Unités
   terminées` comptent sa part de chaque vol, et le vol fini pour l'équipe qui
   le finit. Le classeur de la période ne les a pas.
+- **Le relais sur la ligne du robot** (évolution 21), dans le classeur de la
+  journée : la feuille Charge gagne trois colonnes, à la fin (après celles de
+  la plonge, s'il y en a), **seulement si** une équipe de robot a avancé des
+  vols pour l'équipe suivante — sinon la feuille d'avant, telle quelle. `Vols
+  avancés pour l’équipe suivante` (les vols qu'elle a faits pour la
+  suivante), `Travail en avance (min)` (le temps de la ligne sur ces vols) et
+  `Vols déjà faits par l’équipe d’avant` (sur la ligne de la suivante : les
+  vols de ses commandes qu'elle n'a pas eu à faire). Les autres colonnes
+  d'une équipe de robot lisent les parts : `Au travail` et `Unités terminées`
+  comptent, pour chaque équipe, les plateaux de sa part, à la fin de sa
+  part ; la file compte la commande pour l'équipe qui l'a dans sa liste. Le
+  classeur de la période ne les a pas.
 - Le JSON des outils les porte aussi : `simuler-journee` rend
   `indicateursCharge` à côté de `resultat` (qui ne change pas) ;
   `simuler-periode`, le bilan (`indicateursCharge` par jour de travail, par
@@ -957,6 +969,11 @@ Une ligne par mesure, dans l'ordre du contrat :
   l'équipe qui arrive (correction 19 : « W1 : Plonge après-midi 20:00 → 21:00 (60 min), arrêté à 21:00, repris par
   Plonge nuit 22:00 → 22:30 (30 min) ; propre à 22:30 ») et une ligne `Lavage arrêté` par vol arrêté à une fin de
   présence que personne ne reprend ce jour-là (en détail, sa part faite et « reste m min à laver le lendemain »).
+  Une ligne de robot en relais (évolution 21) a une ligne `Commande avancée` par commande qu'une équipe a avancée pour
+  la suivante (min de ligne faites en avance ; en détail, ses parts : « SUD/YC (Robot soir) : avancée par Robot matin
+  05:50 → 07:26 (3 vols, 81 min), reprise par Robot soir 07:26 → 07:54 (1 vol, 28 min) ; finie à 07:54 » ; « pas
+  finie » quand la suivante ne l'a pas finie). La `Fin du dernier lot` et le `Dépassement` d'une équipe de robot
+  lisent la fin de sa dernière part.
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
   pas prêt, vol sans équipe, commande en retard) : son retard en
   minutes, au seuil de retard, et sa cause ; sans exception, une ligne

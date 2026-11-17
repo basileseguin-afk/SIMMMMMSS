@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (d) : contrôle et doc
+
+Quatrième partie de l'évolution 21. Aucun code de la page ni du moteur ne
+change : des captures de contrôle et la documentation. La version 2 n'est
+pas touchée.
+
+- **Captures de contrôle**, sur une unité fictive, en clair et en sombre, à
+  1 366 × 768 et 1 920 × 1 080 : le planning des équipes avec un relais de
+  robot (la commande sur les deux lignes, le repère, la légende), puis avec
+  l'infobulle de la part reprise ; la Synthèse d'une journée où le relais ne
+  suffit pas (la ligne du service du robot, la carte « Où ça coince »).
+  Seize captures vérifiées, gardées hors du dépôt (`ORY_CAPTURES`).
+- **Le cahier des charges** : la règle du relais sur une ligne de robot
+  (M27), le plafond de l'effectif calculé (M28), la fin d'une équipe de
+  robot en relais et le besoin plafonné dans le contrat des résultats.
+- **Le banc d'essai** : les deux règles, et ce qu'elles changent aux mesures
+  passées du robot — la fin des équipes, les dépassements, le besoin, ce que
+  reçoit l'aval ; la limite de l'effectif calculé quand une grande part est
+  avancée.
+- **Les formats Excel** : la colonne « Postes de travail », les trois
+  colonnes de la feuille « Charge », la ligne « Commande avancée » de la
+  feuille « Réponses ».
+
+Fichiers : `tests/captures-evolution-21-browser.cjs` (nouveau),
+`docs/CAHIER_DES_CHARGES.md`, `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`,
+`README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (c) : le relais du robot dans les résultats
 
 Troisième partie de l'évolution 21. Aucun calcul de la journée ne change :
