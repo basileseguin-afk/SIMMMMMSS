@@ -3,8 +3,9 @@
  * thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 :
  *   — (a) deux services d'une même zone (la préparation et le montage) avec
  *     chacun des lots en attente : une seule file, à la suite ;
- *   — (b) un site disposé, à l'ouverture : de face, les colonnes de gauche à
- *     droite, les rangées du bas en bas de l'écran ;
+ *   — (b) un site disposé, à l'ouverture : les colonnes de gauche à droite,
+ *     les rangées du bas en bas de l'écran — de face jusqu'à l'évolution 21 (f),
+ *     depuis à l'inclinaison de la maquette, le cap à peine tourné ;
  *   — (c) le poste de travail réglé pour tout un service : ses équipes à des
  *     trolleys ;
  *   — (d) la légende à l'ouverture de la page (repliée sous 1 500 px de large,
@@ -108,15 +109,16 @@ const CLES=['ory-ui-direct-legende','ory-ui-en-ce-moment'];
     await capturer('1-files-d-une-meme-zone');
     await decadrer();
 
-    // (b) Un site disposé s'ouvre de face : les colonnes de gauche à droite, les rangées du bas en bas de l'écran.
+    // (b) Un site disposé s'ouvre comme on l'a rangé : les colonnes de gauche à droite, les rangées du bas en bas de l'écran
+    //     (l'inclinaison de la maquette, le cap à peine tourné : évolution 21 f).
     assert.deepEqual(angle(await dessinee()),[45,35.26],V+'sans disposition : l’angle de la maquette');
     const e2=await regler(d=>{Sim.ateliers.regleDisposition(d,'');},DISPOSITION);
-    assert.deepEqual(angle(e2),[0,55.26],V+'avec une disposition : de face, de trois quarts haut');
+    assert.deepEqual(angle(e2),[25,35.26],V+'avec une disposition : l’inclinaison de la maquette, le cap à peine tourné');
     assert.ok(e2.tient&&e2.ajustee,V+'le site disposé tient entier');
-    const z=await page.evaluate(()=>Object.fromEntries(Sim.direct.site.zones.map(q=>{const p=(x,y)=>Sim.direct.ecranDe(x,y,0);return [q.id,{x:p(q.x+q.w/2,q.y+q.h/2)[0],haut:p(q.x,q.y)[1],bas:p(q.x,q.y+q.h)[1]}];})));
+    const z=await page.evaluate(()=>Object.fromEntries(Sim.direct.site.zones.map(q=>{const p=Sim.direct.ecranDe(q.x+q.w/2,q.y+q.h/2,0);return [q.id,{x:p[0],y:p[1]}];})));
     assert.ok(z.magasin.x<z.cuisine.x&&z.cuisine.x<z.food.x&&z.food.x<z.armement.x,V+'la première colonne à gauche de la dernière');
-    for(const id of ['magasin','decontam','cuisine','dotation','food','armement','plonge'])assert.ok(z.quais.haut>z[id].bas-0.5,V+'le quai, une rangée du bas, est sous '+id);
-    await capturer('2-site-dispose-de-face');
+    for(const id of ['magasin','decontam','cuisine','dotation','food','armement','plonge'])assert.ok(z.quais.y>z[id].y+5,V+'le quai, une rangée du bas, est sous '+id);
+    await capturer('2-site-dispose-a-l-ouverture');
     await regler(()=>{Sim.ateliers.regleDisposition(null,'');});
     assert.deepEqual(angle(await dessinee()),[45,35.26],V+'la disposition automatique : l’angle de la maquette');
 
@@ -172,6 +174,6 @@ const CLES=['ory-ui-direct-legende','ory-ui-en-ce-moment'];
    }finally{ch.effacer();await ctx.close();}
   }
   assert.equal(faites.length,20);
-  console.log('captures-correction-21-browser : ok — '+faites.length+' captures de contrôle de la correction 21 dans '+dossier+' (deux services d’une même zone, une seule file ; un site disposé, de face ; le poste de travail d’un service ; la légende à l’ouverture puis dans l’autre état ; thème clair et sombre ; 1 366 × 768 et 1 920 × 1 080) ; le résultat, les indicateurs et les réponses de la journée identiques avant, pendant et après');
+  console.log('captures-correction-21-browser : ok — '+faites.length+' captures de contrôle de la correction 21 dans '+dossier+' (deux services d’une même zone, une seule file ; un site disposé, à l’ouverture ; le poste de travail d’un service ; la légende à l’ouverture puis dans l’autre état ; thème clair et sombre ; 1 366 × 768 et 1 920 × 1 080) ; le résultat, les indicateurs et les réponses de la journée identiques avant, pendant et après');
  }catch(e){console.error(e);process.exitCode=1;}finally{site.effacer();await browser.close();}
 })();

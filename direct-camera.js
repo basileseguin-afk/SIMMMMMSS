@@ -5,8 +5,8 @@
  *  perspective, le dessin reste schématique et les tailles comparables. La
  *  caméra tourne autour du site (son cap, sur 360°), s'incline (son site, de
  *  25° à 80° au-dessus de l'horizon), se déplace et zoome. Elle s'ouvre à
- *  l'angle de la maquette ; devant un site que l'utilisateur a disposé, de
- *  face (correction 21 b).
+ *  l'angle de la maquette ; devant un site que l'utilisateur a disposé, à la
+ *  même inclinaison, presque de face (correction 21 b, évolution 21 f).
  *
  *  Le repère de la scène : x le long du site (les avions du côté des grands
  *  x), y dans sa profondeur, z vers le haut, en mètres. Une caméra :
@@ -35,13 +35,15 @@
   /** Un pas de rotation et d'inclinaison (les boutons, les touches), en degrés ; un pas de zoom. */
   const PAS_CAP = 15, PAS_SITE = 10, PAS_ZOOM = 1.25;
   /**
-   * L'angle d'un site que l'utilisateur a disposé (correction 21 b) : de face — ses colonnes vont de gauche à droite, ses
-   * rangées du bas sont en bas de l'écran, comme dans « Disposer les zones » —, de trois quarts haut : deux pas
-   * d'inclinaison au-dessus de la maquette, on voit encore les personnes et les chariots.
+   * L'angle d'un site que l'utilisateur a disposé (correction 21 b, évolution 21 f) : l'inclinaison de la maquette, et un
+   * cap légèrement tourné — un peu plus de la moitié de celui de la maquette, du même côté. Ses colonnes se lisent
+   * toujours de gauche à droite, ses rangées du bas restent devant, en bas de l'écran, comme dans « Disposer les zones » ;
+   * et les rayonnages, les tables et les personnes montrent une face latérale. (De face, au cap 0, la scène se lisait
+   * comme un plan vu du dessus : les volumes ne montraient que leur dessus.)
    */
-  const CAP_DE_FACE = 0, SITE_DE_FACE = SITE_MAQUETTE + 2 * PAS_SITE;
-  /** L'angle d'ouverture d'un site ({ cap, site }), et de « Tout voir » : de face s'il est disposé, sinon celui de la maquette. */
-  const ouverture = dispose => (dispose === true ? { cap: CAP_DE_FACE, site: SITE_DE_FACE } : { cap: CAP_MAQUETTE, site: SITE_MAQUETTE });
+  const CAP_DISPOSE = 25, SITE_DISPOSE = SITE_MAQUETTE;
+  /** L'angle d'ouverture d'un site ({ cap, site }), et de « Tout voir » : celui d'un site disposé, sinon celui de la maquette. */
+  const ouverture = dispose => (dispose === true ? { cap: CAP_DISPOSE, site: SITE_DISPOSE } : { cap: CAP_MAQUETTE, site: SITE_MAQUETTE });
 
   const fini = x => Number.isFinite(x);
   const borne = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -121,6 +123,49 @@
     const zoom = borne(Math.min(bw > 0 ? lw / bw : ZOOM_MAX, bh > 0 ? lh / bh : ZOOM_MAX), ZOOM_MIN, ZOOM_MAX);
     const milieu = auSol(un, ecran, (e.x0 + e.x1) / 2, (e.y0 + e.y1) / 2);
     return { ...cam, zoom, cx: milieu.x, cy: milieu.y };
+  }
+
+  /** Une partie libre de la toile ne sert à cadrer que si elle garde au moins ce côté, en pixels. */
+  const LIBRE_MIN = 160;
+  const SANS_BANDE = { haut: 0, bas: 0, gauche: 0, droite: 0 };
+  /**
+   * Les parties libres d'une toile { w, h } que des commandes recouvrent (évolution 21 f). `couvert` : { barre, legende } —
+   * le rectangle { x0, y0, x1, y1 }, en pixels de la toile, de la barre de la caméra et de la légende dépliée (ou rien).
+   * La barre est en bas : tout ce qui est sous son bord haut est gardé libre. La légende est dans un coin du bas : la
+   * partie libre est à côté d'elle, ou au-dessus d'elle. Rend les bandes à garder ({ haut, bas, gauche, droite }) de
+   * chaque partie libre ; sans rien qui recouvre : une seule, sans bande.
+   */
+  function partiesLibres(toile, couvert) {
+    const w = (toile && toile.w) || 0, h = (toile && toile.h) || 0, c = couvert || {};
+    const dedans = r => (r && fini(r.x0) && fini(r.y0) && fini(r.x1) && fini(r.y1) && r.x1 > r.x0 && r.y1 > r.y0 && r.x1 > 0 && r.y1 > 0 && r.x0 < w && r.y0 < h ? r : null);
+    const barre = dedans(c.barre), legende = dedans(c.legende), bas = barre ? borne(h - barre.y0, 0, h) : 0;
+    if (!legende) return [{ ...SANS_BANDE, bas }];
+    const aCote = (legende.x0 + legende.x1) / 2 < w / 2 ? { ...SANS_BANDE, bas, gauche: borne(legende.x1, 0, w) } : { ...SANS_BANDE, bas, droite: borne(w - legende.x0, 0, w) };
+    return [aCote, { ...SANS_BANDE, bas: Math.max(bas, borne(h - legende.y0, 0, h)) }];
+  }
+  /**
+   * La caméra, à son angle, qui fait tenir la boîte dans la partie libre de la toile où elle est la plus grande, la boîte
+   * au centre de cette partie : { cam, bandes } — les bandes gardées libres. Sans rien qui recouvre : toute la toile,
+   * comme `cadrer`. Une toile trop petite pour ses commandes : toute la toile aussi, quitte à passer dessous.
+   */
+  function cadrerLibre(cam, toile, boite, couvert) {
+    const w = (toile && toile.w) || 0, h = (toile && toile.h) || 0;
+    let mieux = null;
+    for (const bandes of partiesLibres(toile, couvert)) {
+      const ecran = { w, h, ...bandes }, v = visible(ecran);
+      if (v.x1 - v.x0 < LIBRE_MIN || v.y1 - v.y0 < LIBRE_MIN) continue;
+      const c = cadrer(cam, ecran, boite);
+      if (!mieux || c.zoom > mieux.cam.zoom + 1e-9) mieux = { cam: c, bandes };
+    }
+    return mieux || { cam: cadrer(cam, { w, h, ...SANS_BANDE }, boite), bandes: { ...SANS_BANDE } };
+  }
+  /**
+   * La même image avec d'autres bandes : la caméra dont le centre est le point du sol sous le milieu de la nouvelle zone
+   * visible. Changer de bandes ne déplace rien à l'écran.
+   */
+  function sousAutresBandes(cam, ecran, bandes) {
+    const v = visible({ w: ecran.w, h: ecran.h, ...bandes }), p = auSol(cam, ecran, v.cx, v.cy);
+    return { ...cam, cx: p.x, cy: p.y };
   }
 
   /** La boîte tient entière dans la zone visible, à `marge` pixels de ses bords. */
@@ -212,8 +257,8 @@
     return l;
   }
 
-  const api = { CAP_MAQUETTE, SITE_MAQUETTE, CAP_DE_FACE, SITE_DE_FACE, ouverture, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PART_DE_MARGE, margeDe, PAS_CAP, PAS_SITE, PAS_ZOOM,
-    camera, visible, projecteur, projeter, auSol, deplacer, zoomer, tourner, incliner, emprise, cadrer, tient, mursDuFond, facesDevant,
+  const api = { CAP_MAQUETTE, SITE_MAQUETTE, CAP_DISPOSE, SITE_DISPOSE, ouverture, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PART_DE_MARGE, margeDe, PAS_CAP, PAS_SITE, PAS_ZOOM,
+    LIBRE_MIN, camera, visible, projecteur, projeter, auSol, deplacer, zoomer, tourner, incliner, emprise, cadrer, partiesLibres, cadrerLibre, sousAutresBandes, tient, mursDuFond, facesDevant,
     ordre, decouper, entre, placerEtiquettes, recouvrements };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDirectCamera = api;

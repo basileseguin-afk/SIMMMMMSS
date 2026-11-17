@@ -12,11 +12,14 @@
  *    — à l'écran : tourner à gauche, à droite, incliner, −, +, « Cadrer » (le
  *      service choisi), « Tout voir ».
  *  À l'ouverture et sur « Tout voir », la caméra revient à l'angle de la
- *  maquette — devant un site que l'utilisateur a disposé, à la vue de face :
- *  ses colonnes de gauche à droite, ses rangées du bas en bas de l'écran
- *  (correction 21 b) — et cadre le bâtiment et les avions présents à cette heure — pas
+ *  maquette — devant un site que l'utilisateur a disposé, à la même
+ *  inclinaison, le cap à peine tourné : ses colonnes de gauche à droite, ses
+ *  rangées du bas en bas de l'écran (correction 21 b, évolution 21 f) — et
+ *  cadre le bâtiment et les avions présents à cette heure — pas
  *  l'aire vide (évolution 19, retouche) — dans la zone visible, à la marge du
- *  cadrage près ; tant qu'on n'a ni déplacé ni zoomé, ce cadre y tient encore
+ *  cadrage près : toute la toile ; pour un site disposé, sa partie libre, hors
+ *  de la barre de la caméra et de la légende dépliée (évolution 21 f). Tant
+ *  qu'on n'a ni déplacé ni zoomé, ce cadre y tient encore
  *  à tout angle, et il suit les avions : un avion qui arrive hors du cadre
  *  l'élargit, le dernier parti le resserre. Avec « réduire les animations », la caméra change d'angle d'un coup.
  *
@@ -30,7 +33,9 @@
 
   /**
    * Les bandes de la toile gardées libres : aucune — la scène d'abord. Le site cadré remplit la toile, à la marge du
-   * cadrage près (direct-camera.js, `margeDe`) ; les commandes de la caméra se posent dans un coin, par-dessus.
+   * cadrage près (direct-camera.js, `margeDe`) ; les commandes de la caméra se posent dans un coin, par-dessus. Un site
+   * que l'utilisateur a disposé se cadre, lui, dans la partie libre de la toile (évolution 21 f) : ses bandes se
+   * mesurent à chaque cadrage entier — l'ouverture, « Tout voir », une toile qui change de taille.
    */
   const BANDES = { haut: 0, bas: 0, gauche: 0, droite: 0 };
   /** La durée d'un changement d'angle animé (ms) ; un pas de déplacement au clavier (px) ; les degrés par pixel glissé. */
@@ -88,9 +93,43 @@
       const r = root.devicePixelRatio || 1, w = toile.clientWidth, h = toile.clientHeight;
       if (toile.width !== Math.round(w * r) || toile.height !== Math.round(h * r)) { toile.width = Math.round(w * r); toile.height = Math.round(h * r); }
       if (w !== ecran.w || h !== ecran.h) {
-        ecran = { w, h, ...BANDES };
-        if (v.ajustee && v.site) { v.cam = C().cadrer(anim ? anim.a : v.cam, ecran, boite()); anim = null; }
+        ecran = { ...ecran, w, h };
+        if (v.ajustee && v.site) { const c = cadrerTout(anim ? anim.a : v.cam); anim = null; v.cam = c; }
       }
+    }
+
+    /* ---- la partie libre de la toile (évolution 21 f) ---------------------------- */
+
+    /** Ce qui recouvre la toile, en pixels de la toile : la barre de la caméra, et la légende quand elle est dépliée. */
+    function couvert() {
+      const t = toile.getBoundingClientRect();
+      const rect = el => {
+        if (!el || el.hidden || el.offsetParent === null) return null;
+        const q = el.getBoundingClientRect();
+        return q.width > 0 && q.height > 0 ? { x0: q.left - t.left, y0: q.top - t.top, x1: q.right - t.left, y1: q.bottom - t.top } : null;
+      };
+      const coin = hote.querySelector('.direct-coin');
+      return { barre: rect(hote.querySelector('.direct-cmd')), legende: coin && coin.open ? rect(coin) : null };
+    }
+    /** Pose les bandes gardées libres, sans rien déplacer à l'écran : la caméra (et un changement d'angle en cours) se lit avec elles. */
+    function poserBandes(b) {
+      if (b.haut === ecran.haut && b.bas === ecran.bas && b.gauche === ecran.gauche && b.droite === ecran.droite) return;
+      if (ecran.w && ecran.h) {
+        v.cam = C().sousAutresBandes(v.cam, ecran, b);
+        if (anim) anim = { ...anim, de: C().sousAutresBandes(anim.de, ecran, b), a: C().sousAutresBandes(anim.a, ecran, b) };
+      }
+      ecran = { w: ecran.w, h: ecran.h, ...b };
+    }
+    /**
+     * Un cadrage entier, à l'angle de `cam` : le bâtiment et les avions présents, dans toute la toile ; pour un site que
+     * l'utilisateur a disposé, au centre de la partie libre de la toile — hors de la barre de la caméra, et de la légende
+     * si elle est dépliée à cet instant. Replier ou déplier la légende ensuite ne déplace pas la caméra.
+     */
+    function cadrerTout(cam) {
+      if (!(v.site && v.site.disposition)) { poserBandes(BANDES); return C().cadrer(cam, ecran, boite()); }
+      const libre = C().cadrerLibre(cam, ecran, boite(), couvert());
+      poserBandes(libre.bandes);
+      return libre.cam;
     }
 
     /* ---- la caméra ---------------------------------------------------------- */
@@ -107,14 +146,14 @@
     const incliner = (d, anime) => allerA(recadree(C().incliner(but(), d)), anime);
     function zoomer(f, X, Y, anime) { v.ajustee = false; allerA(C().zoomer(but(), ecran, f, X, Y), anime); }
     function deplacer(dX, dY, anime) { v.ajustee = false; allerA(C().deplacer(but(), ecran, dX, dY), anime); }
-    /** L'angle d'ouverture du site : celui de la maquette ; de face, si l'utilisateur a disposé ses zones (correction 21 b). */
+    /** L'angle d'ouverture du site : celui de la maquette ; le cap à peine tourné, si l'utilisateur a disposé ses zones (correction 21 b, évolution 21 f). */
     const angleDOuverture = () => C().ouverture(!!(v.site && v.site.disposition));
     /** « Tout voir » : l'angle d'ouverture, le bâtiment et les avions présents, à la marge du cadrage près. */
     function toutVoir(anime) {
       v.ajustee = true;
       if (!v.site) { demander(); return; }
       v.cadre = presents();
-      allerA(C().cadrer(C().camera(angleDOuverture()), ecran, boite()), anime);
+      allerA(cadrerTout(C().camera(angleDOuverture())), anime);
     }
     /** « Cadrer » : la zone du service choisi, à l'angle courant ; sans service choisi, tout. */
     function cadrer(anime) {
@@ -142,6 +181,8 @@
       if (autreSite || r !== avant || x.ateliers !== ateliers) {
         // Les îlots : un par atelier réglé, avec ses personnes (celles de la journée calculée, sinon celles du réglage).
         ateliers = x.ateliers || null; v.site = x.site || null;
+        // Un site sans disposition réglée se lit sur toute la toile, comme avant (évolution 21 f) : sans rien déplacer à l'écran.
+        if (autreSite && !(v.site && v.site.disposition)) poserBandes(BANDES);
         const parId = new Map(((r && r.ateliers) || []).map(e => [e.id, e.personnes]));
         v.ilots = v.site && ateliers ? D().ilots(v.site, ateliers, id => parId.get(id)) : [];
         // Les avions de la journée : leurs places au bord de la scène, du côté des avions ; la tranche d'un chariot.
@@ -156,7 +197,7 @@
         // Un site nouveau : son angle d'ouverture, le bâtiment et les avions présents. La toile pas encore mesurée (la page
         // s'ouvre) : l'angle est pris tout de suite, le cadrage se fera à sa taille.
         v.ajustee = true; anim = null; v.cadre = presents();
-        if (v.site) v.cam = ecran.w ? C().cadrer(C().camera(angleDOuverture()), ecran, boite()) : C().camera(angleDOuverture());
+        if (v.site) v.cam = ecran.w ? cadrerTout(C().camera(angleDOuverture())) : C().camera(angleDOuverture());
       } else if (v.ajustee && v.site && ecran.w) {
         // La scène encore cadrée suit les avions : ceux qui sont là ne sont jamais hors du cadre. Une autre journée, ou la
         // première heure rejouée, se recadre d'un coup ; un avion qui arrive ou qui part, en glissant.

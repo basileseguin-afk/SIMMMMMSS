@@ -2349,6 +2349,14 @@ function choisirVueDirect(mode) {
   document.body.dataset.direct = relief ? 'relief' : 'plat';
   document.querySelectorAll('#direct-choix [data-direct-mode]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.directMode === 'relief') === relief)));
   if (relief) rendreDirect();
+  // Caché pendant la vue en relief, le plan dessiné ne se repeint pas. Quand il revient, il se trace à l'heure courante
+  // avant d'être montré (évolution 21 f) : jamais les chiffres de l'heure où on l'a quitté.
+  else retracerLePlan();
+}
+/** Le plan dessiné, remis à l'écran : cadré s'il l'était, et tracé à l'heure rejouée du moment. */
+function retracerLePlan() {
+  if (cadreAuto) vueEnsemble();
+  else { ajusterTextesPlan(); peindrePlanFlux(); }
 }
 function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');

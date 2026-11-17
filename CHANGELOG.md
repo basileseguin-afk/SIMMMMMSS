@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 21 (f) : la vue en direct, trois retouches d'affichage
+
+Dernière partie de l'évolution 21. Aucun calcul ne change. Sans disposition
+réglée, la vue en relief est celle d'avant. La version 2 n'est pas touchée.
+
+- **L'angle d'ouverture d'un site disposé** : l'inclinaison de la maquette
+  et un cap à peine tourné (25°), à l'ouverture et sur « Tout voir ». Les
+  colonnes se lisent toujours de gauche à droite, les rangées du bas restent
+  en bas de l'écran, et les volumes montrent une face latérale. (De face, la
+  scène se lisait comme un plan vu du dessus.)
+- **Le cadrage d'un site disposé** : au centre de la partie libre de la
+  toile, hors de la barre de la caméra et de la légende dépliée. Replier ou
+  déplier la légende ne déplace pas la caméra ; « Tout voir » recadre selon
+  son état du moment.
+- **Le retour à « À plat »** : le plan se trace à l'heure courante avant
+  d'être montré ; il ne montre plus un instant les chiffres de l'heure où on
+  l'avait quitté.
+
+Fichiers : `direct-camera.js`, `direct-vue.js`, `sim.js`, `index.html`
+(empreintes), `tests/direct-cadrage.test.cjs`,
+`tests/direct-cadrage-browser.cjs` (nouveaux), `tests/direct-face.test.cjs`,
+`tests/direct-face-browser.cjs`, `tests/captures-correction-21-browser.cjs`,
+`README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 21 (e) : une compagnie sans chargement par camion ne lève plus d'avis
 
 Cinquième partie de l'évolution 21. Le calcul ne change pas d'un champ : un
