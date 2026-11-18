@@ -862,7 +862,7 @@ async function supprimerServiceUnite(id){
 function initUnite(){
   if(!window.OrlyUnite||!Sim.ateliers)return;
   // « Services et équipes » (évolution 22 b) : la page de la version 1 hérite de celle de unite.js, commun aux deux versions.
-  const Page=(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
+  const Page=(window.OrlyCheminsPage&&OrlyCheminsPage.PageChemins)||(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
   Sim.unite=new Page({
     resultats:voirDansLesResultats, rattachement:rattachementService, supprimes:servicesSupprimes, jouent:()=>window.OrlyJouent||null,
     at:()=>Sim.ateliers, rg:()=>Sim.reglages,

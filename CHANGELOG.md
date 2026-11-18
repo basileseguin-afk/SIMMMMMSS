@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (c1) : « Chemins », la nouvelle page
+
+Troisième partie de l’étape B de l’audit, coupée en deux : (c1) la page
+nouvelle, (c2) les quatre pages d’avant qui y mènent. Aucun calcul ne change,
+ni le format de la sauvegarde. La version 2 n’est pas touchée, ni aucun
+fichier commun.
+
+- **À gauche, la liste des chemins**, avec pour chacun son nombre de
+  commandes et d’étapes : les chemins que suivent des classes, leurs
+  variantes, les chemins à part. « Ajouter un chemin » en tête ; en bas,
+  « Toutes les commandes ont un chemin », ou le nombre de celles qui n’en ont
+  pas, avec un lien qui les montre.
+- **À droite, le chemin choisi** : ses étapes en cases reliées, dans
+  l’éditeur d’avant. **Un clic sur une étape montre, dessous, le tableau
+  « commande, équipe à cette étape, temps par vol »** : l’équipe d’une
+  commande s’y choisit ; une commande sans équipe est « à corriger ».
+- **Le nom d’une équipe mène à sa fiche**, dans « Services et équipes » :
+  elle ne se règle que là.
+- Repliées : « Qui le suit » (classes, exceptions, le chemin de chacune de
+  ses commandes, une variante) et « Commandes exclues et ajoutées ».
+  « Suivre ces commandes dans les résultats » mène à « Détails ›
+  Commandes ».
+- Un chemin à part — celui d’une seule commande — se règle avec le même
+  éditeur que les autres.
+- **La page tient dans l’écran** : elle ne défile pas, chaque colonne défile
+  seule ; texte de 13 px au moins.
+
+Fichiers : `chemins-page.js`, `chemins-page.css` (nouveaux), `sim.js`,
+`index.html` ; `tests/chemins-page.test.cjs`,
+`tests/chemins-page-browser.cjs` (nouveaux), `tests/nav.cjs`,
+`tests/mon-unite-browser.cjs`, `tests/chemin-choisi-browser.cjs` ;
+`README.md`.
+
 ## 2026-11-18 — Évolution 22 (b2) : les cinq pages d’avant mènent à « Services et équipes »
 
 Fin de la partie (b). « Services et équipes » est une seule page : les cinq

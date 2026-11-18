@@ -23,7 +23,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    // Un flux créé de toutes pièces, dans Flux de production.
-   await nav.aller(page,'mu-flux');
+   await nav.aller(page,'mu-flux');await nav.ajouterChemin(page);
    await page.fill('[data-mu-flux-nouveau] input[name=nom]','Économie robot');
    await page.selectOption('[data-mu-flux-nouveau] select[name=source]','');
    await page.locator('[data-mu-flux-nouveau] button[type=submit]').click();await attendre();
@@ -31,9 +31,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      Sim.ateliers.changer(()=>{const q=Sim.ateliers.state.parcours.find(x=>x.id===p.id);q.noeuds=['magasin','prepa'];q.liens=[{de:'magasin',vers:'prepa'}];},'');return p.id;});
 
    // 1. Qui suit quel chemin : ouvert, une liste par commande, le flux créé y figure.
+   //    (Version 1, évolution 22 c : la liste d'une commande est dans la fiche du chemin qu'elle suit, section « Qui le
+   //    suit » — `chez` ouvre ce chemin et déplie la section.)
+   const v1=version==='v1';
+   const chez=async cmd=>{if(!v1)return;
+     await page.locator(`#mu-flux .mu-liste [data-mu-flux-choisir="${await page.evaluate(c=>OrlyParcours.fluxDe(Sim.ateliers.state,c).id,cmd)}"]`).click();await attendre();
+     await nav.sectionChemin(page,'suivi');};
+   await chez('AF/YC');
    const liste=page.locator('[data-mu-cmd-chemin="AF/YC"]');
+   if(v1){
+    assert.equal(await page.locator('[data-mu-qui-suit]').count(),0,version+' : plus de tableau de toutes les commandes');
+    assert.equal(await page.locator('#mu-flux [data-mu-cmd-chemin]').count(),await page.evaluate(()=>OrlyParcours.commandesDuType(Sim.ateliers.state,OrlyParcours.fluxDe(Sim.ateliers.state,'AF/YC').id,Sim.ateliers.classes).length),version+' : une liste par commande du chemin');
+   }else{
    assert.equal(await page.locator('[data-mu-qui-suit]').evaluate(d=>d.open),true,version+' : ouvert');
    assert.equal(await page.locator('[data-mu-cmd-chemin]').count(),await page.evaluate(()=>Sim.ateliers.classes.length),'une liste par commande');
+   }
    assert.match(await liste.locator('option[value=""]').innerText(),new RegExp('« Sans cuisine » · '+mot+' de sa classe'));
    assert.ok((await liste.locator('option').allInnerTexts()).includes('Économie robot'),version+' : le flux créé est proposé');
    await liste.selectOption(robot);await attendre();
@@ -41,6 +53,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const r=await page.evaluate(()=>(Sim.ateliers.resultat.parClasse['AF/YC']||{}).services||[]);
    assert.ok(!r.includes('cuisine')&&!r.includes('decontam'),version+' : le calcul suit le chemin choisi '+r);
    // La liste garde le choix, et « flux de sa classe » revient en arrière.
+   await chez('AF/YC');
    assert.equal(await page.locator('[data-mu-cmd-chemin="AF/YC"]').inputValue(),robot);
    await page.locator('[data-mu-cmd-chemin="AF/YC"]').selectOption('');await attendre();
    assert.equal(await suit('AF/YC'),'Sans cuisine');
@@ -56,7 +69,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 3. Le chemin à part d'une autre commande, choisi, devient un flux partagé.
    const apart=await page.evaluate(()=>{const st=Sim.ateliers.state,id='propre-fwi';Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;
      s.parcours.push({id,nom:'Chemin de FWI',noeuds:['prepa'],liens:[]});s.parcoursClasse={...s.parcoursClasse,'FWI/BC':id};},'');return id;});
-   await nav.aller(page,'mu-flux');
+   await nav.aller(page,'mu-flux');await chez('CRL/BC');
    const l3=page.locator('[data-mu-cmd-chemin="CRL/BC"]');
    assert.match(await l3.locator(`option[value="${apart}"]`).innerText(),/Chemin de FWI \(chemin de FWI · Business : il deviendra partagé\)/);
    await l3.selectOption(apart);await attendre();

@@ -142,6 +142,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(v.type&&v.auto,'une variante partagée');
   await page.locator(`.mu-liste [data-mu-flux-choisir="${v.id}"]`).click();await attendre();
   assert.ok(await page.locator('#mu-flux .gr-noeud[data-noeud="'+apm+'"]').count(),'le diagramme montre le nouveau service');
+  // (Évolution 22 c : « Qui le suit » est une section repliée de la fiche du chemin ; dépliée, elle le reste.)
+  await nav.sectionChemin(page,'suivi');
   assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/CRL · Business suit ce chemin, alors que les Business suivent « Complet »/);
   await page.locator(`[data-mu-flux-nom="${v.id}"]`).fill('Business APM');await page.locator(`[data-mu-flux-nom="${v.id}"]`).press('Tab');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,v.id),'Business APM');
@@ -169,21 +171,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`.mu-fiche [data-mu-voir-flux="${cf}"]`).click();await attendre();
   assert.equal(await sous(),'mu-flux');
   assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf,'le flux cliqué est ouvert');
-  // Un flux mène au chemin d'une de ses commandes…
-  await page.locator('#mu-flux [data-mu-flux-chemin]').selectOption('AF/BC');await attendre();
-  assert.equal(await sous(),'at-chemins');
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
-  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le chemin « Complet »/);
-  assert.equal(await page.locator('#at-parcours .pc-outils').count(),0,'un flux partagé ne se modifie pas ici');
-  // … qui montre, sur chaque service, l'équipe qui la prépare, et y mène.
-  await page.locator('#at-parcours [data-noeud=prepa]').click();await attendre();
-  await page.locator('#at-parcours [data-pc-action=service-ouvrir]').click();await attendre();
+  // Un chemin montre, à chaque étape, l'équipe de chacune de ses commandes (évolution 22 c : le tableau de l'étape)…
+  assert.equal(await page.locator('#mu-flux [data-mu-flux-chemin]').count(),0,'plus de liste « voir le chemin d’une de ses commandes »');
+  await page.locator('#mu-flux [data-mu-graphe] [data-noeud=prepa]').click();await attendre();
+  assert.equal(await page.locator('#mu-flux .ch-etape').getAttribute('data-ch-etape'),'prepa');
+  assert.equal(await page.locator('#mu-flux .ch-table tr[data-ch-cmd="AF/BC"]').count(),1,'AF Business, à cette étape');
+  // … et mène au service.
+  await page.locator('#mu-flux .ch-etape [data-mu-ouvrir-svc=prepa]').click();await attendre();
   assert.equal(await sous(),'mu-services');
   assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-mu-fiche'),'prepa');
   // Dans une équipe, une commande de « Dans l'ordre » ouvre son chemin.
   await nav.equipe(page,e1);
   await page.locator(`.mu-equipe[data-at="${e1}"] [data-mu-chemin="AF/BC"]`).click();await attendre();
   assert.equal(await sous(),'at-chemins');
+  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
+  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le chemin « Complet »/);
+  assert.equal(await page.locator('#at-parcours .pc-outils').count(),0,'un flux partagé ne se modifie pas ici');
   // Le bandeau renvoie au flux, pour toutes ses commandes.
   await page.locator('[data-pc-action=flux-ouvrir]').click();await attendre();
   assert.equal(await sous(),'mu-flux');

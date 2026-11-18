@@ -190,6 +190,28 @@ le rouge ne sert qu’aux retards.
      tableau des vols du jour est sous l’import (évolution 19 e).
    - *Planche retour* : quand chaque vol revient à l’unité, pour la plonge.
 2. **Chemins** — par où passe chaque commande.
+   - *Chemins* (version 1, évolution 22 c : la page réunit cinq pages
+     d’avant) : **à gauche, la liste des chemins**, avec pour chacun son
+     nombre de commandes et d’étapes — les chemins que suivent des classes,
+     leurs variantes, puis les chemins à part (celui d’une seule commande) ;
+     en tête, « Ajouter un chemin » ; en bas, « Toutes les commandes ont un
+     chemin », ou le nombre de celles qui n’en ont pas, avec un lien qui les
+     montre (chacune y choisit son chemin ; les liens entre services ne
+     s’ouvrent que de là). **À droite, le chemin choisi** : son nom,
+     « Dupliquer », « Supprimer », puis **ses étapes en cases reliées**, dans
+     l’éditeur d’avant (ajouter une étape, tirer un lien, retirer,
+     réorganiser). **Un clic sur une étape montre, dessous, le tableau
+     « commande, équipe à cette étape, temps par vol »** : l’équipe d’une
+     commande se choisit là (aucune, une équipe du service, une nouvelle) ;
+     **le nom d’une équipe mène à sa fiche**, dans « Services et équipes », où
+     elle se règle ; une commande sans équipe à cette étape est « à
+     corriger » ; le temps par vol se lit, et se règle dans la fiche du
+     service. Repliées : « Qui le suit » (ses classes, ses exceptions, le
+     chemin de chacune de ses commandes, une variante pour l’une d’elles) et
+     « Commandes exclues et ajoutées ». « Suivre ces commandes dans les
+     résultats » mène à « Détails › Commandes ». La page ne défile pas :
+     chaque colonne défile seule ; texte de 13 px au moins. En (c1), les
+     quatre autres pages sont encore des onglets ; (c2) les retire.
    - *Vue d’ensemble* : tous les chemins d’un coup d’œil, comme un plan de
      métro. Une colonne par flux (puis les variantes et les chemins à part),
      avec sa couleur, ses commandes et ses classes ; une ligne par service,
@@ -217,7 +239,7 @@ le rouge ne sert qu’aux retards.
      Le service ou le lien choisi s’affiche au-dessus, avec ce qu’on peut en
      faire ; dans *Chemin d’une commande*, la case d’un service s’ouvre à
      droite, comme l’inspecteur du plan.
-   - *Chemins de production* (« Flux de production » avant l’évolution 19) : un flux par type de production (Économie,
+   - *Chemins de production* (« Flux de production » avant l’évolution 19 ; **en version 2 seulement** — en version 1, la page « Chemins », évolution 22 c) : un flux par type de production (Économie,
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
      on tire une flèche d’un service à l’autre, on ajoute ou retire un service)
@@ -1871,6 +1893,7 @@ aucun vol.
 | `unite.js` / `unite.css` | Prêt à simuler ?, Chemins de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `services-page.js` / `services-page.css` | « Services et équipes » (v1, évolution 22 b) : la page hérite de `MonUnite` (`unite.js`, commun, non modifié) ; la liste des services de l’amont vers l’aval, « Ajouter un service », les services supprimés ; la fiche du service (nom et type, tableau « Ses équipes », section des temps selon le type, réglages avancés) et la fiche d’une équipe au même endroit, faites des morceaux de la fiche d’avant, sans aucun résultat ; `resumeEquipe`, `sousTitre` (ce que disent le tableau et la liste) ; la feuille de style : une liste à gauche, une fiche à droite, chaque colonne défile seule, texte de 13 px au moins ; `allerA` (évolution 22 b2) : arriver par le nom ou le lien d’une page d’avant, au bon endroit (la liste, « Ses équipes », les temps du service, les services supprimés) |
 | `fichiers-page.js` / `fichiers-page.css` | « Fichiers » : le tableau des classeurs Excel (v1, évolution 22 b2) — une ligne par classeur, une colonne par sens (« Importer », « Exporter »), « sans objet » quand le sens n’existe pas ; `poser` y range les boutons que chaque module a déjà construits (les mêmes gestes, les mêmes fichiers) et leur fait dire le sens de la colonne ; pour l’instant, les trois classeurs des pages que « Services et équipes » a reprises (« Équipes et horaires », « Temps par vol, vue d’ensemble », « Temps par vol, service par service ») |
+| `chemins-page.js` / `chemins-page.css` | « Chemins » (v1, évolution 22 c) : la page hérite de « Services et équipes » (donc de `MonUnite`, `unite.js`, commun, non modifié) ; la liste des chemins (`chemins`, `compte`), les commandes sans chemin (`sansChemin`), le tableau d’une étape (`ligneEtape` : l’équipe d’une commande à une étape, à la chaîne, commune, ou « à corriger ») ; un seul éditeur, le diagramme de `graphe.js`, pour tout chemin de l’unité ; les gestes d’un chemin à part ; `allerChemins` ; la feuille de style : une liste à gauche, le chemin à droite, chaque colonne défile seule |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | `stockage.js` | Plusieurs onglets ne s’écrasent plus (correction 14) : chargé avant les autres scripts, un garde à la place de `localStorage` ; les données du site portent un numéro de révision, un onglet en retard n’écrit rien et le dit par un bandeau (« Recharger »), averti aussi par l’événement `storage` |
 | `theme-tot.js` | Le thème, avant tout dessin, et le premier accès au stockage (correction 22 b) : appelé en tête de `index.html` et de `accueil.html`, il lit `document.cookie` (une barrière : le navigateur n’y répond qu’une fois le document installé), puis le thème choisi. Plus de script en ligne qui lit le stockage : un document qui le touche trop tôt peut en être détaché |
@@ -2136,6 +2159,8 @@ aucun vol.
 | `tests/services-page.test.cjs` | « Services et équipes » (v1, évolution 22 b), sans navigateur : ce que le tableau dit d’une équipe (nom, début, jour, personnes — « calculé » sans nombre quand l’effectif se calcule —, ce qu’elle prépare), d’une plonge, d’un handling, d’une mise à disposition ; ce que la liste dit d’un service (son nombre d’équipes, « toujours ouvert ») ; le nom de la section des temps selon le type |
 | `tests/services-page-browser.cjs` | « Services et équipes » dans la page (v1, évolution 22 b), sur l’unité fictive : la liste de l’amont vers l’aval, « Ajouter un service » en tête, un service supprimé retrouvé par le lien du bas et remis ; la fiche du service (nom et type en tête, tableau des équipes, section des temps selon le type, réglages avancés repliés, lien vers les résultats) ; la fiche d’une équipe au même endroit, au clic et au clavier, avec un retour ; aucun résultat sur chaque service et chaque équipe ; dix-huit réglages faits ici et, par les pages d’avant, dans la version 2 : les deux sauvegardes changent des mêmes champs, aux mêmes valeurs ; une équipe changée de service, que la page suit ; la page ne défile pas; et, depuis l’évolution 22 (b2) : un service de quatre équipes tient en un écran à 1 366 × 768 ; les cinq pages d’avant n’existent plus, un lien vers l’une d’elles mène ici, au bon endroit ; « Annuler » et « Rétablir » sur les deux histoires (équipes, temps par vol) ; les trois classeurs dans « Fichiers », leurs boutons et leurs fichiers ; une mise à disposition où une équipe prépare retrouve ses temps par vol ; la fiche reste à sa place quand un champ est validé |
 | `tests/fichiers-page.test.cjs` | « Fichiers », le tableau des classeurs Excel (v1, évolution 22 b2), sans navigateur : une ligne par classeur, une colonne par sens ; un sens qui n’existe pas dit « sans objet » ; les trois classeurs des pages reprises par « Services et équipes » |
+| `tests/chemins-page.test.cjs` | « Chemins » (v1, évolution 22 c), sans navigateur : la liste des chemins (ceux des classes, les variantes, les chemins à part ; leurs commandes, leurs étapes), les commandes sans chemin, ce que le tableau d’une étape dit d’une commande (son équipe, à la chaîne, une mise à disposition, « à corriger ») |
+| `tests/chemins-page-browser.cjs` | « Chemins » dans la page (v1, évolution 22 c), sur l’unité fictive, à 1 366 × 768 : la liste (commandes, étapes), « Ajouter un chemin » en tête, les commandes sans chemin en bas ; le chemin choisi et son éditeur ; le tableau d’une étape (commande, équipe, temps par vol, « à corriger ») ; le nom d’une équipe qui mène à sa fiche ; huit gestes (créer un chemin, y mettre une étape, y rattacher une commande, choisir son équipe, renommer, retirer une étape, dupliquer, supprimer) faits ici et, par les pages d’avant, dans la version 2 : les deux sauvegardes changent des mêmes champs, aux mêmes valeurs ; une commande sans chemin qui choisit le sien ; une variante ; les commandes exclues et ajoutées ; un chemin à part, « Regrouper » ; la page ne défile pas |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués — en version 1, depuis l’évolution 22 (b2) : l’heure d’une équipe dans sa fiche (Entrée enregistre, une heure impossible refusée), les temps par vol dans la fiche du service (nombres à droite, Entrée descend dans la colonne, la fiche ne saute pas) |
 | `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites ; en version 1, la rubrique « En direct » de la fiche des raccourcis, avec les touches de la scène (évolution 16 g), celle de la version 2 inchangée |

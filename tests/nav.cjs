@@ -178,6 +178,17 @@ async function section(page, cle) {
   const d = page.locator(`#mu-services details[data-mu-section="${cle}"]`);
   if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
 }
+/* La page « Chemins » (v1, évolution 22 c) : une section repliée de la fiche d'un chemin (« suivi » : qui le suit ;
+ * « commandes » : les commandes exclues et ajoutées), et « Ajouter un chemin », en tête de la liste. En version 2, les
+ * unes sont dépliées et l'autre est déjà là : rien à faire. */
+async function sectionChemin(page, cle) {
+  const d = page.locator(`#mu-flux details[data-ch-section="${cle}"]`);
+  if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
+}
+async function ajouterChemin(page) {
+  const d = page.locator('#mu-flux details[data-ch-ajout]');
+  if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
+}
 /* « Ajouter un service » (v1, évolution 22 b) : son formulaire se déplie en tête de la liste. En version 2, il est déjà là. */
 async function ajouterService(page) {
   const d = page.locator('#mu-services details.se-ajout');
@@ -236,4 +247,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

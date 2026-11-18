@@ -1,0 +1,67 @@
+/* « Chemins » (version 1, évolution 22 c) : cinq pages en une. Une liste à gauche, le chemin choisi à droite ; la page
+ * tient dans l'écran d'un portable (1 366 × 768) : chaque colonne défile seule. Le diagramme est celui de graphe.js
+ * (graphe.css, commun avec la version 2 : cette feuille ne le modifie pas). */
+
+/* La page ne défile pas : le cadre prend la hauteur qui reste dans la vue, sous son titre et sous les points à
+   regarder de la page, repliés ou non (la vue range ses blocs en colonne ; le cadre prend le reste). */
+#mu-flux{margin:0}
+body[data-sous="mu-flux"] #view-ateliers:not([hidden]){display:flex;flex-direction:column;padding-bottom:12px}
+body[data-sous="mu-flux"] #view-ateliers>*{flex:none}
+body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
+#mu-flux .ch-cadre{grid-template-columns:minmax(220px,264px) minmax(0,1fr);gap:16px;align-items:stretch;height:100%}
+#mu-flux .ch-liste{position:static;max-height:none;min-height:0;overflow:auto;padding:2px 4px 2px 2px}
+#mu-flux .ch-fiche{min-height:0;overflow:auto;padding:12px 18px;font-size:var(--ds-t-13)}
+
+/* La liste : « Ajouter un chemin » en tête, les chemins, et en bas ce qu'il en est des commandes sans chemin. */
+.ch-liste .mu-svc{flex:none}
+.ch-liste .mu-groupe{margin:6px 0 0}
+.ch-regrouper{flex:none;align-self:flex-start;padding:2px;font-size:var(--ds-t-13);text-align:left}
+.ch-bas{flex:none;margin:8px 0 0;padding:6px 2px 2px;border-top:1px solid var(--ds-bordure);font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.ch-bas .ch-sans{padding:0;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);text-align:left}
+.ch-bas .ch-sans.actif{color:var(--ds-texte-1)}
+
+/* L'en-tête du chemin : son nom, ce qu'il compte, dupliquer et supprimer. */
+.ch-fiche .ch-tete{row-gap:4px;margin-bottom:8px;padding-bottom:8px}
+.ch-compte{align-self:center;color:var(--ds-texte-2);white-space:nowrap}
+
+/* Le diagramme, puis ce qui est choisi : une étape (son tableau), un lien, ou le geste à faire. */
+.ch-graphe{margin:0}
+.ch-geste,.ch-lien{margin:8px 0 0}
+.ch-lien{display:flex;align-items:center;gap:10px}
+.ch-etape{margin:10px 0 0;padding:10px 12px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-2);background:var(--ds-surface-2)}
+.ch-etape-tete{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:0 0 8px;font-size:var(--ds-t-14)}
+.ch-table{width:100%;font-size:var(--ds-t-13)}
+.ch-table th,.ch-table td{padding:4px 10px;text-align:left;vertical-align:middle}
+.ch-table th[scope="row"]{font-weight:var(--ds-g-moyen);white-space:nowrap;background:none;text-transform:none;letter-spacing:0;font-size:var(--ds-t-13);color:var(--ds-texte-1)}
+.ch-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ch-table .puce-classe{margin-right:6px}
+.ch-eq{display:flex;align-items:center;gap:4px 10px}
+.ch-eq select{flex:0 1 230px;min-width:120px;height:34px;min-height:0;padding-top:0;padding-bottom:0;line-height:1.2}
+.ch-eq .ch-equipe{white-space:nowrap}
+.ch-a-corriger{color:var(--ds-alerte-texte,var(--warn-stroke));font-weight:var(--ds-g-fort)}
+.ch-table tr.ch-manque>th{box-shadow:inset 3px 0 0 var(--warn-stroke)}
+.ch-table tr.ch-vise{background:var(--ds-accent-doux)}
+
+/* Les sections repliées, et le lien vers les résultats. */
+.ch-fiche .mu-etape{margin-top:8px;padding-top:8px}
+.ch-variante{margin-top:10px}
+.ch-suivent{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 18px;margin:6px 0 0}
+.ch-suit{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch-suit>span{white-space:nowrap}
+.ch-suit .puce-classe{margin-right:6px}
+.ch-suit select{flex:1 1 200px;min-width:0;max-width:250px;height:32px;min-height:0;padding-top:0;padding-bottom:0}
+.ch-resultats{margin:10px 0 0;padding-top:8px;border-top:1px solid var(--ds-bordure)}
+.ch-ajoutees{margin:0 0 8px}
+.ch-liens{display:flex;align-items:center;gap:10px;margin:12px 0 0}
+
+/* Sur un écran étroit, la liste passe au-dessus du chemin, et la page défile. */
+@media (max-width:900px){
+  body[data-sous="mu-flux"] #view-ateliers:not([hidden]){display:block}
+  #mu-flux .ch-cadre{grid-template-columns:1fr;height:auto}
+  #mu-flux .ch-liste{max-height:240px}
+  #mu-flux .ch-fiche{overflow:visible}
+}
+
+/* Texte de 13 px au moins sur la page (les fiches reprises écrivent leurs notes en 11 ou 12 px). */
+#mu-flux .ch-cadre :is(small,i,label,th,td,li,p,summary,input,select,button,.mini-note,.btn,.mu-badge,.at-chip,.mu-svc-chaine){font-size:max(var(--ds-t-13),1em)}
+#mu-flux .ch-cadre :is(h3,h4) small,#mu-flux .ch-cadre :is(label,.mu-classe) small{font-size:var(--ds-t-13)}
