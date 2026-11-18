@@ -1240,7 +1240,7 @@
     const groupe = (g, titre) => { const l = tous.filter(x => x.groupe === g); return l.length ? `<optgroup label="${titre}">${l.map(opt).join('')}</optgroup>` : ''; };
     return `<select ${attr}="${esc(c.id)}" aria-label="Chemin suivi par ${esc(P.libelleClasse(c.id))}">
       <option value=""${choisi ? '' : ' selected'}>${deClasse ? '« ' + esc(deClasse.nom) + ' » · chemin de sa classe' : 'Aucun : sa classe n’a pas de chemin'}</option>
-      ${groupe('sien', 'Son chemin à elle')}${groupe('flux', 'Chemins de production')}${groupe('variante', 'Variantes')}${groupe('apart', 'Chemins à part')}</select>`;
+      ${groupe('sien', 'Son chemin à elle')}${groupe('flux', 'Chemins')}${groupe('variante', 'Variantes')}${groupe('apart', 'Chemins à part')}</select>`;
   }
 
   function assignerType(etat, cmd, typeId) {

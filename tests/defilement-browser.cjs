@@ -70,7 +70,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await page.mouse.move(900,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
     assert.equal(await f.evaluate(x=>x.scrollTop),0,version+' : la molette sur la fiche la remonte : on n’est pas bloqué en bas');
    }else await remonte('mu-services','plonge');
-   await remonte('at-chemins');
+   if(v1){
+    // v1 (évolution 22 c) : « Chemins » tient dans l'écran ; le chemin choisi descend dans sa colonne, et remonte ; la page ne bouge pas.
+    await nav.aller(page,'mu-flux');await page.waitForTimeout(250);
+    const c=page.locator('#mu-flux .ch-fiche');
+    await page.locator('#mu-flux .ch-compte').hover();for(let k=0;k<12;k++){await page.mouse.wheel(0,600);await page.waitForTimeout(40);}await attendre();
+    assert.ok(await c.evaluate(x=>x.scrollTop)>100,version+' : le chemin descend dans sa colonne');
+    assert.equal(await deborde(),0,version+' : la page ne bouge pas');
+    for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
+    assert.equal(await c.evaluate(x=>x.scrollTop),0,version+' : et remonte');
+   }else await remonte('at-chemins');
 
    // 2 bis. Sur la Liste des services, et sur chaque service de Services et
    //        équipes (retour d'usage du 07/10 : « le scroll ne marche pas sur la

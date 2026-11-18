@@ -5,6 +5,49 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (c2) : les quatre pages d’avant mènent à « Chemins »
+
+Seconde moitié de la partie (c). Aucun calcul ne change, ni le format de la
+sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **« Chemins » est une seule entrée du menu, sans onglets internes.** « Vue
+  d’ensemble », « Chemin d’une commande » et « Étapes de chaque commande » ne
+  sont plus des pages ; **il n’y a plus qu’un éditeur de chemin dans
+  l’application**.
+- **Leurs noms mènent à « Chemins », au bon endroit** : par « Aller à… »
+  (« Vue d’ensemble », « Chemins de production », « Chemin d’une commande »,
+  « Étapes de chaque commande »), par un lien vers l’une d’elles, par la page
+  que le navigateur avait retenue. Le chemin d’une commande, demandé depuis
+  une équipe, un tableau ou « Aller à… », s’ouvre sur son étape, la commande
+  en évidence.
+- **« Étapes de chaque commande » n’est plus une page de réglage** : le
+  tableau (qui prépare chaque commande, service par service, à quelle heure ;
+  une commande se suit dans le temps) se lit dans « Détails › Commandes »,
+  replié sous les commandes. « Suivre ces commandes dans les résultats », dans
+  « Chemins », y mène et le déplie ; une cellule ramène au chemin de la
+  commande.
+- **« Liens entre services » n’est jamais au menu** : elle s’ouvre depuis les
+  commandes sans chemin de « Chemins » (ou par « Aller à… »), et « Chemins »
+  reste marquée.
+- Dans le tableau d’une étape : **« Relier à… »** relie deux étapes sans la
+  souris ; dans un service encore sans équipe qui sert toutes les commandes
+  (handling, mise à disposition, plonge), **« + » crée l’équipe du service**,
+  pas celle d’une commande (correctif de (c1)).
+- Les gestes « Créer son chemin (une équipe par service) » et « Dupliquer
+  pour… » de « Chemin d’une commande » ne sont pas repris : une commande a sa
+  variante, ou choisit un chemin dans la liste, et son équipe à chaque étape
+  se choisit dans le tableau de l’étape. Le temps en stock sur un lien du
+  chemin ne s’y lit plus (aucun résultat sur une page de réglage) : il se lit
+  dans la frise de la commande et dans « Stocks et retours ».
+
+Fichiers : `onglets.js`, `sim.js`, `ateliers.js`, `chemins-page.js`,
+`chemins-page.css`, `outils/vocabulaire-regles.cjs`, `mots/` (régénéré),
+`index.html` ; `tests/chemins-page-browser.cjs`, `tests/onglets.test.cjs`,
+`tests/vocabulaire.test.cjs`, `tests/nav.cjs` et les tests navigateur qui
+suivent les pages ; `README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (c1) : « Chemins », la nouvelle page
 
 Troisième partie de l’étape B de l’audit, coupée en deux : (c1) la page

@@ -803,7 +803,7 @@
     /** Un service qui sert tout le monde : les flux qui passent par lui. */
     besoinFlux(service, classes) {
       const st = this.etat, types = PC.types(st);
-      if (!types.length) return '<p class="mini-note">Aucun chemin de production pour l’instant : dessinez-les dans Chemins › Chemins de production.</p>';
+      if (!types.length) return '<p class="mini-note">Aucun chemin de production pour l’instant : dessinez-les dans L’unité › Chemins.</p>';
       return `<ul class="mu-besoins">${types.map(t => {
         const dedans = P.servicesDuParcours(t).includes(service), n = PC.commandesDuType(st, t.id, classes).length;
         return `<li><label class="chk"><input type="checkbox" data-mu-besoin="${esc(t.id)}" data-service="${esc(service)}"${dedans ? ' checked' : ''}>

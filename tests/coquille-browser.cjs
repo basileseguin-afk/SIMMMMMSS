@@ -111,9 +111,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Au clavier, les entrées se suivent en colonne : bas et haut, le focus suit.
    await page.locator('#sous-onglets [data-sous-onglet=mu-services]').focus();await page.keyboard.press('ArrowDown');await attendre();
    if(v1){
-    // v1 : l'entrée suivante est « Chemins », qui rouvre sa dernière page.
-    assert.equal(await page.evaluate(()=>OrlyOnglets.page(document.body.dataset.sous).groupe),'chemins');
-    assert.equal(await page.evaluate(()=>document.activeElement.dataset.entree),'groupe:chemins','le focus suit');
+    // v1 : l'entrée suivante est « Chemins » (une page, évolution 22 c).
+    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.entree),'mu-flux','le focus suit');
    }else{
     assert.equal(await actif(),'at-recap');
     assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'at-recap','le focus suit');

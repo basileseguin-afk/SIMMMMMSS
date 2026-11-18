@@ -88,7 +88,7 @@ test('chaque copie est à jour, aucune règle n’est inutile : node outils/voca
 test('le code d’une copie est celui du module commun : seul le texte de ses chaînes change', () => {
   // Les chaînes d'un seul mot qui changent : des mots affichés (un titre de colonne, un pluriel), pas des clés.
   const UN_MOT = {
-    'unite.js': ['Flux → Chemin', 'flux → chemin', 'flux → chemins'], 'parcours.js': ['Flux → Chemin', 'Flux → Chemins de production'],
+    'unite.js': ['Flux → Chemin', 'flux → chemin', 'flux → chemins'], 'parcours.js': ['Flux → Chemin', 'Flux → Chemins'],
     'reglages.js': ['Case → Équipe'], 'echanges.js': ['Atelier → Équipe', 'Ateliers → Équipes', 'Case → Équipe', 'Cases → Récap des équipes']
   };
   for (const f of REGLES.communs) {

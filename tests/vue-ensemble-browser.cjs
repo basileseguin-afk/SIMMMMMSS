@@ -6,7 +6,8 @@
  *   - les diagrammes, en étapes : de haut en bas, une bande par étape, sans
  *     défilement de côté ; survoler un service éclaire sa chaîne ;
  *   - « En ligne » revient à l'ancienne disposition, et le choix est retenu.
- *   v1 et v2. */
+ *   v1 et v2. En version 1, depuis l'évolution 22 (c), « Vue d'ensemble » a rejoint « Chemins » : la liste des chemins
+ *   (ses commandes, ses étapes) en tient lieu, et une étape s'ajoute dans le chemin choisi ; les diagrammes sont les mêmes. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -22,39 +23,62 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
 
-   // 1. Chemins s'ouvre sur la vue d'ensemble : une colonne par flux.
-   await nav.entree(page,'groupe:chemins','chemins');await attendre();
-   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte',version+' : Chemins s’ouvre sur la vue d’ensemble');
-   const flux=await page.evaluate(()=>OrlyParcours.types(Sim.ateliers.state).map(t=>t.id));
-   assert.deepEqual(await page.locator(`${C} [data-mu-carte-flux]`).evaluateAll(bs=>bs.map(b=>b.dataset.muCarteFlux)),flux,version+' : une colonne par flux');
-   // Une ligne par service des chemins, rangées par étape (de haut en bas).
-   const services=await page.evaluate(()=>[...new Set(OrlyParcours.types(Sim.ateliers.state).flatMap(t=>MoteurProduction.servicesDuParcours(t)))].sort());
-   const lignes=await page.locator(`${C} tbody tr`).evaluateAll(trs=>trs.map(t=>t.dataset.muCarteSvc));
-   assert.deepEqual([...lignes].sort(),services,version+' : une ligne par service');
-   assert.equal(lignes[0],'appros','la réception, en haut');
-   assert.ok(lignes.indexOf('cuisine')<lignes.indexOf('prepa'),'la cuisine avant le montage');
-   assert.match(await page.locator(`${C} tbody .mu-ct-etape`).first().textContent(),/Étape 1/);
-   // Une pastille là où le flux passe, rien ailleurs : « Sans cuisine » ne passe pas par la cuisine.
+   const v1=version==='v1';
    const arret=(f,s)=>page.locator(`${C} [data-mu-carte-arret="${f}|${s}"]`);
-   assert.equal(await arret('complet','cuisine').count(),1);
-   assert.equal(await arret('sans-cuisine','cuisine').count(),0);
-   assert.equal(await page.locator(`${C} [data-mu-carte-ajout="sans-cuisine|cuisine"]`).count(),1,'mais on peut l’y faire passer');
-   assert.match(await arret('complet','cuisine').getAttribute('title'),/« Complet » passe par Cuisine — après Légumerie/);
+   if(v1){
+    // 1. « Chemins » s'ouvre sur la liste des chemins : une ligne par chemin, ses commandes et ses étapes.
+    await nav.entree(page,'mu-flux','organisation');await attendre();
+    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux',version+' : « Chemins » est une page');
+    assert.equal(await page.locator('#mu-carte').count(),0,version+' : plus de page « Vue d’ensemble »');
+    const flux=await page.evaluate(()=>OrlyParcours.types(Sim.ateliers.state).map(t=>t.id));
+    assert.deepEqual(await page.locator('#mu-flux .ch-liste [data-mu-flux-choisir]').evaluateAll(bs=>bs.map(b=>b.dataset.muFluxChoisir)),flux,version+' : une ligne par chemin');
+    for(const t of await page.locator('#mu-flux .ch-liste [data-mu-flux-choisir]').allInnerTexts())assert.match(t,/\d+ commandes? · \d+ étapes?/,version+' : '+t);
+    // 2. Une étape de plus : le chemin y passe, à sa place.
+    await page.locator('#mu-flux .ch-liste [data-mu-flux-choisir=sans-cuisine]').click();await attendre();
+    assert.equal(await page.locator('#mu-flux [data-mu-graphe] [data-noeud=cuisine]').count(),0,'« Sans cuisine » ne passe pas par la cuisine');
+    await page.selectOption('#mu-flux [data-mu-flux-ajout]','decontam');await attendre();
+    assert.ok(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),version+' : la légumerie entre dans « Sans cuisine »');
+    assert.equal(await page.locator('#mu-flux [data-mu-graphe] [data-noeud=decontam]').count(),1,'et son étape apparaît');
+    // « Annuler » revient en arrière.
+    await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
+    assert.equal(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),false);
+    // 3. Une étape choisie dans le chemin : sa chaîne est éclairée.
+    await page.locator('#mu-flux .ch-liste [data-mu-flux-choisir=complet]').click();await attendre();
+    await page.locator('#mu-flux [data-mu-graphe] [data-noeud=cuisine]').click();await attendre();
+   }else{
+    // 1. Chemins s'ouvre sur la vue d'ensemble : une colonne par flux.
+    await nav.entree(page,'groupe:chemins','chemins');await attendre();
+    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte',version+' : Chemins s’ouvre sur la vue d’ensemble');
+    const flux=await page.evaluate(()=>OrlyParcours.types(Sim.ateliers.state).map(t=>t.id));
+    assert.deepEqual(await page.locator(`${C} [data-mu-carte-flux]`).evaluateAll(bs=>bs.map(b=>b.dataset.muCarteFlux)),flux,version+' : une colonne par flux');
+    // Une ligne par service des chemins, rangées par étape (de haut en bas).
+    const services=await page.evaluate(()=>[...new Set(OrlyParcours.types(Sim.ateliers.state).flatMap(t=>MoteurProduction.servicesDuParcours(t)))].sort());
+    const lignes=await page.locator(`${C} tbody tr`).evaluateAll(trs=>trs.map(t=>t.dataset.muCarteSvc));
+    assert.deepEqual([...lignes].sort(),services,version+' : une ligne par service');
+    assert.equal(lignes[0],'appros','la réception, en haut');
+    assert.ok(lignes.indexOf('cuisine')<lignes.indexOf('prepa'),'la cuisine avant le montage');
+    assert.match(await page.locator(`${C} tbody .mu-ct-etape`).first().textContent(),/Étape 1/);
+    // Une pastille là où le flux passe, rien ailleurs : « Sans cuisine » ne passe pas par la cuisine.
+    assert.equal(await arret('complet','cuisine').count(),1);
+    assert.equal(await arret('sans-cuisine','cuisine').count(),0);
+    assert.equal(await page.locator(`${C} [data-mu-carte-ajout="sans-cuisine|cuisine"]`).count(),1,'mais on peut l’y faire passer');
+    assert.match(await arret('complet','cuisine').getAttribute('title'),/« Complet » passe par Cuisine — après Légumerie/);
 
-   // 2. Une case vide : le flux y passe, à sa place.
-   await page.locator(`${C} tr[data-mu-carte-svc=decontam]`).hover();
-   await page.locator(`${C} [data-mu-carte-ajout="sans-cuisine|decontam"]`).click();await attendre();
-   assert.ok(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),version+' : la légumerie entre dans « Sans cuisine »');
-   assert.equal(await arret('sans-cuisine','decontam').count(),1,'et sa pastille apparaît');
-   // « Annuler » revient en arrière.
-   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
-   assert.equal(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),false);
+    // 2. Une case vide : le flux y passe, à sa place.
+    await page.locator(`${C} tr[data-mu-carte-svc=decontam]`).hover();
+    await page.locator(`${C} [data-mu-carte-ajout="sans-cuisine|decontam"]`).click();await attendre();
+    assert.ok(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),version+' : la légumerie entre dans « Sans cuisine »');
+    assert.equal(await arret('sans-cuisine','decontam').count(),1,'et sa pastille apparaît');
+    // « Annuler » revient en arrière.
+    await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
+    assert.equal(await page.evaluate(()=>MoteurProduction.servicesDuParcours(Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine')).includes('decontam')),false);
 
-   // 3. Une pastille ouvre le flux, ce service choisi et sa chaîne éclairée.
-   await nav.aller(page,'mu-carte');
-   await arret('complet','cuisine').click();await attendre();
-   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux');
-   assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),'complet');
+    // 3. Une pastille ouvre le flux, ce service choisi et sa chaîne éclairée.
+    await nav.aller(page,'mu-carte');
+    await arret('complet','cuisine').click();await attendre();
+    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux');
+    assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),'complet');
+   }
    const G='#mu-flux [data-mu-graphe]';
    assert.equal(await page.locator(`${G} [data-noeud=cuisine]`).evaluate(n=>n.classList.contains('sel')),true,'la cuisine est choisie');
    assert.equal(await page.locator(`${G} .gr-svg`).evaluate(s=>s.classList.contains('gr-focus')),true,'sa chaîne est éclairée');
@@ -94,17 +118,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const x=id=>page.locator(`${G} [data-noeud=${id}]`).evaluate(n=>n.transform.baseVal.consolidate().matrix.e);
    assert.ok(await x('appros')<await x('decontam'),'de gauche à droite');
    assert.equal(await page.locator(`${G} .gr-etape`).count(),0,'sans bandes');
-   await nav.aller(page,'at-chemins');
-   assert.equal(await page.locator('#at-parcours [data-gr-sens]').textContent(),'En étapes','le choix vaut pour tous les diagrammes');
-   await page.locator('#at-parcours [data-gr-sens]').click();await attendre();
-   assert.equal(await page.locator('#at-parcours .gr-etape').count()>0,true,'retour en étapes');
+   // (Version 1 : l'autre diagramme est celui des liens entre services ; « Chemin d'une commande » a rejoint « Chemins ».)
+   const autre=v1?'#fc-graphe':'#at-parcours';
+   await nav.aller(page,v1?'u-liens':'at-chemins');await attendre();
+   assert.equal(await page.locator(`${autre} [data-gr-sens]`).textContent(),'En étapes','le choix vaut pour tous les diagrammes');
+   await page.locator(`${autre} [data-gr-sens]`).click();await attendre();
+   assert.equal(await page.locator(`${autre} .gr-etape`).count()>0,true,'retour en étapes');
 
    // 6. Le nom d'une colonne ouvre son flux ; le nom d'un service, sa fiche.
-   await nav.aller(page,'mu-carte');
-   await page.locator(`${C} [data-mu-carte-flux=sans-cuisine]`).click();await attendre();
-   assert.equal(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.fluxChoisi].join()),'mu-flux,sans-cuisine');
-   await nav.aller(page,'mu-carte');
-   await page.locator(`${C} tr[data-mu-carte-svc=plonge] [data-mu-ouvrir]`).click();await attendre();
+   //    (Version 1 : le chemin s'ouvre depuis la liste ; l'étape choisie mène à la fiche de son service.)
+   if(v1){
+    await nav.aller(page,'mu-flux');
+    await page.locator('#mu-flux .ch-liste [data-mu-flux-choisir=sans-cuisine]').click();await attendre();
+    assert.equal(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.fluxChoisi].join()),'mu-flux,sans-cuisine');
+    await page.locator('#mu-flux [data-mu-graphe] [data-noeud=plonge]').click();await attendre();
+    await page.locator('#mu-flux .ch-etape [data-mu-ouvrir-svc=plonge]').click();await attendre();
+   }else{
+    await nav.aller(page,'mu-carte');
+    await page.locator(`${C} [data-mu-carte-flux=sans-cuisine]`).click();await attendre();
+    assert.equal(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.fluxChoisi].join()),'mu-flux,sans-cuisine');
+    await nav.aller(page,'mu-carte');
+    await page.locator(`${C} tr[data-mu-carte-svc=plonge] [data-mu-ouvrir]`).click();await attendre();
+   }
    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
    assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'plonge');
   }

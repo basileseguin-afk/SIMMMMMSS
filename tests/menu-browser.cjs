@@ -74,9 +74,9 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     ['j-comparer','Lire','Comparer deux essais'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
     // « Services et équipes » : une seule page depuis l'évolution 22 (b), sans onglets internes.
     ['mu-services','L’unité','Services et équipes'],
-    // « Chemins », « Contrôles » : les pages d'aujourd'hui en onglets internes, en attendant leur fusion.
-    // « Liens entre services » n'y est que si une commande n'a pas de chemin (évolution 19 b) : ici, toutes en ont un.
-    ['groupe:chemins','L’unité','Chemins',['mu-carte','mu-flux','at-chemins','at-grille']],
+    // « Chemins » : une seule page depuis l'évolution 22 (c), sans onglets internes ; « Liens entre services » n'est
+    // jamais au menu. « Contrôles » : les pages d'aujourd'hui en onglets internes, en attendant leur fusion.
+    ['mu-flux','L’unité','Chemins'],
     ['rg-simulation','Simulation','Réglages de la simulation'],['groupe:controles','Simulation','Contrôles',['mu-pas','u-lecture']]];
   for(const [cle,espace,titre,pages] of attendues){
     await page.locator(`#menu [data-entree="${cle}"]`).click();await attendre();
@@ -135,7 +135,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.locator('.rg-barres').count(),0,'la page « Temps par vol par service » n’est plus à l’écran');
 
   // 4. Les outils suivent la page : ceux des cases dans Chemins et Équipes, pas dans les résultats.
-  await nav.aller(page,'at-chemins');
+  await nav.aller(page,'mu-flux');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
   assert.match(await page.locator('#at-export').textContent(),/Équipes et chemins/,'un export dit ce qu’il contient');
   await nav.aller(page,'mu-services');
@@ -162,18 +162,24 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await page.keyboard.press('ArrowUp');await attendre();
   assert.equal(await courant(),'groupe:controles','avant la première, on revient à la dernière');
   // La dernière page ouverte d'un groupe est retenue d'une visite à l'autre : son entrée y ramène.
-  await nav.aller(page,'at-grille');await nav.aller(page,'j-comparer');
+  // (Évolution 22 c : « Chemins » n'est plus un groupe ; « Détails » en est un.)
+  await nav.aller(page,'j-stocks');await nav.aller(page,'j-comparer');
   await page.reload();await nav.pret(page);
   assert.equal(await courant(),'accueil','rien ne se calcule : on revient par l’accueil');
   // Sur l'accueil, aucune entrée n'est ouverte ; la première prend la tabulation, et Entrée l'ouvre sans perdre le focus.
   assert.equal(await page.locator('#menu [aria-selected=true]').count(),0);
   assert.equal(await page.locator('#menu [data-sous-onglet][tabindex="0"]').getAttribute('data-sous-onglet'),'j-chiffres');
-  await page.locator('#menu [data-entree="groupe:chemins"]').click();await attendre();
-  assert.equal(await actif(),'at-grille','« Chemins » rouvre la page choisie');
+  await page.locator('#menu [data-entree="groupe:details"]').click();await attendre();
+  assert.equal(await actif(),'j-stocks','« Détails » rouvre la page choisie');
+  await page.locator('#menu [data-entree="at-planning"]').click();await attendre();
+  assert.equal(await actif(),'at-planning');
+  await page.locator('#menu [data-entree="at-planning"]').focus();await page.keyboard.press('ArrowDown');await attendre();
+  assert.equal(await actif(),'j-stocks','au clavier aussi');
+  // « Chemins » et « Services et équipes » sont chacune une page : l'entrée l'ouvre.
+  await page.locator('#menu [data-entree="mu-flux"]').click();await attendre();
+  assert.equal(await actif(),'mu-flux');
   await page.locator('#menu [data-entree="mu-services"]').click();await attendre();
   assert.equal(await actif(),'mu-services');
-  await page.locator('#menu [data-entree="mu-services"]').focus();await page.keyboard.press('ArrowDown');await attendre();
-  assert.equal(await actif(),'at-grille','au clavier aussi');
   // Une tuile ouvre son espace ; ses entrées y sont listées, chacune ouvre la sienne.
   await nav.accueil(page);
   await tuile('reglages').locator('[data-page=rg-simulation]').click();await attendre();
@@ -199,17 +205,18 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.locator('#bilan-journee .sy-tete .bilan-resume').count(),2,'deux phrases en tête');
   assert.ok(await page.locator('#bilan-journee .sy-carte').count()>=2,'où ça coince, ce qui part en retard');
   assert.ok(await page.locator('#bilan-journee .sy-table tbody tr').count()>=1,'les services');
-  // Le tableau se calcule : une case mène au chemin de sa commande.
-  await nav.aller(page,'at-grille');
-  assert.equal(await page.locator('.qf-table').isVisible(),true,'le tableau se dessine à l’ouverture de sa page');
+  // Le tableau des étapes se calcule (« Détails › Commandes », déplié — évolution 22 c) : une cellule mène au chemin
+  // de sa commande, dans « Chemins ».
+  await nav.etapesCommandes(page);
+  assert.equal(await page.locator('.qf-table').isVisible(),true,'le tableau se dessine quand on le déplie');
   await page.locator(`[data-qf=aller][data-classe="AF/BC"][data-service=prepa]`).click();await attendre();
-  assert.equal(await actif(),'at-chemins');
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
+  assert.equal(await actif(),'mu-flux');
+  assert.equal(await page.locator('#mu-flux .ch-etape[data-ch-etape=prepa] tr.ch-vise').getAttribute('data-ch-cmd'),'AF/BC');
 
   // Plus de partie cachée : les anciens « Outils avancés » sont des onglets de leur sujet.
   await nav.accueil(page);
   assert.equal(await page.locator('#btn-avance').count(),0,'plus de bouton à part dans l’en-tête');
-  await nav.aller(page,'at-grille');
+  await nav.aller(page,'mu-flux');
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
 
   // 7. Le sens passe par l'image.
@@ -293,9 +300,12 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
      // leur nom plus ancien : elles mènent à la page nouvelle, au bon endroit dedans (`lieu`).
      const noms=await p.evaluate(()=>[...Object.values(OrlyOnglets.ONGLETS).flat().flatMap(o=>[[o.id,o.nom,o.nom],...(o.ancien?[[o.id,o.ancien,o.nom]]:[])]),
       ...Object.entries(OrlyOnglets.ANCIENNES).flatMap(([id,a])=>[[a.vers,a.nom,a.nom,a.lieu,id],...(a.ancien?[[a.vers,a.ancien,a.nom,a.lieu,id]]:[])])]);
-     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,22,'les vingt-deux pages');
-     assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-equipes','at-recap','rg-minutes','rg-recap','u-services'],'et les cinq pages reprises');
-     const AU_BON_ENDROIT={equipes:'#mu-services details[data-mu-section=equipes][open]',temps:'#mu-services details[data-mu-section=temps][open]',liste:'#mu-services .se-liste'};
+     // Évolution 22 (c) : « Chemins » a repris trois pages de plus (« Vue d'ensemble », « Chemin d'une commande »,
+     // « Étapes de chaque commande ») et garde l'ancien nom de la sienne (« Chemins de production ») : dix-neuf pages.
+     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,19,'les dix-neuf pages');
+     assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','rg-minutes','rg-recap','u-services'],'et les neuf noms repris');
+     const AU_BON_ENDROIT={'mu-services:equipes':'#mu-services details[data-mu-section=equipes][open]','mu-services:temps':'#mu-services details[data-mu-section=temps][open]','mu-services:liste':'#mu-services .se-liste',
+       'mu-flux:liste':'#mu-flux .ch-liste .mu-svc.actif','mu-flux:etapes':'#mu-flux .ch-etape'};
      for(const [id,cherche,nom,lieu] of noms){
       await nav.terminerPlan(p);
       await p.keyboard.press('Control+k');await p.waitForSelector('dialog.palette [role=option]');
@@ -306,8 +316,9 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
       await options.nth(i).click();await p.waitForTimeout(150);
       assert.equal(await p.evaluate(()=>document.body.dataset.sous),id,'« '+cherche+' » mène à sa page');
       if(lieu){
-       assert.equal(await p.locator(AU_BON_ENDROIT[lieu]).first().isVisible(),true,'« '+cherche+' » mène au bon endroit : '+lieu);
-       assert.equal(await p.locator('#mu-services .se-equipe').count(),0,'« '+cherche+' » : la fiche du service, pas celle d’une équipe');
+       assert.equal(await p.locator(AU_BON_ENDROIT[id+':'+lieu]).first().isVisible(),true,'« '+cherche+' » mène au bon endroit : '+lieu);
+       if(id==='mu-services')assert.equal(await p.locator('#mu-services .se-equipe').count(),0,'« '+cherche+' » : la fiche du service, pas celle d’une équipe');
+       else assert.equal(await p.locator('[data-mu-graphe]:visible').count(),1,'« '+cherche+' » : le chemin, dans le seul éditeur');
       }
      }
      await nav.terminerPlan(p);

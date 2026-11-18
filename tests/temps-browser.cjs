@@ -26,20 +26,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const sej=await page.evaluate(()=>Sim.ateliers.resultat.stocks.sejours.find(x=>x.classe==='TX/BC'&&x.de==='cuisine'&&x.vers==='preparation'));
   assert.ok(sej&&sej.sortie===240&&sej.duree>100,'TX BC est en stock entre la cuisine et la prépa');
 
-  // 1. Le chemin : le temps en stock sur le lien, et dans la case de la prépa.
-  await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
-  await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  assert.match(await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien="cuisine>preparation"] .gr-etiq').textContent(),/^2 h \d\d$/);
-  assert.match(await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien="cuisine>preparation"] title').textContent(),/en stock/);
-  await page.locator('#at-parcours .pc-graphe [data-noeud=preparation]').click();await attendre();
-  assert.match(await page.locator('.pc-tiroir .pc-temps').textContent(),/Livrée par Cuisine à 01:\d\d, prise à 04:00 :\s+2 h \d\d en stock \(32 repas\)/);
-  await page.keyboard.press('Escape');await attendre();
+  // 1. Le chemin (évolution 22 c) : « Chemins » est une page de réglage, sans résultat — ni temps en stock sur un lien,
+  //    ni heure de livraison. Le temps en stock d'une commande se lit dans sa frise (2) et dans « Stocks et retours » (3).
+  await nav.vue(page,'ateliers');await nav.cheminDe(page,'TX/BC','preparation');await attendre();
+  assert.equal(await page.locator('#mu-flux [data-mu-graphe] .gr-lien[data-lien="cuisine>preparation"]').count(),1,'le lien du chemin');
+  assert.equal(await page.locator('#mu-flux [data-mu-graphe] .gr-etiq').count(),0,'sans temps en stock sur le lien');
+  assert.doesNotMatch(await page.locator('#mu-flux').innerText(),/en stock/);
+  assert.equal(await page.locator('.pc-tiroir').count(),0);
 
-  // 2. La frise de la commande : une barre « en stock », et la phrase le dit.
-  await nav.aller(page,'at-grille');await attendre();
+  // 2. La frise de la commande (« Détails › Commandes », étapes de chaque commande) : une barre « en stock », son
+  //    temps, et la phrase le dit.
+  await nav.etapesCommandes(page);await attendre();
   await page.locator('[data-qf=suivre][data-classe="TX/BC"]').click();await attendre();
   assert.ok(await page.locator('.qf-temps .qf-t-stock').count()>=1,'le stock se voit dans la frise');
   assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/Le plus long en stock/);
+  assert.match(await page.locator('.qf-temps').textContent(),/2 h \d\d/,'le temps en stock entre la cuisine et la prépa');
 
   // 3. L'onglet « Stocks et retours ».
   await nav.vue(page,'plan');await nav.aller(page,'j-stocks');await attendre();

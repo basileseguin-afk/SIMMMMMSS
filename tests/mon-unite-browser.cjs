@@ -21,10 +21,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Le menu (évolution 22 a) : deux blocs, trois espaces sous « Régler » ; le chemin d'une commande est dans « Chemins ».
   assert.deepEqual(await page.locator('#menu .menu-bloc-titre, #menu .menu-espace-titre').allInnerTexts().then(t=>t.map(x=>x.toLowerCase())),['lire','régler','vols','l’unité','simulation']);
   assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]>span:not(.so-badge)').allInnerTexts(),['Services et équipes','Chemins','Plan']);
-  await page.locator('#menu [data-entree="groupe:chemins"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte','Chemins s’ouvre sur la vue d’ensemble');
-  const onglets=await page.locator('#onglets-internes [data-sous-onglet]').allInnerTexts();
-  assert.ok(onglets.includes('Chemin d’une commande'),onglets.join(', '));
+  // (Évolution 22 c : « Chemins » est une seule page — la liste des chemins, le chemin choisi — sans onglets internes.)
+  await page.locator('#menu [data-entree="mu-flux"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux','« Chemins » s’ouvre sur la liste des chemins');
+  assert.equal(await page.locator('#onglets-internes').isVisible(),false,'sans onglets internes');
+  assert.equal(await page.locator('#mu-flux .ch-liste').isVisible(),true);
+  assert.equal(await page.locator('[data-mu-graphe]').count(),1,'un seul éditeur de chemin');
   await page.locator('#menu [data-entree="groupe:controles"]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','Contrôles s’ouvre sur « Prêt à simuler ? »');
 
@@ -43,15 +45,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 4. Deux équipes ; la première prépare toute la ligne AF, la seconde toute la colonne YC.
   //    (Évolution 22 b : une équipe ajoutée ouvre sa fiche, à la place de celle du service ; on revient au service pour
   //    ajouter la suivante. La fiche d'une équipe s'ouvre aussi d'un clic sur sa ligne du tableau « Ses équipes ».)
-  await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
-  assert.equal(await page.locator('.mu-fiche').getAttribute('data-se-vue'),'equipe','l’équipe ajoutée ouvre sa fiche');
+  await page.locator('#mu-services .mu-fiche [data-mu-action=equipe]').click();await attendre();
+  assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-se-vue'),'equipe','l’équipe ajoutée ouvre sa fiche');
   await nav.retour(page);
-  assert.equal(await page.locator('.mu-fiche').getAttribute('data-se-vue'),'service','le retour ramène à la fiche du service');
-  await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
+  assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-se-vue'),'service','le retour ramène à la fiche du service');
+  await page.locator('#mu-services .mu-fiche [data-mu-action=equipe]').click();await attendre();
   const [e1,e2]=(await st()).ateliers.filter(a=>a.service==='prepa').map(a=>a.id);
   assert.ok(e1&&e2,'deux équipes');
   await nav.retour(page);
-  assert.deepEqual(await page.locator('.mu-fiche .se-equipes tbody tr').evaluateAll(ls=>ls.map(l=>l.dataset.seEquipe)),[e1,e2],'les deux équipes, dans le tableau du service');
+  assert.deepEqual(await page.locator('#mu-services .mu-fiche .se-equipes tbody tr').evaluateAll(ls=>ls.map(l=>l.dataset.seEquipe)),[e1,e2],'les deux équipes, dans le tableau du service');
   await nav.equipe(page,e1);
   await page.locator(`table[data-mu-equipe="${e1}"] [data-mu-ligne=AF]`).click();await attendre();
   await nav.equipe(page,e2);
@@ -99,7 +101,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 7. Les heures de travail se règlent dans la fiche (en heures depuis le 08/10, gardées en minutes).
   //    (Dans la fiche du service, section « Ses temps par vol », repliée d'abord — évolution 22 b.)
   await nav.service(page,'prepa');await nav.section(page,'temps');
-  const min=page.locator('.mu-fiche .rg-fiche input[data-rg-champ=heures][data-cle="*/BC"]');
+  const min=page.locator('#mu-services .mu-fiche .rg-fiche input[data-rg-champ=heures][data-cle="*/BC"]');
   await min.fill('0.7');await min.press('Tab');await attendre();
   assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.prepa['*/BC']),42);
 
@@ -122,7 +124,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-mu-nouveau] button[type=submit]').click();await attendre();
   const apm=await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche');
   assert.ok(apm&&apm!=='prepa','la fiche du nouveau service est ouverte');
-  await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
+  await page.locator('#mu-services .mu-fiche [data-mu-action=equipe]').click();await attendre();
   const e3=(await st()).ateliers.find(a=>a.service===apm).id;
   // Aucun flux n'y passe : ses cases ne se cochent pas. Une variante du flux pour CRL Business seule…
   assert.equal(await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="CRL/BC"]`).isDisabled(),true,'hors de son flux : pas cochable');
@@ -183,25 +185,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Dans une équipe, une commande de « Dans l'ordre » ouvre son chemin.
   await nav.equipe(page,e1);
   await page.locator(`.mu-equipe[data-at="${e1}"] [data-mu-chemin="AF/BC"]`).click();await attendre();
-  assert.equal(await sous(),'at-chemins');
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
-  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le chemin « Complet »/);
-  assert.equal(await page.locator('#at-parcours .pc-outils').count(),0,'un flux partagé ne se modifie pas ici');
-  // Le bandeau renvoie au flux, pour toutes ses commandes.
-  await page.locator('[data-pc-action=flux-ouvrir]').click();await attendre();
+  // (Évolution 22 c : dans « Chemins », sur le chemin que suit la commande, à l'étape de l'équipe.)
   assert.equal(await sous(),'mu-flux');
-  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf);
-  // Ou fait à la commande sa variante, qu'on modifie alors sur place.
-  await nav.aller(page,'at-chemins');
-  await page.locator('[data-pc-action=flux-variante]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf,'le chemin de sa classe, « Complet »');
+  assert.equal(await page.locator('#mu-flux .ch-etape tr.ch-vise').getAttribute('data-ch-cmd'),'AF/BC','la commande, en évidence à l’étape de l’équipe');
+  // Un chemin partagé se modifie ici, pour toutes ses commandes : c'est le seul éditeur.
+  assert.equal(await page.locator('#mu-flux [data-mu-flux-ajout]').count(),1);
+  // Ou la commande a sa variante, qu'on modifie alors sans toucher aux autres.
+  await nav.sectionChemin(page,'suivi');
+  await page.locator('#mu-flux [data-ch-variante]').selectOption('AF/BC');await attendre();
   const va=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC'));
   assert.ok(va.type&&va.id!==cf,'une variante à elle');
-  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').id),cf,'les autres gardent le flux');
-  assert.equal(await page.locator('.pc-flux-bandeau').count(),0);
-  await nav.aller(page,'mu-flux');
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').id),cf,'les autres gardent le chemin');
+  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),va.id,'la variante est ouverte');
+  await page.locator(`#mu-flux .ch-liste [data-mu-flux-choisir="${cf}"]`).click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf);
+  await nav.sectionChemin(page,'suivi');
   await page.locator('#mu-flux [data-mu-flux-suivre="AF/BC"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id),cf,'elle reprend le flux de sa classe');
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id),cf,'elle reprend le chemin de sa classe');
 
   // 13. Les pages d'avant ne sont plus des onglets de « Services et équipes » (évolution 22 b) : la page les a reprises.
   //     Leur nom se cherche toujours par « Aller à… », et mène ici.

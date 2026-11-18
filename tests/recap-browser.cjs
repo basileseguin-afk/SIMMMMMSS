@@ -83,8 +83,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await champ().inputValue(),'1.65','la fiche suit le classeur');
 
   // 5. L'effectif de l'équipe qui prépare : il se lit dans le classeur (feuille « Personnes »), il suit la fiche.
-  await nav.aller(page,'at-chemins');
-  await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
+  // (Évolution 22 c : le chemin à part d'une commande, avec une équipe par service, se demande au modèle — nav.creerChemin.)
+  await nav.aller(page,'mu-flux');
   await nav.creerChemin(page,'AF/BC');
   const personnes=async()=>(await exporter()).find(f=>f.nom==='Personnes').lignes;
   let pers=await personnes();

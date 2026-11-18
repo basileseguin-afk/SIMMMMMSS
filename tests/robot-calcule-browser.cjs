@@ -29,10 +29,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Une organisation décrite : le Robot remplace le Montage pour TX, CRL et FBU Économie (robot-browser).
   // Chaque étape attend son effet, pas un délai (correction 18 c) : le bouton « créer son chemin », le chemin créé et
   // enregistré, la page redémarrée, le Robot posé.
-  await nav.aller(page,'at-chemins');
+  // (Évolution 22 c : le chemin à part d'une commande se demande au modèle — nav.creerChemin.)
+  await nav.aller(page,'mu-flux');
   for(const c of ['TX/YC','CRL/YC']){
-    await page.locator(`[data-pc-action=cmd][data-classe="${c}"]`).click();
-    await page.locator(`[data-pc-action=creer][data-classe="${c}"]`).first().waitFor({state:'attached'});
     assert.equal(await nav.creerChemin(page,c),true,c+' : son chemin se crée');
     await page.waitForFunction(c=>!!OrlyParcours.cheminDe(Sim.ateliers.state,c),c);
     await nav.enregistre(page,'ory-ateliers-v1',(v,c)=>!!(v.parcoursClasse&&v.parcoursClasse[c]),c);

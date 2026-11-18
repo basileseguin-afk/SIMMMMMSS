@@ -15,23 +15,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Un chemin créé depuis le modèle : la légumerie y a UNE case, partagée.
-  await nav.aller(page,'at-chemins');
-  await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
+  // 1. Un chemin créé depuis le modèle : la légumerie y a UNE équipe, partagée.
+  //    (Évolution 22 c : « Chemin d'une commande » a rejoint « Chemins » ; son chemin à part se demande au modèle —
+  //    nav.creerChemin — et l'étape se lit, se retire et se remet dans « Chemins ».)
+  await nav.aller(page,'mu-flux');
   await nav.creerChemin(page,'AF/BC');
   assert.deepEqual(await dans('decontam'),[{type:'dispo',lots:[]}]);
-  assert.equal(await page.locator('[data-pc-action=besoin][data-service=decontam]').getAttribute('aria-pressed'),'true','« besoin de légumerie » : oui');
-  // Une seconde commande qui en a besoin : toujours une seule case.
-  await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
+  await nav.cheminDe(page,'AF/BC','decontam');
+  assert.match(await page.locator('#mu-flux .ch-etape[data-ch-etape=decontam] tr[data-ch-cmd="AF/BC"]').innerText(),/sert toutes les commandes/,'la légumerie est une étape de son chemin, servie par l’équipe partagée');
+  // Une seconde commande qui en a besoin : toujours une seule équipe.
   await nav.creerChemin(page,'TX/BC');
   assert.equal((await dans('decontam')).length,1,'une seule légumerie pour toutes les commandes');
 
-  // 2. « Besoin de légumerie ? » non, puis oui : le service quitte le chemin, puis y revient relié.
-  await page.locator('[data-pc-action=besoin][data-service=decontam]').click();await attendre();
+  // 2. La légumerie retirée du chemin, puis remise : le service quitte le chemin, puis y revient relié.
+  await nav.cheminDe(page,'TX/BC','decontam');
+  await page.locator('#mu-flux .ch-etape [data-mu-flux-action=retirer-service]').click();await attendre();
   assert.equal((await chemin('TX/BC')).noeuds.includes('decontam'),false);
-  assert.equal(await page.locator('[data-pc-action=besoin][data-service=decontam]').getAttribute('aria-pressed'),'false');
-  assert.equal((await dans('decontam')).length,1,'la case partagée reste : AF BC en a besoin');
-  await page.locator('[data-pc-action=besoin][data-service=decontam]').click();await attendre();
+  assert.equal(await page.locator('#mu-flux [data-mu-graphe] [data-noeud=decontam]').count(),0);
+  assert.equal((await dans('decontam')).length,1,'l’équipe partagée reste : AF BC en a besoin');
+  await page.selectOption('#mu-flux [data-mu-flux-ajout]','decontam');await attendre();
   const q=await chemin('TX/BC');
   assert.ok(q.noeuds.includes('decontam'));
   assert.ok(q.liens.some(l=>l.de==='decontam')&&q.liens.some(l=>l.vers==='decontam'),'reliée des deux côtés');
@@ -42,13 +44,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await attendre();
   const lignes=await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.dispo&&l.service==='decontam').map(l=>({vague:l.vague,classes:l.classes})));
   assert.ok(lignes.length>=1&&lignes.every(l=>l.classes.length),'une ligne par vague servie : '+JSON.stringify(lignes));
-  await nav.aller(page,'at-grille');
+  await nav.etapesCommandes(page);
   assert.match(await page.locator('.qf-c.auto[title^="Légumerie"]').first().innerText(),/vague \d · \d\d:\d\d|dès \d\d:\d\d/,'le tableau dit quelle vague sert la commande');
 
   // 4. Des cases d'avant, une par commande : l'Organisation le dit, et les fond en une.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.service!=='decontam');
     for(const [c,h] of [['AF/BC','14:00'],['TX/BC','15:00']])st.ateliers.push({id:'vl'+c.replace('/',''),nom:'Légumerie '+c,service:'decontam',type:'manuel',debut:h,jour:-1,personnes:2,pauses:[],lots:[[c]],regime:{actif:true}});},''));
-  await nav.aller(page,'at-chemins');
+  await nav.aller(page,'mu-flux');
   assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie : 2 équipes préparent commande par commande/);
   await page.locator('#at-anomalies [data-at-action=dispo-partager]').click();await attendre();
   const leg=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').map(a=>({type:a.type,vagues:a.vagues})));
@@ -68,10 +70,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.waitForTimeout(600);
   const fondu=await p2.evaluate(()=>['decontam','magasin'].map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>({type:a.type,permanent:a.permanent,vagues:a.permanent?undefined:a.vagues}))));
   assert.deepEqual(fondu,[[{type:'dispo',permanent:false,vagues:[{debut:'14:00',jour:-1},{debut:'16:00',jour:-1}]}],[{type:'dispo',permanent:true,vagues:undefined}]],'une case par poste, dès l’ouverture');
-  await nav.aller(p2,'at-chemins');
+  await nav.aller(p2,'mu-flux');
   assert.match(await p2.locator('#at-status').innerText(),/deviennent une équipe par poste[\s\S]*Annuler/);
-  await p2.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await p2.waitForTimeout(300);
-  assert.match(await p2.locator('#at-parcours .pc-graphe [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par la case partagée');
+  await nav.cheminDe(p2,'AF/BC');await p2.waitForTimeout(300);
+  assert.match(await p2.locator('#mu-flux [data-mu-graphe] [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par l’équipe partagée');
   // « Annuler » revient à l'organisation d'avant.
   await p2.locator('#btn-annuler').click();await p2.waitForTimeout(300);
   assert.equal(await p2.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').length),2);
@@ -97,7 +99,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // La cuisine fondue par erreur : une seule mise à disposition.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.service!=='cuisine');
     st.ateliers.push({id:'cuF',nom:'Cuisine',service:'cuisine',type:'dispo',debut:'15:00',jour:-1,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:false,vagues:[{debut:'15:00',jour:-1}]});},''));
-  await nav.aller(page,'at-chemins');
+  await nav.aller(page,'mu-flux');
   assert.match(await page.locator('#at-anomalies').innerText(),/« Cuisine » est une mise à disposition/);
   await page.locator('#at-anomalies [data-at-action=separer][data-service=cuisine]').click();await attendre();
   const cui=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='cuisine').map(a=>({type:a.type,lots:a.lots,debut:a.debut})));

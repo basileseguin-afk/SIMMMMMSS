@@ -11,6 +11,15 @@
  *   6. Une variante pour une commande ; les commandes exclues et ajoutées, dans une section repliée.
  *   7. Un chemin à part (celui d'une seule commande) se règle avec le même éditeur.
  *   8. La page ne défile pas : chaque colonne défile seule ; texte de 13 px au moins.
+ *   9. (c2) Un seul éditeur de chemin dans l'application : les quatre pages d'avant (« Vue d'ensemble », « Chemin d'une
+ *      commande », « Étapes de chaque commande », et les onglets de « Chemins ») n'existent plus.
+ *  10. (c2) Leurs noms dans « Aller à… », un lien vers l'une d'elles et la page que le navigateur avait retenue mènent
+ *      à « Chemins », au bon endroit ; le chemin d'une commande s'ouvre ici, sur son étape.
+ *  11. (c2) « Suivre ces commandes dans les résultats » mène à « Détails › Commandes », le tableau des étapes déplié ;
+ *      une cellule ramène au chemin de la commande, sur son étape.
+ *  12. (c2) « Liens entre services » n'est jamais au menu : elle s'ouvre depuis les commandes sans chemin.
+ *  13. (c2) Dans un service encore sans équipe qui sert toutes les commandes, « + » crée l'équipe du service ;
+ *      « Relier à… » relie deux étapes sans la souris.
  * Unité, vols, compagnies et équipes fictifs. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
@@ -254,6 +263,105 @@ function ecarts(avant,apres,chemin='',out=[]){
   assert.deepEqual(m.colonnes,['auto','auto'],'chaque colonne défile seule');
   assert.ok(m.texte>=13,'le texte fait 13 px au moins : '+m.texte+' px');
   assert.equal(m.teteVisible,true,'l’étape choisie montre son tableau, dans la colonne');
+
+  /* ---- 9. un seul éditeur de chemin dans l'application ---------------------------------------------------------- */
+  const sous=()=>page.evaluate(()=>document.body.dataset.sous);
+  assert.equal(await page.locator('[data-mu-graphe], .pc-graphe').count(),1,'un seul éditeur de chemin dans le document');
+  assert.equal(await page.locator('#at-parcours, #mu-carte, .pc-cmds, .pc-tiroir').count(),0,'ni « Vue d’ensemble », ni « Chemin d’une commande »');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.parcours),undefined,'l’éditeur d’avant n’est plus construit');
+  const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>p.pages.map(q=>q.id)).filter(id=>OrlyOnglets.montree(id)));
+  assert.ok(!pages.some(id=>['mu-carte','at-chemins','at-grille'].includes(id)),'les trois pages d’avant ne sont plus des pages : '+pages.join(' '));
+  const avecEditeur=[],avecOnglet=[];
+  for(const id of pages){
+    await nav.aller(page,id);await attendre(page,150);
+    if(await page.locator('[data-mu-graphe]:visible, .pc-graphe:visible').count())avecEditeur.push(id);
+    if(await page.locator('#onglets-internes:not([hidden]) [data-sous-onglet]').evaluateAll(bs=>bs.some(b=>['mu-carte','mu-flux','at-chemins','at-grille','u-liens'].includes(b.dataset.sousOnglet))))avecOnglet.push(id);
+  }
+  await nav.terminerPlan(page);
+  assert.deepEqual(avecEditeur,['mu-flux'],'l’éditeur de chemin ne se voit que dans « Chemins »');
+  assert.deepEqual(avecOnglet,[],'aucun onglet interne d’une page de chemins');
+  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.entree)),['mu-services','mu-flux','u-plan'],'« Chemins » est une entrée, pas un groupe');
+
+  /* ---- 10. les noms, les liens et la page retenue d'avant mènent à « Chemins », au bon endroit --------------------- */
+  assert.deepEqual(await page.evaluate(()=>Object.entries(OrlyOnglets.ANCIENNES).filter(([,a])=>a.vers==='mu-flux').map(([id,a])=>[id,a.lieu,a.nom])),
+    [['mu-carte','liste','Vue d’ensemble'],['mu-flux:avant','liste','Chemins de production'],['at-chemins','etapes','Chemin d’une commande'],['at-grille','etapes','Étapes de chaque commande']]);
+  const ENDROIT={liste:`${M} .ch-liste .mu-svc.actif`,etapes:`${M} .ch-etape`};
+  for(const [nom,lieu] of [['Vue d’ensemble','liste'],['Chemins de production','liste'],['Chemin d’une commande','etapes'],['Étapes de chaque commande','etapes']]){
+    await nav.aller(page,'j-chiffres');await page.evaluate(()=>{Sim.unite.fluxSel=null;if(Sim.unite.graphe)Sim.unite.graphe.selection=null;});
+    await page.keyboard.press('Control+k');await page.waitForSelector('dialog.palette [role=option]');
+    await page.keyboard.type(nom);await attendre(page,200);
+    await page.locator('dialog.palette [role=option]').filter({hasText:nom}).first().click();await attendre(page,300);
+    assert.equal(await sous(),'mu-flux','« '+nom+' » mène à « Chemins »');
+    assert.equal(await page.locator(ENDROIT[lieu]).first().isVisible(),true,'« '+nom+' » mène au bon endroit ('+lieu+')');
+    assert.equal(await page.locator('#view-title').textContent(),'Chemins');
+  }
+  // Un lien vers une page d'avant (data-page) : la page nouvelle, au bon endroit.
+  await nav.aller(page,'j-chiffres');await page.evaluate(()=>{Sim.unite.fluxSel=null;if(Sim.unite.graphe)Sim.unite.graphe.selection=null;});
+  await page.evaluate(()=>{const b=document.createElement('button');b.id='ch-vieux-lien';b.dataset.page='at-chemins';b.textContent='Chemin d’une commande';document.querySelector('#view-title').after(b);});
+  await page.locator('#ch-vieux-lien').click();await attendre(page,300);
+  assert.deepEqual([await sous(),await page.locator(`${M} .ch-etape`).count()],['mu-flux',1],'un lien vers « Chemin d’une commande » : « Chemins », une étape ouverte');
+  await page.evaluate(()=>document.getElementById('ch-vieux-lien').remove());
+  // La page que ce navigateur avait retenue (une page d'avant) : son espace rouvre « Chemins ».
+  assert.equal(await page.evaluate(()=>{Sim.onglets.choix.organisation='at-chemins';return Sim.onglets.actifDe('organisation');}),'mu-flux','la page d’avant retenue vaut « Chemins »');
+  assert.equal(await page.evaluate(()=>{Sim.onglets.parVue.ateliers='at-grille';return OrlyOnglets.resoudre(Sim.onglets.retenue('ateliers'));}),'mu-flux');
+  // Le chemin d'une commande, sur un service : ici, son étape ouverte, la commande en évidence.
+  await page.evaluate(()=>Sim.unite.chemin('NORD/BC','cuisine'));await attendre(page,300);
+  assert.deepEqual([await sous(),await page.locator(`${M} .ch-etape`).getAttribute('data-ch-etape'),await page.locator(`${M} .ch-etape tr.ch-vise`).getAttribute('data-ch-cmd')],['mu-flux','cuisine','NORD/BC']);
+
+  /* ---- 11. « Suivre ces commandes dans les résultats » : « Détails › Commandes », le tableau des étapes ------------ */
+  await page.locator(`${M} .ch-resultats [data-page="at-repas"]`).click();await attendre(page,400);
+  assert.equal(await sous(),'at-repas');
+  assert.equal(await page.locator('#at-etapes').evaluate(d=>d.open),true,'le tableau des étapes est déplié');
+  assert.ok(await page.locator('#at-etapes .qf-table tbody tr[data-classe]').count()>=10,'une ligne par commande');
+  assert.equal(await page.locator('[data-mu-graphe]:visible, .pc-graphe:visible').count(),0,'sans éditeur de chemin : il se lit');
+  assert.equal(await page.locator('#at-etapes select:visible, #at-etapes input:not([type=search]):not([type=checkbox]):visible').count(),0,'aucun réglage dans le tableau');
+  const cellule=page.locator('#at-etapes [data-qf=aller][data-classe="SUD/YC"][data-service]').first(),serviceVise=await cellule.getAttribute('data-service');
+  await cellule.click();await attendre(page,400);
+  assert.deepEqual([await sous(),await page.locator(`${M} .ch-etape`).getAttribute('data-ch-etape'),await page.locator(`${M} .ch-etape tr.ch-vise`).getAttribute('data-ch-cmd')],['mu-flux',serviceVise,'SUD/YC'],'une cellule ramène au chemin de la commande, sur son étape');
+  // Replié, le tableau n'est pas dessiné (il coûte cher) ; l'état de la page des commandes ne change pas.
+  await nav.aller(page,'at-repas');await page.locator('#at-etapes>summary').click();await attendre(page,200);
+  assert.equal(await page.locator('#at-etapes .qf').count(),0);
+  assert.equal(await page.locator('#at-classes table.at-commandes').count(),1,'les commandes, au-dessus, comme avant');
+
+  /* ---- 12. « Liens entre services » : jamais au menu ; elle s'ouvre depuis les commandes sans chemin ---------------- */
+  await nav.aller(page,'mu-flux');await attendre(page,200);
+  assert.equal(await page.locator(`${M} [data-page=u-liens]`).count(),0,'toutes les commandes ont un chemin : rien ne mène aux liens');
+  const orpheline=await page.evaluate(()=>{const at=Sim.ateliers,c=at.classes.find(x=>!x.categorie&&!(at.state.parcoursClasse||{})[x.id]),avant=at.state.parcoursCabine[c.cabine];
+    at.changer(()=>{const p={...at.state.parcoursCabine};delete p[c.cabine];at.state.parcoursCabine=p;},'');return {cabine:c.cabine,avant};});
+  await attendre(page,300);
+  await page.locator(`${M} .ch-bas [data-ch-panneau=sans]`).click();await attendre(page,200);
+  await page.locator(`${M} [data-page=u-liens]`).click();await attendre(page,300);
+  assert.equal(await sous(),'u-liens','le panneau des commandes sans chemin mène aux liens');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'mu-flux','« Chemins » reste marquée');
+  assert.equal(await page.locator('#menu [data-sous-onglet=u-liens], #onglets-internes:not([hidden]) [data-sous-onglet]').count(),0,'ni au menu, ni en onglet');
+  assert.equal(await page.locator('#view-title').textContent(),'Liens entre services');
+  await page.evaluate(x=>{const at=Sim.ateliers;at.changer(()=>{at.state.parcoursCabine={...at.state.parcoursCabine,[x.cabine]:x.avant};},'');},orpheline);await attendre(page,300);
+
+  /* ---- 13. « + » dans un service sans équipe qui sert toutes les commandes ; « Relier à… » ------------------------- */
+  await nav.aller(page,'mu-flux');
+  const sv=await page.evaluate(()=>{const at=Sim.ateliers,p=at.state.parcours.find(x=>x.nom==='Complet'),s='magasin';
+    const avant=at.state.ateliers.filter(a=>a.service===s);at.changer(()=>{at.state.ateliers=at.state.ateliers.filter(a=>a.service!==s);},'');return {id:p.id,s,n:avant.length,dedans:MoteurProduction.servicesDuParcours(p).includes(s)};});
+  assert.ok(sv.n>=1&&sv.dedans,'le magasin fictif est une étape de « Complet », avec son équipe');
+  await attendre(page,300);
+  await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${sv.id}"]`).click();await attendre(page);await noeud(page,sv.s);
+  const choixPlus=page.locator(`${M} .ch-etape select[data-ch-equipe]`).first();
+  assert.match(await choixPlus.locator('option[value="+"]').innerText(),/Créer l’équipe de .* : elle sert toutes les commandes/);
+  assert.ok(await page.locator(`${M} .ch-etape .ch-a-corriger`).count()>=1,'sans équipe : à corriger');
+  await choixPlus.selectOption('+');await attendre(page,400);
+  assert.deepEqual(await page.evaluate(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>[a.type,a.lots.length]),sv.s),[['dispo',0]],'une mise à disposition, partagée : pas une équipe par commande');
+  assert.equal(await page.locator(`${M} .ch-etape .ch-a-corriger`).count(),0,'toutes les commandes sont servies');
+  // « Relier à… » : l'étape choisie, puis une autre, au clavier — le lien se crée ; « Annuler » le défait.
+  const liensDe=()=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),sv.id);
+  const avantLien=await liensDe();
+  const cible=await page.evaluate(([id,s])=>{const p=Sim.ateliers.state.parcours.find(x=>x.id===id);
+    return MoteurProduction.servicesDuParcours(p).find(t=>t!==s&&!p.liens.some(l=>l.de===s&&l.vers===t)&&!OrlyParcours.creeBoucle(p,s,t))||null;},[sv.id,sv.s]);
+  assert.ok(cible,'une étape que le magasin ne livre pas encore');
+  await page.locator(`${M} .ch-etape [data-ch-relier="${sv.s}"]`).click();await attendre(page,200);
+  assert.match(await page.locator('#notifs .notif.consigne').textContent(),/Relier/,'la consigne du geste');
+  await page.locator(`${M} [data-mu-graphe] [data-noeud="${cible}"]`).focus();await page.keyboard.press('Enter');await attendre(page,300);
+  assert.deepEqual(await liensDe(),avantLien.concat(sv.s+'>'+cible),'le lien est créé, sans la souris');
+  await page.locator('#btn-annuler').click();await attendre(page,300);
+  assert.deepEqual(await liensDe(),avantLien,'« Annuler » le défait');
 
   assert.deepEqual(erreurs,[],'aucune erreur de page');
   await v1.site.effacer();

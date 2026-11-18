@@ -616,6 +616,8 @@ function initAteliers(){
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
     flux:id=>{if(Sim.unite)Sim.unite.ouvrirFlux(id);},
+    // Le chemin d'une commande, sur un service : dans « Chemins » (évolution 22 c), le tableau de cette étape.
+    chemin:(cmd,s)=>{if(Sim.unite)Sim.unite.chemin(cmd,s);},
     ouvrirService:id=>{if(Sim.unite)Sim.unite.ouvrir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
     // disent lisiblement, et le geste qui l'efface.
@@ -773,7 +775,7 @@ function renderControles(){
   const {bloquant,corriger,information}=avisDuCalcul(),n=sansChemin();
   const liste=l=>'<ul>'+l.slice(0,40).map(a=>'<li>'+escapeHTML(a.message||a.code)+'</li>').join('')+(l.length>40?'<li>… et '+(l.length-40)+' autres</li>':'')+'</ul>';
   const dit=id=>escapeHTML(OrlyAvis.NIVEAUX.find(x=>x.id===id).dit);
-  const chemins='<button type="button" class="lien-fort" data-page="at-chemins">Ouvrir les chemins →</button>';
+  const chemins='<button type="button" class="lien-fort" data-page="mu-flux">Ouvrir les chemins →</button>';
   box.innerHTML=(bloquant.length?'<div class="fc-alerte grave avis-bloquant"><b>'+bloquant.length+(bloquant.length>1?' points bloquants':' point bloquant')+'</b>'
         +'<span class="avis-dit">'+dit('bloquant')+'</span>'+liste(bloquant)+chemins+'</div>':'')
     +(corriger.length?'<div class="fc-alerte grave avis-corriger"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger</b>'
@@ -881,7 +883,6 @@ function initUnite(){
     vols:()=>({departs:flights.filter(f=>f.sens==='DEP').length,importes:dataSource!=='Jeu de démonstration'}),
     page:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande, ouvert sur un service.
-    chemin:(cmd,s)=>{if(Sim.ateliers&&Sim.ateliers.parcours)Sim.ateliers.parcours.ouvrir(cmd,s);},
     notify:toast
   });
   // Le temps de travail d'un service se règle aussi dans sa fiche.
@@ -975,7 +976,11 @@ function initOnglets(){
     verrou:()=>editMode,
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
-    lieu:(id,lieu)=>{if(id==='mu-services'&&Sim.unite&&Sim.unite.allerA)Sim.unite.allerA(lieu);},
+    lieu:(id,lieu)=>{
+      if(id==='at-repas'&&lieu==='etapes'&&Sim.ateliers&&Sim.ateliers.ouvrirEtapes)return Sim.ateliers.ouvrirEtapes();
+      if(!Sim.unite)return;
+      if(id==='mu-services'&&Sim.unite.allerA)Sim.unite.allerA(lieu);
+      if(id==='mu-flux'&&Sim.unite.allerChemins)Sim.unite.allerChemins(lieu);},
     apres:id=>{afficherTitre();majHauteurEntete();
       // Le plan de l'unité (refonte, étape 5) : y arriver ouvre l'édition ;
       // ailleurs, on retient la page, pour que « Terminer » y ramène.
@@ -986,11 +991,9 @@ function initOnglets(){
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
       if(id==='u-lecture'&&Sim.flows){Sim.flows.refresh();renderControles();}
-      // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
-      if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
-      if((id==='mu-services'||id==='mu-pas'||id==='mu-flux'||id==='mu-carte')&&Sim.unite)Sim.unite.rendre();
+      if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -998,7 +1001,7 @@ function initOnglets(){
   const outils=document.getElementById('so-outils');
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
   // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
-  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins'],
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services mu-flux'],
                                  ['reglages','#rg-bareme-panneau .rg-actions','rg-simulation'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
@@ -1087,7 +1090,7 @@ function afficherTitre(){
  *  saisie : un champ garde sa propre annulation, lettre à lettre.
  * ==========================================================================*/
 const HISTOIRES=[
-  [['mu-flux','at-chemins','v-planche'],'at-undo','at-redo'],
+  [['mu-flux','v-planche'],'at-undo','at-redo'],
   [['rg-simulation'],'rg-undo','rg-redo'],
   [['u-liens'],'fc-undo','fc-redo']
 ];
@@ -1219,7 +1222,7 @@ function elementsPalette(){
     out.push({groupe:'Équipes',nom:a.nom,indice:noms[a.service]||a.service,ico:'equipe',faire:()=>ouvrirEquipe(a)});
   for(const c of ((Sim.ateliers&&Sim.ateliers.classes)||[]))
     out.push({groupe:'Commandes',nom:MoteurProduction.libelleClasse(c.id),indice:c.id,ico:'plateau',
-      faire:()=>{if(Sim.ateliers&&Sim.ateliers.parcours)Sim.ateliers.parcours.ouvrir(c.id);ici();}});
+      faire:()=>{if(Sim.unite)Sim.unite.chemin(c.id);ici();}});
   return out;
 }
 /** L'état du calcul, dans la barre du haut. */
@@ -3510,7 +3513,7 @@ function showView(name) {
   if(name==='vols')renderFlights();
   // La vue est affichée, son onglet connu : on dessine ce qu'il montre, et la
   // fenêtre d'une case peut mesurer où se caler.
-  if(name==='ateliers'&&Sim.ateliers){Sim.ateliers.surOnglet(document.body.dataset.sous);Sim.ateliers.parcours.placeTiroir();}
+  if(name==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(document.body.dataset.sous);
 }
 /* Les vols du jour, sous l'import (évolution 19 e) : les départs que la journée simule, triés par heure, avec une
  * recherche. Le tableau est celui de vols-page.js ; rien n'est calculé ici. */

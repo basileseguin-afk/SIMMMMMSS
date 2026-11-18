@@ -298,7 +298,8 @@ function ecarts(avant,apres,chemin='',out=[]){
 
   /* ---- 8. les cinq pages d'avant n'existent plus : leurs noms et leurs liens mènent ici, au bon endroit ---------------- */
   assert.equal(await page.locator('#at-liste, #at-new, #at-filtre, .recap-cases, #rc-filtre, #rg-recap-panneau, #rg-bareme-panneau, #services-unite, #onglets-internes:not([hidden]) [data-sous-onglet=at-recap]').count(),0,'ni leurs listes, ni leurs tableaux, ni leurs onglets');
-  assert.deepEqual(await page.evaluate(()=>Object.keys(OrlyOnglets.ANCIENNES).map(id=>[id,OrlyOnglets.resoudre(id),OrlyOnglets.ANCIENNES[id].lieu])),
+  // (Celles que « Services et équipes » a reprises ; « Chemins » a les siennes, évolution 22 c.)
+  assert.deepEqual(await page.evaluate(()=>Object.keys(OrlyOnglets.ANCIENNES).filter(id=>OrlyOnglets.resoudre(id)==='mu-services').map(id=>[id,OrlyOnglets.resoudre(id),OrlyOnglets.ANCIENNES[id].lieu])),
     [['at-recap','mu-services','equipes'],['at-equipes','mu-services','equipes'],['rg-recap','mu-services','temps'],['rg-minutes','mu-services','temps'],['u-services','mu-services','liste']]);
   // Un lien vers une page d'avant (data-page) mène à la page nouvelle, au bon endroit : la fiche d'une équipe se referme.
   await nav.equipe(page,ids['Robot']);await nav.aller(page,'j-chiffres');

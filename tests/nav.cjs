@@ -203,11 +203,40 @@ const accueil = async page => { await terminerPlan(page); await page.locator('#b
 /* Un chemin à elle pour une commande (Chemins › Chemin d’une commande) : si elle
  * suit un flux, le formulaire est replié sous « Ou bien : un chemin à elle… ». */
 async function creerChemin(page, c) {
+  // Version 1 (évolution 22 c) : « Chemin d'une commande » a rejoint « Chemins », et son geste « Créer son chemin » (un
+  // chemin à part, avec une équipe par service) n'existe plus. Un test qui en a besoin pour se mettre en place le
+  // demande au modèle, par la même fonction, avec les mêmes arguments.
+  if (await page.evaluate(() => !document.getElementById('at-parcours') && !!window.OrlyCheminsPage)) {
+    const fait = await page.evaluate(c => {
+      const at = Sim.ateliers, PC = OrlyParcours;
+      if (PC.cheminDe(at.state, c)) return false;
+      const modele = PC.typeSuivi(at.state, c);
+      at.changer(() => { PC.creerChemin(at.state, c, modele ? modele.id : '', false, null, { nomDe: s => Sim.unite.nom(s), classes: at.classes }); }, '');
+      return true;
+    }, c);
+    await page.waitForTimeout(250);
+    return fait;
+  }
   const b = page.locator(`[data-pc-action=creer][data-classe="${c}"]`);
   if (!(await b.count())) return false;
   if (!(await b.isVisible())) await page.locator('.pc-creer-plus>summary').click();
   await b.click(); await page.waitForTimeout(250);
   return true;
+}
+/* « Étapes de chaque commande » : en version 1 (évolution 22 c), ce n'est plus une page ; le tableau se lit dans
+ * « Détails › Commandes », replié sous les commandes. En version 2, c'est encore une page. */
+async function etapesCommandes(page) {
+  if (!(await v1(page))) { await aller(page, 'at-grille'); return; }
+  await aller(page, 'at-repas');
+  const d = page.locator('#at-etapes');
+  if (!(await d.evaluate(e => e.open))) await d.locator('> summary').click();
+  await page.waitForTimeout(250);
+}
+/* Le chemin d'une commande, sur un service : en version 1 (évolution 22 c), dans « Chemins » (le chemin, et le tableau
+ * de l'étape) ; en version 2, dans « Chemin d'une commande ». */
+async function cheminDe(page, cmd, service) {
+  await page.evaluate(([c, s]) => (window.OrlyCheminsPage ? Sim.unite.chemin(c, s) : Sim.ateliers.parcours.ouvrir(c, s)), [cmd, service || '']);
+  await page.waitForTimeout(250);
 }
 /** Le tableau des minutes range les classes sous leur compagnie, repliées (02/10) : tout déplier. */
 async function deplier(page) {
@@ -247,4 +276,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

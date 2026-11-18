@@ -65,3 +65,10 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 /* Texte de 13 px au moins sur la page (les fiches reprises écrivent leurs notes en 11 ou 12 px). */
 #mu-flux .ch-cadre :is(small,i,label,th,td,li,p,summary,input,select,button,.mini-note,.btn,.mu-badge,.at-chip,.mu-svc-chaine){font-size:max(var(--ds-t-13),1em)}
 #mu-flux .ch-cadre :is(h3,h4) small,#mu-flux .ch-cadre :is(label,.mu-classe) small{font-size:var(--ds-t-13)}
+
+/* « Étapes de chaque commande », dans « Détails › Commandes » (évolution 22 c2) : le tableau d'avant, replié sous les
+   commandes. ateliers.css, commun avec la version 2, n'est pas modifié. */
+.at-etapes{margin:18px 0 0;padding:10px 0 0;border-top:1px solid var(--ds-bordure)}
+.at-etapes>summary{cursor:pointer;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
+.at-etapes>summary .pc-sous{font-weight:var(--ds-g-normal,400)}
+.at-etapes[open]>summary{margin-bottom:10px}

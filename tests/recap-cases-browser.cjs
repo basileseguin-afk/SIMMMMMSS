@@ -82,13 +82,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    (retour d'usage : « quand je clique sur CRL BC, ça m'emmène sur CRL BC »).
   await nav.equipe(page,'s1');
   await page.locator('#mu-services .se-equipe .mu-ordre [data-mu-chemin="TX/BC"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-chemins','on arrive sur les chemins');
-  assert.deepEqual(await page.evaluate(()=>[Sim.ateliers.parcours.cmd,Sim.ateliers.parcours.svc]),['TX/BC','dotation'],
-    'sur le chemin de TX BC, à la dotation');
-  assert.equal(await page.locator('#at-parcours .pc-cmd.actif[data-classe="TX/BC"]').count(),1,'TX BC est la commande choisie');
+  // (Évolution 22 c : dans « Chemins », sur le chemin que suit la commande ; le tableau de l'étape la met en évidence.)
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux','on arrive sur les chemins');
+  assert.deepEqual(await page.evaluate(()=>[Sim.unite.fluxChoisi,Sim.unite.cheminCmd,(Sim.unite.fluxSel||{}).id]),
+    [await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').id),'TX/BC','dotation'],'sur le chemin de TX BC, à la dotation');
+  assert.equal(await page.locator('#mu-flux .ch-etape[data-ch-etape=dotation] tr.ch-vise[data-ch-cmd="TX/BC"]').count(),1,'TX BC est la commande en évidence');
   await nav.equipe(page,'e1');
   await page.locator('#mu-services .se-equipe .mu-ordre [data-mu-chemin="FWI/PC"]').click();await attendre();
-  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd]),['at-chemins','FWI/PC'],'une commande « ensemble » aussi');
+  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.cheminCmd]),['mu-flux','FWI/PC'],'une commande « ensemble » aussi');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('recap-cases-browser : ok');

@@ -81,10 +81,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   f=await fiche('mo');await changer(`${M} [data-at=mo] [data-at-champ=debut]`,'07:15');
   await verifier('E1 départ fiche → tableau du service',async()=>assert.equal((await ligne('prepa','mo'))[1],'07:15'));
   await verifier('E2 départ fiche → calcul',async()=>assert.ok((await lot('mo','AF/BC'))[0]>=7*60+15));
-  await nav.aller(page,'at-chemins');await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  await verifier('E3 départ fiche → chemin',async()=>assert.match(await page.locator('#at-parcours .pc-graphe [data-noeud=prepa]').textContent(),/07:15/));
-  await nav.aller(page,'at-grille');
-  await verifier('E4 départ fiche → Qui prépare quoi',async()=>assert.match(await page.locator('[data-qf=aller][data-classe="AF/BC"][data-service=prepa]').textContent(),/07:15/));
+  // (Évolution 22 c : « Chemins » ne montre aucun résultat ni l'heure d'une équipe — elle ne se règle que dans sa fiche.
+  //  Le tableau de l'étape nomme l'équipe de la commande ; les heures se lisent dans « Étapes de chaque commande »,
+  //  sous « Détails › Commandes ».)
+  await nav.cheminDe(page,'AF/BC','prepa');await attendre();
+  await verifier('E3 équipe de la fiche → chemin (le tableau de l’étape la nomme)',async()=>{
+    assert.equal(await page.locator('#mu-flux .ch-etape[data-ch-etape=prepa] tr[data-ch-cmd="AF/BC"] select[data-ch-equipe]').inputValue(),'mo');
+    assert.match(await page.locator('#mu-flux .ch-etape[data-ch-etape=prepa] tr[data-ch-cmd="AF/BC"] [data-ch-fiche=mo]').innerText(),/Montage AF BC/);
+    assert.doesNotMatch(await page.locator('#mu-flux').innerText(),/07:15/);});
+  await nav.etapesCommandes(page);
+  await verifier('E4 départ fiche → Étapes de chaque commande',async()=>assert.match(await page.locator('[data-qf=aller][data-classe="AF/BC"][data-service=prepa]').textContent(),/07:15/));
   await verifier('E5 départ fiche → Excel Horaires',async()=>assert.ok(await page.evaluate(()=>{const f=OrlyEchanges.horairesVersClasseur(Sim.ateliers.state,{services:Sim.ateliers.a.services()});return f[0].lignes.some(l=>l[0]==='Montage AF BC'&&l[2]==='07:15');})));
   f=await fiche('mo');await changer(`${M} [data-at=mo] [data-at-champ=debut]`,'06:45');
   await verifier('E6 départ fiche, encore → tableau du service',async()=>assert.equal((await ligne('prepa','mo'))[1],'06:45'));

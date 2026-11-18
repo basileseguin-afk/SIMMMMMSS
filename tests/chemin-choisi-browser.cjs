@@ -58,13 +58,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('[data-mu-cmd-chemin="AF/YC"]').selectOption('');await attendre();
    assert.equal(await suit('AF/YC'),'Sans cuisine');
 
-   // 2. Une commande : « Chemin suivi », la même liste.
+   // 2. Une commande : « Chemin suivi », la même liste. (Version 1, évolution 22 c : « Chemin d'une commande » n'est
+   //    plus une page ; ouvrir le chemin d'une commande mène à « Chemins », où la liste est la même.)
+   if(v1){
+    await page.evaluate(()=>Sim.unite.chemin('TX/BC'));await attendre();
+    assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux',version+' : le chemin d’une commande s’ouvre dans « Chemins »');
+    assert.equal(await page.evaluate(()=>Sim.ateliers.parcours),undefined,version+' : plus de second éditeur de chemin');
+    await nav.sectionChemin(page,'suivi');
+    const s2=page.locator('#mu-flux [data-mu-cmd-chemin="TX/BC"]');
+    assert.match(await s2.locator('option:checked').innerText(),new RegExp('« Complet » · '+mot+' de sa classe'));
+    await s2.selectOption(robot);await attendre();
+    assert.equal(await suit('TX/BC'),'Économie robot',version+' : choisi depuis le chemin de la commande');
+    assert.match(await page.locator('#at-status').innerText(),/TX BC suit maintenant « Économie robot »/);
+   }else{
    await page.evaluate(()=>Sim.ateliers.parcours.ouvrir('TX/BC'));await attendre();
    const s2=page.locator('[data-pc-suit="TX/BC"]');
    assert.match(await s2.locator('option:checked').innerText(),new RegExp('« Complet » · '+mot+' de sa classe'));
    await s2.selectOption(robot);await attendre();
    assert.equal(await suit('TX/BC'),'Économie robot',version+' : choisi depuis Une commande');
    assert.match(await page.locator('#at-status').innerText(),/TX · Business suit maintenant « Économie robot »/);
+   }
 
    // 3. Le chemin à part d'une autre commande, choisi, devient un flux partagé.
    const apart=await page.evaluate(()=>{const st=Sim.ateliers.state,id='propre-fwi';Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;

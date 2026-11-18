@@ -43,7 +43,8 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   const x=await F.charger(page,nav,URL,{sauvegarde:U.sauvegarde(),csv:U.volsCsv(),pageId:'j-chiffres'});
   // Les noms de l'unité fictive ne portent aucun mot banni : ce que le test trouve vient de la page.
   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>p.pages.map(q=>q.id)).filter(id=>OrlyOnglets.montree(id)));
-  assert.ok(pages.length>=20,'toutes les pages du menu ('+pages.length+')');
+  // (Dix-huit au moins depuis l'évolution 22 c : « Chemins » a repris trois pages.)
+  assert.ok(pages.length>=18,'toutes les pages du menu ('+pages.length+')');
   const trouves=new Map();
   const visiter=async(id,options,nom)=>{
     await nav.aller(page,id,options);await page.waitForTimeout(350);
@@ -53,6 +54,12 @@ const relever=(page,flux)=>page.evaluate(flux=>{
     if(id==='j-plan'){await visiter(id,{relief:true},'j-plan (relief)');await visiter(id,{},'j-plan (à plat)');}
     else await visiter(id);
   }
+  // « Chemins » (évolution 22 c) : une étape choisie, son tableau, ses sections dépliées ; et, dans « Détails ›
+  // Commandes », le tableau « Étapes de chaque commande », déplié.
+  const noter=async nom=>{await page.waitForTimeout(300);for(const h of await relever(page,true)){const k=h.ou+'|'+h.extrait;if(!trouves.has(k))trouves.set(k,{...h,page:nom});}};
+  await nav.aller(page,'mu-flux');await page.evaluate(()=>Sim.unite.allerChemins('etapes'));
+  await nav.sectionChemin(page,'suivi');await nav.sectionChemin(page,'commandes');await noter('mu-flux (une étape, sections dépliées)');
+  await nav.etapesCommandes(page);await noter('at-repas (étapes de chaque commande)');
   // Le panneau des problèmes, la palette et la fiche des raccourcis s'affichent aussi.
   await nav.aller(page,'j-chiffres');
   await page.locator('#btn-problemes').click();await page.waitForTimeout(300);
@@ -64,7 +71,7 @@ const relever=(page,flux)=>page.evaluate(flux=>{
 
   // 2. « Aller à… » trouve encore une page par son ancien nom, et y mène ; l'ancien nom ne s'affiche pas.
   // Les trois pages que « Services et équipes » a reprises (évolution 22 b) mènent à cette page.
-  for(const [ancien,nom,id] of [['Flux de production','Chemins de production','mu-flux'],['Barème par service','Temps par vol par service','mu-services'],
+  for(const [ancien,nom,id] of [['Flux de production','Chemins','mu-flux'],['Barème par service','Temps par vol par service','mu-services'],
     ['Heures de travail','Temps par vol','mu-services'],['Les cases','Équipes une par une','mu-services']]){
     await nav.aller(page,'j-chiffres');
     await page.keyboard.press('Control+k');await page.keyboard.type(ancien);await page.waitForTimeout(200);

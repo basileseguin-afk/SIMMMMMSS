@@ -56,24 +56,27 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. La fiche de l'équipe le dit. (Évolution 22 b : « Horaires des équipes », qui le disait aussi, a quitté l'écran.)
   assert.match(await page.locator('#mu-services [data-at="mo"] .mu-badge.chaine').first().innerText(),/PRÉPA à la chaîne/i);
 
-  // 3. « Qui prépare quoi » : la Prépa d'AF est faite, par la case du Montage.
-  await nav.aller(page,'at-grille');
+  // 3. « Étapes de chaque commande » : la Prépa d'AF est faite, par l'équipe du Montage.
+  //    (Évolution 22 c : le tableau se lit dans « Détails › Commandes », replié sous les commandes.)
+  await nav.etapesCommandes(page);
   const cellule=page.locator('tr[data-classe="AF/YC"] .qf-case[data-service="preparation"]');
   assert.match(await cellule.innerText(),/Montage AF[\s\S]*à la chaîne/);
   assert.match(await page.locator('tr[data-classe="TX/YC"] .qf-case[data-service="preparation"]').innerText(),/Prépa eco/);
 
-  // 4. Le chemin d'AF : le nœud Prépa dit qui la fait.
+  // 4. Le chemin d'AF, dans « Chemins » : le tableau de l'étape Prépa dit qui la fait.
   await cellule.click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-chemins');
-  assert.match(await page.locator('#view-ateliers').innerText(),/à la chaîne · Montage AF/);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux');
+  assert.match(await page.locator('#mu-flux .ch-etape[data-ch-etape=preparation] tr[data-ch-cmd="AF/YC"]').innerText(),/Montage AF[\s\S]*à la chaîne, depuis Montage/i);
+  assert.equal(await page.locator('#mu-flux .ch-etape tr[data-ch-cmd="AF/YC"] .ch-a-corriger').count(),0,'faite à la chaîne : rien à corriger');
   // Et le diagramme les montre d'un bloc : un halo sur chacun, un mot au-dessus.
-  assert.equal(await page.locator('#at-parcours .gr-groupe').count(),1,'Prépa et Montage liés');
-  assert.equal(await page.locator('#at-parcours .gr-noeud.en-chaine').count(),2);
-  assert.match(await page.locator('#at-parcours .gr-groupe').textContent(),/\+ PRÉPA à la chaîne/i);
-  assert.equal(await page.locator('#at-parcours .gr-lien.en-chaine[data-lien="preparation>prepa"]').count(),1,'le lien entre eux s’épaissit');
-  // TX garde ses deux cases : rien de lié sur son chemin.
-  await page.evaluate(()=>Sim.ateliers.parcours.ouvrir('TX/YC'));await attendre();
-  assert.equal(await page.locator('#at-parcours .gr-groupe').count(),0);
+  const G='#mu-flux [data-mu-graphe]';
+  assert.equal(await page.locator(`${G} .gr-groupe`).count(),1,'Prépa et Montage liés');
+  assert.equal(await page.locator(`${G} .gr-noeud.en-chaine`).count(),2);
+  assert.match(await page.locator(`${G} .gr-groupe`).textContent(),/\+ PRÉPA à la chaîne/i);
+  assert.equal(await page.locator(`${G} .gr-lien.en-chaine[data-lien="preparation>prepa"]`).count(),1,'le lien entre eux s’épaissit');
+  // TX garde ses deux équipes : rien de lié sur son chemin.
+  await nav.cheminDe(page,'TX/YC');
+  assert.equal(await page.locator(`${G} .gr-groupe`).count(),0);
 
   // 4 bis. Services et équipes le dit sans rien ouvrir : la liste, les deux fiches, l'équipe.
   await nav.aller(page,'mu-services');
@@ -96,7 +99,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.reglagesEquipe(page,'mo');await attendre();
   await fiche('[data-at-champ=fusion]').selectOption('');await attendre();
   assert.equal((await kase('mo')).fusion,undefined);
-  await nav.aller(page,'at-grille');
+  await nav.etapesCommandes(page);
   assert.match(await page.locator('tr[data-classe="AF/YC"] .qf-case[data-service="preparation"]').innerText(),/à faire/);
 
   // 6. Tout survit au rechargement.

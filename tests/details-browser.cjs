@@ -46,10 +46,10 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   // « Détails » rouvre le dernier onglet ouvert.
   await nav.aller(page,'j-chiffres');await page.locator('#sous-onglets [data-sous-onglet]').filter({hasText:'Détails'}).click();await attendre();
   assert.equal(await sous(),'j-stocks');
-  // « Étapes de chaque commande » : un onglet de « Chemins », dans « L'unité » (évolution 22 a).
+  // « Étapes de chaque commande » n'est plus une page (évolution 22 c) : son identifiant mène à « Chemins », dans « L'unité ».
   await nav.aller(page,'at-grille');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
-  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:chemins');
+  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.partie,document.body.dataset.sous]),['organisation','mu-flux']);
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'mu-flux');
 
   // 2. Les anciens identifiants et « Aller à… ».
   for(const id of ['at-repas','v-departs','j-stocks','j-details']){

@@ -25,8 +25,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await cuisine()).debut,4*60,'par vagues : servie par celle de la veille');
 
   // 1. Les points à regarder proposent d'en faire une boutique, d'un clic.
-  //    (Évolution 22 b : « Équipes une par une » n'est plus une page ; les mêmes points se lisent en tête des chemins.)
-  await nav.aller(page,'at-chemins');
+  //    (Évolution 22 b : « Équipes une par une » n'est plus une page ; les mêmes points se lisent en tête de « Chemins ».)
+  await nav.aller(page,'mu-flux');
   await page.locator('#at-anomalies').evaluate(d=>d.open=true);
   assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie sert par vagues[\s\S]*Facultatif\s*Les ouvrir de 07:00 à 18:00/,'une information ; son geste dit « Facultatif »');
   await page.locator('#at-anomalies [data-at-action=boutiques]').click();await attendre();
@@ -59,9 +59,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await mag.locator('[data-at-champ=ouverture-a]').fill('16:00');await mag.locator('[data-at-champ=ouverture-a]').dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='mg').ouverture.a),'16:00');
 
-  // 4. « Qui prépare quoi » dit ses heures, pas une vague.
-  await nav.aller(page,'at-grille');
-  assert.match(await page.locator('.qf').first().innerText(),/ouvert 03:00–18:00/);
+  // 4. Ses heures se disent, pas une vague. (« Étapes de chaque commande », qui les disait, n'est plus une page —
+  //    évolution 22 c : la liste des services les dit, là où l'équipe se règle ; dans « Chemins », son étape dit
+  //    qu'elle sert toutes les commandes.)
+  await nav.aller(page,'mu-services');
+  assert.match(await page.locator('#mu-services .se-liste [data-mu-choisir=decontam] small').innerText(),/de 03:00 à 18:00/);
+  await page.evaluate(()=>Sim.unite.chemin('AF/BC','decontam'));await attendre();
+  assert.match(await page.locator('#mu-flux .ch-table tr[data-ch-cmd="AF/BC"]').innerText(),/Légumerie[\s\S]*mise à disposition : elle sert toutes les commandes/);
 
   // 5. La fiche le règle aussi, et « Annuler » revient en arrière.
   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();

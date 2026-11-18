@@ -554,6 +554,21 @@
    *  Le panneau
    * ====================================================================*/
 
+  /* « Étapes de chaque commande » (évolution 22 c2) n'est plus une page de réglage : le tableau — qui prépare chaque
+   * commande, service par service, et quand — se lit dans « Détails › Commandes », replié sous les commandes. C'est le
+   * tableau d'avant (sectionTableau, parcours.js, commun avec la version 2). L'éditeur de chemin de cette classe, lui,
+   * n'est jamais dessiné : un seul éditeur de chemin dans l'application, celui de « Chemins ». */
+  class EtapesCommandes extends PC.EditeurParcours {
+    rendre() {
+      const boite = this.a.boite(); if (!boite) return;
+      boite.innerHTML = this.sectionTableau(this.a.etat(), this.a.classes()).replace(/data-sous="at-grille"/g, 'data-sous="at-repas"');
+      this.filtrer();
+    }
+    /** Une cellule mène au chemin de sa commande, sur son service : dans « Chemins ». */
+    ouvrir(cmd, service) { this.a.chemin(cmd, service); }
+    placeTiroir() { /* pas de fenêtre : seul le tableau est dessiné */ }
+  }
+
   class CentreAteliers {
     /**
      * @param {object} a adaptateur
@@ -622,21 +637,19 @@
       } catch (e) { /* un état illisible est déjà signalé plus haut */ }
       this.construire();
       this.lier();
-      this.parcours = new PC.EditeurParcours({
-        boite: () => document.getElementById('at-parcours'),
+      // (Évolution 22 c : « Chemin d'une commande » et « Étapes de chaque commande » ont rejoint « Chemins » ; leur éditeur
+      // — EditeurParcours, parcours.js, commun avec la version 2 — n'y est plus dessiné : un seul éditeur de chemin.
+      // Le tableau qui suit chaque commande, étape par étape, se lit dans « Détails › Commandes » : EtapesCommandes.)
+      this.etapes = new EtapesCommandes({
+        boite: () => document.getElementById('at-etapes-corps'),
         etat: () => this.state,
-        changer: (fn, message) => this.changer(() => fn(this.state), message),
+        changer: () => {},
         services: () => this.a.services(),
         classes: () => this.classes,
         resultat: () => this.resultat,
-        // La fiche d'une case s'ouvre dans le chemin, sous le service choisi.
-        fiche: (id, cmd) => this.ficheCase(id, cmd),
-        ajout: () => this.formAjout('chemins'),
-        onglet: id => { if (this.a.onglet) this.a.onglet(id); },
-        // Un flux partagé se modifie dans Flux de production ; un service, dans Services et équipes.
-        flux: this.a.flux ? id => this.a.flux(id) : null,
-        service: this.a.ouvrirService ? id => this.a.ouvrirService(id) : null
+        chemin: (cmd, service) => { if (this.a.chemin) this.a.chemin(cmd, service); }
       });
+      document.getElementById('at-etapes').addEventListener('toggle', () => this.rendreEtapes());
       this.rendre(alerte);
     }
 
@@ -1222,12 +1235,10 @@
 </div>
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
-<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-grille" hidden></details>
+<details id="at-anomalies" class="at-anomalies" data-sous="mu-flux" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
-<section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
-<div id="at-parcours" class="pc"></div>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="hors-page"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 <section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
@@ -1240,7 +1251,11 @@
   <input id="rc-import" type="file" accept=".xlsx" hidden>
 </div>
 <h3 class="at-titre" data-sous="at-repas">Les commandes à préparer <span class="pc-sous">une par compagnie et par classe, pour la journée</span></h3>
-<div id="at-classes" data-sous="at-repas"></div>`;
+<div id="at-classes" data-sous="at-repas"></div>
+<details id="at-etapes" class="at-etapes" data-sous="at-repas">
+  <summary>Étapes de chaque commande <span class="pc-sous">suivre chaque commande, étape par étape</span></summary>
+  <div id="at-etapes-corps" class="pc"></div>
+</details>`;
     }
 
     lier() {
@@ -1322,28 +1337,6 @@
     /** Changer la nature d'une case (Équipes › Services et équipes : ce que fait le service). */
     typer(a, v) { typer(a, v); }
 
-    /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
-     * Une plonge ou une mise à disposition sert tout le monde : on prend la
-     * première commande dont le chemin passe par son service. Sans chemin qui
-     * passe par elle, elle se règle sur place. */
-    ouvrirFiche(id) {
-      const a = this.state.ateliers.find(x => x.id === id); if (!a) return false;
-      // Seul un chemin propre s'ouvre dans l'éditeur des chemins : un flux partagé
-      // se règle dans Chemins › Flux de production ; la case s'ouvre alors sur place.
-      const passe = c => { const p = PC.cheminDe(this.state, c); return !!p && P.servicesDuParcours(p).includes(a.service); };
-      const cmd = [...new Set((a.lots || []).flat())].find(passe) || this.classes.map(c => c.id).find(passe);
-      if (!cmd) return false;
-      this.parcours.ouvrir(cmd, a.service);
-      return true;
-    }
-
-    /* La fiche d'une case, ouverte, pour le panneau du chemin. */
-    ficheCase(id, cmd) {
-      const a = this.state.ateliers.find(x => x.id === id); if (!a) return '';
-      const calc = ((this.resultat || {}).ateliers || []).find(x => x.id === id);
-      return this.carte(a, calc, { cmd });
-    }
-
     action(quoi, id, data) {
       const a = this.state.ateliers.find(x => x.id === id);
       switch (quoi) {
@@ -1353,7 +1346,7 @@
             + ' une seule équipe Handling, qui charge les vols' + (r.chemins ? ' ; ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.'));
           return;
         }
-        case 'chemin': return this.parcours.ouvrir(data.classe, a ? a.service : '');
+        case 'chemin': return this.a.chemin ? this.a.chemin(data.classe, a ? a.service : '') : undefined;
         // La règle ⚡ : ne travailler que si une compagnie a assez de vols ce jour-là.
         case 'cond-ajouter': {
           const autres = this.equipesSinon(a);
@@ -1370,7 +1363,6 @@
         // Dans la liste des cases : aller la régler dans un chemin ; faute de
         // chemin qui passe par elle, elle se déplie sur place.
         case 'ouvrir':
-          if (this.ouvert !== id && this.ouvrirFiche(id)) return;
           this.ouvert = this.ouvert === id ? null : id; return this.rendre();
         // Rien à valider : la saisie est enregistrée à chaque frappe. Le bouton
         // referme la fiche et le dit — sans lui, on cherche un « créer »
@@ -1970,10 +1962,8 @@
       // Seul l'onglet affiché se redessine : à deux cents commandes, la liste
       // des cases, le planning, les commandes et le tableau coûtent cher, et
       // personne ne les regarde. Les autres attendent qu'on les ouvre.
-      this.aDessiner = new Set(['at-planning', 'at-repas', 'at-grille']);
-      const visible = this.ongletVisible();
-      if (visible !== 'at-grille') this.parcours.rendre();
-      this.surOnglet(visible);
+      this.aDessiner = new Set(['at-planning', 'at-repas']);
+      this.surOnglet(this.ongletVisible());
       document.getElementById('at-undo').disabled = !this.undo.length;
       document.getElementById('at-redo').disabled = !this.redo.length;
       if (this.a.change) this.a.change(r);
@@ -1988,13 +1978,24 @@
     /** Un onglet s'ouvre : on dessine ce qu'il montre, s'il a changé depuis. */
     surOnglet(id) {
       const r = this.resultat; if (!r || !this.aDessiner) return;
-      // Le tableau a pu être remplacé par sa place vide en redessinant les chemins.
-      if (id === 'at-grille' && document.querySelector('#at-parcours .qf[data-a-dessiner]')) this.aDessiner.add(id);
       if (!this.aDessiner.has(id)) return;
       this.aDessiner.delete(id);
       if (id === 'at-planning') this.rendrePlanning(r);
-      if (id === 'at-repas') this.rendreClasses(r);
-      if (id === 'at-grille') this.parcours.rendre();
+      if (id === 'at-repas') { this.rendreClasses(r); this.rendreEtapes(); }
+    }
+
+    /** « Étapes de chaque commande », sous les commandes : dessiné quand il est déplié seulement (il coûte cher). */
+    rendreEtapes() {
+      const d = document.getElementById('at-etapes'), corps = document.getElementById('at-etapes-corps');
+      if (!d || !corps) return;
+      if (d.open) this.etapes.rendre(); else corps.innerHTML = '';
+    }
+
+    /** Déplier « Étapes de chaque commande » et l'amener en vue (depuis « Chemins »). */
+    ouvrirEtapes() {
+      const d = document.getElementById('at-etapes'); if (!d) return;
+      d.open = true; this.rendreEtapes();
+      if (d.scrollIntoView) d.scrollIntoView({ block: 'start' });
     }
 
     /* Les indicateurs vivent à un seul endroit, « La journée › Les chiffres ».
@@ -2036,7 +2037,7 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push(corriger((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à corriger dans L’unité › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.'));
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à corriger dans L’unité › Services et équipes (cochez-les dans une équipe) ; dans L’unité › Chemins, le tableau d’une étape les marque « à corriger ».'));
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.

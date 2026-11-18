@@ -77,7 +77,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    o=await options();
    assert.deepEqual(o.map(x=>x.nom+' '+x.indice),['AF · Économie AF/YC'],V+'une commande, par son nom en clair');
    await page.keyboard.press('Enter');await attendre(page,300);
-   assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd,document.activeElement.id]),['at-chemins','AF/YC','workspace'],
+   // (Version 1, évolution 22 c : le chemin d'une commande s'ouvre dans « Chemins », sur le chemin qu'elle suit.)
+   if(await nav.v1(page))assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.fluxChoisi,Sim.unite.cheminCmd,document.activeElement.id]),
+     ['mu-flux',await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/YC').id),'AF/YC','workspace'],V+'son chemin, et le focus à la page');
+   else assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd,document.activeElement.id]),['at-chemins','AF/YC','workspace'],
      V+'son chemin, et le focus à la page');
    // Une page, aux flèches.
    await page.keyboard.press('Control+k');await page.keyboard.type('planning');await attendre(page,100);

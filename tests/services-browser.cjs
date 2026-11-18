@@ -120,10 +120,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     r.plan=await page.evaluate(id=>[...document.querySelectorAll('#zone-picker option')].some(o=>o.value===id),id);
     r.liens=await page.evaluate(id=>Sim.flows.points.some(x=>x.owner===id),id);
     await nav.aller(page,'mu-services');r.page=await ligne(id).count()===1;
-    await nav.aller(page,'at-chemins');await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-    // Sans chemin, on le crée : c'est dans son « Ajouter un service » que le service doit figurer.
-    await nav.creerChemin(page,'AF/BC');
-    r.chemin=await page.locator(`[data-pc-champ=noeud-ajout] option[value="${id}"], .pc-graphe [data-noeud="${id}"]`).count()>0;
+    // (Évolution 22 c : dans « Chemins », sur le chemin à part d'AF BC — demandé au modèle s'il n'existe pas.)
+    await nav.aller(page,'mu-flux');
+    // Sans chemin, on le crée : c'est dans son « Ajouter une étape » que le service doit figurer.
+    await nav.creerChemin(page,'AF/BC');await nav.cheminDe(page,'AF/BC');
+    r.chemin=await page.locator(`#mu-flux [data-mu-flux-ajout] option[value="${id}"], #mu-flux [data-mu-graphe] [data-noeud="${id}"]`).count()>0;
     return r;};
   const partout={services:true,plan:true,liens:true,page:true,chemin:true};
   const editer=async fn=>{await nav.aller(page,'j-plan');await page.locator('#btn-edit').click();await attendre();await fn();await page.locator('#edit-done').click();await attendre();};
@@ -229,8 +230,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.editor.undo());await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='dt2').nom),'Dotation Sud AF CREW');
   // Les pages qui listent les services le disent toutes.
-  await nav.aller(page,'at-grille');
-  assert.match(await page.locator('#at-grille, .qf').first().innerText(),/Dotation Sud/);
+  await nav.etapesCommandes(page);
+  assert.match(await page.locator('#at-etapes .qf').first().innerText(),/Dotation Sud/);
+  await nav.aller(page,'mu-flux');
+  assert.match(await page.locator('#mu-flux [data-mu-graphe]').textContent(),/Dotation Sud/,'« Chemins » aussi');
   await nav.aller(page,'mu-services');
   assert.match(await ligne('dotation').innerText(),/Dotation Sud/i,'la liste des services suit sans attendre');
   assert.doesNotMatch(await page.locator(`${M} .se-liste`).innerText(),/Dotation\b(?! Sud)/i);

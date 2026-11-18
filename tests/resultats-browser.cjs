@@ -95,9 +95,10 @@ const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),J=F.heureDuPicAttendue(sa
   await menu.click();
 
   // 3. Étapes de chaque commande : les en-têtes et la première colonne restent à la vue.
-  await nav.aller(page,'at-grille');await attendre(300);
+  //    (Évolution 22 c : le tableau se lit dans « Détails › Commandes », déplié sous les commandes.)
+  await nav.etapesCommandes(page);await attendre(300);
   const vu=await page.evaluate(async()=>{
-   const s=document.querySelector('#at-parcours .qf-scroll');s.scrollIntoView();s.scrollTop=400;s.scrollLeft=500;
+   const s=document.querySelector('#at-etapes .qf-scroll');s.scrollIntoView();s.scrollTop=400;s.scrollLeft=500;
    await new Promise(r=>setTimeout(r,150));
    const b=s.getBoundingClientRect(),au=(x,y)=>document.elementFromPoint(x,y);
    const tete=s.querySelector('thead tr:nth-child(2) th:nth-child(3)').getBoundingClientRect(),coin=s.querySelector('.qf-coin').getBoundingClientRect();

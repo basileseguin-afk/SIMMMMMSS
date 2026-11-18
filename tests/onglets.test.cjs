@@ -61,7 +61,6 @@ test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler 
   // Une entrée est une page, ou un groupe de pages qui se suivent en onglets internes : aucune mention « Plus ».
   assert.deepEqual(O.entrees().filter(o => o.groupe).map(o => [o.nom, o.pages]), [
     ['Détails', ['at-repas', 'v-departs', 'j-stocks', 'j-details']],
-    ['Chemins', ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille']],
     ['Contrôles', ['mu-pas', 'u-lecture']]
   ]);
   assert.ok(!O.PARTIES.flatMap(p => p.pages).some(x => x.plus), 'plus de page « Plus »');
@@ -92,30 +91,35 @@ test('chaque page est dans un seul espace, et garde son nom et ses anciens noms'
   // Les noms des pages d'avant l'évolution 22 : ils se cherchent toujours (« Aller à… » les propose par leur nom).
   const noms = Object.fromEntries(Object.values(O.ONGLETS).flat().map(o => [o.id, o.nom]));
   assert.deepEqual(noms, { 'v-programme': 'Programme des vols', 'v-planche': 'Planche retour', 'v-departs': 'Vols', 'mu-pas': 'Prêt à simuler ?',
-    'mu-carte': 'Vue d’ensemble', 'mu-flux': 'Chemins de production', 'mu-services': 'Services et équipes', 'at-chemins': 'Chemin d’une commande',
-    'at-grille': 'Étapes de chaque commande', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes', 'rg-simulation': 'Réglages de la simulation',
+    'mu-flux': 'Chemins', 'mu-services': 'Services et équipes', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes', 'rg-simulation': 'Réglages de la simulation',
     'j-plan': 'En direct', 'j-chiffres': 'Synthèse', 'j-periode': 'Période', 'j-stocks': 'Stocks et retours', 'j-details': 'Heures sup et renforts',
     'j-comparer': 'Comparer deux essais', 'u-plan': 'Plan de l’unité', 'u-liens': 'Liens entre services',
     'u-lecture': 'Contrôles détaillés', 'u-sauvegarde': 'Sauvegarde et limites' });
 });
 
 /* Évolution 22 (b) : « Services et équipes » reprend cinq pages. Elles n'existent plus, mais leur nom, leur identifiant
- * et leurs liens mènent à elle, au bon endroit dedans. */
-test('les cinq pages reprises par « Services et équipes » : leur nom et leur identifiant y mènent, au bon endroit', () => {
+ * et leurs liens mènent à elle, au bon endroit dedans. Évolution 22 (c) : « Chemins » en reprend trois, et garde le nom
+ * d'avant de la sienne (« Chemins de production », sous une clé qui n'est pas une page). */
+test('les pages reprises par « Services et équipes » et par « Chemins » : leur nom et leur identifiant y mènent, au bon endroit', () => {
+  const REPRISES = { 'mu-services': 'Services et équipes', 'mu-flux': 'Chemins' };
   assert.deepEqual(Object.entries(O.ANCIENNES).map(([id, a]) => [id, a.nom, a.ancien || '', a.vers, a.lieu]), [
     ['at-recap', 'Horaires des équipes', '', 'mu-services', 'equipes'],
     ['at-equipes', 'Équipes une par une', 'Les cases · Ateliers de travail', 'mu-services', 'equipes'],
     ['rg-recap', 'Temps par vol', 'Heures de travail', 'mu-services', 'temps'],
     ['rg-minutes', 'Temps par vol par service', 'Barème par service', 'mu-services', 'temps'],
-    ['u-services', 'Liste des services', '', 'mu-services', 'liste']]);
+    ['u-services', 'Liste des services', '', 'mu-services', 'liste'],
+    ['mu-carte', 'Vue d’ensemble', '', 'mu-flux', 'liste'],
+    ['mu-flux:avant', 'Chemins de production', '', 'mu-flux', 'liste'],
+    ['at-chemins', 'Chemin d’une commande', '', 'mu-flux', 'etapes'],
+    ['at-grille', 'Étapes de chaque commande', '', 'mu-flux', 'etapes']]);
   const pages = Object.values(O.ONGLETS).flat().map(o => o.id);
   for (const [id, a] of Object.entries(O.ANCIENNES)) {
     assert.ok(!pages.includes(id), id + ' n’est plus une page');
     assert.ok(pages.includes(a.vers), id + ' mène à une page qui existe');
     assert.ok(!O.regles().includes('"' + id + '"'), id + ' : plus de règle d’affichage — ce qui porte encore son nom reste caché');
     // Son identifiant vaut celui de la page qui l'a reprise : sa vue, son espace, son nom, son entrée au menu.
-    assert.equal(O.resoudre(id), 'mu-services');
-    assert.deepEqual([O.vueDe(id), O.partieDe(id).id, O.page(id).id, O.page(id).nom, O.entreeDe(id).id], ['ateliers', 'organisation', 'mu-services', 'Services et équipes', 'mu-services']);
+    assert.equal(O.resoudre(id), a.vers);
+    assert.deepEqual([O.vueDe(id), O.partieDe(id).id, O.page(id).id, O.page(id).nom, O.entreeDe(id).id], ['ateliers', 'organisation', a.vers, REPRISES[a.vers], a.vers]);
     assert.equal(O.montree(id), true);
   }
   assert.equal(O.resoudre('j-chiffres'), 'j-chiffres');
@@ -132,6 +136,11 @@ test('les cinq pages reprises par « Services et équipes » : leur nom et leur 
   s.choisir('u-services', undefined, false, 'supprimes');
   s.choisir('mu-services');
   assert.deepEqual(vus, [['mu-services', 'temps'], ['mu-services', 'liste'], ['mu-services', 'equipes'], ['mu-services', 'supprimes'], ['mu-services', 'supprimes']]);
+  // Les pages que « Chemins » a reprises : la liste des chemins, ou le tableau d'une étape.
+  vus.length = 0;
+  for (const id of ['mu-carte', 'at-chemins', 'at-grille', 'mu-flux:avant', 'mu-flux']) { s.choisir(id); assert.equal(s.page, 'mu-flux', id); }
+  assert.deepEqual(vus, [['mu-flux', 'liste'], ['mu-flux', 'etapes'], ['mu-flux', 'etapes'], ['mu-flux', 'liste']]);
+  assert.equal(s.choix.organisation, 'mu-flux');
 });
 
 test('une page se range selon sa nature, pas selon l’écran qui la porte', () => {
@@ -141,9 +150,12 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   assert.equal(partie('v-planche'), 'donnees');
   // L'unité (évolution 22 a) : ses services et ses équipes, ses chemins, son plan.
   assert.deepEqual([partie('mu-services'), O.page('mu-services').groupe], ['organisation', undefined], '« Services et équipes » : une page, plus un groupe (évolution 22 b)');
-  for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']) assert.deepEqual([partie(id), O.page(id).groupe], ['organisation', 'chemins'], id);
+  // « Chemins » : une page, plus un groupe (évolution 22 c) ; les pages qu'elle a reprises y mènent ; « Liens entre services » s'ouvre depuis elle.
+  for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille']) assert.deepEqual([partie(id), O.page(id).id, O.page(id).groupe], ['organisation', 'mu-flux', undefined], id);
+  assert.deepEqual([partie('u-liens'), O.page('u-liens').groupe, O.page('u-liens').sous], ['organisation', undefined, 'mu-flux']);
   assert.deepEqual(O.pagesDuGroupe('services'), [], 'plus de groupe « Services et équipes »');
-  assert.equal(O.pagesDuGroupe('chemins')[0].id, 'mu-carte', '« Chemins » commence par la vue d’ensemble');
+  assert.deepEqual(O.pagesDuGroupe('chemins'), [], 'plus de groupe « Chemins »');
+  assert.equal(O.GROUPES.chemins, undefined);
   // Le plan de l'unité a son entrée (refonte, étape 5) : la même toile que le plan rejoué.
   assert.deepEqual([partie('u-plan'), O.page('u-plan').groupe], ['organisation', undefined]);
   assert.equal(O.vueDe('u-plan'), 'plan');
@@ -182,7 +194,7 @@ test('v2 : l’organisation d’avant, chaque page dans une seule partie', () =>
   // (Une page que « Services et équipes » a reprise en version 1 — évolution 22 b — n'y est plus une page : elle mène à elle.)
   const v1 = new Set(Object.values(O.ONGLETS).flat().map(o => o.id));
   for (const id of V.PARTIES.flatMap(p => p.pages.map(x => x.id)).filter(id => v1.has(id))) assert.equal(O.vueDe(id), V.vueDe(id), id + ' : la même vue en v1 et v2');
-  for (const id of Object.keys(O.ANCIENNES)) assert.ok(V.page(id), id + ' : toujours une page en version 2');
+  for (const id of Object.keys(O.ANCIENNES).filter(id => !id.includes(':'))) assert.ok(V.page(id), id + ' : toujours une page en version 2');
 });
 
 /* Le plan de l'unité est une page de passage (refonte, étape 5) : on l'ouvre
@@ -256,42 +268,36 @@ test('le bloc « Lire » (évolution 15 c) : six entrées ; « Détails » en qu
   for (const id of ['at-repas', 'v-departs', 'j-stocks', 'j-details']) assert.equal(O.partieDe(id).id, 'resultats', id);
   assert.equal(O.page('at-repas').ancien, 'Heure de chaque commande');
   assert.equal(O.page('v-departs').ancien, 'Vols prêts au départ');
-  // « Étapes de chaque commande » : un réglage, parmi les onglets de « Chemins ».
-  assert.equal(O.page('at-grille').groupe, 'chemins');
-  assert.ok(O.menuDe('organisation').find(o => o.groupe === 'chemins').pages.includes('at-grille'));
+  // « Étapes de chaque commande » n'est plus une page (évolution 22 c) : son identifiant mène à « Chemins ».
+  assert.equal(O.page('at-grille').id, 'mu-flux');
+  assert.deepEqual(O.menuDe('organisation').map(o => o.id), ['mu-services', 'mu-flux', 'u-plan']);
 });
 
-test('« Liens entre services » n’est parmi les onglets de « Chemins » que si une commande n’a pas de chemin ; sinon, la page s’ouvre encore (évolution 19 b)', () => {
-  assert.equal(O.page('u-liens').menuSi, 'liens');
-  // Les onglets de « Chemins », tels que le menu les donne à son entrée.
-  const onglets = ouverte => O.menuDe('organisation', {}, ouverte).find(o => o.groupe === 'chemins').pages;
+test('« Liens entre services » n’est jamais au menu : la page s’ouvre depuis « Chemins », qui reste marquée (évolutions 19 b et 22 c)', () => {
+  assert.deepEqual([O.page('u-liens').sous, O.page('u-liens').menuSi], ['mu-flux', undefined]);
+  const entrees = ouverte => O.menuDe('organisation', {}, ouverte).map(o => o.id);
   try {
-    // Toutes les commandes ont un chemin : la page n'a pas son onglet, mais elle se montre — « Aller à… » et ses liens y mènent.
-    O.conditions.liens = () => false;
-    assert.equal(O.montree('u-liens'), true, 'elle s’ouvre toujours');
-    assert.equal(O.auMenu('u-liens'), false);
-    assert.deepEqual(onglets(), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille']);
+    // Avec ou sans commande sans chemin, et même ouverte : jamais une entrée du menu — quatorze entrées, pas une de plus.
+    for (const liens of [() => false, () => true, undefined]) {
+      if (liens) O.conditions.liens = liens; else delete O.conditions.liens;
+      assert.equal(O.montree('u-liens'), true, 'elle s’ouvre toujours : « Aller à… » et le lien de « Chemins » y mènent');
+      assert.equal(O.auMenu('u-liens'), false);
+      assert.equal(O.auMenu('u-liens', 'u-liens'), false);
+      assert.deepEqual(entrees(), ['mu-services', 'mu-flux', 'u-plan']);
+      assert.deepEqual(entrees('u-liens'), ['mu-services', 'mu-flux', 'u-plan']);
+    }
     assert.ok(O.pagesDe('organisation').some(x => x.id === 'u-liens'), 'la recherche la liste encore');
-    // Tant qu'on y est, son onglet est là : on sait où l'on est.
-    assert.equal(O.auMenu('u-liens', 'u-liens'), true);
-    assert.deepEqual(onglets('u-liens'), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']);
-    // Rouvrir « Chemins » ne ramène pas sur une page hors du menu, même si c'était la dernière ouverte.
+    // Tant qu'on y est, « Chemins » est l'entrée marquée : on sait où l'on est.
+    assert.equal(O.entreeDe('u-liens').id, 'mu-flux');
+    // Elle s'ouvre, mais n'est pas retenue : l'espace et la vue rouvrent la page d'avant.
     const s = new O.SousOnglets({ hote: () => null, vue: () => 'flux' });
+    s.choisir('mu-flux');
     s.choisir('u-liens');
     assert.equal(s.page, 'u-liens', 'elle s’ouvre');
-    assert.equal(s.choix['groupe:chemins'], 'u-liens');
-    assert.equal(O.menuDe('organisation', s.choix).find(o => o.groupe === 'chemins').id, 'mu-carte', '« Chemins » rouvre sa première page');
-    assert.equal(O.menuDe('organisation', s.choix, 'u-liens').find(o => o.groupe === 'chemins').id, 'u-liens', 'tant qu’on y est, l’entrée y mène');
-    // Une commande sans chemin : son onglet revient, comme avant.
-    O.conditions.liens = () => true;
-    assert.equal(O.auMenu('u-liens'), true);
-    assert.deepEqual(onglets(), ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']);
-    assert.equal(O.menuDe('organisation', s.choix).find(o => o.groupe === 'chemins').id, 'u-liens');
-    // Sans condition posée (une page qui n'a pas encore branché la sienne) : hors du menu, jamais fermée.
-    delete O.conditions.liens;
-    assert.equal(O.auMenu('u-liens'), false); assert.equal(O.montree('u-liens'), true);
+    assert.equal(s.choix.organisation, 'mu-flux', 'l’espace rouvre « Chemins »');
+    assert.equal((s.parVue || {}).flux, undefined);
     // Les autres pages ne changent pas : au menu dès qu'elles se montrent.
-    for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'j-chiffres', 'u-services']) assert.equal(O.auMenu(id), true, id);
+    for (const id of ['mu-flux', 'mu-services', 'j-chiffres', 'u-services', 'at-chemins']) assert.equal(O.auMenu(id), true, id);
     assert.equal(O.auMenu('j-periode'), false, 'une page conditionnelle fermée n’est pas au menu');
   } finally { delete O.conditions.liens; }
 });

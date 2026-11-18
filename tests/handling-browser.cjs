@@ -23,22 +23,30 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(H&&H!=='handling','un service Handling à lui');
   await page.evaluate(h=>{window.H=h;},H);   // lu aussi dans la page
 
-  // 1. Sur le chemin d'AF · Business, on ajoute le handling : sa case est un handling, partagé.
-  await nav.aller(page,'at-chemins');
-  await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
-  if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
-  await page.selectOption('[data-pc-champ=noeud-ajout]',H);await attendre();
+  // 1. Sur le chemin d'AF · Business, on ajoute le handling : son équipe est un handling, partagé.
+  //    (Évolution 22 c : dans « Chemins ». La commande a sa variante, l'étape y entre à sa place, et le tableau de
+  //    l'étape crée l'équipe du service — avant, elle naissait avec l'étape, dans « Chemin d'une commande ».)
+  const ajouterHandling=async cmd=>{
+    await nav.cheminDe(page,cmd);await nav.sectionChemin(page,'suivi');
+    // Elle suit un chemin partagé : on lui fait sa variante, modifiable sur place.
+    if(await page.locator(`#mu-flux [data-ch-variante] option[value="${cmd}"]`).count()){await page.locator('#mu-flux [data-ch-variante]').selectOption(cmd);await attendre();}
+    await page.selectOption('#mu-flux [data-mu-flux-ajout]',H);await attendre();
+    await page.locator(`#mu-flux [data-mu-graphe] [data-noeud="${H}"]`).click();await attendre();
+  };
+  await ajouterHandling('AF/BC');
+  assert.match(await page.locator('#mu-flux .ch-etape tr[data-ch-cmd="AF/BC"]').innerText(),/à corriger/,'l’étape n’a pas encore d’équipe');
+  assert.match(await page.locator('#mu-flux .ch-etape select[data-ch-equipe="AF/BC"] option[value="+"]').innerText(),/Créer l’équipe de .* : elle sert toutes les commandes/);
+  await page.locator('#mu-flux .ch-etape select[data-ch-equipe="AF/BC"]').selectOption('+');await attendre();
   const cases=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H));
   assert.equal(cases.length,1);
   assert.equal(cases[0].type,'handling');
   assert.deepEqual(cases[0].lots,[],'pas de liste de commandes');
   const id=cases[0].id;
-  // Une seconde commande qui passe par le handling ne crée pas de seconde case.
-  await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
-  // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
-  if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
-  await page.selectOption('[data-pc-champ=noeud-ajout]',H);await attendre();
+  assert.match(await page.locator('#mu-flux .ch-etape tr[data-ch-cmd="AF/BC"]').innerText(),/charge les vols de toutes les commandes/);
+  // Une seconde commande qui passe par le handling ne crée pas de seconde équipe : elle est servie.
+  await ajouterHandling('AF/YC');
+  assert.match(await page.locator('#mu-flux .ch-etape tr[data-ch-cmd="AF/YC"]').innerText(),/charge les vols de toutes les commandes/);
+  assert.equal(await page.locator('#mu-flux .ch-etape .ch-a-corriger').count(),0,'rien à corriger');
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H).length),1,'un seul handling, partagé');
 
   // Une compagnie dont rien n'est construit n'est pas chargée (02/10) : une équipe
@@ -151,25 +159,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 7. Même chose depuis l'Organisation, là où l'on travaille les chemins.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'vieux-TX',nom:'CF départ food TX',service:H,type:'manuel',
     debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['TX/YC']],regime:{actif:true}});},''));
-  await nav.aller(page,'at-chemins');
+  await nav.aller(page,'mu-flux');
   assert.equal(await page.locator('#at-anomalies').evaluate(d=>d.open),true,'ouvert d’office');
   assert.match(await page.locator('#at-anomalies').innerText(),/1 équipe le prépare commande par commande/);
   await page.locator('#at-anomalies [data-at-action=handling-convertir]').click();await attendre();
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H).map(a=>a.type)),['handling'],'l’ancienne case rejoint le handling existant');
   assert.doesNotMatch(await page.locator('#at-anomalies').innerText(),/ancienne logique/);
 
-  // La fenêtre de la case dans un chemin tient dans l'écran (retour d'usage : « la page est
-  // beaucoup trop grande pour la taille de la fenêtre ») : rien ne dépasse, même à 1280 px.
+  // L'étape du handling s'ouvre dans le chemin, et son équipe se règle dans sa fiche, où mène son nom (évolution 22 c :
+  // plus de fenêtre par-dessus le chemin). Rien ne dépasse de l'écran, même à 1280 px (retour d'usage : « la page est
+  // beaucoup trop grande pour la taille de la fenêtre »).
   await page.setViewportSize({width:1280,height:720});
-  await nav.aller(page,'at-chemins');
   const cmd=await page.evaluate(()=>Sim.ateliers.classes.find(c=>c.vols.length).id);
-  await page.evaluate(cmd=>Sim.ateliers.parcours.ouvrir(cmd,H),cmd);await attendre();
-  assert.equal(await page.locator('.pc-tiroir').count(),1,'la case du handling s’ouvre dans le chemin');
+  await nav.cheminDe(page,cmd,H);await attendre();
+  assert.equal(await page.locator('.pc-tiroir').count(),0,'plus de fenêtre dans le chemin');
+  assert.equal(await page.locator('#mu-flux .ch-etape').getAttribute('data-ch-etape'),H,'l’étape du handling s’ouvre dans le chemin');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)<=1,'« Chemins » ne dépasse pas de l’écran');
+  await page.locator('#mu-flux .ch-etape [data-ch-fiche]').first().click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services','le nom de l’équipe mène à sa fiche');
   {
-    const debord=await page.evaluate(()=>{const t=document.querySelector('.pc-tiroir'),ts=t.querySelector('.at-cies-bloc .table-scroll');
-      return {t:t.scrollWidth-t.clientWidth,doc:document.documentElement.scrollWidth-innerWidth,table:ts?ts.scrollWidth-ts.clientWidth:0};});
-    assert.ok(debord.t<=1&&debord.doc<=1&&debord.table<=1,'rien ne dépasse de la fenêtre de la case : '+JSON.stringify(debord));
-    assert.equal(await page.evaluate(()=>document.body.classList.contains('pc-tiroir-large')),true,'la fenêtre s’élargit pour le handling');
+    const debord=await page.evaluate(()=>{const t=document.querySelector('#mu-services .mu-fiche');
+      return {t:t.scrollWidth-t.clientWidth,doc:document.documentElement.scrollWidth-innerWidth,cies:!!t.querySelector('.at-cies')};});
+    assert.ok(debord.t<=1&&debord.doc<=1,'rien ne dépasse de la fiche du handling : '+JSON.stringify(debord));
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('handling-browser : ok');

@@ -17,9 +17,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await robotId(),null,'pas de Robot sur une première visite');
 
   // 2. Une organisation décrite : TX et CRL Économie ont leur chemin, par le Montage.
-  await nav.aller(page,'at-chemins');
+  // (Évolution 22 c : le chemin à part d'une commande se demande au modèle — nav.creerChemin.)
+  await nav.aller(page,'mu-flux');
   for(const c of ['TX/YC','CRL/YC']){
-    await page.locator(`[data-pc-action=cmd][data-classe="${c}"]`).click();await attendre();
     await nav.creerChemin(page,c);
   }
   assert.ok(await page.evaluate(()=>{const st=Sim.ateliers.state;return st.parcours.find(p=>p.id===st.parcoursClasse['TX/YC']).noeuds.includes('prepa');}));

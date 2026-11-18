@@ -90,7 +90,7 @@ const parFichier = {
     ['Ses équipes : une case par compagnie', 'Ses équipes : une par compagnie'],
     ['une case vide (+) l’y fait passer', 'une cellule vide (+) l’y fait passer'],
     ['ex. Atelier APM', 'ex. Découpe'],
-    ['Chemins › Flux de production', 'Chemins › Chemins de production'],
+    ['Chemins › Flux de production', 'L’unité › Chemins'],
     ['Ouvrir les flux de production', 'Ouvrir les chemins de production']
   ],
   'parcours.js': [
@@ -208,7 +208,7 @@ const brutes = {
   ],
   'parcours.js': [
     ["texte(nom, 76) || 'Flux')", "texte(nom, 76) || 'Chemin')"],
-    ["groupe('flux', 'Flux')", "groupe('flux', 'Chemins de production')"],
+    ["groupe('flux', 'Flux')", "groupe('flux', 'Chemins')"],
     ['dans le sens du flux">Réorganiser', 'dans le sens du chemin">Réorganiser']
   ],
   // Les alertes des liens (« Contrôles détaillés ») : ce qui n'est pas « à corriger » est une « information », repliée sous le reste (évolution 19 d).

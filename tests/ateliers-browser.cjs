@@ -137,10 +137,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const etats=await page.locator('#at-classes tbody tr:has(th[data-classe])').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[6].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,21,'24 commandes moins les 3 préparées');
-  // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
-  await onglet('at-grille');
-  const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
-  assert.deepEqual(traverses,['cuisine','prepa'],'les services qui la fabriquent ont leur case remplie');
+  // Par où elle passe, et qui la prépare : dans « Chemins » (évolution 22 c), le tableau de chaque étape de son chemin
+  // le dit — une équipe choisie là où on la prépare, « à corriger » ailleurs.
+  await page.evaluate(()=>Sim.unite.chemin('CRL/BC'));await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux');
+  const traverses=[];
+  for(const s of await page.locator('#mu-flux [data-mu-graphe] [data-noeud]').evaluateAll(ns=>ns.map(n=>n.dataset.noeud))){
+    await page.locator(`#mu-flux [data-mu-graphe] [data-noeud="${s}"]`).click();await attendre();
+    const choix=page.locator('#mu-flux .ch-table tr[data-ch-cmd="CRL/BC"] select[data-ch-equipe]');
+    if(await choix.count()&&await choix.inputValue())traverses.push(s);
+  }
+  assert.deepEqual(traverses.sort(),['cuisine','prepa'],'les services qui la fabriquent ont leur équipe choisie');
 
   // 9. Les indicateurs résument la journée.
   assert.match(await page.locator('#at-indicateurs').textContent(),/Sur la journée : \d+ commandes? prêtes? à l’heure sur \d+/,'une phrase, les mêmes mots que l’étape 4');

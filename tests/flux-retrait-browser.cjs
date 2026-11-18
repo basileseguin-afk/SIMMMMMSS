@@ -51,10 +51,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await cellule('AF/YC').check();await attendre();
    assert.deepEqual(await lots(),['AF/BC','AF/YC']);
    // On la retire de nouveau, cette fois depuis Une commande (le modèle « Éco »).
+   // (Version 1, évolution 22 c : « Chemin d'une commande » a rejoint « Chemins » ; l'étape se retire depuis son
+   //  tableau, sous le diagramme — le chemin ouvert par une de ses commandes.)
+   if(version==='v1'){
+    await page.evaluate(()=>Sim.unite.chemin('AF/YC','cuisine'));await attendre();
+    assert.equal(await page.locator('#mu-flux .ch-etape').getAttribute('data-ch-etape'),'cuisine',version+' : le chemin s’ouvre sur l’étape');
+    await page.locator('#mu-flux .ch-etape [data-mu-flux-action=retirer-service]').click();await attendre();
+   }else{
    await nav.aller(page,'at-chemins');
    await page.evaluate(()=>{const e=Sim.ateliers.parcours;e.cmd=null;e.actif='eco';e.sel=null;e.rendre();});await attendre();
    await page.evaluate(()=>{const b=document.createElement('button');b.dataset.pcAction='noeud-retirer';b.dataset.service='cuisine';
      Sim.ateliers.parcours.cliquer({target:b});});await attendre();
+   }
    assert.ok(!(await eco()).includes('cuisine'),version+' : retirée du chemin');
    assert.deepEqual(await lots(),['AF/BC'],version+' : ses équipes la lâchent aussi');
    await nav.equipe(page,'cu');await attendre();

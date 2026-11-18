@@ -213,29 +213,39 @@ function sauvegarde(){
   assert.ok(s.champs>=5,'ses temps par classe sont de retour ('+s.champs+')');
   await changer('pl1',a=>{a.parVol=true;});await changer('pl2',a=>{a.parVol=true;});await attendre();
 
-  // 6. « Liens entre services » : toutes les commandes ont un chemin, la page n'est pas au menu ; « Aller à… » y mène.
-  //    (Depuis l'évolution 22 a, « au menu » veut dire : parmi les onglets de l'entrée « Chemins ».)
-  const entrees=async()=>{await nav.aller(page,'mu-flux');return page.locator('#onglets-internes [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet));};
+  // 6. « Liens entre services » n'est jamais au menu (évolution 22 c : « Chemins » est une seule page, sans onglets
+  //    internes). Toutes les commandes ont un chemin : « Chemins » le dit, et rien n'y mène aux liens ; « Aller à… » y
+  //    mène quand même. Une commande sans chemin : « Chemins » la compte, et le panneau de ces commandes mène aux liens.
+  const versLiens=async()=>{await nav.aller(page,'mu-flux');await attendre(200);
+    const b=page.locator('#mu-flux .ch-bas [data-ch-panneau=sans]');if(!(await b.count()))return 0;
+    await b.click();await attendre(200);return page.locator('#mu-flux [data-page=u-liens]').count();};
+  const auMenu=()=>page.locator('#menu [data-sous-onglet=u-liens], #onglets-internes [data-sous-onglet]:visible').count();
   assert.equal(await page.evaluate(()=>OrlyOnglets.conditions.liens()),false,'aucune commande sans chemin');
-  assert.ok(!(await entrees()).includes('u-liens'),'pas au menu : '+await entrees());
+  assert.equal(await versLiens(),0,'toutes les commandes ont un chemin : rien ne mène aux liens');
+  assert.match(await page.locator('#mu-flux .ch-bas').innerText(),/Toutes les commandes ont un chemin/);
+  assert.equal(await auMenu(),0,'pas au menu, et « Chemins » n’a pas d’onglets');
   await page.keyboard.press('Control+k');await page.keyboard.type('Liens entre services');await attendre(200);
   const options=page.locator('dialog.palette [role=option]');
   const i=(await options.evaluateAll(os=>os.map(o=>o.textContent))).findIndex(t=>t.includes('Liens entre services'));
   assert.ok(i>=0,'« Aller à… » la propose');
   await options.nth(i).click();await attendre(300);
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-liens','« Aller à… » y mène');
-  assert.ok((await page.locator('#onglets-internes [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet))).includes('u-liens'),'tant qu’on y est, son onglet est là');
-  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:chemins','et « Chemins » est marquée');
-  assert.ok(!(await entrees()).includes('u-liens'),'on la quitte : elle quitte le menu');
-  // Une commande sans chemin (sa classe n'a plus de chemin, elle n'en a pas à elle) : la page revient au menu.
+  assert.equal(await auMenu(),0,'même ouverte, elle n’est pas au menu');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'mu-flux','et « Chemins » est marquée');
+  // Une commande sans chemin (sa classe n'a plus de chemin, elle n'en a pas à elle) : « Chemins » mène aux liens.
   const sansChemin=await page.evaluate(()=>{const at=Sim.ateliers,c=at.classes.find(x=>!x.categorie&&!(at.state.parcoursClasse||{})[x.id]),avant=at.state.parcoursCabine[c.cabine];
     at.changer(()=>{const p={...at.state.parcoursCabine};delete p[c.cabine];at.state.parcoursCabine=p;},'');return {id:c.id,cabine:c.cabine,avant};});
   await attendre();
   assert.equal(await page.evaluate(()=>OrlyOnglets.conditions.liens()),true,sansChemin.id+' n’a plus de chemin');
-  assert.ok((await entrees()).includes('u-liens'),'une commande sans chemin : au menu');
+  assert.equal(await versLiens(),1,'une commande sans chemin : le panneau de ces commandes mène aux liens');
+  assert.match(await page.locator('#mu-flux .ch-bas').innerText(),/commandes? sans chemin/);
+  assert.equal(await auMenu(),0,'toujours pas au menu');
+  await page.locator('#mu-flux [data-page=u-liens]').click();await attendre(300);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-liens','le lien y mène');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'mu-flux');
   await page.evaluate(x=>{const at=Sim.ateliers;at.changer(()=>{at.state.parcoursCabine={...at.state.parcoursCabine,[x.cabine]:x.avant};},'');},sansChemin);await attendre();
   assert.equal(await page.evaluate(()=>OrlyOnglets.conditions.liens()),false);
-  assert.ok(!(await entrees()).includes('u-liens'),'toutes ont de nouveau un chemin : hors du menu');
+  assert.equal(await versLiens(),0,'toutes ont de nouveau un chemin : plus rien n’y mène');
 
   // 7. Aucun calcul ne change : revenue à ses réglages de départ, la journée est la même, champ par champ.
   await changer('rb',a=>{a.debits=Object.fromEntries(a.lots.flat().map(c=>[c,450]));});await attendre(500);

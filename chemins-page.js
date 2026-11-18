@@ -96,10 +96,15 @@
       this.cheminPanneau = null; this.fluxChoisi = id; this.fluxSel = service ? { type: 'noeud', id: service } : null;
       if (this.graphe) this.graphe.selection = this.fluxSel;
       if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
+      // Arrivé pour une étape : son tableau en vue, sous le diagramme — la ligne de la commande, si l'on vient pour elle.
+      if (service) (root.requestAnimationFrame || (f => setTimeout(f, 0)))(() => {
+        const l = root.document.querySelector('#mu-flux .ch-etape tr.ch-vise') || root.document.querySelector('#mu-flux .ch-etape-tete');
+        if (l && l.scrollIntoView) l.scrollIntoView({ block: 'center' });
+      });
     }
 
     /** Le chemin d'une commande : celui qu'elle suit, ouvert sur ce service — son équipe s'y choisit. */
-    ouvrirCheminDe(cmd, service) {
+    chemin(cmd, service) {
       const p = PC.fluxDe(this.etat, (this.at.classes || []).find(c => c.id === cmd) || cmd);
       this.cheminCmd = cmd;
       if (p) return this.ouvrirFlux(p.id, service && P.servicesDuParcours(p).includes(service) ? service : null);
@@ -225,7 +230,7 @@
         + `<div class="pc-graphe mu-graphe ch-graphe" data-mu-graphe></div>${choisi}`
         + this.sectionChemin('suivi', 'Qui le suit', suivi + this.cheminDeChacune(x) + this.variante(x), esc(pl(x.commandes.length, 'commande')), false)
         + this.sectionChemin('commandes', 'Commandes exclues et ajoutées', this.exclues(classes), (this.at.retirees || []).length ? esc(pl(this.at.retirees.length, 'exclue')) : '', false)
-        + `<p class="ch-resultats"><button type="button" class="lien-discret" data-page="at-repas">Suivre ces commandes dans les résultats →</button></p>`;
+        + `<p class="ch-resultats"><button type="button" class="lien-discret" data-page="at-repas" data-lieu="etapes">Suivre ces commandes dans les résultats →</button></p>`;
     }
 
     /** « Qui le suit », sans la liste « voir le chemin d'une de ses commandes » : ses équipes sont dans le tableau de l'étape. */
@@ -276,13 +281,16 @@
       const lignes = propres ? propres.filter(c => cies.has(c.cie)) : x.commandes;
       const lib = c => (c.categorie ? c.cie + ' · ' + (c.nom || nom) : P.libelleClasse(c.id));
       const fiche = a => `<button type="button" class="lien-discret ch-equipe" data-ch-fiche="${esc(a.id)}" title="Régler cette équipe : L’unité › Services et équipes">${esc(a.nom)} →</button>`;
+      // Un service sans aucune équipe, qui sert toutes les commandes (handling, mise à disposition, plonge) : « + » crée
+      // l'équipe du service, pas celle d'une commande (voir choisirEquipe).
+      const partage = !st.ateliers.some(a => a.service === s) && (PC.natureService(st, s, nom) === 'handling' || PC.estDispo(st, s) || s === 'plonge');
       let manque = 0;
       const rangs = lignes.map(c => {
         const l = ligneEtape(st, s, c.id), a = l.equipe, t = this.tempsParVol(s, c);
         const choix = `<select data-ch-equipe="${esc(c.id)}" data-service="${esc(s)}" aria-label="Équipe de ${esc(lib(c))} à l’étape ${esc(nom)}">
             <option value=""${l.genre === 'equipe' ? '' : ' selected'}>— aucune —</option>
             ${l.choix.map(e => `<option value="${esc(e.id)}"${a && a.id === e.id && l.genre === 'equipe' ? ' selected' : ''}>${esc(e.nom)}</option>`).join('')}
-            <option value="+">+ Nouvelle équipe « ${esc(nom + ' ' + PC.etiquette(c.id))} »</option></select>`;
+            <option value="+">${partage ? '+ Créer l’équipe de ' + esc(nom) + ' : elle sert toutes les commandes' : '+ Nouvelle équipe « ' + esc(nom + ' ' + PC.etiquette(c.id)) + ' »'}</option></select>`;
         let equipe;
         if (l.genre === 'equipe') equipe = choix + fiche(a);
         else if (l.genre === 'chaine') equipe = `${fiche(a)}<span class="mini-note">${pic('chaine', 'ico-texte')} à la chaîne, depuis ${esc(this.nom(a.service))}</span>`;
@@ -297,6 +305,7 @@
         <p class="ch-etape-tete"><b>Étape : ${esc(nom)}</b>
           <span class="mini-note">${manque ? `<b class="ch-a-corriger">${pl(manque, 'commande')} sans équipe ici</b>` : lignes.length ? 'chaque commande a son équipe' : 'aucune commande ne suit ce chemin'}</span>
           <span class="mu-tete-fin"></span>
+          <button type="button" class="btn btn-sm" data-ch-relier="${esc(s)}" title="Puis choisissez l’étape qui reçoit : d’un clic, ou au clavier (Entrée)">Relier à…</button>
           <button type="button" class="lien-discret" data-ch-temps="${esc(s)}" title="Les temps par vol se règlent dans la fiche du service">Ses temps par vol →</button>
           <button type="button" class="lien-discret" data-mu-ouvrir-svc="${esc(s)}">Ses équipes →</button>
           <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(s)}">Retirer du chemin</button></p>
@@ -387,6 +396,12 @@
       // Un service à une équipe par compagnie range ses propres commandes (une par compagnie), pas celles des repas.
       const classes = this.at.classesDe(service) || this.at.classes, lib = PC.etiquette(cmd), nom = this.nom(service);
       if (!v) return this.at.changer(() => { PC.affecter(this.at.state, service, [cmd], null, classes); }, lib + ' n’a plus d’équipe à l’étape ' + nom + ' : l’étape sera sautée.');
+      // Un service encore sans équipe : la première naît d'après ce qu'il est, comme quand « Chemin d'une commande »
+      // ajoutait l'étape — un handling ou une mise à disposition, partagés ; une plonge ; un robot ; sinon l'équipe de la commande.
+      const p = this.cheminChoisi();
+      if (v === '+' && p && !this.at.state.ateliers.some(a => a.service === service)) return this.at.changer(() => {
+        PC.donnerCases(this.at.state, cmd, p, [service], s => this.nom(s), classes);
+      }, 'Équipe créée à l’étape ' + nom + ' : réglez son heure et ses personnes dans sa fiche (son nom y mène).');
       if (v === '+') return this.at.changer(() => {
         const st = this.at.state, cree = PC.nouvelleEquipe(st, service, nom, [], classes);
         cree.nom = PC.nomLibre(st, nom + ' ' + lib);
@@ -431,6 +446,9 @@
         if (f) return void this.ouvrirEquipe(f.dataset.chFiche);
         const t = e.target.closest('[data-ch-temps]');
         if (t) { this.ouvrir(t.dataset.chTemps); return this.allerA('temps'); }
+        // « Relier à… » : le geste du « + » de l'étape, sans la souris — l'étape choisie ensuite reçoit le lien.
+        const rl = e.target.closest('[data-ch-relier]');
+        if (rl && this.graphe) return void this.graphe.relierDepuis(rl.dataset.chRelier);
         const a = e.target.closest('[data-mu-flux-action]');
         if (a && p && !p.type) return this.actionApart(a.dataset.muFluxAction, p);
       });

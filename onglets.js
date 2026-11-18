@@ -40,12 +40,10 @@
     ],
     ateliers: [
       { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
-      { id: 'mu-carte', nom: 'Vue d’ensemble', ico: 'reseau' },
       // Évolution 19 (a) : un seul mot par chose — « chemin », « temps par vol ». Les anciens noms se cherchent toujours (« Aller à… »).
-      { id: 'mu-flux', nom: 'Chemins de production', ancien: 'Flux de production', ico: 'fleche' },
+      // Évolution 22 (c) : « Chemins » réunit cinq pages ; « Chemins de production » en était le nom (voir ANCIENNES).
+      { id: 'mu-flux', nom: 'Chemins', ancien: 'Flux de production', ico: 'reseau' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
-      { id: 'at-chemins', nom: 'Chemin d’une commande', ico: 'fleche' },
-      { id: 'at-grille', nom: 'Étapes de chaque commande', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
       { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' }
     ],
@@ -115,14 +113,11 @@
       pages: [
         // « Services et équipes » : six pages en une (évolution 22 b) — une liste à gauche, une fiche à droite.
         { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
-        // « Chemins » : cinq pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 c).
-        { id: 'mu-carte', groupe: 'chemins', intro: 'Tous les chemins d’un coup d’œil : une colonne par chemin, une ligne par service, rangée par étape.' },
-        { id: 'mu-flux', groupe: 'chemins', intro: 'Les chemins de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
-        { id: 'at-chemins', groupe: 'chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
-        { id: 'at-grille', groupe: 'chemins', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
-        // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. Parmi les onglets de « Chemins » seulement
-        // s'il y en a une (`conditions.liens`, posée par la page) ; sinon la page reste ouverte à « Aller à… » et à ses liens.
-        { id: 'u-liens', groupe: 'chemins', menuSi: 'liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
+        // « Chemins » : cinq pages en une (évolution 22 c) — la liste des chemins à gauche, le chemin choisi à droite.
+        { id: 'mu-flux', intro: 'Chaque chemin : ses étapes, les commandes qui le suivent, et l’équipe de chacune à chaque étape.' },
+        // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. La page n'est jamais au menu (`sous` : elle
+        // s'ouvre depuis « Chemins », qui reste marquée) ; « Aller à… » et ses liens y mènent toujours.
+        { id: 'u-liens', sous: 'mu-flux', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
         { id: 'u-plan', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' }
       ] },
     { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
@@ -147,7 +142,6 @@
    */
   const GROUPES = {
     details: { nom: 'Détails', ico: 'info' },
-    chemins: { nom: 'Chemins', ico: 'reseau' },
     controles: { nom: 'Contrôles', ico: 'alerte' }
   };
 
@@ -165,7 +159,12 @@
     'at-equipes': { vers: 'mu-services', lieu: 'equipes', nom: 'Équipes une par une', ancien: 'Les cases · Ateliers de travail' },
     'rg-recap': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol', ancien: 'Heures de travail' },
     'rg-minutes': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol par service', ancien: 'Barème par service' },
-    'u-services': { vers: 'mu-services', lieu: 'liste', nom: 'Liste des services' }
+    'u-services': { vers: 'mu-services', lieu: 'liste', nom: 'Liste des services' },
+    // Évolution 22 (c) : « Chemins » en reprend trois, et garde l'ancien nom de la sienne (une clé qui n'est pas une page).
+    'mu-carte': { vers: 'mu-flux', lieu: 'liste', nom: 'Vue d’ensemble' },
+    'mu-flux:avant': { vers: 'mu-flux', lieu: 'liste', nom: 'Chemins de production' },
+    'at-chemins': { vers: 'mu-flux', lieu: 'etapes', nom: 'Chemin d’une commande' },
+    'at-grille': { vers: 'mu-flux', lieu: 'etapes', nom: 'Étapes de chaque commande' }
   };
   /** La page qui s'ouvre pour cet identifiant : elle-même, ou celle qui l'a reprise. */
   const resoudre = id => (ANCIENNES[id] ? ANCIENNES[id].vers : id);
@@ -192,7 +191,7 @@
    * La page est-elle au menu ? Une page `menuSi` (évolution 19 b) n'y est que si sa condition est vraie, ou tant qu'elle
    * est la page ouverte (`ouverte`) ; hors du menu, elle se montre toujours : « Aller à… » et ses liens y mènent.
    */
-  const auMenu = (id, ouverte) => { const o = page(id); return montree(id) && (!o.menuSi || id === ouverte || !!(conditions[o.menuSi] && conditions[o.menuSi]())); };
+  const auMenu = (id, ouverte) => { const o = page(id); return montree(id) && !o.sous && (!o.menuSi || id === ouverte || !!(conditions[o.menuSi] && conditions[o.menuSi]())); };
   /** Les pages d'un groupe qui se montrent, dans l'ordre du menu. */
   const pagesDuGroupe = g => PARTIES.flatMap(p => pagesDe(p.id)).filter(x => x.groupe === g);
   /**
@@ -229,7 +228,8 @@
     return [...m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees)), ...m.bas];
   }
   /** L'entrée du menu qui mène à une page : elle-même, ou son groupe. */
-  const entreeDe = (id, choix = {}) => { id = resoudre(id); const o = page(id); return o ? entrees(choix, id).find(x => o.groupe ? x.groupe === o.groupe : x.id === id) || null : null; };
+  const entreeDe = (id, choix = {}) => { id = resoudre(id); const o = page(id), cible = o && o.sous ? o.sous : id;
+    return o ? entrees(choix, id).find(x => o.groupe ? x.groupe === o.groupe : x.id === cible) || null : null; };
 
   /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
    * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
@@ -280,7 +280,8 @@
     /** La page à ouvrir dans une partie : la dernière vue, sinon la première. */
     actifDe(partie) {
       // La dernière page ouverte de la partie, si elle est encore au menu ; sinon sa première page au menu.
-      const pages = pagesDe(partie).filter(x => auMenu(x.id)), c = this.choix[partie];
+      // (Une page d'avant retenue par ce navigateur vaut la page qui l'a reprise.)
+      const pages = pagesDe(partie).filter(x => auMenu(x.id)), c = this.choix[partie] ? resoudre(this.choix[partie]) : null;
       return pages.some(x => x.id === c) ? c : (pages[0] || {}).id || null;
     }
 
@@ -317,8 +318,9 @@
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
       this.page = id;
       this.ouverture = !!ouverture;
-      // Une page de passage n'est pas retenue : son espace et sa vue rouvrent la page d'avant.
-      if (!ouverture && !ONGLETS[vue].find(o => o.id === id).passage) {
+      // Une page de passage n'est pas retenue : son espace et sa vue rouvrent la page d'avant. Une page qui s'ouvre
+      // depuis une autre (`sous`, évolution 22 c) non plus.
+      if (!ouverture && !ONGLETS[vue].find(o => o.id === id).passage && !page(id).sous) {
         this.choix[p.id] = id;
         const g = page(id).groupe;
         if (g) this.choix['groupe:' + g] = id;
@@ -353,7 +355,9 @@
       // bas de la barre, est un bouton de la page : elle ne se dessine pas ici.
       const m = menu(this.choix, actif), dans = actif ? (page(actif) || {}).groupe : null;
       const toutes = m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees));
-      const ouverte = o => o.groupe ? o.groupe === dans : o.id === actif;
+      // Une page rangée sous une autre (« Liens entre services », sous « Chemins ») n'a pas d'entrée : la sienne est marquée.
+      const cible = (actif && (page(actif) || {}).sous) || actif;
+      const ouverte = o => o.groupe ? o.groupe === dans : o.id === cible;
       // Une seule entrée prend le focus au clavier (les flèches mènent aux autres) : celle qui est ouverte, sinon la première.
       const prise = toutes.find(ouverte) || toutes[0];
       const I = root.OrlyIcones, verrou = !!(this.a.verrou && this.a.verrou());

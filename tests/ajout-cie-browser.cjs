@@ -16,12 +16,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Chemins › Chemin d’une commande : le bouton est dans la liste des commandes.
-  await nav.aller(page,'at-chemins');
-  const liste=page.locator('.pc-cmds');
+  // 1. L'unité › Chemins (évolution 22 c) : le bouton est dans la section « Commandes exclues et ajoutées » d'un chemin.
+  await nav.aller(page,'mu-flux');await nav.sectionChemin(page,'commandes');
+  const liste=page.locator('#mu-flux details[data-ch-section=commandes]');
   await liste.locator('[data-at-action=classe-nouvelle]').click();await attendre();
   const form=liste.locator('.at-ajout[data-lieu=chemins]');
-  assert.equal(await form.count(),1,'le formulaire s’ouvre dans la liste');
+  assert.equal(await form.count(),1,'le formulaire s’ouvre dans la section');
   // Une nouvelle compagnie, trois classes d'un coup.
   await form.locator('[data-ajout=cie]').fill('ezy');
   for(const c of ['BC','CREW'])await form.locator(`[data-ajout-cab=${c}]`).check();
@@ -29,10 +29,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const apres=await classes();
   for(const id of ['EZY/BC','EZY/YC','EZY/CREW'])assert.ok(apres.includes(id),id+' ajoutée');
   assert.match(await page.locator('#at-status').textContent(),/EZY : Business, Économie, Équipage ajoutées/);
-  assert.equal(await liste.locator('.pc-cie[data-cie=EZY]').count(),1,'EZY apparaît dans la liste des commandes');
-  // Elle a son chemin à créer, comme les autres.
-  await liste.locator('[data-pc-action=cmd][data-classe="EZY/BC"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.parcours.cmd),'EZY/BC');
+  // EZY suit le chemin de sa classe, comme les autres : elle est parmi ses commandes, et dans le tableau de ses étapes.
+  const chemin=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'EZY/BC').id);
+  await page.locator(`#mu-flux .ch-liste [data-mu-flux-choisir="${chemin}"]`).click();await attendre();await nav.sectionChemin(page,'suivi');
+  assert.equal(await page.locator('#mu-flux [data-mu-cmd-chemin="EZY/BC"]').count(),1,'EZY apparaît parmi les commandes du chemin');
+  await page.locator('#mu-flux [data-mu-graphe] [data-noeud]').first().click();await attendre();
+  assert.equal(await page.locator('#mu-flux .ch-table tr[data-ch-cmd="EZY/BC"]').count(),1,'et dans le tableau de l’étape');
+  await nav.sectionChemin(page,'commandes');
 
   // 2. Une compagnie déjà là : on lui ajoute la classe qui manque, pas de doublon.
   const cie=await page.evaluate(()=>Sim.ateliers.classes.find(c=>c.origine==='programme').cie);

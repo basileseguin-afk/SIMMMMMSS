@@ -1,9 +1,7 @@
-/* Les diagrammes de nœuds dans la page : un chemin par commande, créé à la
- * main ; une case par service, choisie ou créée dans le chemin, avec ses
- * personnes et ses man-minutes ; « dupliquer pour… » dans les mêmes cases ;
- * relier (au clic, en tirant, au clavier), retirer, déplacer et retrouver sa
- * disposition ; le tableau et les cases qui se calculent et mènent au chemin ;
- * les liens de l'unité dessinés de même. */
+/* Les diagrammes de nœuds dans la page (version 1 ; évolution 22 c : un seul éditeur de chemin, dans « Chemins ») :
+ * le chemin à part d'une commande, avec une équipe par service ; l'équipe d'une commande à une étape, choisie dans le
+ * tableau de l'étape et réglée dans sa fiche ; relier (au clic, en tirant, au clavier), retirer, déplacer et retrouver
+ * sa disposition ; le tableau des étapes et les équipes qui mènent au chemin ; les liens de l'unité dessinés de même. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -23,125 +21,130 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
-  await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
-  const Z='#at-parcours .pc-graphe';
+  await nav.vue(page,'ateliers');await nav.aller(page,'mu-flux');await attendre();
+  const Z='#mu-flux [data-mu-graphe]',M='#mu-flux';
+  const sous=()=>page.evaluate(()=>document.body.dataset.sous);
+  const choisir=async id=>{await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${id}"]`).click();await attendre();};
 
-  // 1. Une commande suit le flux de sa classe ; elle peut aussi avoir un chemin
-  // à elle, avec ses propres cases : ici TX · Business, copié de son flux.
-  assert.ok(await page.locator('.pc-cmds [data-pc-action=cmd]').count()>=20,'une ligne par commande');
-  await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  assert.match(await page.locator('.pc-flux-bandeau').textContent(),/TX · Business suit le chemin « Complet »/);
-  await page.locator('.pc-creer-plus>summary').click();
-  assert.equal(await page.locator('[data-pc-champ=creer-depuis]').inputValue(),'complet','son modèle est proposé');
-  await page.locator('[data-pc-action=creer]').click();await attendre();
+  // 1. Une commande suit le chemin de sa classe ; elle peut aussi avoir un chemin à elle, avec ses propres équipes :
+  //    ici TX · Business, copié de son chemin. (Le geste « Créer son chemin » de l'ancienne page « Chemin d'une
+  //    commande » n'existe plus : le test le demande au modèle, par la même fonction — nav.creerChemin.)
+  assert.equal(await page.locator('[data-mu-graphe]').count(),1,'un seul éditeur de chemin');
+  assert.equal(await page.locator('#at-parcours, .pc-cmds').count(),0,'plus de page « Chemin d’une commande »');
+  assert.equal(await nav.creerChemin(page,'TX/BC'),true);
   const bc=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['TX/BC']);
   assert.ok(bc,'TX/BC a son chemin');
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,bc),'Complet TX BC');
-  assert.match(await page.locator('.pc-cmd.actif').textContent(),/Complet TX BC/,'la liste le dit');
-  // Chaque service du chemin a sa case dès la création : elle figure dans « Les cases ».
+  assert.match(await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${bc}"]`).innerText(),/Complet TX BC[\s\S]*1 commande · \d+ étapes/,'la liste le dit, parmi les chemins à part');
+  // Chaque service du chemin a son équipe dès la création.
   const kase=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='prepa'&&a.lots.some(l=>l.includes('TX/BC'))));
   assert.equal(kase.nom,'Montage TX BC');assert.deepEqual(kase.lots,[['TX/BC']]);
-  // Les postes qui mettent à disposition (réception, légumerie, magasin) ont UNE case, partagée : pas de lot.
+  // Les postes qui mettent à disposition (réception, légumerie, magasin) ont UNE équipe, partagée : pas de lot.
   const partages=['appros','decontam','magasin'];
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.lots.some(l=>l.includes('TX/BC'))).length),
-    await page.evaluate(([id,partages])=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge'&&!partages.includes(s)).length,[bc,partages]),'une case par service qui prépare');
+    await page.evaluate(([id,partages])=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge'&&!partages.includes(s)).length,[bc,partages]),'une équipe par service qui prépare');
   assert.deepEqual(await page.evaluate(partages=>partages.map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>a.type)),partages),
-    [['dispo'],['dispo'],['dispo']],'une case partagée par poste de mise à disposition');
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a sa case');
-  // (Évolution 22 b : l'équipe est dans le tableau de son service ; sa fiche dit ses commandes, et chacune mène à son chemin.)
+    [['dispo'],['dispo'],['dispo']],'une équipe partagée par poste de mise à disposition');
+  await choisir(bc);
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a son équipe');
+  assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^1\/1 préparée/,'le nœud dit ce qui est préparé');
+  // L'équipe est dans le tableau de son service ; sa fiche dit ses commandes, et chacune mène à son chemin.
   await nav.service(page,'prepa');await attendre();
   assert.match(await page.locator('#mu-services .se-equipes').textContent(),/Montage TX BC/,'l’équipe est dans le tableau de son service');
   await nav.equipe(page,kase.id);
   await page.locator(`#mu-services [data-at="${kase.id}"] [data-mu-chemin="TX/BC"]`).first().click();await attendre();
-  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','sa commande mène à son chemin');
+  assert.equal(await sous(),'mu-flux','sa commande mène à son chemin, dans « Chemins »');
+  assert.equal(await page.locator(`${M} .ch-fiche [data-mu-flux-nom]`).inputValue(),'Complet TX BC');
 
-  // 2. La case s'ouvre dans une fenêtre à droite, fiche complète, en vue sans défiler.
-  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de la fiche de l’équipe, elle est ouverte');
-  // × ou Échap la referment ; cliquer le service la rouvre.
-  const box=await page.locator('.pc-tiroir').boundingBox();
-  const barre=await page.locator('#tete-page').boundingBox();
-  assert.ok(box&&Math.abs(box.y-(barre.y+barre.height))<2&&box.y<1000-300&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran, sous le titre de la page et ses outils');
-  assert.equal(await page.evaluate(()=>{const b=document.getElementById('at-export').getBoundingClientRect();
-    return !!document.elementFromPoint(b.x+b.width/2,b.y+b.height/2).closest('#at-export');}),true,'les outils de la vue restent cliquables');
-  await page.keyboard.press('Escape');await attendre();
-  assert.equal(await page.locator('.pc-tiroir').count(),0,'Échap la referme');
-  await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
-  assert.equal(await page.locator('.pc-tiroir').isVisible(),true);
-  assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^TX BC · 2 p\. · 06:00/,'le nœud porte sa case');
-  const fiche=`.pc-tiroir [data-at="${kase.id}"]`;
-  assert.equal(await page.locator(fiche).isVisible(),true,'la fiche de la case est dans le chemin');
-  // Ses personnes, son heure : saisies là, lues sur le nœud.
+  // 2. L'étape choisie montre son tableau : la commande, son équipe, son temps par vol. L'équipe se règle dans sa
+  //    fiche, où mène son nom.
+  const rang=c=>page.locator(`${M} .ch-etape[data-ch-etape=prepa] tr[data-ch-cmd="${c}"]`);
+  assert.equal(await rang('TX/BC').count(),1,'venue de la fiche de l’équipe, l’étape est ouverte');
+  assert.equal(await rang('TX/BC').evaluate(tr=>tr.classList.contains('ch-vise')),true,'et la commande, en évidence');
+  assert.equal(await rang('TX/BC').locator('select[data-ch-equipe]').inputValue(),kase.id,'le tableau dit son équipe');
+  const tempsLu=(await rang('TX/BC').locator('td.num').innerText()).trim();
+  // Échap ne ferme rien : il n'y a plus de fenêtre par-dessus le chemin.
+  assert.equal(await page.locator('.pc-tiroir').count(),0,'plus de fenêtre de l’équipe dans le chemin');
+  await rang('TX/BC').locator('[data-ch-fiche]').click();await attendre();
+  assert.equal(await sous(),'mu-services','le nom de l’équipe mène à sa fiche');
+  await nav.reglagesEquipe(page,kase.id);
+  const fiche=`#mu-services .mu-equipe[data-at="${kase.id}"]`;
+  assert.equal(await page.locator(fiche).isVisible(),true,'la fiche de l’équipe');
+  // Ses personnes : saisies là.
   await page.fill(`${fiche} [data-at-champ=personnes]`,'3');await page.dispatchEvent(`${fiche} [data-at-champ=personnes]`,'change');await attendre(300);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,kase.id),3);
-  assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/3 p\./);
-  // Ses heures de travail : celles du barème, modifiables pour cette case seulement
-  // (lues et saisies en heures depuis le 08/10, gardées en minutes).
+  // Son temps par vol : celui du service, modifiable pour cette équipe seulement
+  // (lu et saisi en heures depuis le 08/10, gardé en minutes).
   const mm=`${fiche} [data-at-champ=heures][data-classe="TX/BC"]`;
   const importees=await page.locator(mm).getAttribute('placeholder');
-  assert.ok(+importees.replace(',','.')>0,'le barème donne les heures');
+  assert.ok(+importees.replace(',','.')>0,'les temps par vol du service donnent les heures');
+  // Le tableau de l'étape lit le temps par vol du service ; la fiche de l'équipe, celui de la journée (tous ses vols).
+  const volsBC=await page.evaluate(()=>Sim.ateliers.classes.find(c=>c.id==='TX/BC').vols.length);
+  assert.match(tempsLu,/^\d+(,\d+)? h$/,'un temps par vol, en heures');
+  assert.ok(Math.abs(+tempsLu.replace(' h','').replace(',','.')*volsBC-(+importees.replace(',','.')))<0.02,'le même temps par vol, fois ses vols : '+tempsLu+' × '+volsBC+' = '+importees);
   assert.equal(await page.evaluate(id=>MoteurProduction.heuresFr(Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,2),kase.id),importees);
   await page.fill(mm,'0.5');await page.dispatchEvent(mm,'change');await attendre(300);
   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).minutes,kase.id),{'TX/BC':30});
-  assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),30,'le calcul prend celles de la case');
-  assert.match(await page.locator(`${fiche} .at-mm`).textContent(),new RegExp('temps par vol '+importees+' h'));
+  assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),30,'le calcul prend celles de l’équipe');
 
-  // 3. « Dupliquer pour… » TX · Économie, dans les mêmes cases, à la suite de TX BC.
-  await page.locator('.pc-dup>summary').click();
-  await page.locator('[data-pc="dup-cible"][value="TX/YC"]').check();
-  await page.locator('[data-pc-action=dupliquer]').click();await attendre();
-  const yc=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['TX/YC']);
-  assert.ok(yc&&yc!==bc,'TX/YC a son propre chemin');
+  // 3. TX · Économie suit le même chemin : choisi dans sa liste, le chemin à part devient partagé. Son équipe au
+  //    Montage se choisit dans le tableau de l'étape : la même que TX BC, à sa suite. (Le geste « Dupliquer pour… »
+  //    de l'ancienne page n'existe plus.)
+  await nav.cheminDe(page,'TX/YC');await nav.sectionChemin(page,'suivi');
+  await page.locator(`${M} [data-mu-cmd-chemin="TX/YC"]`).selectOption(bc);await attendre(300);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['TX/YC']),bc,'TX/YC suit le chemin de TX BC');
+  assert.match(await page.locator('#at-status').textContent(),/c’est maintenant un chemin partagé, le modifier change pour les deux/);
+  await nav.cheminDe(page,'TX/YC','prepa');
+  assert.match(await rang('TX/YC').innerText(),/à corriger/,'sans équipe au Montage : à corriger');
+  await rang('TX/YC').locator('select[data-ch-equipe]').selectOption(kase.id);await attendre(300);
   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,kase.id),[['TX/BC'],['TX/YC']],'TX BC puis TX YC');
+  assert.equal(await rang('TX/YC').locator('.ch-a-corriger').count(),0);
+  assert.equal(await rang('TX/YC').locator('select[data-ch-equipe]').inputValue(),kase.id);
   // TX BC ne tire que ses propres heures (0,5 h = 30 min) : sa ligne sort avant celle de TX YC.
   const lignes=await page.evaluate(id=>Sim.ateliers.resultat.lots.filter(l=>l.atelier===id).map(l=>({c:l.classes[0],fin:l.fin,mm:l.hommeMinutes})),kase.id);
   assert.equal(lignes[0].c,'TX/BC');assert.equal(lignes[0].mm,30);assert.ok(lignes[0].fin<lignes[1].fin);
-  // Dans le chemin de TX YC, la même case, sa ligne en évidence.
-  assert.equal(await page.locator('.pc-cmds').isVisible(),false,'le temps de régler une case, la liste des commandes s’efface');
-  await page.locator('.pc-tiroir-fermer').click();await attendre();
-  assert.equal(await page.locator('.pc-cmds').isVisible(),true,'et revient quand on la ferme');
-  await page.locator('[data-pc-action=cmd][data-classe="TX/YC"]').click();await attendre();
-  await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
-  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id);
-  assert.match(await page.locator('.pc-tiroir .pc-pan-tete').textContent(),/partagée avec TX BC/);
-  assert.match(await page.locator('.pc-tiroir .at-lot.ici').textContent(),/TX · Économie/);
+  assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^2\/2 préparées/);
 
-  // 4. Un lien ne vaut que pour son chemin : appros → montage sur TX YC, au clic.
-  const liensBC=await liens(bc);
+  // 4. Un lien ne vaut que pour son chemin : appros → montage, au clic, sur celui de TX seulement.
+  const liensComplet=await liens('complet');
   await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
   assert.match(await page.locator('#notifs .notif.consigne').textContent(),/Relier/,'la consigne s’affiche, le temps du geste');
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
   assert.equal(await page.locator('#notifs .notif.consigne').count(),0,'elle part avec le geste');
-  assert.ok((await liens(yc)).includes('appros>prepa'));
-  assert.ok((await liens(yc)).includes('appros>decontam'),'appros livre deux services');
-  assert.deepEqual(await liens(bc),liensBC,'le chemin de TX BC ne bouge pas');
-  assert.match(await page.locator('#at-status').textContent(),/sur le chemin de TX · Économie seulement/);
+  assert.ok((await liens(bc)).includes('appros>prepa'));
+  assert.ok((await liens(bc)).includes('appros>decontam'),'appros livre deux services');
+  assert.deepEqual(await liens('complet'),liensComplet,'le chemin « Complet » ne bouge pas');
+  assert.match(await page.locator('#at-status').textContent(),/livre maintenant Montage, dans « Complet TX BC »/);
   // Suppr retire le lien qui a le focus ; un lien en double est refusé et dit pourquoi.
   await page.locator(`${Z} .gr-lien[data-lien="appros>prepa"]`).focus();await page.keyboard.press('Delete');await attendre();
-  assert.ok(!(await liens(yc)).includes('appros>prepa'));
+  assert.ok(!(await liens(bc)).includes('appros>prepa'));
   await tirer(Z,'dotation','prepa');
   assert.match(await page.locator('#at-status').textContent(),/livre déjà/);
-  // Au clavier : Entrée choisit un service, « Relier à… », Entrée sur l'autre relie.
-  await page.locator('[data-pc-champ=noeud-ajout]').selectOption('armement');await attendre();
-  await page.locator(`${Z} [data-noeud=prepa]`).focus();await page.keyboard.press('Enter');await attendre();
-  await page.locator('[data-pc-action=relier-depuis]').click();await attendre();
+  // Au clavier : Entrée choisit une étape (son tableau s'ouvre), « Relier à… », Entrée sur l'autre relie.
+  await page.locator(`${M} [data-mu-flux-ajout]`).selectOption('armement');await attendre();
+  assert.ok((await liens(bc)).includes('armement>prepa'),'l’armement entre à sa place');
+  await page.locator(`${Z} [data-noeud=magasin]`).focus();await page.keyboard.press('Enter');await attendre();
+  assert.equal(await page.locator(`${M} .ch-etape`).getAttribute('data-ch-etape'),'magasin','Entrée ouvre le tableau de l’étape');
+  await page.locator(`${M} [data-ch-relier=magasin]`).click();await attendre();
   await page.locator(`${Z} [data-noeud=armement]`).focus();await page.keyboard.press('Enter');await attendre();
-  assert.ok((await liens(yc)).includes('prepa>armement'));
+  assert.ok((await liens(bc)).includes('magasin>armement'));
   // La prépa se place avant le montage.
-  assert.ok((await liens(yc)).includes('preparation>prepa'),'cuisine → prépa → montage');
+  assert.ok((await liens(bc)).includes('preparation>prepa'),'cuisine → prépa → montage');
   assert.equal(await page.locator(`${Z} [data-noeud=preparation] .gr-nom`).textContent(),'Prépa');
 
-  // 5. Les autres onglets se calculent : le tableau et les cases mènent au chemin.
-  await nav.aller(page,'at-grille');await attendre();
+  // 5. Le tableau des étapes (« Détails › Commandes ») et les équipes mènent au chemin.
+  await nav.etapesCommandes(page);await attendre();
   assert.match(await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').textContent(),/Montage TX BC/);
   await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').click();await attendre();
-  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/BC');
+  assert.equal(await sous(),'mu-flux');
+  assert.equal(await page.locator(`${M} .ch-fiche [data-mu-flux-nom]`).inputValue(),'Complet TX BC');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true,'le service cliqué est choisi');
-  assert.equal(await page.locator(fiche).isVisible(),true);
+  assert.equal(await rang('TX/BC').evaluate(tr=>tr.classList.contains('ch-vise')),true);
   await nav.equipe(page,kase.id);await attendre();
   assert.equal(await page.locator(`#mu-services [data-at="${kase.id}"] .mu-ordre [data-mu-chemin]`).count(),2,'l’équipe dit ses deux commandes');
   await page.locator(`#mu-services [data-at="${kase.id}"] .mu-ordre [data-mu-chemin="TX/YC"]`).click();await attendre();
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/YC');
+  assert.equal(await sous(),'mu-flux');
+  assert.equal(await rang('TX/YC').evaluate(tr=>tr.classList.contains('ch-vise')),true,'sa commande, en évidence dans le tableau de l’étape');
 
   // 4. Déplacer un service : la disposition est retenue ; « Réorganiser » l'oublie.
   const y=()=>page.locator(`${Z} [data-noeud=magasin]`).getAttribute('transform');
@@ -150,10 +153,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.mouse.move(b.x+60,b.y+20);await page.mouse.down();await page.mouse.move(b.x+60,b.y+140,{steps:5});await page.mouse.up();await attendre();
   const deplace=await y();
   assert.notEqual(deplace,avantDeplace,'le service a bougé');
-  await page.reload();await attendre();await nav.vue(page,'ateliers');await attendre();
-  await page.locator('[data-pc-action=cmd][data-classe="TX/YC"]').click();await attendre();
+  await page.reload();await attendre();await nav.vue(page,'ateliers');await nav.aller(page,'mu-flux');await attendre();
+  await choisir(bc);
   assert.equal(await y(),deplace,'la place choisie survit au rechargement');
-  await page.locator('[data-pc-action=reorganiser]').click();await attendre();
+  await page.locator(`${M} [data-mu-flux-action=reorganiser]`).click();await attendre();
   assert.notEqual(await y(),deplace);
 
   // 5. Les liens de l'unité : même diagramme, un trait tiré crée un lien du type choisi.

@@ -2,7 +2,8 @@
  * position (retour d'usage du 02/10 : « bug de scrollage sur la barre de
  * gauche ») : le champ de recherche n'est plus recouvert, un clic en bas de
  * liste ne la ramène plus en haut, et une commande ouverte d'ailleurs y est
- * amenée en vue. v1 et v2. */
+ * amenée en vue. Version 2 seulement, depuis l'évolution 22 (c) : en version 1, « Chemin d'une commande » a rejoint
+ * « Chemins », qui n'a plus cette liste (une liste de chemins à gauche, qui défile seule : tests/chemins-page-browser.cjs). */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -17,7 +18,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const actifVisible=()=>page.evaluate(L=>{const u=document.querySelector(L),a=u.querySelector('.pc-cmd.actif');if(!a)return false;
    const r=a.getBoundingClientRect(),q=u.getBoundingClientRect();return r.top>=q.top-1&&r.bottom<=q.bottom+1;},L);
  try{
-  for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
+  for(const [fichier,version] of [['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    await nav.aller(page,'at-chemins');await attendre();
