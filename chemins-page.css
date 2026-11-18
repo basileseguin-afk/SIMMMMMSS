@@ -72,3 +72,6 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 .at-etapes>summary{cursor:pointer;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
 .at-etapes>summary .pc-sous{font-weight:var(--ds-g-normal,400)}
 .at-etapes[open]>summary{margin-bottom:10px}
+
+/* Évolution 22 (g), retouche de contrôle : le titre d'un groupe d'avis (avis.css l'écrit en 12 px) fait 13 px sur la page. */
+#mu-flux .avis-niveau>:is(h4,summary),#mu-flux .avis-niveau .avis-nom{font-size:var(--ds-t-13)}

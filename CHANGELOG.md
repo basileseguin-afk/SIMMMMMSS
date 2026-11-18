@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (g) : le contrôle, les captures, la documentation
+
+Dernière partie de l’étape B de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Les captures de contrôle**, sur l’unité fictive, en clair et en sombre, à
+  1 366 × 768 et 1 920 × 1 080 : le menu, « Services et équipes »,
+  « Chemins », « Contrôles », « Fichiers », la Synthèse en lecture seule
+  (`tests/captures-evolution-22-browser.cjs`, 24 captures, gardées hors du
+  dépôt). Pour les quatre nouvelles pages, le test tient : la page ne défile
+  pas, chaque colonne défile seule, aucun texte sous 13 px.
+- **Deux retouches trouvées au contrôle** : sur un portable, le tableau de
+  « Fichiers » ne montrait que deux classeurs à la fois — le haut de la page
+  et les lignes se resserrent, ses en-têtes tiennent sur une ligne (trois
+  classeurs entiers au moins) ; dans « Chemins », le titre d’un groupe d’avis
+  passe de 12 à 13 px.
+- **La documentation** : le rangement du menu, ce que chaque page d’avant est
+  devenue et la lecture seule (`docs/CAHIER_DES_CHARGES.md`, § 9) ; le gabarit
+  « la liste à gauche, la fiche à droite » (`docs/DESIGN_SYSTEM.md`, § 5 et
+  § 9).
+
+Fichiers : `tests/captures-evolution-22-browser.cjs` (nouveau),
+`fichiers-page.css`, `chemins-page.css`, `index.html` (empreintes) ;
+`docs/CAHIER_DES_CHARGES.md`, `docs/DESIGN_SYSTEM.md`, `README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (f) : « Lecture seule »
 
 Sixième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format

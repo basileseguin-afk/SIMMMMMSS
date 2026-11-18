@@ -258,8 +258,10 @@ tableau.
 - **La barre latérale** : bleu nuit en clair (`--ds-nav-*`) ; les parties
   dans l'ordre du travail ; celle qui est ouverte, éclairée d'un trait bleu
   ciel, déplie ses pages ; au pied, les problèmes, la sauvegarde, le thème,
-  l'autre version. Le focus y prend le repère bleu ciel, qui se voit sur le
-  bleu nuit. Un texte clair sur fond foncé paraît plus fin : les parties
+  l'autre version. (En version 1, depuis l'évolution 22 : deux blocs, toutes
+  les entrées visibles ; au pied, « Fichiers », « Lecture seule » et le
+  thème — voir « Une page de réglage », plus bas.) Le focus y prend le
+  repère bleu ciel, qui se voit sur le bleu nuit. Un texte clair sur fond foncé paraît plus fin : les parties
   sont en 14 px, les pages en graisse moyenne (la page ouverte en gras), le
   texte presque blanc.
 - **La barre du haut** : le fil d'Ariane ; « Calcul à jour » (le point bat
@@ -278,6 +280,42 @@ tableau.
   var(--ds-nav-fond)`) : c'est elle que lisent les contrôles de contraste.
 - **L'accueil** : le bandeau de l'histoire reprend le bleu nuit de la
   navigation, éclairé d'une lueur ; les étapes s'y lisent en clair.
+
+### Une page de réglage : la liste à gauche, la fiche à droite (version 1, évolution 22)
+
+Le gabarit des pages qui règlent plusieurs choses de même sorte —
+« Services et équipes » (les services), « Chemins » (les chemins).
+
+- **Deux colonnes.** À gauche, la liste : une ligne par chose, son nom et
+  l'essentiel en une ligne ; « Ajouter… » en tête. À droite, la fiche de la
+  chose choisie : son nom en tête, puis des **sections repliées**
+  (`<details>`), la plus utile ouverte.
+- **La page ne défile pas.** Elle tient sur l'écran d'un portable
+  (1 366 × 768) : la vue range ses blocs en colonne, le cadre prend la
+  hauteur qui reste, et **chaque colonne défile seule** (`overflow:auto`,
+  `min-height:0`). Une seule zone qui défile par colonne.
+- **Texte de 13 px au moins** (`--ds-t-13`), y compris les notes et les
+  en-têtes de tableau repris d'un composant commun.
+- **Un réglage qui ne joue pas reste caché** (`jouent.js`) ; la fiche dit
+  combien, en une ligne.
+- **Variantes.** « Contrôles » : une ligne d'état, puis trois colonnes égales
+  (un niveau d'avis chacune), chacune avec sa zone qui défile. « Fichiers » :
+  deux panneaux en haut, puis un tableau qui prend la hauteur qui reste et
+  défile seul, ses en-têtes en vue (`position:sticky`).
+- **Écran étroit** (900 px ou moins ; 1 000 px pour « Contrôles ») : les colonnes passent l'une sous
+  l'autre, et la page défile.
+- **Le menu de la version 1** (`menu.css`) : deux blocs, « Lire » et
+  « Régler », toutes les entrées visibles ; au pied, « Fichiers »,
+  l'interrupteur « Lecture seule » (`role="switch"`, un témoin qui glisse) et
+  le thème. En lecture seule, le bloc « Régler » se replie en une ligne, un
+  cadenas et « Paramétrage verrouillé » ; un lien vers un réglage est grisé,
+  le mot à sa suite (`lecture-seule.css`).
+
+Les feuilles de ces pages (`services-page.css`, `chemins-page.css`,
+`controles-page.css`, `fichiers-page.css`) sont propres à la version 1 :
+`unite.css`, `ateliers.css` et `ds.css`, communs avec la version 2, ne sont
+pas modifiés. Contrôlé par le test de chaque page et par
+`tests/captures-evolution-22-browser.cjs`.
 
 ### La palette et la fiche des raccourcis (`palette.js`)
 
@@ -377,3 +415,7 @@ ce budget, et `latence-browser` les vérifie sans chronomètre :
 8. `node outils/empreinte.cjs` avant de livrer.
 9. **Jamais le plan de l'unité dans une capture** : il est confidentiel. Le
    dessin est masqué dans toute capture, et les tests n'en écrivent aucune.
+10. Une page de réglage (version 1) suit le gabarit « la liste à gauche, la
+    fiche à droite » : elle tient sur l'écran d'un portable, chaque colonne
+    défile seule, texte de 13 px au moins. En lecture seule, elle ne s'ouvre
+    pas ; une page de résultats n'y montre aucun geste qui change un réglage.

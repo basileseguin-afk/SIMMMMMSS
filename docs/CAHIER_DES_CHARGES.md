@@ -406,6 +406,7 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
 | E29 | **Des compagnies sans armement** : le handling ne les attend pas | 08/10 | ✅ | Déduit, rien à cocher : ni chemin par l'armement, ni équipe qui l'a cochée → pas de case ; un chemin sans armement n'est plus « à reprendre » ; la fiche nomme les compagnies sans armement |
 | E21 | **Le poste ne dépend pas forcément des vols** : le choix équipe par équipe, pas seulement par service | 06/10 | ✅ | « Effectif » dans la fiche de chaque équipe : comme le service, dépend des vols, constant (saisi) ; constante, elle retrouve son effectif saisi |
 | E20 | **Des équipes qui ne dépendent pas du tunnel** à la plonge, avec le choix, comme ailleurs, d'un effectif qui dépend des vols ou non | 06/10 | ✅ | « + Ajouter une équipe hors tunnel » ; case « Effectif constant » dans la fiche de la plonge ; calculée : minutes par vol × vols qui reviennent ÷ poste. Type « hors tunnel » utilisable dans tout service (là : départs du jour). Les minutes par vol ne passent pas encore par le classeur Excel |
+| E30 | **Regrouper** : une chose se règle à un seul endroit ; le menu passe de 24 entrées à 14 ; une **lecture seule** | 18/11 | ✅ | Version 1, évolution 22 : deux blocs, « Lire » et « Régler » ; « Services et équipes », « Chemins », « Contrôles » et « Fichiers » reprennent neuf pages et un panneau (vingt-sept pages avant, dix-huit après) ; aucun réglage perdu ; les noms d'avant mènent aux nouvelles pages ; chaque nouvelle page tient sur un écran de portable. Voir « Le rangement du menu » et « La lecture seule », plus bas |
 
 ### Le vocabulaire retenu (version 1, évolution 19 a)
 
@@ -480,6 +481,82 @@ pas. Contrôlé par `tests/vols-page.test.cjs`, `tests/vols-page-browser.cjs` et
 les captures de `tests/captures-evolution-19-browser.cjs` (la page des vols,
 une fiche de plonge par vol et au débit, les temps par vol, le panneau des
 problèmes ; 1 366 × 768 et 1 920 × 1 080, en clair et en sombre).
+
+### Une chose se règle à un seul endroit : le rangement du menu (version 1, évolution 22)
+
+Étape B de l'audit de l'interface. Le menu de gauche montre toutes ses
+entrées, sans partie à ouvrir : **quatorze, contre vingt-quatre**.
+
+| Bloc | Espace | Entrées |
+|---|---|---|
+| **Lire** | | Synthèse · En direct · Planning · Période (avec un programme daté) · Détails (Commandes, Vols, Stocks et retours, Heures sup et renforts) · Comparer |
+| **Régler** | Vols | Programme · Retours |
+| | L'unité | Services et équipes · Chemins · Plan |
+| | Simulation | Réglages · Contrôles |
+| En bas | | Fichiers · l'interrupteur « Lecture seule » · le thème |
+
+Trois règles :
+
+1. **Aucun réglage n'est perdu.** Chaque réglage d'une page d'avant a son
+   champ dans la page qui l'a reprise (tableau ci-dessous). Seules deux vues
+   d'ensemble ont quitté l'écran — « Horaires des équipes » et « Temps par
+   vol » —, gardées dans leurs classeurs Excel (« Fichiers »).
+2. **Les éditeurs et les fiches d'avant sont repris**, pas réécrits. Le nom
+   d'une page d'avant se cherche toujours par « Aller à… » et mène à la
+   nouvelle page, au bon endroit ; un lien ou une adresse d'une page d'avant
+   aussi (`ANCIENNES`, `onglets.js`).
+3. **Une nouvelle page tient sur l'écran d'un portable** (1 366 × 768) : une
+   liste à gauche, une fiche à droite, des sections repliées ; une seule zone
+   qui défile par colonne ; texte de 13 px au moins ; un réglage qui ne joue
+   pas reste caché.
+
+| Page d'avant | Où sont passés ses réglages |
+|---|---|
+| Horaires des équipes | L'heure et le jour d'une équipe, les heures d'ouverture d'une mise à disposition, les vagues d'un handling : la fiche de l'équipe, dans « Services et équipes ». Le classeur : « Fichiers ». |
+| Équipes une par une | Tous les réglages d'une équipe : sa fiche (« Plus de réglages »). « + Équipe hors chemin » : « Ajouter une équipe », dans la fiche du service. |
+| Temps par vol | La valeur d'une commande dans un service : la fiche du service (« + Valeur propre à une compagnie × classe », ou la grille par compagnie) ; le débit d'un robot : la fiche de son équipe. Le classeur : « Fichiers ». |
+| Temps par vol par service | Les temps d'un service : sa fiche, « Ses temps par vol ». Le classeur de l'étude : « Fichiers ». « Remettre les temps par vol d'exemple » : « Réglages ». |
+| Liste des services | Le nom : l'en-tête de la fiche ; le rattachement, la place sur le plan, « Supprimer » : « Réglages avancés » ; « Ajouter un service » : la tête de la liste ; les services supprimés : le bas de la liste. |
+| Vue d'ensemble (des chemins) | La liste des chemins, à gauche de « Chemins » ; « Ajouter une étape » dans le chemin choisi. |
+| Chemins de production | La même chose, à droite de « Chemins » : le chemin choisi, et « Qui le suit ». |
+| Chemin d'une commande | Le chemin qu'elle suit, sa variante : « Qui le suit » ; son équipe à une étape : le tableau de l'étape ; les réglages de l'équipe : sa fiche. |
+| Étapes de chaque commande | Un tableau qui se lit : « Détails › Commandes », replié. L'équipe d'une commande à une étape se choisit dans « Chemins ». |
+| Liens entre services | La même page, ouverte depuis « Chemins » (les commandes sans chemin). Ce que le calcul lit de ces liens : un repli, sous le diagramme. |
+| Prêt à simuler ? | Aucun réglage. Ses étapes à faire : les avis de « Contrôles », à leur niveau. |
+| Contrôles détaillés | Aucun réglage. Ce que le calcul dit : les trois colonnes de « Contrôles ». |
+| Le panneau « Problèmes » | Aucun réglage. Ses trois niveaux : les trois colonnes ; son nombre : la pastille de « Contrôles » ; « C'est voulu » : le même bouton. |
+| Sauvegarde et limites | « Fichiers » : la même page, et le tableau des classeurs dessous. |
+| Les boutons d'import et d'export en tête des pages | « Fichiers » : une ligne par classeur, trois colonnes (« Importer », « Exporter », « Classeur vide à remplir »). L'import des vols reste aussi sur « Programme ». |
+
+**« Contrôles »** : une ligne d'état (« Le calcul est à jour », le dernier
+réglage changé et son heure, un lien vers la Synthèse), puis trois colonnes —
+« Bloquant », « À corriger », « Information ». Chaque point a un bouton nommé
+par sa destination (« Régler dans Chemins »). La pastille du menu compte les
+points bloquants et à corriger, jamais les informations.
+
+Contrôlé par `tests/onglets.test.cjs`, `tests/menu-browser.cjs`, les tests de
+chaque page (`services-page`, `chemins-page`, `controles-page`,
+`fichiers-page`) et les captures de `tests/captures-evolution-22-browser.cjs`
+(le menu, les quatre pages, la Synthèse en lecture seule ; 1 366 × 768 et
+1 920 × 1 080, en clair et en sombre).
+
+### La lecture seule (version 1, évolution 22 f)
+
+Un interrupteur, en bas du menu : les résultats se lisent, le paramétrage est
+verrouillé.
+
+| En lecture seule | |
+|---|---|
+| Le bloc « Régler » | Replié en une ligne, « Paramétrage verrouillé », au menu et sur l'accueil. Ses pages ne s'ouvrent pas, par aucun chemin ; la page le dit. |
+| Un lien d'un résultat vers un réglage | Grisé ; « Paramétrage verrouillé » se lit à sa suite. |
+| « Fichiers » | « Restaurer un fichier » et tous les « Importer » grisés, avec la raison. Les exports marchent. |
+| Les pages de résultats | Intactes. Les gestes qui y changent un réglage ne se montrent plus ; le calage sur le réel attend ; « Annuler » et « Rétablir » sont éteints. |
+| Les réglages | Aucun ne change par l'interface : la sauvegarde est la même avant et après. |
+
+C'est une préférence de ce navigateur, gardée comme le thème (une clé
+`ory-ui-…`), hors de la sauvegarde ; elle survit au rechargement. À l'arrêt,
+tout revient. Contrôlé par `tests/lecture-seule.test.cjs` et
+`tests/lecture-seule-browser.cjs`.
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

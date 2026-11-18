@@ -38,3 +38,18 @@ body[data-sous="u-sauvegarde"] #panel-donnees :is(h3,p,div,span,strong,summary,s
   body[data-sous="u-sauvegarde"] #view-flux>#panel-donnees{display:block}
   #fichiers-classeurs>#fi-classeurs{overflow:visible}
 }
+
+/* Évolution 22 (g), retouche de contrôle : à 1 366 × 768, le tableau ne montrait que deux classeurs à la fois. Le haut de
+   la page se resserre et les lignes du tableau aussi ; ses en-têtes tiennent sur une ligne. Rien n'est retiré. */
+body[data-sous="u-sauvegarde"] #panel-donnees>.panneau{padding:10px 14px}
+body[data-sous="u-sauvegarde"] #panel-donnees>.panneau>h3{margin:0 0 6px}
+body[data-sous="u-sauvegarde"] #panel-donnees>.panneau .mini-note{margin:0 0 4px;line-height:1.4}
+body[data-sous="u-sauvegarde"] #panel-donnees>.panneau .row-btns{margin:2px 0}
+body[data-sous="u-sauvegarde"] #panel-donnees .import-report{margin:4px 0;padding:4px 10px}
+body[data-sous="u-sauvegarde"] #panel-donnees details.aide.bloc{margin:2px 0 0}
+#sauvegarde-date{margin:2px 0 0}
+#fichiers-classeurs .mini-note{margin:0 0 6px}
+#fi-classeurs .fi-classeurs thead th{white-space:nowrap;padding-block:7px}
+#fi-classeurs .fi-classeurs tbody :is(th,td){padding-block:6px}
+.fi-classeurs th[scope="row"] small{margin-top:0;line-height:1.35}
+.fi-classeurs td[data-fi-sens] .btn{margin:1px 6px 1px 0}
