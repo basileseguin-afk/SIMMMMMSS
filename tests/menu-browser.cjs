@@ -120,7 +120,9 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.locator('.chiffres-vide').isVisible(),true,'rien à compter : la synthèse dit par où commencer');
   assert.equal(await page.locator('.chiffres-vide [data-page=mu-pas]').count(),1);
   assert.equal(await page.locator('#btn-play').isVisible(),false,'sans lecteur');
-  assert.equal(await page.locator('#btn-export').isVisible(),true,'les résultats s’exportent depuis la synthèse');
+  // (Évolution 22 e : les résultats s'exportent dans « Fichiers » ; la Synthèse y mène par un lien discret.)
+  assert.equal(await page.locator('#btn-export').count(),0);
+  assert.match(await page.locator('.res-actions .vers-fichiers').innerText(),/^Exporter les résultats : Fichiers →$/);
   await nav.aller(page,'j-plan');
   assert.equal(await page.locator('#btn-play').isVisible(),true,'le lecteur accompagne le plan rejoué');
   assert.equal(await page.locator('#plan').isVisible(),true);
@@ -136,16 +138,20 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
 
   // 4. Les outils suivent la page : ceux des cases dans Chemins et Équipes, pas dans les résultats.
   await nav.aller(page,'mu-flux');
-  assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
-  assert.match(await page.locator('#at-export').textContent(),/Équipes et chemins/,'un export dit ce qu’il contient');
+  // (Évolution 22 e : l'import et l'export des équipes sont dans « Fichiers » ; la page garde un lien discret.)
+  const lienOutils=page.locator('#so-outils .vers-fichiers:visible');
+  assert.equal(await page.locator('#at-export').isVisible(),false,'plus de bouton d’export en tête de « Chemins »');
+  assert.match(await lienOutils.innerText(),/^Importer ou exporter : Fichiers →$/,'un lien vers « Fichiers » reste à portée, sur la barre des onglets');
   await nav.aller(page,'mu-services');
-  assert.equal(await page.locator('#at-export').isVisible(),true,'et dans la fiche des services');
+  assert.equal(await lienOutils.count(),1,'et dans la fiche des services');
   await nav.aller(page,'at-planning');
-  assert.equal(await page.locator('#at-export').isVisible(),false,'pas d’import ni d’export des cases dans les résultats');
+  assert.equal(await page.locator('#at-export').isVisible(),false,'pas d’import ni d’export des équipes dans les résultats');
   assert.equal(await page.locator('#at-planning').isVisible(),true);
   // Le classeur des temps par vol s'exporte depuis « Fichiers » (évolution 22 b) : son bouton y dit son classeur.
   await nav.aller(page,'u-sauvegarde');
   assert.equal(await page.locator('#rg-export').isVisible(),true);
+  assert.equal(await page.locator('#fi-classeurs tr[data-classeur=equipes-chemins] #at-export').isVisible(),true,'le classeur des équipes et des chemins aussi');
+  assert.equal(await page.locator('#fi-classeurs tr[data-classeur=equipes-chemins] #at-export').getAttribute('title'),'Les équipes, ce qu’elles préparent et les chemins, dans un classeur Excel','un export dit ce qu’il contient');
   assert.match(await page.locator('#rg-export').getAttribute('aria-label'),/Temps par vol/);
   assert.equal(await page.locator('#fi-classeurs tr[data-classeur=etude] #rg-export').count(),1,'dans le tableau des classeurs');
 
@@ -231,7 +237,9 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.locator('#ariane-partie').textContent(),'Fichiers');
   assert.equal(await page.locator('#menu [data-sous-onglet]:not(:visible)').count(),0,'le menu reste entier');
   assert.equal(await page.locator('#model-limits').isVisible(),true);
-  assert.equal(await page.locator('#fc-export').isVisible(),false,'les outils des liens ne suivent pas dans la sauvegarde');
+  // (Évolution 22 e : l'export des liens est une ligne du tableau des classeurs ; leurs outils d'édition ne suivent pas.)
+  assert.equal(await page.locator('#fi-classeurs tr[data-classeur=liens] #fc-export').isVisible(),true);
+  assert.equal(await page.locator('#so-outils [data-vue-outils=flux]').isVisible(),false,'les outils des liens ne suivent pas dans « Fichiers »');
 
   // 9. Pendant l'édition du plan, le menu attend qu'on la termine : toutes ses entrées sont grisées, même après un recalcul.
   await nav.aller(page,'j-plan');await page.locator('#btn-edit').click();await attendre();
@@ -326,7 +334,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
      }
      await nav.terminerPlan(p);
      // Le nom court d'une entrée et le nom d'une partie d'avant se cherchent aussi.
-     for(const [cherche,attendu] of [['Retours','Planche retour'],['Fichiers','Sauvegarde et limites'],['Sauvegarde','Sauvegarde et limites'],['Résultats','Synthèse'],['Équipes','Services et équipes']]){
+     for(const [cherche,attendu] of [['Retours','Planche retour'],['Fichiers','Fichiers'],['Sauvegarde','Fichiers'],['Résultats','Synthèse'],['Équipes','Services et équipes']]){
       await p.keyboard.press('Control+k');await p.waitForSelector('dialog.palette [role=option]');
       await p.keyboard.type(cherche);await p.waitForTimeout(150);
       const trouves=await p.locator('dialog.palette [role=option] .pal-nom').allTextContents();

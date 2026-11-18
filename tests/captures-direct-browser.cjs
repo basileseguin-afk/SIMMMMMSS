@@ -85,7 +85,7 @@ const ANGLES=[
    /** La journée, telle que la page la tient : le résultat, les indicateurs de charge, les réponses. */
    const journee=()=>page.evaluate(()=>{const at=Sim.ateliers,r=at.resultat;return {resultat:JSON.stringify(r),indicateurs:JSON.stringify(OrlyIndicateurs.journee(r,at.args||{})),reponses:JSON.stringify(Sim.reponses())};});
    /** L'export de la journée (le fichier que la page enregistre), depuis la Synthèse ; puis retour à la vue en direct. */
-   const exporter=async()=>{await nav.aller(page,'j-chiffres');const attente=page.waitForEvent('download');await page.locator('#btn-export').click();
+   const exporter=async()=>{const attente=page.waitForEvent('download');await nav.exporterJournee(page);
      const texte=fs.readFileSync(await (await attente).path(),'utf8');
      // Le message « Journée exportée » se ferme : il ne doit pas rester sur les captures.
      for(const x of await page.locator('.notif-fermer').all())await x.click();
@@ -101,7 +101,10 @@ const ANGLES=[
 
     // 1. À l'ouverture : l'heure où le premier goulot commence à coincer ; sa zone critique, la scène entière.
     await page.waitForFunction(t=>Math.abs(Sim.vue.t-t)<1e-6,attendu.t);
-    const avant=await journee(),exportAvant=await exporter();
+    // (Évolution 22 e : l'export se fait dans « Fichiers ». Ouvrir une page de réglage cale l'effectif calculé — un champ
+    //  du résultat (`saisi`) s'y ajuste une fois, c'était déjà le cas avant l'évolution 22 : le relevé d'avant se prend
+    //  donc après ce premier passage, pour comparer deux journées prises dans les mêmes conditions.)
+    const exportAvant=await exporter(),avant=await journee();
     assert.ok(Math.abs(await page.evaluate(()=>Sim.vue.t)-attendu.t)<1e-6,V+'de retour de la Synthèse : la même heure');
     const e1=await dessinee();
     assert.equal(e1.goulot.service,G.service,V+'le premier goulot du jour');

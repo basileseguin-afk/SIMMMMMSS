@@ -18,16 +18,17 @@ const CSV='date,vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=250)=>page.waitForTimeout(ms);
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-date-'));
- const telecharger=async id=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(id).click()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
+ // (Évolution 22 e : l'export et les modèles sont dans le tableau de « Fichiers ».)
+ const telecharger=async id=>{await nav.versFichiers(page,id);const [d]=await Promise.all([page.waitForEvent('download'),page.locator(id).click()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(500);
   await nav.aller(page,'v-programme');
 
   // 1. Le modèle daté : deux jours fictifs, la date en première colonne.
-  //    Les modèles sont dans le menu « Modèles », à côté du bouton d'import (évolution 19 e).
-  await page.locator('#vp-modeles summary').click();await attendre(150);
+  //    Les modèles sont dans « Fichiers », colonne « Classeur vide à remplir » (évolution 22 e).
   const modele=fs.readFileSync(await telecharger('#csv-template-date'),'utf8');
+  await nav.aller(page,'v-programme');
   assert.match(modele,/^date,vol_id,/);
   assert.deepEqual([...new Set(modele.trim().split('\n').slice(1).map(l=>l.split(',')[0]))],['2026-11-02','2026-11-03']);
 

@@ -94,7 +94,7 @@ test('chaque page est dans un seul espace, et garde son nom et ses anciens noms'
     'mu-flux': 'Chemins', 'mu-services': 'Services et équipes', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes', 'rg-simulation': 'Réglages de la simulation',
     'j-plan': 'En direct', 'j-chiffres': 'Synthèse', 'j-periode': 'Période', 'j-stocks': 'Stocks et retours', 'j-details': 'Heures sup et renforts',
     'j-comparer': 'Comparer deux essais', 'u-plan': 'Plan de l’unité', 'u-liens': 'Liens entre services',
-    'u-sauvegarde': 'Sauvegarde et limites' });
+    'u-sauvegarde': 'Fichiers' });
 });
 
 /* Évolution 22 (b) : « Services et équipes » reprend cinq pages. Elles n'existent plus, mais leur nom, leur identifiant

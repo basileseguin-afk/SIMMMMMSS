@@ -184,7 +184,7 @@ const CLE='ory-calage-v1';
   assert.equal(await page.locator('#bilan-cale [data-cal-sigma-unite]').textContent(),C.texteSigmaUnite(pj));
   await nav.aller(page,'j-periode');await attendre();
   // La feuille Période : le prévu calé, P10 et P90, de chaque ligne et de l'unité.
-  const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
+  const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>nav.exporterPeriode(page)))));
   const fPeriode=xPeriode.find(f=>f.nom==='Période').lignes;
   // Avec le statut des lignes (évolution 17 c), deux colonnes de plus à droite : « Statut », « Besoin au plus (ETP) ».
   assert.deepEqual(fPeriode[0].slice(-6),['Simulé de la ligne (ETP)','Prévu calé (ETP)','P10 (ETP)','P90 (ETP)','Statut','Besoin au plus (ETP)']);
@@ -302,7 +302,7 @@ const CLE='ory-calage-v1';
   const iCuisine=1+(await page.evaluate(()=>OrlyPeriodeVue.servicesOrdonnes(Sim.periode.resultat.bilan,Sim.periode.a.ordre).map(s=>s.id))).indexOf('cuisine');
   // Une seule écriture du temps (évolution 15 d) : 300 minutes × personnes s'écrivent « 5 h 00 ».
   assert.equal((await page.locator(`#journee-periode tr[data-pv-jour="${w3.date}"] td`).allInnerTexts())[iCuisine],'5 h 00');
-  const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
+  const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>nav.exporterPeriode(page)))));
   assert.ok(x3.find(f=>f.nom==='Période').lignes[0].includes('Heures sup d’office de l’encadrement (min × pers.)'));
   assert.ok(x3.find(f=>f.nom==='Équipes').lignes[0].includes('Heures sup d’office (min × pers.)'));
 

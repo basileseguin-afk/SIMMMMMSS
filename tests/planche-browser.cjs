@@ -43,15 +43,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await etat()).planche.length,1);
 
   // 3. L'export donne un classeur ; modifié puis réimporté, il remplace la planche.
-  const dl=await Promise.all([page.waitForEvent('download'),page.locator('[data-pl-action=exporter]').click()]);
+  //    (Évolution 22 e : depuis « Fichiers », ligne « Retours » ; la page de la planche garde un lien discret.)
+  assert.equal(await page.locator('[data-pl-action=exporter], [data-pl-action=importer]').count(),0,'plus de bouton d’import ou d’export en tête de la planche');
+  await page.locator('#vols-planche .vers-fichiers').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-sauvegarde');
+  const dl=await Promise.all([page.waitForEvent('download'),page.locator('#fi-planche-export').click()]);
   const fichier=path.join(dossier,'planche.xlsx');await dl[0].saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
   const f=T.feuille(feuilles,'Planche retour');
   assert.deepEqual(f.lignes[0].slice(0,4),['Vol','Compagnie','Arrivée à l’unité','Jour']);
   f.lignes.push(['TX305','TX','11:00','J']);
   const modifie=path.join(dossier,'planche-2.xlsx');fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
-  await page.locator('[data-pl-fichier]').setInputFiles(modifie);await page.waitForTimeout(400);
+  // L'import se fait d'ici aussi : le bouton « Importer » de la ligne ouvre le champ de la planche.
+  const [choix]=await Promise.all([page.waitForEvent('filechooser'),page.locator('#fi-planche-import').click()]);
+  await choix.setFiles(modifie);await page.waitForTimeout(400);
   assert.deepEqual((await etat()).planche.map(l=>[l.vol,l.cie,l.heure,l.jour]),[['AF1080','AF','09:30',-1],['TX305','TX','11:00',0]]);
+  await nav.aller(page,'v-planche');await attendre();
   // Un classeur faux est refusé en bloc : la planche reste telle quelle.
   f.lignes.push(['XX1','XX','','J']);
   const mauvais=path.join(dossier,'planche-3.xlsx');fs.writeFileSync(mauvais,T.ecrireClasseur(feuilles));

@@ -1231,6 +1231,8 @@
     <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque équipe, dans un petit classeur Excel à modifier puis réimporter">${pic('telecharger')}Horaires</button>
     <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur d’équipes et de chemins, ou d’horaires, modifié dans Excel">${pic('importer')}Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
+    <!-- (Évolution 22 e : ces boutons sont rangés dans le tableau de « Fichiers » au démarrage ; la page garde ce lien.) -->
+    <button type="button" class="lien-discret vers-fichiers" data-page="u-sauvegarde" data-lieu="classeurs">Importer ou exporter : Fichiers →</button>
   </div>
 </div>
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->

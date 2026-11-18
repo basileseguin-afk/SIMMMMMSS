@@ -71,10 +71,10 @@ const AVIS=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,repas=Sim.a
     const vols=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),vue=document.getElementById('view-vols'),st=getComputedStyle(vue);
       const heures=[...document.querySelectorAll('#vp-tableau tbody .vp-heure')].map(e=>e.textContent);
       return {imports:document.querySelectorAll('#vols-donnees input[type=file]').length,bouton:document.querySelector('label.vp-importer').textContent.trim(),
-        menu:document.querySelector('#vp-modeles summary').textContent.trim(),lignes:heures.length,departs:Sim.ateliers.a.vols().filter(v=>v.sens==='DEP').length,
+        menu:document.querySelector('.vp-gestes .vers-fichiers').textContent.trim(),lignes:heures.length,departs:Sim.ateliers.a.vols().filter(v=>v.sens==='DEP').length,
         tri:heures.every((h,i)=>!i||heures[i-1]<=h),tetes:[...document.querySelectorAll('#vp-tableau thead th')].map(e=>e.textContent),
         large:b('#vp-tableau table').width>=vue.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight)-4,sous:b('#vols-jour').top>=b('#vols-donnees').bottom};});
-    assert.deepEqual([vols.imports,vols.bouton,vols.menu],[1,'Importer des vols','Modèles'],V+'un seul bouton d’import, et le menu des modèles');
+    assert.deepEqual([vols.imports,vols.bouton,vols.menu],[1,'Importer des vols','Exporter, modèles à remplir : Fichiers →'],V+'un seul bouton d’import, et le lien vers « Fichiers » (évolution 22 e : les modèles y sont)');
     assert.ok(vols.lignes>0&&vols.lignes===vols.departs&&vols.tri,V+'les départs du jour, triés par heure : '+JSON.stringify(vols));
     assert.deepEqual(vols.tetes,['Départ','Vol','Compagnie','Business','Premium','Économie','Équipage']);
     assert.ok(vols.large&&vols.sous,V+'le tableau, sous l’import, prend la largeur de la page : '+JSON.stringify(vols));

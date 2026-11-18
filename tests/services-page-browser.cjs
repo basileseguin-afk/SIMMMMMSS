@@ -339,11 +339,12 @@ function ecarts(avant,apres,chemin='',out=[]){
 
   /* ---- 10. leurs classeurs Excel restent, dans « Fichiers » -------------------------------------------------------- */
   await nav.aller(page,'u-sauvegarde');
-  assert.deepEqual(await page.locator('#fi-classeurs tbody tr').evaluateAll(ts=>ts.map(t=>[t.dataset.classeur,t.querySelector('th').firstChild.textContent,
+  // (Évolution 22 e : le tableau porte tous les classeurs ; ceux des pages d'avant y gardent leur ligne et leurs boutons.)
+  assert.deepEqual(await page.locator('#fi-classeurs tbody tr').evaluateAll(ts=>ts.filter(t=>['equipes','temps','etude'].includes(t.dataset.classeur)).map(t=>[t.dataset.classeur,t.querySelector('th').firstChild.textContent,
     [...t.querySelectorAll('td')].map(td=>[...td.querySelectorAll('button')].map(b=>[b.id,b.textContent.trim(),b.getAttribute('aria-label')]))])),[
-    ['equipes','Équipes et horaires',[[['rc-import-btn','Importer','Importer : Équipes et horaires']],[['rc-export','Exporter','Exporter : Équipes et horaires']]]],
-    ['temps','Temps par vol, vue d’ensemble',[[['rg-recap-import-btn','Importer','Importer : Temps par vol, vue d’ensemble']],[['rg-recap-export','Exporter','Exporter : Temps par vol, vue d’ensemble']]]],
-    ['etude','Temps par vol, service par service',[[['rg-import-btn','Importer','Importer : Temps par vol, service par service']],[['rg-export','Exporter','Exporter : Temps par vol, service par service']]]]]);
+    ['equipes','Équipes et horaires',[[['rc-import-btn','Importer','Importer : Équipes et horaires']],[['rc-export','Exporter','Exporter : Équipes et horaires']],[]]],
+    ['temps','Temps par vol, vue d’ensemble',[[['rg-recap-import-btn','Importer','Importer : Temps par vol, vue d’ensemble']],[['rg-recap-export','Exporter','Exporter : Temps par vol, vue d’ensemble']],[]]],
+    ['etude','Temps par vol, service par service',[[['rg-import-btn','Importer','Importer : Temps par vol, service par service']],[['rg-export','Exporter','Exporter : Temps par vol, service par service']],[]]]]);
   for(const [id,nom] of [['rc-export',/^ory-cases-.*\.xlsx$/],['rg-recap-export',/^ory-heures-travail-.*\.xlsx$/],['rg-export',/^ory-bareme-.*\.xlsx$/]]){
     assert.equal(await page.locator('#'+id).count(),1,id+' : un seul bouton, dans « Fichiers »');
     const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#fi-classeurs #'+id).click()]);

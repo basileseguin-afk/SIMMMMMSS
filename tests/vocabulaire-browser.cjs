@@ -87,7 +87,10 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-vocabulaire-'));
   try{
     await nav.aller(page,'mu-services');
+    const ici=await page.evaluate(()=>document.body.dataset.sous);
+    await nav.versFichiers(page,'#at-export');   // (évolution 22 e)
     const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#at-export').click()]);
+    if(ici!==await page.evaluate(()=>document.body.dataset.sous))await nav.aller(page,ici);
     const fichier=path.join(dossier,'equipes.xlsx');await d.saveAs(fichier);
     const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
     assert.ok(feuilles.some(f=>f.nom==='Équipes'),'le classeur d’aujourd’hui : la feuille « Équipes » — '+feuilles.map(f=>f.nom).join(', '));

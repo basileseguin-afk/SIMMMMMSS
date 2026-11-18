@@ -247,6 +247,31 @@ async function lectureLiens(page) {
   if (await d.count() && !(await d.evaluate(e => e.open))) await d.locator('> summary').click();
   await page.waitForTimeout(200);
 }
+/* Un bouton d'import ou d'export : en version 1 (évolution 22 e), il est rangé dans le tableau de « Fichiers ». S'il
+ * n'est pas à l'écran, on y va. (En version 2, il est en tête de sa page : rien à faire.) */
+async function versFichiers(page, sel) {
+  if (await page.locator(sel).first().isVisible().catch(() => false)) return;
+  if (await page.evaluate(s => !!document.querySelector('#fi-classeurs ' + s), sel)) { await aller(page, 'u-sauvegarde'); await page.waitForTimeout(200); }
+}
+/* Exporter la journée en JSON : en version 1 (évolution 22 e), sur sa ligne dans « Fichiers » ; en version 2, « Exporter
+ * les résultats », en tête de la Synthèse. Celui qui appelle attend le téléchargement. */
+async function exporterJournee(page) {
+  if (await v1(page)) { await aller(page, 'u-sauvegarde'); await page.waitForTimeout(200); await page.locator('#fi-journee-json').click(); return; }
+  await aller(page, 'j-chiffres'); await page.locator('#btn-export').click();
+}
+/* Exporter un classeur de résultats (Excel) : en version 1 (évolution 22 e), sur sa ligne dans « Fichiers » — puis on
+ * revient à la page d'où l'on vient ; en version 2, le bouton de la page. Celui qui appelle attend le téléchargement. */
+async function exporterDepuisFichiers(page, ici, avant) {
+  if (!(await v1(page))) { await page.locator(avant).click(); return; }
+  const page0 = await page.evaluate(() => document.body.dataset.sous);
+  await aller(page, 'u-sauvegarde'); await page.waitForTimeout(200);
+  await page.locator(ici).click();
+  await aller(page, page0); await page.waitForTimeout(200);
+}
+/** Le classeur de la période. */
+const exporterPeriode = page => exporterDepuisFichiers(page, '#fi-periode', '#journee-periode [data-pv=exporter]');
+/** Le classeur de la journée (la charge des équipes, les vols, les réponses). */
+const exporterCharge = page => exporterDepuisFichiers(page, '#fi-journee-classeur', '#at-charge [data-ch=exporter]');
 /** Le tableau des minutes range les classes sous leur compagnie, repliées (02/10) : tout déplier. */
 async function deplier(page) {
   const b = page.locator('#rg-recap [data-rg-action=recap-tout][data-ouvrir="1"]');
@@ -285,4 +310,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, versFichiers, exporterJournee, exporterPeriode, exporterCharge, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

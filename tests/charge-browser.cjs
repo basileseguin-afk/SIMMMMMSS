@@ -210,7 +210,7 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   await page.evaluate(()=>{const A=Sim.ateliers;A.a.services=window.__services;A.aDessiner.add('at-planning');A.surOnglet('at-planning');});await attendre(200);
 
   // (évolution 12 d) Le classeur de la charge de la journée : le bouton de la vue ; les mêmes feuilles que l'outil, pour la même sauvegarde.
-  const fj=await telecharger(()=>page.locator('#at-charge [data-ch=exporter]').click());
+  const fj=await telecharger(()=>nav.exporterCharge(page));
   assert.match(path.basename(fj),/^ory-charge-\d{4}-\d\d-\d\d\.xlsx$/);
   const relu=await T.lireClasseur(fs.readFileSync(fj));
   // (évolution 15 e) La feuille « Réponses » à la fin ; les autres, celles d'avant.
@@ -264,7 +264,7 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-chiffres');
   // Le classeur de la période : ses feuilles Charge et Créneaux, après Équipes.
   await nav.aller(page,'j-periode');
-  const fp=await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click());
+  const fp=await telecharger(()=>nav.exporterPeriode(page));
   const rp=await T.lireClasseur(fs.readFileSync(fp));
   assert.deepEqual(rp.map(f=>f.nom),['Lisez-moi','Période','Équipes','Charge','Créneaux','Compagnies','Lots','Vols','Plonge','Jours']);
 

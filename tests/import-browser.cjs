@@ -47,7 +47,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(await page.locator('#flight-rows .rc.sans').count()>0,'chaque commande sans équipe a sa pastille en pointillés');
   assert.equal(await page.locator('#flight-rows .rc.sans').first().evaluate(e=>getComputedStyle(e,'::after').content),'none','sans croix, qui se lirait « supprimer »');
   // L'export suit ce qu'on regarde : la journée calculée.
-  const attendu=page.waitForEvent('download');await nav.aller(page,'j-chiffres');await click('#btn-export');const dl=await attendu;
+  const attendu=page.waitForEvent('download');await nav.exporterJournee(page);const dl=await attendu;   // (évolution 22 e : dans « Fichiers »)
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.5');assert.equal(exp.modele,'ateliers');
   assert.ok(exp.departs.length>0,'les départs du programme sont exportés');

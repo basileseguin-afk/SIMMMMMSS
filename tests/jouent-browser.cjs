@@ -289,6 +289,7 @@ function sauvegarde(){
   const plonge=async()=>{const a=await equipe('pl1');return {parVol:!!a.parVol,plafond:a.plafond,debits:a.tunnels.map(t=>t.debit),vitesses:a.tunnels.map(t=>t.vitesse||1),durees:a.durees};};
   const parExcel=async nom=>{
     await nav.aller(page,'mu-services');
+    await nav.versFichiers(page,'#at-export');   // (évolution 22 e)
     const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#at-export').click()]);
     const f=path.join(dossier,nom);await dl.saveAs(f);
     await page.evaluate(()=>{document.getElementById('at-status').textContent='';});

@@ -650,9 +650,9 @@ function renderPlanche(){
   box.innerHTML='<div class="panneau planche">'
     +'<div class="planche-tete"><h3>Planche retour du handling</h3><span class="planche-fin"></span>'
     +'<button class="btn btn-sm" data-pl-action="ajouter">+ Ligne</button>'
-    +'<button class="btn btn-sm" data-pl-action="exporter" title="La planche dans un classeur Excel (vide : un modèle à remplir)">'+pic('telecharger')+'Excel</button>'
-    +'<button class="btn btn-sm" data-pl-action="importer" title="Remplacer la planche par un classeur Excel">'+pic('importer')+'Importer</button>'
+    // (Évolution 22 e : importer et exporter la planche se font dans « Fichiers » ; le champ de fichier, caché, reste ici.)
     +'<input type="file" accept=".xlsx,.csv" hidden data-pl-fichier>'
+    +'<button type="button" class="lien-discret vers-fichiers" data-page="u-sauvegarde" data-lieu="classeurs">Importer ou exporter : Fichiers →</button>'
     +(planche.length?'<button class="btn btn-sm svc-danger" data-pl-action="vider">Vider</button>':'')+'</div>'
     +(src==='planche'?'<p class="mini-note planche-etat ok">La simulation lit cette planche : chaque vol revient à la plonge à son heure d’arrivée à l’unité.</p>'
       :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j1'?'des départs de la veille (J+1)':'des lignes « retour » du programme de vols')
@@ -686,10 +686,14 @@ function initPlanche(){
     else if(a==='retirer'){const i=+b.closest('tr').dataset.index;changerPlanche(m=>m.planche.splice(i,1),'Ligne retirée.');}
     else if(a==='vider'){const n=(Sim.ateliers.state.materiel.planche||[]).length;changerPlanche(m=>{m.planche=[];},'Planche retour vidée'+(n?' : '+n+(n>1?' lignes retirées.':' ligne retirée.'):'.'));}
     else if(a==='utiliser'){changerPlanche(m=>{m.retours='planche';},'La simulation lit maintenant la planche retour.');}
-    else if(a==='exporter'){OrlyTableur.telecharger('ory-planche-retour.xlsx',OrlyTableur.ecrireClasseur(OrlyEchanges.plancheVersClasseur(Sim.ateliers.state.materiel.planche||[])));}
-    else if(a==='importer')box.querySelector('[data-pl-fichier]').click();
   });
 }
+/* La planche retour, en classeur (évolution 22 e) : les gestes de « Fichiers ». Le classeur vide est celui d'une planche vide. */
+function exporterPlanche(vide){
+  OrlyTableur.telecharger(vide?'ory-planche-retour-vide.xlsx':'ory-planche-retour.xlsx',
+    OrlyTableur.ecrireClasseur(OrlyEchanges.plancheVersClasseur(vide?[]:(Sim.ateliers.state.materiel.planche||[]))));
+}
+function choisirPlanche(){const champ=document.querySelector('[data-pl-fichier]');if(champ)champ.click();}
 async function importerPlanche(input){
   const f=input.files[0];if(!f)return;
   try{
@@ -749,7 +753,9 @@ function majProblemes(){
   problemesPrevus=setTimeout(()=>{problemesPrevus=0;Sim.problemes.maj();
     // Les nombres des onglets se lisent dans le registre : ils le suivent. « Contrôles », ouverte, aussi (évolution 22 d).
     if(Sim.onglets)Sim.onglets.rendre();
-    if(Sim.unite&&document.body.dataset.sous==='mu-pas')Sim.unite.rendrePas();},0);
+    if(Sim.unite&&document.body.dataset.sous==='mu-pas')Sim.unite.rendrePas();
+    // « Fichiers », ouverte, suit aussi (évolution 22 e) : une planche importée d'ici s'exporte aussitôt.
+    if(document.body.dataset.sous==='u-sauvegarde')majFichiers();},0);
 }
 function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
@@ -989,6 +995,7 @@ function initOnglets(){
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
     lieu:(id,lieu)=>{
       if(id==='at-repas'&&lieu==='etapes'&&Sim.ateliers&&Sim.ateliers.ouvrirEtapes)return Sim.ateliers.ouvrirEtapes();
+      if(id==='u-sauvegarde'&&lieu==='classeurs'){const t=document.getElementById('fichiers-classeurs');if(t)t.scrollIntoView({block:'start'});return;}
       if(!Sim.unite)return;
       if(id==='mu-services'&&Sim.unite.allerA)Sim.unite.allerA(lieu);
       if(id==='mu-flux'&&Sim.unite.allerChemins)Sim.unite.allerChemins(lieu);},
@@ -1002,6 +1009,7 @@ function initOnglets(){
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
       if(id==='u-liens'&&Sim.flows){Sim.flows.refresh();renderLectureLiens();}
+      if(id==='u-sauvegarde')majFichiers();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
       if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
@@ -1032,9 +1040,36 @@ function initOnglets(){
  * équipes », « Temps par vol ») y sont, avec leurs boutons d'avant. Ce qui reste de leurs pages, et de « Temps par vol
  * par service », sort du document : reglages.js (commun avec la version 2, laissé tel quel) ne dessine un tableau que
  * si sa boîte existe. « Remettre les chiffres d'exemple » rejoint « Réglages de la simulation ». */
+/* Les gestes que « Fichiers » fournit à son tableau (évolution 22 e) : ceux qui n'ont pas de bouton à eux dans la page. */
+function gestesFichiers(){
+  const journee=()=>{const r=Sim.ateliers&&Sim.ateliers.resultat;
+    return r&&r.ok&&(r.lots||[]).length?{ok:true}:{ok:false,raison:'Rien à exporter : la journée ne se calcule pas encore.'};};
+  return {
+    'planche-importer':{faire:choisirPlanche},
+    'planche-exporter':{faire:()=>exporterPlanche(false),etat:()=>((Sim.ateliers.state.materiel.planche||[]).length?{ok:true}:{ok:false,raison:'La planche est vide.'})},
+    'planche-vide':{faire:()=>exporterPlanche(true)},
+    'journee-classeur':{faire:()=>Sim.ateliers.exporterCharge(),etat:journee},
+    'journee-json':{faire:exporter},
+    'periode':{faire:exporterPeriode,etat:()=>{const pe=Sim.periode;
+      if(!pe||!pe.resultat||!pe.description())return {ok:false,raison:'Aucune période simulée.'};
+      return pe.aJour()?{ok:true}:{ok:false,raison:'À relancer d’abord : un réglage ou les vols ont changé depuis le calcul.'};}}
+  };
+}
+const CLE_DERNIERE_SAUVEGARDE='ory-ui-derniere-sauvegarde';   // une préférence d'affichage (`ory-ui-…`), hors des données
+/* « Fichiers », à l'ouverture et après un calcul : l'état de ses gestes, la date de la dernière sauvegarde. */
+function majFichiers(){
+  const hote=document.getElementById('fi-classeurs');
+  if(hote&&window.OrlyFichiers)OrlyFichiers.maj(hote,gestesFichiers());
+  const d=document.getElementById('sauvegarde-date');
+  if(d&&window.OrlyFichiers){let iso=null;try{iso=localStorage.getItem(CLE_DERNIERE_SAUVEGARDE);}catch(e){iso=null;}d.textContent=OrlyFichiers.direSauvegarde(iso);}
+}
 function initFichiers(){
   const hote=document.getElementById('fi-classeurs');
-  if(hote&&window.OrlyFichiers)OrlyFichiers.poser(hote,document);
+  if(hote&&window.OrlyFichiers)OrlyFichiers.poser(hote,document,OrlyFichiers.CLASSEURS,gestesFichiers());
+  // Les boutons d'import et d'export ont quitté la tête des pages (évolution 22 e) : chacune garde un lien vers « Fichiers ».
+  const liens=document.querySelector('#so-outils [data-vue-outils=flux], #view-flux .fc-actions');
+  if(liens&&!liens.querySelector('.vers-fichiers'))liens.insertAdjacentHTML('beforeend','<button type="button" class="lien-discret vers-fichiers" data-page="u-sauvegarde" data-lieu="classeurs">Importer ou exporter : Fichiers →</button>');
+  majFichiers();
   const remise=document.querySelector('#rg-bareme-panneau .rg-reset-ligne'),ailleurs=document.querySelector('#rg-modele .rg-ailleurs');
   if(remise&&ailleurs){remise.dataset.sous='rg-simulation';ailleurs.before(remise);}
   for(const sel of ['#rg-bareme-panneau','#rg-recap-panneau','#rg-modele > .titre-aide[data-sous="rg-minutes"]','#rc-classeur']){
@@ -1223,7 +1258,7 @@ function elementsPalette(){
   // (Évolution 22 d : « Problèmes » n'est plus un panneau ; son nom mène à « Contrôles », avec les pages d'avant.)
   const sombre=document.documentElement.dataset.theme==='sombre';
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
-  geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier excel période'});
+  geste('Exporter les résultats',()=>allerPage('u-sauvegarde','classeurs'),{ico:'telecharger',indice:'Fichiers',mots:'json fichier excel période'});
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
   out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
@@ -2901,7 +2936,6 @@ function initControles() {
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
-  document.getElementById('btn-export').addEventListener('click', exporterResultats);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); rendreDirect(); });
@@ -2909,11 +2943,7 @@ function initControles() {
   document.addEventListener('click', e => { if (e.target.closest('[data-comparer-retours]')) comparerRetours(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
   { const q=document.getElementById('vp-recherche'); if(q)q.addEventListener('input', renderVolsDuJour); }
-  // Le menu des modèles (évolution 19 e) : il se referme après un choix, sur Échap, ou d'un clic ailleurs.
-  { const m=document.getElementById('vp-modeles');
-    if(m){ m.addEventListener('click', e => { if (e.target.closest('.at-menu-liste button')) m.open = false; });
-      m.addEventListener('keydown', e => { if (e.key === 'Escape' && m.open) { m.open = false; m.querySelector('summary').focus(); } });
-      document.addEventListener('click', e => { if (m.open && !m.contains(e.target)) m.open = false; }); } }
+  // (Le menu des modèles — évolution 19 e — a rejoint « Fichiers », colonne « Classeur vide à remplir » : évolution 22 e.)
   installerWinrest();
   document.getElementById('exp-vols').addEventListener('click', exporterVols);
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
@@ -3050,6 +3080,9 @@ function sauvegardeComplete() {
   const r = document.getElementById('sauvegarde-etat');
   r.classList.remove('error');
   r.textContent = parties + (parties > 1 ? ' parties enregistrées' : ' partie enregistrée') + '. Ce fichier contient le plan réel : gardez-le hors du dépôt.';
+  // La date de la dernière sauvegarde (évolution 22 e) : une préférence de ce navigateur, hors de la sauvegarde.
+  try{localStorage.setItem(CLE_DERNIERE_SAUVEGARDE,new Date().toISOString());}catch(e){/* stockage indisponible */}
+  majFichiers();
   toast('Sauvegarde complète téléchargée');
 }
 
@@ -3330,45 +3363,8 @@ function exporterVols() {
  * qu'elle est calculée. Il se fait en local, par téléchargement — rien ne part
  * ailleurs. On y met les départs, les classes et le journal des lots : de quoi
  * refaire les comptes dans un tableur sans relancer le site. */
-/* « Exporter les résultats » (banc d'essai, évolution 10) : quand une période
- * a été simulée, le bouton propose son classeur Excel (echanges.js, le même
- * que l'outil écrit) ; la journée affichée reste en JSON. Sans période, il
- * exporte la journée, comme avant. */
-function exporterResultats(){
-  const pe=Sim.periode;
-  if(!pe||!pe.resultat||!pe.description()){exporter();return;}
-  const m=document.getElementById('export-choix');
-  if(m&&!m.hidden)fermerChoixExport(true);else ouvrirChoixExport();
-}
-function ouvrirChoixExport(){
-  const b=document.getElementById('btn-export'),pe=Sim.periode,r=pe.resultat.periode,ok=pe.aJour();
-  let m=document.getElementById('export-choix');
-  if(!m){
-    m=document.createElement('div');m.id='export-choix';m.className='export-choix';m.setAttribute('role','menu');m.setAttribute('aria-label','Exporter les résultats');
-    b.parentNode.appendChild(m);
-    m.addEventListener('click',e=>{const x=e.target.closest('[data-export]');if(!x||x.disabled)return;fermerChoixExport(true);
-      if(x.dataset.export==='periode')exporterPeriode();else exporter();});
-    m.addEventListener('keydown',e=>{
-      const items=[...m.querySelectorAll('[data-export]:not(:disabled)')],i=items.indexOf(document.activeElement);
-      if(e.key==='Escape'){e.preventDefault();fermerChoixExport(true);}
-      else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const j=(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;if(items[j])items[j].focus();}
-    });
-    document.addEventListener('click',e=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))fermerChoixExport(false);},true);
-    m.addEventListener('focusout',e=>{if(!m.hidden&&e.relatedTarget&&!m.contains(e.relatedTarget)&&e.relatedTarget!==b)fermerChoixExport(false);});
-  }
-  m.innerHTML=`<button type="button" role="menuitem" data-export="periode"${ok?'':' disabled'}><b>La période, en Excel</b><small>${ok
-      ?'Du '+OrlyPeriode.dateLongue(r.debut)+' au '+OrlyPeriode.dateLongue(r.fin)+' : chaque jour de travail, chaque équipe, chaque vol'
-      :'À relancer d’abord : un réglage ou les vols ont changé depuis le calcul'}</small></button>
-    <button type="button" role="menuitem" data-export="journee"><b>La journée affichée, en JSON</b><small>${Sim.jourVols?'Celle du '+OrlyPeriode.dateLongue(Sim.jourVols):'La journée calculée'}</small></button>`;
-  m.hidden=false;b.setAttribute('aria-haspopup','menu');b.setAttribute('aria-expanded','true');
-  m.querySelector('[data-export]:not(:disabled)').focus();
-}
-function fermerChoixExport(focus){
-  const m=document.getElementById('export-choix'),b=document.getElementById('btn-export');
-  if(!m||m.hidden)return;
-  m.hidden=true;b.setAttribute('aria-expanded','false');
-  if(focus)b.focus();
-}
+/* (Évolution 22 e : « Exporter les résultats » a quitté la tête de la Synthèse ; la journée et la période s'exportent
+ * dans « Fichiers », chacune sur sa ligne.) */
 /** Le classeur de la période simulée : le même que `node outils/simuler-periode.cjs … --xlsx`. */
 async function exporterPeriode(){
   const pe=Sim.periode;if(!pe||!pe.resultat||!pe.aJour())return;

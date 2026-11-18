@@ -154,7 +154,7 @@
     // Le classeur de la charge de la journée (évolution 12 d) : echanges-charge.js, comme l'outil.
     box.onclick = e => { if (e.target.closest('[data-ch="exporter"]') && o.exporter) o.exporter(); };
     box.innerHTML = `<div class="ch-tete"><h4 class="at-sous-titre ch-titre">La charge, équipe par équipe <span class="mini-note">la courbe de chaque service est sur sa ligne, dans le planning</span></h4>
-      ${o.exporter ? '<button type="button" class="btn btn-sm" data-ch="exporter">Exporter la charge (Excel)</button>' : ''}</div>
+      ${o.exporter ? '<button type="button" class="lien-discret vers-fichiers" data-page="u-sauvegarde" data-lieu="classeurs">Exporter la charge : Fichiers →</button>' : ''}</div>
       ${tableau(k, nom, noms)}`;
     const d = box.querySelector('details.ch-tableau');
     if (d) d.addEventListener('toggle', () => retenirTableau(d.open));

@@ -69,7 +69,8 @@
     ],
     flux: [
       { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
-      { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
+      // Évolution 22 (e) : « Fichiers » — la sauvegarde, les limites et tous les classeurs ; son ancien nom se cherche toujours.
+      { id: 'u-sauvegarde', nom: 'Fichiers', ancien: 'Sauvegarde et limites', ico: 'boite' }
     ]
   };
 
@@ -131,7 +132,7 @@
     { id: 'fichier', nom: 'Fichiers', ancien: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true, bas: true,
       resume: 'Votre travail dans un fichier',
       pages: [
-        { id: 'u-sauvegarde', court: 'Fichiers', intro: 'Enregistrez tout votre travail dans un fichier, et relisez-le plus tard.' }
+        { id: 'u-sauvegarde', court: 'Fichiers', intro: 'Tout sauvegarder ou restaurer un fichier ; et, classeur par classeur : importer, exporter, classeur vide à remplir.' }
       ] }
   ];
   const CLE = 'ory-menu-pages';

@@ -7,3 +7,34 @@
 /* Le tableau prend toute la largeur de la page, sous la sauvegarde et les limites (trois colonnes). */
 #fichiers-classeurs{column-span:all}
 #fichiers-classeurs .mini-note{margin:0 0 10px}
+
+/* Évolution 22 (e) : trois colonnes — « Importer », « Exporter », « Classeur vide à remplir » ; plusieurs boutons dans
+   une cellule se suivent ; un geste qui ne peut pas se faire dit pourquoi, dessous. */
+.fi-classeurs td[data-fi-sens]{white-space:normal}
+.fi-classeurs td[data-fi-sens] .btn{margin:2px 6px 2px 0}
+.fi-classeurs td .fi-raison{display:block;margin-top:2px;color:var(--ds-texte-2);font-size:var(--ds-t-13);font-weight:var(--ds-g-normal)}
+#sauvegarde-date{margin:6px 0 0}
+/* Le lien discret vers « Fichiers », là où étaient les boutons d'import et d'export. */
+.vers-fichiers{font-size:var(--ds-t-13);white-space:nowrap}
+
+/* La page tient dans l'écran d'un portable (1 366 × 768) : la sauvegarde et les limites en haut, côte à côte ; le
+   tableau des classeurs prend la hauteur qui reste, et défile seul, ses en-têtes en vue. */
+body[data-sous="u-sauvegarde"] #view-flux:not([hidden]){display:flex;flex-direction:column;overflow:hidden;padding-bottom:12px}
+body[data-sous="u-sauvegarde"] #view-flux>*{flex:none}
+body[data-sous="u-sauvegarde"] #view-flux>#panel-donnees{flex:1 1 0;min-height:0;columns:auto;display:grid;
+  grid-template-columns:minmax(0,3fr) minmax(0,2fr);grid-template-rows:auto minmax(180px,1fr);gap:12px 16px}
+body[data-sous="u-sauvegarde"] #panel-donnees>.panneau{margin:0;break-inside:auto}
+#panel-donnees>#fichiers-classeurs{grid-column:1/-1;min-height:0;display:flex;flex-direction:column}
+#fichiers-classeurs>#fi-classeurs{flex:1 1 0;min-height:0;overflow:auto}
+#fi-classeurs .table-scroll{overflow:visible}
+#fi-classeurs .fi-classeurs thead th{position:sticky;top:0;z-index:1;background:var(--ds-surface-2)}
+body[data-sous="u-sauvegarde"] #panel-donnees .row-btns{flex-wrap:wrap;gap:8px}
+body[data-sous="u-sauvegarde"] #panel-donnees .import-report{margin:6px 0;padding:6px 10px}
+/* Texte de 13 px au moins sur la page (les panneaux repris écrivent leurs titres et leurs notes en 11 ou 12 px). */
+body[data-sous="u-sauvegarde"] #panel-donnees :is(h3,p,div,span,strong,summary,small,li,label,th,td,button,code){font-size:max(var(--ds-t-13),1em)}
+/* Sur un écran étroit, tout passe en une colonne, et la page défile. */
+@media (max-width:900px){
+  body[data-sous="u-sauvegarde"] #view-flux:not([hidden]){display:block;overflow:auto}
+  body[data-sous="u-sauvegarde"] #view-flux>#panel-donnees{display:block}
+  #fichiers-classeurs>#fi-classeurs{overflow:visible}
+}

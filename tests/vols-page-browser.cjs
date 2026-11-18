@@ -56,37 +56,32 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
  const lignes=()=>page.locator('#vp-tableau tbody tr').evaluateAll(l=>l.map(tr=>[...tr.children].map(c=>c.textContent)));
  const compte=()=>page.locator('#vp-compte').innerText();
  const source=()=>page.locator('#source-label').innerText();
- const telecharger=async sel=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
+ const telecharger=async sel=>{await nav.versFichiers(page,sel);const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(500);
   await nav.aller(page,'v-programme');
 
-  // 1. Un seul bouton d'import ; les modèles dans un menu, à côté.
+  // 1. Un seul bouton d'import. Les modèles et l'export sont dans « Fichiers » (évolution 22 e) : la page garde un
+  //    lien discret, à côté du bouton.
   assert.equal(await page.locator('#vols-donnees input[type=file]').count(),1,'un seul bouton d’import');
   assert.equal(await page.locator('#imp-winrest').count(),0,'plus de second import pour l’export de l’ERP');
   assert.match(await page.locator('label:has(#imp-vols)').innerText(),/^Importer des vols$/);
-  const menu=page.locator('#vp-modeles');
-  assert.equal(await menu.evaluate(d=>d.open),false,'le menu des modèles est fermé');
-  assert.match(await menu.locator('summary').innerText(),/^Modèles$/);
+  assert.equal(await page.locator('#vp-modeles').count(),0,'plus de menu des modèles sur la page');
   assert.equal(await page.locator('#csv-template').isVisible(),false,'les modèles ne sont plus des boutons de la page');
-  const bImport=await page.locator('label:has(#imp-vols)').boundingBox(),bMenu=await menu.locator('summary').boundingBox();
-  assert.ok(Math.abs(bImport.y-bMenu.y)<8&&bMenu.x>bImport.x&&bMenu.x-(bImport.x+bImport.width)<24,'le menu est à côté du bouton : '+JSON.stringify([bImport,bMenu]));
-  await menu.locator('summary').click();await attendre(150);
-  assert.deepEqual(await menu.locator('.at-menu-liste button').evaluateAll(b=>b.map(x=>x.textContent)),
-    ['Modèle CSV : les vols d’une journée','Modèle CSV daté : un programme sur plusieurs jours']);
+  assert.equal(await page.locator('#exp-vols').isVisible(),false,'ni l’export');
+  const lien=page.locator('#vols-donnees .vers-fichiers');
+  assert.match(await lien.innerText(),/^Exporter, modèles à remplir : Fichiers →$/);
+  const bImport=await page.locator('label:has(#imp-vols)').boundingBox(),bLien=await lien.boundingBox();
+  assert.ok(Math.abs((bImport.y+bImport.height/2)-(bLien.y+bLien.height/2))<10&&bLien.x>bImport.x&&bLien.x-(bImport.x+bImport.width)<24,'le lien est à côté du bouton : '+JSON.stringify([bImport,bLien]));
+  await lien.click();await attendre(300);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-sauvegarde','il mène à « Fichiers »');
+  assert.deepEqual(await page.locator('#fi-classeurs tr[data-classeur=vols] td[data-fi-sens=vide] button').allInnerTexts().then(t=>t.map(x=>x.trim())),['Un jour (CSV)','Programme daté (CSV)']);
   const fModele=await telecharger('#csv-template');
   assert.equal(path.basename(fModele),'modele-vols-demo.csv');
-  assert.equal(await menu.evaluate(d=>d.open),false,'le menu se referme après un choix');
-  await menu.locator('summary').click();await attendre(150);
   const fDate=await telecharger('#csv-template-date');
   assert.equal(path.basename(fDate),'modele-vols-dates.csv');
-  await menu.locator('summary').click();await attendre(150);
-  await page.keyboard.press('Escape');await attendre(150);
-  assert.equal(await menu.evaluate(d=>d.open),false,'Échap le referme');
-  await menu.locator('summary').click();await attendre(150);
-  await page.locator('#vp-titre').click();await attendre(150);
-  assert.equal(await menu.evaluate(d=>d.open),false,'un clic ailleurs le referme');
+  await nav.aller(page,'v-programme');
 
   // 2. Les vols de démonstration sont déjà dans le tableau, par heure de départ.
   const demo=await page.evaluate(()=>Sim.ateliers.a.vols().filter(f=>f.sens==='DEP').map(f=>({id:f.id,std:f.std})).sort((a,b)=>a.std-b.std||a.id.localeCompare(b.id)).map(f=>f.id));

@@ -163,7 +163,7 @@ const n2=x=>Math.round(x*100)/100;
   await nav.aller(page,'j-periode');
 
   // 5. Les classeurs. La feuille Période : « Statut » et « Besoin au plus (ETP) », à droite du prévu.
-  const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
+  const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>nav.exporterPeriode(page)))));
   const fp=xPeriode.find(f=>f.nom==='Période').lignes;
   assert.deepEqual(fp[0].slice(-6),['Simulé de la ligne (ETP)','Prévu calé (ETP)','P10 (ETP)','P90 (ETP)','Statut','Besoin au plus (ETP)']);
   // Une case vide en bout de rangée ne s'écrit pas : on lit par colonne.

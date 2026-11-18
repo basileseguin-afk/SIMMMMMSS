@@ -88,7 +88,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Comparer deux essais : un onglet de « La journée ».
   await nav.vue(page,'plan');await nav.aller(page,'j-comparer');
   await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Commandes prêtes à l’heure/);
-  const downloaded=page.waitForEvent('download');await nav.aller(page,'j-chiffres');await click('#btn-export');const download=await downloaded;
+  const downloaded=page.waitForEvent('download');await nav.exporterJournee(page);const download=await downloaded;   // (évolution 22 e : dans « Fichiers »)
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
   assert.equal(result.modele,'ateliers');
   assert.ok(result.departs[0].retard>0,'le retard du départ est exporté');

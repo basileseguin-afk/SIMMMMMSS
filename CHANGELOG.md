@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (e) : « Fichiers », tous les classeurs au même endroit
+
+Cinquième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde ni celui d’un classeur. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **En haut**, « Tout sauvegarder » et « Restaurer un fichier », avec la date
+  de la dernière sauvegarde et les limites du calcul.
+- **Dessous, le tableau des classeurs**, une ligne par classeur : le
+  programme des vols, les retours, les équipes et les chemins, les horaires,
+  les temps par vol, les résultats de la journée, ceux de la période, les
+  liens. Trois colonnes : « Importer », « Exporter », « Classeur vide à
+  remplir » ; « sans objet » quand le sens n’existe pas.
+- **Les boutons d’import et d’export quittent la tête des pages** : chacune
+  garde un seul lien discret vers « Fichiers ». L’import des vols reste aussi
+  sur « Programme ».
+- Un export qui ne peut pas se faire est grisé, et dit pourquoi.
+- La page tient dans l’écran : le tableau défile seul ; texte de 13 px au
+  moins.
+
+Fichiers : `fichiers-page.js`, `fichiers-page.css`, `sim.js`, `onglets.js`,
+`ateliers.js`, `periode-vue.js`, `charge-vue.js`, `index.html` ;
+`tests/fichiers-page-browser.cjs` (nouveau), `tests/fichiers-page.test.cjs`
+et les tests qui suivent la page ; `README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (d) : « Contrôles », deux pages et un panneau en un
 
 Quatrième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format

@@ -347,7 +347,7 @@
           lots non finis ni les retards.</p></span></details>
         <div class="pv-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
-          ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
+          ${e === 'a-jour' ? '<button type="button" class="lien-discret vers-fichiers" data-page="u-sauvegarde" data-lieu="classeurs">Exporter la période : Fichiers →</button>' : ''}</div></div>`;
       if (!r) { dessiner(box, tete); return; }
       const b = r.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b)), m = this.mesureChoisie();
       const services = servicesOrdonnes(b, this.a.ordre);

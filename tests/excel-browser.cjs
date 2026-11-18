@@ -14,7 +14,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=180)=>page.waitForTimeout(ms);
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-excel-'));
- const telecharger=async(sel,nom)=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);
+ // (Évolution 22 e : les boutons des classeurs sont dans le tableau de « Fichiers ».)
+ const telecharger=async(sel,nom)=>{const ici=await page.evaluate(()=>document.body.dataset.sous);await nav.versFichiers(page,sel);
+   const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);if(ici&&ici!==await page.evaluate(()=>document.body.dataset.sous))await nav.aller(page,ici);
    const f=path.join(dossier,nom);await d.saveAs(f);return {f,nom:d.suggestedFilename()};};
  // Tirer le « + » d'un service jusqu'à un autre, dans le diagramme des chemins.
  // Relier au clic : le + du premier, puis le second (le trait tiré est éprouvé dans graphe-browser).

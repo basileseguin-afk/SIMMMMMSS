@@ -63,7 +63,8 @@ const UNITE=()=>{const A=Sim.ateliers;A.changer(()=>{const st=A.state;
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=300)=>page.waitForTimeout(ms);
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-journee-'));
- const telecharger=async(sel,nom)=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);
+ // (Évolution 22 e : les boutons des classeurs sont dans le tableau de « Fichiers ».)
+ const telecharger=async(sel,nom)=>{await nav.versFichiers(page,sel);const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);
    const f=path.join(dossier,nom);await d.saveAs(f);return f;};
  // La journée de la page, une fois l'effectif calculé reporté dans les cases (il l'est au premier calcul).
  const stabiliser=()=>page.evaluate(()=>{Sim.ateliers.calculer();Sim.ateliers.calculer();});

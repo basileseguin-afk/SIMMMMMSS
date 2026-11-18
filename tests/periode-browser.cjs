@@ -228,17 +228,15 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   await page.locator('#loadDelay').fill('45');await page.locator('#loadDelay').dispatchEvent('change');await attendre(200);
   assert.equal(await etat(),'a-jour','revenu au même délai : la période calculée vaut de nouveau');
 
-  // 11. « Exporter les résultats » propose le classeur de la période ; la journée reste en JSON.
+  // 11. Les résultats s'exportent dans « Fichiers » (évolution 22 e : « Exporter les résultats » a quitté la tête de
+  //     la Synthèse, qui garde un lien) : la période, en Excel, sur sa ligne ; la journée, en JSON, sur la sienne.
   await nav.aller(page,'j-chiffres');
-  await page.locator('#btn-export').click();await attendre(100);
-  assert.equal(await page.locator('#export-choix').isVisible(),true);
-  assert.equal(await page.locator('#btn-export').getAttribute('aria-expanded'),'true');
-  assert.deepEqual(await page.locator('#export-choix [data-export]').evaluateAll(l=>l.map(x=>x.dataset.export)),['periode','journee']);
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.export),'periode');
-  await page.keyboard.press('Escape');await attendre(50);
-  assert.deepEqual(await page.evaluate(()=>[document.getElementById('export-choix').hidden,document.activeElement.id]),[true,'btn-export']);
-  await page.locator('#btn-export').click();await attendre(100);
-  const xlsx=await telecharger(()=>page.locator('#export-choix [data-export=periode]').click());
+  assert.equal(await page.locator('#btn-export, #export-choix').count(),0,'plus de bouton « Exporter les résultats » en tête de la Synthèse');
+  await page.locator('.res-actions .vers-fichiers').click();await attendre(300);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-sauvegarde','le lien de la Synthèse mène à « Fichiers »');
+  assert.deepEqual(await page.locator('#fi-classeurs tr[data-classeur=periode] button, #fi-classeurs tr[data-classeur=journee] button').evaluateAll(l=>l.map(x=>[x.id,x.disabled])),
+    [['fi-journee-classeur',false],['fi-journee-json',false],['fi-periode',false]]);
+  const xlsx=await telecharger(()=>page.locator('#fi-periode').click());
   assert.equal(path.basename(xlsx),'ory-periode-2026-10-25-au-2026-11-13.xlsx');
   const classeurPage=await T.lireClasseur(fs.readFileSync(xlsx));
   // Compressé (correction 16 c) : des entrées deflate, que tableur.js relit.
@@ -253,22 +251,23 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.deepEqual(variable(classeurPage),variable(await T.lireClasseur(fs.readFileSync(sortie))),'l’export de la page = celui de l’outil');
   assert.ok(classeurPage[0].lignes.some(l=>/^Sauvegarde : l’unité enregistrée dans ce navigateur ; programme de vols : vols-dates\.csv\.$/.test(l[0])));
   // La journée affichée, en JSON, comme avant.
-  await page.locator('#btn-export').click();await attendre(100);
-  const jsonJour=await telecharger(()=>page.locator('#export-choix [data-export=journee]').click());
+  const jsonJour=await telecharger(()=>page.locator('#fi-journee-json').click());
   assert.equal(path.basename(jsonJour),'newrest-orly-journee.json');
   assert.ok(JSON.parse(fs.readFileSync(jsonJour,'utf8')).journal.length>0);
-  // Sur la page Période aussi.
+  // La page Période garde un lien vers « Fichiers », à la place de son bouton.
   await nav.aller(page,'j-periode');
-  assert.match(path.basename(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click())),/^ory-periode-.*\.xlsx$/);
+  assert.equal(await page.locator('#journee-periode [data-pv=exporter]').count(),0);
+  await page.locator('#journee-periode .vers-fichiers').click();await attendre(300);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'u-sauvegarde');
+  assert.match(path.basename(await telecharger(()=>page.locator('#fi-periode').click())),/^ory-periode-.*\.xlsx$/);
   // Des vols modifiés (un autre programme importé) : à relancer.
   await importer('vols-dates-2.csv',CSV.replace(/,NORD,GROS,DEP,06:10,/g,',NORD,GROS,DEP,06:20,'));
   assert.equal(await etat(),'a-relancer');
   // À relancer : le classeur de la période attend le nouveau calcul.
-  await nav.aller(page,'j-chiffres');await page.locator('#btn-export').click();await attendre(100);
-  assert.equal(await page.locator('#export-choix [data-export=periode]').isDisabled(),true);
-  assert.match(await page.locator('#export-choix [data-export=periode]').innerText(),/À relancer d’abord/);
-  await page.keyboard.press('Escape');
-  assert.equal(await page.locator('#journee-periode [data-pv=exporter]').count(),0);
+  await nav.aller(page,'u-sauvegarde');await attendre(300);
+  assert.equal(await page.locator('#fi-periode').isDisabled(),true);
+  assert.match(await page.locator('#fi-classeurs tr[data-classeur=periode] .fi-raison').innerText(),/À relancer d’abord/);
+  assert.equal(await page.locator('#journee-periode .vers-fichiers').count(),0,'la page Période n’y mène plus tant que la période est à relancer');
 
   // 12. De nouveau sans date : le bandeau et la page s'en vont (on était sur la Période : la Synthèse s'ouvre).
   await nav.aller(page,'j-periode');
@@ -277,10 +276,11 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.equal(await page.locator('#periode-bandeau').isHidden(),true);
   assert.ok(!(await pagesResultats()).includes('j-periode'));
   await verifier(null,null,'sans date : la journée d’aujourd’hui');
-  // Sans programme daté, « Exporter les résultats » exporte la journée, comme avant.
-  await nav.aller(page,'j-chiffres');
-  assert.equal(path.basename(await telecharger(()=>page.locator('#btn-export').click())),'newrest-orly-journee.json');
-  assert.equal(await page.locator('#export-choix').isVisible(),false);
+  // Sans programme daté, la journée s'exporte, comme avant ; la période n'a rien à exporter, et le dit.
+  await nav.aller(page,'u-sauvegarde');await attendre(300);
+  assert.equal(path.basename(await telecharger(()=>page.locator('#fi-journee-json').click())),'newrest-orly-journee.json');
+  assert.equal(await page.locator('#fi-periode').isDisabled(),true);
+  assert.equal(await page.locator('#fi-classeurs tr[data-classeur=periode] .fi-raison').innerText(),'Aucune période simulée.');
 
   assert.deepEqual(errors,[]);
   console.log('periode-browser : ok — sans date rien de nouveau ; sélecteur ; calcul par étapes et Annuler ; le bilan du moteur ; la veille de la période ; à relancer ; la page Période ; l’export de la période = celui de l’outil');

@@ -91,7 +91,7 @@ const REGLAGES=['partages','disposition','attentes','rayonnages'];
    /** La journée, telle que la page la tient : le résultat, les indicateurs de charge, les réponses. */
    const journee=()=>page.evaluate(()=>{const at=Sim.ateliers,r=at.resultat;return {resultat:JSON.stringify(r),indicateurs:JSON.stringify(OrlyIndicateurs.journee(r,at.args||{})),reponses:JSON.stringify(Sim.reponses())};});
    /** L'export de la journée (le fichier que la page enregistre), depuis la Synthèse ; puis retour à la vue en direct. */
-   const exporter=async()=>{await nav.aller(page,'j-chiffres');const attente=page.waitForEvent('download');await page.locator('#btn-export').click();
+   const exporter=async()=>{const attente=page.waitForEvent('download');await nav.exporterJournee(page);
      const texte=fs.readFileSync(await (await attente).path(),'utf8');
      for(const x of await page.locator('.notif-fermer').all())await x.click();
      await page.waitForFunction(()=>!document.querySelector('.notif-fermer'));
@@ -110,7 +110,10 @@ const REGLAGES=['partages','disposition','attentes','rayonnages'];
     await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));
     for(const x of await page.locator('.notif-fermer').all())await x.click();
     await aLHeure(attendu.pic);
-    const avant=await journee(),exportAvant=await exporter();
+    // (Évolution 22 e : l'export se fait dans « Fichiers ». Ouvrir une page de réglage cale l'effectif calculé — un champ
+    //  du résultat (`saisi`) s'y ajuste une fois, c'était déjà le cas avant l'évolution 22 : le relevé d'avant se prend
+    //  donc après ce premier passage, pour comparer deux journées prises dans les mêmes conditions.)
+    const exportAvant=await exporter(),avant=await journee();
 
     // 1. La disposition automatique : une sauvegarde d'avant, aucun réglage — les deux bandes de part et d'autre du couloir.
     assert.deepEqual(await reglages(),{partages:null,disposition:null,attentes:null,rayonnages:null},V+'une sauvegarde d’avant : aucun réglage');
