@@ -189,6 +189,8 @@
      * @param {object} a adaptateur :
      *   accueil()       — l'élément où dessiner la page d'accueil
      *   etat()          — l'objet attendu par `tuiles()`
+     *   ferme(id)       — facultatif : vrai pour une page qui ne s'ouvre pas (la lecture seule, évolution 22 f) ; un bloc
+     *                     dont aucune page ne s'ouvre se replie en une ligne (`motFerme`, « Paramétrage verrouillé »)
      * Les boutons portent `data-vers-partie` ou `data-page` : c'est la page
      * qui écoute les clics.
      */
@@ -224,8 +226,16 @@
           <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
         </article>`;
       };
+      const ferme = id => !!(this.a.ferme && this.a.ferme(id));
       const bloc = b => {
         const espaces = O().PARTIES.filter(p => p.bloc === b.id && !p.cache);
+        // En lecture seule, le bloc « Régler » se replie, comme au menu : ses pages ne s'ouvrent pas.
+        if (this.a.ferme && espaces.some(p => O().menuDe(p.id).length) && espaces.every(p => O().menuDe(p.id).every(x => ferme(x.id)))) {
+          return `<section class="acc-bloc acc-bloc-ferme" data-bloc="${b.id}" data-ferme aria-label="${esc(b.nom)}">
+            <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
+            <p class="acc-ferme">${icone('cadenas')}<span>${esc(this.a.motFerme || 'Paramétrage verrouillé')}</span></p>
+          </section>`;
+        }
         return `<section class="acc-bloc" data-bloc="${b.id}" aria-label="${esc(b.nom)}">
           <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
           <div class="acc-tuiles">${espaces.map(tuile).join('')}</div>

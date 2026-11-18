@@ -251,6 +251,10 @@
      *   badge(cle)    — facultatif : { n, ton, titre } à afficher sur une entrée (son identifiant de page, ou
      *                   « groupe:<groupe> »), ou rien
      *   verrou()      — facultatif : vrai tant que le menu attend (le plan en modification) : ses entrées sont grisées
+     *   ferme(id)     — facultatif : vrai pour une page qui ne s'ouvre pas (la lecture seule ferme celles du bloc
+     *                   « Régler », évolution 22 f) ; un bloc dont toutes les entrées sont fermées se replie en une
+     *                   ligne (`motFerme`, « Paramétrage verrouillé »)
+     *   refus(id)     — facultatif : appelé quand on demande une page fermée, pour le dire
      *   change(vue,id)— facultatif : appelé quand la page change (la vue suit)
      *   lieu(id,lieu) — facultatif : appelé une fois la page `id` ouverte, quand on y arrive pour un endroit précis
      *                   (celui d'une page d'avant, `ANCIENNES`, ou celui qu'un lien demande)
@@ -282,6 +286,9 @@
       }
     }
 
+    /** La page ne s'ouvre pas : c'est la page qui le sait (`a.ferme`, la lecture seule). */
+    fermee(id) { return !!(id && this.a.ferme && this.a.ferme(resoudre(id))); }
+
     /** La page à ouvrir dans une partie : la dernière vue, sinon la première. */
     actifDe(partie) {
       // La dernière page ouverte de la partie, si elle est encore au menu ; sinon sa première page au menu.
@@ -293,9 +300,9 @@
     /** La page ouverte, recalée sur la vue affichée si l'on est arrivé autrement. */
     actif(vue = this.a.vue()) {
       if (this.page && vueDe(this.page) === vue) {
-        if (montree(this.page)) return this.page;
+        if (montree(this.page) && !this.fermee(this.page)) return this.page;
         // Une page qui ne se montre plus (la période, sans programme daté) : la première de sa partie, dans la même vue.
-        const p = partieDe(this.page), autre = p && pagesDe(p.id).find(x => x.vue === vue);
+        const p = partieDe(this.page), autre = p && pagesDe(p.id).find(x => x.vue === vue && !this.fermee(x.id));
         if (autre) return autre.id;
       }
       // Arrivé par un lien vers la vue : la dernière page choisie de cette vue.
@@ -305,9 +312,12 @@
     /** La dernière page choisie d'une vue (une vue porte des pages de plusieurs espaces), si elle se montre encore ; sinon sa première. */
     retenue(vue) {
       if (!ONGLETS[vue]) return null;
-      const pv = (this.parVue || {})[vue];
-      const deja = (pv && vueDe(pv) === vue && montree(pv) ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue && montree(id));
-      return deja || defaut(vue);
+      const pv = (this.parVue || {})[vue], ouvrable = id => montree(id) && !this.fermee(id);
+      const deja = (pv && vueDe(pv) === vue && ouvrable(pv) ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue && ouvrable(id));
+      if (deja) return deja;
+      // Une page fermée (la lecture seule) ne s'ouvre pas non plus par sa vue : sa première page qui s'ouvre.
+      const premiere = defaut(vue);
+      return this.fermee(premiere) ? (ONGLETS[vue].find(o => ouvrable(o.id)) || {}).id || null : premiere;
     }
 
     /** Ouvre une partie, sur sa dernière page. */
@@ -321,6 +331,8 @@
       const reprise = ANCIENNES[id];
       if (reprise) return this.choisir(reprise.vers, focus, ouverture, lieu || reprise.lieu);
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
+      // Une page fermée (la lecture seule, évolution 22 f) ne s'ouvre pas : la page le dit.
+      if (this.fermee(id)) { if (this.a.refus) this.a.refus(id); return; }
       this.page = id;
       this.ouverture = !!ouverture;
       // Une page de passage n'est pas retenue : son espace et sa vue rouvrent la page d'avant. Une page qui s'ouvre
@@ -347,7 +359,7 @@
     rendre() {
       const vue = this.a.vue(), actif = this.actif(vue);
       // La page ouverte ne se montre plus : celle qui la remplace s'ouvre, comme d'un clic.
-      if (actif && this.page && actif !== this.page && !montree(this.page)) { this.choisir(actif); return; }
+      if (actif && this.page && actif !== this.page && (!montree(this.page) || this.fermee(this.page))) { this.choisir(actif); return; }
       this.page = actif;
       const p = actif ? partieDe(actif) : null;
       if (root.document) {
@@ -359,7 +371,9 @@
       // Le menu entier, toujours : deux blocs, leurs espaces, leurs entrées (évolution 22 a). L'entrée « Fichiers », en
       // bas de la barre, est un bouton de la page : elle ne se dessine pas ici.
       const m = menu(this.choix, actif), dans = actif ? (page(actif) || {}).groupe : null;
-      const toutes = m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees));
+      // Un bloc dont aucune entrée ne s'ouvre (« Régler », en lecture seule) se replie en une ligne.
+      const plie = b => !!this.a.ferme && b.espaces.some(e => e.entrees.length) && b.espaces.every(e => e.entrees.every(o => this.fermee(o.id)));
+      const toutes = m.blocs.filter(b => !plie(b)).flatMap(b => b.espaces.flatMap(e => e.entrees));
       // Une page rangée sous une autre (« Liens entre services », sous « Chemins ») n'a pas d'entrée : la sienne est marquée.
       const cible = (actif && (page(actif) || {}).sous) || actif;
       const ouverte = o => o.groupe ? o.groupe === dans : o.id === cible;
@@ -372,7 +386,11 @@
           aria-selected="${on}" tabindex="${o === prise ? 0 : -1}"${verrou ? ' disabled' : ''}>${I ? I.ico(o.ico) : ''}<span>${esc(libelle(o))}</span>${
           b && b.n ? `<b class="so-badge ${esc(b.ton || '')}" title="${esc(b.titre || '')}">${esc(b.n)}</b>` : ''}</button>`;
       };
-      const html = m.blocs.map(b => `<div class="menu-bloc" data-bloc="${b.id}"><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>${
+      const motFerme = this.a.motFerme || 'Paramétrage verrouillé';
+      const html = m.blocs.map(b => plie(b)
+        ? `<div class="menu-bloc menu-bloc-ferme" data-bloc="${b.id}" data-ferme><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>`
+          + `<p class="menu-ferme">${I ? I.ico('cadenas') : ''}<span>${esc(motFerme)}</span></p></div>`
+        : `<div class="menu-bloc" data-bloc="${b.id}"><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>${
         b.espaces.map(e => `<div class="menu-espace" data-espace="${e.id}" role="tablist" aria-orientation="vertical" aria-label="${esc(e.titre ? b.nom + ' : ' + e.nom : b.nom)}">${
           e.titre ? `<p class="menu-espace-titre" aria-hidden="true">${esc(e.nom)}</p>` : ''}${e.entrees.map(bouton).join('')}</div>`).join('')}</div>`).join('');
       // Redessiner seulement si quelque chose a changé : sinon l'entrée qui a

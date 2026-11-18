@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (f) : « Lecture seule »
+
+Sixième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+Sans la lecture seule, rien ne change : le même menu, à l’octet près.
+
+- **Un interrupteur en bas du menu**, entre « Fichiers » et le thème. C’est
+  une préférence de ce navigateur, gardée comme le thème (clé
+  `ory-ui-lecture-seule`) : hors des données, hors de la sauvegarde ; elle
+  survit au rechargement.
+- **En marche, le bloc « Régler » se replie en « Paramétrage verrouillé »**,
+  au menu et sur l’accueil ; ses pages ne s’ouvrent pas — ni par un lien, ni
+  par « Aller à… », ni par le nom d’une page d’avant — et la page le dit.
+- **Un lien d’un résultat vers un réglage dit « Paramétrage verrouillé ».**
+- **Dans « Fichiers »**, « Restaurer un fichier » et tous les « Importer »
+  sont grisés, avec la raison ; les exports et les classeurs vides marchent.
+- **Les pages de résultats restent intactes.** Les gestes qui y changent un
+  réglage ne se montrent plus ; le calage sur le réel attend ; « Annuler » et
+  « Rétablir » sont éteints. Les deux portes par où changent les équipes, les
+  chemins et les temps par vol sont gardées : un geste oublié n’y passe pas.
+- À l’arrêt, tout revient.
+
+Fichiers : `lecture-seule.js`, `lecture-seule.css` (nouveaux), `onglets.js`,
+`demarrage.js`, `fichiers-page.js`, `sim.js`, `index.html` ;
+`tests/lecture-seule.test.cjs`, `tests/lecture-seule-browser.cjs` (nouveaux) ;
+`README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (e) : « Fichiers », tous les classeurs au même endroit
 
 Cinquième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format

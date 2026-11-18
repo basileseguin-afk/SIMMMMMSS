@@ -144,11 +144,45 @@
     for (const b of hote.querySelectorAll('[data-fi-geste]')) {
       const g = gestes[b.dataset.fiGeste], e = g && typeof g.etat === 'function' ? g.etat() : { ok: true };
       b.disabled = !e.ok;
-      let r = b.nextElementSibling && b.nextElementSibling.classList.contains('fi-raison') ? b.nextElementSibling : null;
+      const suivant = b.nextElementSibling;
+      let r = suivant && suivant.classList.contains('fi-raison') && !suivant.classList.contains('fi-verrou') ? suivant : null;
       if (e.ok || !e.raison) { if (r) r.remove(); b.removeAttribute('aria-describedby'); continue; }
       if (!r) { r = b.ownerDocument.createElement('small'); r.className = 'fi-raison'; r.id = (b.id || 'fi-' + b.dataset.fiGeste) + '-raison'; b.after(r); }
       r.textContent = e.raison; b.setAttribute('aria-describedby', r.id);
     }
+  }
+
+  /**
+   * La lecture seule (évolution 22 f) : « Restaurer » et tous les « Importer » sont grisés, avec la raison — sa phrase
+   * sous « Restaurer » (`raison`), son mot dans chaque cellule du tableau (`mot`, « Paramétrage verrouillé ») ; les
+   * exports et les classeurs vides marchent. À rappeler après `maj` ; `oui` faux rend tout.
+   * @param {Document} doc
+   * @param {HTMLElement} hote  le tableau des classeurs
+   */
+  function verrouiller(doc, hote, oui, raison, mot) {
+    if (!doc) return;
+    const dire = (apres, id, texte) => {
+      let r = doc.getElementById(id);
+      if (!oui) { if (r) r.remove(); return null; }
+      if (!r) { r = doc.createElement('small'); r.className = 'fi-raison fi-verrou'; r.id = id; }
+      r.textContent = texte; apres.after(r); return r;
+    };
+    const griser = (e, r) => {
+      if (oui) { if (!e.disabled) e.dataset.fiVerrou = '1'; e.disabled = true; if (r && e.tagName === 'BUTTON') e.setAttribute('aria-describedby', r.id); }
+      else if (e.dataset.fiVerrou) { e.disabled = false; delete e.dataset.fiVerrou; if (e.tagName === 'BUTTON') e.removeAttribute('aria-describedby'); }
+    };
+    for (const cellule of (hote && hote.querySelectorAll ? hote.querySelectorAll('td[data-fi-sens="importer"]') : [])) {
+      const controles = [...cellule.querySelectorAll('button,input')]; if (!controles.length) continue;
+      const r = dire(controles[controles.length - 1], 'fi-verrou-' + cellule.parentElement.dataset.classeur, mot || raison);
+      for (const e of controles) {
+        griser(e, r);
+        // Le champ resté à sa place (l'import des vols, sur « Programme ») se ferme avec le bouton qui le clique.
+        const cible = e.dataset.fiDeclenche ? doc.querySelector(e.dataset.fiDeclenche) : null; if (cible) griser(cible, null);
+      }
+    }
+    const restaurer = doc.getElementById('sauvegarde-import-btn'), champ = doc.getElementById('sauvegarde-import');
+    if (restaurer) { const r = dire(restaurer.parentElement, 'fi-verrou-restaurer', raison); griser(restaurer, r); }
+    if (champ) griser(champ, null);
   }
 
   /** La date de la dernière sauvegarde, dite en clair ; sans sauvegarde, la page le dit. */
@@ -159,7 +193,7 @@
       + ' à ' + deux(t.getHours()) + ':' + deux(t.getMinutes()) + '.';
   }
 
-  const api = { SENS, CLASSEURS, tableau, poser, maj, direSauvegarde };
+  const api = { SENS, CLASSEURS, tableau, poser, maj, verrouiller, direSauvegarde };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyFichiers = api;
 })(typeof window !== 'undefined' ? window : globalThis);

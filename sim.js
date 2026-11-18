@@ -941,6 +941,60 @@ function initTheme(){
     try{if(sombre)localStorage.setItem(CLE_THEME,'sombre');else localStorage.removeItem(CLE_THEME);}catch(e){/* stockage indisponible : le choix vaut pour la visite */}
   });
 }
+/* ==========================================================================
+ *  « LECTURE SEULE » (évolution 22 f, lecture-seule.js)
+ *  Un interrupteur, en bas du menu : les résultats se lisent, le paramétrage est verrouillé. Une préférence de ce
+ *  navigateur, gardée comme le thème (`ory-ui-lecture-seule`) : hors des données, hors de la sauvegarde.
+ *  En marche : le bloc « Régler » du menu se replie et ses pages ne s'ouvrent pas (onglets.js le demande : `pageFermee`) ;
+ *  dans « Fichiers », « Restaurer » et « Importer » sont grisés ; les gestes qui changent un réglage depuis une page de
+ *  résultats ne se montrent plus (lecture-seule.css) et, appelés quand même, ne font rien (`garder`).
+ * ==========================================================================*/
+let lectureSeule=!!(window.OrlyLectureSeule&&OrlyLectureSeule.lire(window.localStorage));
+if(lectureSeule)document.body.dataset.lecture='seule';
+/** La page ne s'ouvre pas : en lecture seule, celles du bloc « Régler ». */
+const pageFermee=id=>lectureSeule&&!!window.OrlyLectureSeule&&OrlyLectureSeule.fermee(window.OrlyOnglets,id);
+/** On demande une page fermée, ou un geste verrouillé : la page le dit. */
+function direVerrou(id){
+  const pg=id&&window.OrlyOnglets?OrlyOnglets.page(id):null;
+  toast(OrlyLectureSeule.MOT+(pg?' : « '+pg.nom+' » ne s’ouvre pas en lecture seule.':' : rien ne se règle en lecture seule.'));
+}
+/** L'interrupteur dit son état : coché ou non, son cadenas, son infobulle. */
+function majInterrupteurLecture(){
+  const b=document.getElementById('btn-lecture-seule');if(!b)return;
+  const i=OrlyLectureSeule.interrupteur(lectureSeule);b.setAttribute('aria-checked',String(i.coche));b.title=i.titre;
+  b.innerHTML='<span>'+pic(i.ico)+'</span><span>'+escapeHTML(i.nom)+'</span><span class="ls-temoin" aria-hidden="true"></span>';
+}
+function appliquerLectureSeule(oui){
+  lectureSeule=!!oui;
+  if(lectureSeule)document.body.dataset.lecture='seule';else delete document.body.dataset.lecture;
+  majInterrupteurLecture();
+  // « Disposer les zones » règle la disposition : son panneau se referme. Le calage sur le réel garde des réglages : il attend.
+  if(lectureSeule)disposerLesZones(false);
+  const reel=document.getElementById('pv-reel');if(reel)reel.inert=lectureSeule;
+  // Une page fermée, ouverte à l'instant : on la quitte — pour la Synthèse si la journée se calcule, sinon pour l'accueil.
+  if(lectureSeule&&activeView!=='accueil'&&pageFermee(document.body.dataset.sous)){
+    if(journeeCalculee()&&Sim.onglets)Sim.onglets.choisir('j-chiffres');else showView('accueil');
+  }
+  majFichiers();
+  if(Sim.onglets)Sim.onglets.rendre();
+  if(Sim.demarrage)Sim.demarrage.rendre();
+  majAnnuler();
+}
+function initLectureSeule(){
+  const L=window.OrlyLectureSeule,b=document.getElementById('btn-lecture-seule');if(!L||!b)return;
+  // Un lien vers une page fermée, où qu'il soit, le dit (une règle par page : rien à redessiner).
+  if(!document.getElementById('lecture-seule-regles')){const st=document.createElement('style');st.id='lecture-seule-regles';
+    st.textContent=L.regles(window.OrlyOnglets);document.head.appendChild(st);}
+  // Les réglages changent par ces deux portes (les équipes, les chemins, les retours ; les temps par vol, les règles) :
+  // en lecture seule, elles restent fermées, même à un geste qu'une page de résultats montrerait encore.
+  for(const o of [Sim.ateliers,Sim.reglages])L.garder(o,'changer',()=>lectureSeule,()=>direVerrou());
+  b.addEventListener('click',()=>{
+    appliquerLectureSeule(!lectureSeule);L.ecrire(window.localStorage,lectureSeule);
+    toast(lectureSeule?'Lecture seule : le paramétrage est verrouillé.':'Lecture seule arrêtée : le paramétrage se règle de nouveau.');
+  });
+  // À l'ouverture : en marche, tout se met en place ; arrêtée, la page est celle d'avant — seul l'interrupteur se dessine.
+  if(lectureSeule)appliquerLectureSeule(true);else majInterrupteurLecture();
+}
 /* « En ce moment » se replie : le plan rejoué prend alors toute la largeur.
  * Une préférence d'affichage, retenue dans ce navigateur, comme le thème. Sans
  * choix retenu, il s'ouvre sur un écran large et se replie sur un écran
@@ -991,6 +1045,8 @@ function initOnglets(){
     badge:badgeOnglet,
     // Pendant la modification du plan, le menu attend : ses entrées sont grisées.
     verrou:()=>editMode,
+    // En lecture seule (évolution 22 f), les pages du bloc « Régler » ne s'ouvrent pas : le bloc se replie, la page le dit.
+    ferme:pageFermee,refus:direVerrou,motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
     lieu:(id,lieu)=>{
@@ -1060,6 +1116,8 @@ const CLE_DERNIERE_SAUVEGARDE='ory-ui-derniere-sauvegarde';   // une préférenc
 function majFichiers(){
   const hote=document.getElementById('fi-classeurs');
   if(hote&&window.OrlyFichiers)OrlyFichiers.maj(hote,gestesFichiers());
+  // En lecture seule (évolution 22 f) : « Restaurer » et « Importer » sont grisés, avec la raison ; les exports marchent.
+  if(window.OrlyFichiers&&OrlyFichiers.verrouiller)OrlyFichiers.verrouiller(document,hote,lectureSeule,window.OrlyLectureSeule?OrlyLectureSeule.RAISON:'',window.OrlyLectureSeule?OrlyLectureSeule.MOT:'');
   const d=document.getElementById('sauvegarde-date');
   if(d&&window.OrlyFichiers){let iso=null;try{iso=localStorage.getItem(CLE_DERNIERE_SAUVEGARDE);}catch(e){iso=null;}d.textContent=OrlyFichiers.direSauvegarde(iso);}
 }
@@ -1082,7 +1140,9 @@ function initDemarrage(){
   if(!window.OrlyDemarrage)return;
   Sim.demarrage=new OrlyDemarrage.Accueil({
     accueil:()=>document.getElementById('view-accueil'),
-    etat:etatDemarrage
+    etat:etatDemarrage,
+    // En lecture seule (évolution 22 f), le bloc « Régler » se replie aussi sur l'accueil.
+    ferme:pageFermee,motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined
   });
   // L'application s'ouvre sur la Synthèse quand une journée se calcule (évolution 22 a) ; sinon sur l'accueil :
   // l'état de chaque espace, et ce qu'il y a à faire.
@@ -1166,6 +1226,8 @@ function suivreGestes(){
 /** Les boutons Annuler et Rétablir de la zone que la page ouverte modifie, ou rien. */
 function boutonsAnnuler(){
   if(editMode)return ['pe-undo','pe-redo'];
+  // En lecture seule (évolution 22 f), rien ne se défait ni ne se refait : ce serait changer un réglage.
+  if(lectureSeule)return null;
   if(activeView==='accueil')return null;
   // « Disposer les zones » (évolution 20 b) règle la disposition, gardée avec les équipes : tant que son panneau est
   // ouvert, dans « En direct », le bouton du haut annule et rétablit ses gestes — et eux seuls (`gesteDeDisposition`).
@@ -1264,11 +1326,11 @@ function elementsPalette(){
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
   // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
-    indice:p.nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
+    indice:pageFermee(pg.id)?OrlyLectureSeule.MOT:p.nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
   // Une page qu'une autre a reprise (évolution 22 b) se cherche toujours par son nom, et par celui d'encore avant : elle
   // mène à la page qui l'a reprise, au bon endroit dedans.
   if(O&&O.ANCIENNES)for(const [id,a] of Object.entries(O.ANCIENNES)){const pg=O.page(a.vers);if(!pg)continue;
-    out.push({groupe:'Pages',nom:a.nom,indice:'dans '+pg.nom,ico:pg.ico,mots:[a.ancien,'ancienne page'].filter(Boolean).join(' '),faire:()=>vers(id)});}
+    out.push({groupe:'Pages',nom:a.nom,indice:pageFermee(id)?OrlyLectureSeule.MOT:'dans '+pg.nom,ico:pg.ico,mots:[a.ancien,'ancienne page'].filter(Boolean).join(' '),faire:()=>vers(id)});}
   const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
   for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
   for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
@@ -1565,6 +1627,8 @@ function appliquerGeom(o, silencieux) {
  * qu'on vienne (« Modifier le plan », la fiche d'un service, le menu), et
  * « Terminer » ramène à la page d'où l'on venait. */
 function basculerEdition() {
+  // En lecture seule (évolution 22 f), le plan ne se modifie pas.
+  if(!editMode&&lectureSeule){direVerrou('u-plan');return;}
   editMode=!editMode;
   if(editMode){pause();showView('plan');if(Sim.onglets&&document.body.dataset.sous!=='u-plan')Sim.onglets.choisir('u-plan');}
   svg.classList.toggle('edition',editMode);
@@ -2189,7 +2253,8 @@ function initCalage(){
     periode:()=>(Sim.periode&&Sim.periode.aJour()?Sim.periode.resultat.periode:null),
     services:servicesDisponibles,
     reglages:()=>{try{return JSON.parse(localStorage.getItem(CLE_CALAGE)||'null');}catch(e){return null;}},
-    enregistrer:r=>{try{localStorage.setItem(CLE_CALAGE,JSON.stringify(r));}catch(e){toast('Réglages du calage non enregistrés : stockage indisponible.');}},
+    enregistrer:r=>{if(lectureSeule)return;   // (évolution 22 f : en lecture seule, les réglages du calage ne changent pas)
+      try{localStorage.setItem(CLE_CALAGE,JSON.stringify(r));}catch(e){toast('Réglages du calage non enregistrés : stockage indisponible.');}},
     notifier:toast,
     // La politique d'effectif (évolution 11 d) : ce que suppose un calage, appliquer un × a au barème, la journée affichée.
     signature:signatureCalage,
@@ -3558,7 +3623,7 @@ function updateRunState() {
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
   // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
-  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
+  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde,#btn-lecture-seule').forEach(b => b.disabled = editMode);
   if (Sim.onglets) Sim.onglets.rendre();
   majAnnuler();
 }
@@ -4027,6 +4092,8 @@ etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);
 etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
+// Après les reprises des données d'avant (elles ne sont pas des gestes) : les portes des réglages se gardent ensuite.
+etape('lecture seule',initLectureSeule);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}
