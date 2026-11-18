@@ -1677,7 +1677,7 @@
       'Une ligne par vol qui revient : son matériel sale arrive à la plonge à l’heure « Arrivée à l’unité » (HH:MM), sans délai ajouté.',
       'Jour : J le jour simulé, J-1 la veille (un retour du soir d’avant, encore à laver).',
       'BC, PC, YC, CREW, SPML : facultatif. Les passagers (ou 1) des classes à bord ; vide : les classes que la compagnie emporte au départ.',
-      'Pour que la simulation l’utilise : Simulation › Réglages de la simulation › « D’où viennent les retours ? » = la planche retour.'
+      'Pour que la simulation l’utilise : Simulation › Réglages › « D’où viennent les retours ? » = la planche retour.'
     ])];
   }
   function classeurVersPlanche(feuilles) {

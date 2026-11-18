@@ -23,8 +23,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.ateliers.push({id:'ro',nom:'Robot',service:'prepa',type:'robot',debut:'06:00',jour:-1,personnes:1,personnesMin:2,debit:300,pauses:[],lots:cl.slice(0,2).map(c=>[c])});},''));
 
    // 1. La plonge : un tunnel qui demande 2 personnes, une équipe d'une seule.
-   await nav.aller(page,'mu-services');
-   await page.locator(`${M} [data-mu-choisir=plonge]`).click();await attendre();
+   // (La fiche de l'équipe : en v1, par sa ligne du tableau « Ses équipes » — évolution 22 b ; en v2, dans la fiche du service.)
+   await nav.equipe(page,'pl');await attendre();
    const t=`${M} [data-at="pl"] .at-tunnel`;
    assert.match(await page.locator(t).first().innerText(),/Minimum pour tourner/,version+' : le seuil du tunnel se lit');
    assert.match(await page.locator(`${t} .at-tunnel-etat`).first().innerText(),/à l’arrêt : pas assez de monde/);
@@ -35,7 +35,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='pl').tunnels[0].personnes),3);
 
    // 2. Le robot : un minimum de 2, une seule personne → à l'arrêt, et ses commandes ne se font pas.
-   await page.locator(`${M} [data-mu-choisir=prepa]`).click();await attendre();
+   await nav.equipe(page,'ro');await attendre();
    const r=`${M} .mu-equipe[data-at="ro"]`;
    assert.equal(await page.locator(`${r} .mu-equipe-tete [data-at-champ=personnesMin]`).inputValue(),'2',version+' : le minimum du robot, à la vue');
    assert.match(await page.locator(`${r} .mu-equipe-tete`).innerText(),/à l’arrêt : 1 pers\. pour un minimum de 2/);

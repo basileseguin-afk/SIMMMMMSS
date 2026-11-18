@@ -281,6 +281,8 @@ const CLE='ory-calage-v1';
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.encadrement.cuisine),{personnes:2,presence:600,presenceContrat:450},'rien ne change');
   const equipeCuisine=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='cuisine'&&a.type==='manuel').id);
   // La présence au contrat d'une équipe : dans « Plus de réglages » de sa ligne.
+  // (La fiche de l'équipe s'ouvre d'un clic sur sa ligne du tableau « Ses équipes » — évolution 22 b.)
+  await nav.equipe(page,equipeCuisine);
   const plus=page.locator(`#mu-services article.mu-equipe[data-at="${equipeCuisine}"] details.mu-plus`);
   if(!(await plus.evaluate(d=>d.open)))await plus.locator('> summary').click();await attendre();
   const contrat=page.locator(`[data-at="${equipeCuisine}"] [data-at-champ=presence-contrat]`).first();

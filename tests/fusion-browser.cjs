@@ -85,6 +85,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#mu-services .mu-chaine-bloc').innerText(),/est fait par « Montage AF »[\s\S]*pas besoin d’équipe ici/);
   await page.locator('#mu-services .mu-chaine-bloc [data-mu-ouvrir=prepa]').click();await attendre();
   assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-mu-fiche'),'prepa');
+  // La fiche de l'équipe s'ouvre d'un clic sur sa ligne du tableau « Ses équipes » (évolution 22 b).
+  await nav.equipe(page,'mo');
   assert.match(await page.locator('#mu-services .mu-equipe[data-at="mo"] .mu-badge.chaine').innerText(),/\+ PRÉPA à la chaîne/i);
   assert.equal(await page.locator('#mu-services .mu-equipe[data-at="mo"] .mu-chaine-reglage [data-at-champ=fusion]').isVisible(),true,'le réglage est à la vue, pas replié');
   // Le planning : la barre de la case a la teinte de la chaîne.

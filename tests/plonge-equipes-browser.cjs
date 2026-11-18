@@ -41,7 +41,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const avant=await autres();
 
    // 1. La plonge et son équipe de l'après-midi.
-   await nav.aller(page,'mu-services');await page.locator(`${M} [data-mu-choisir=plonge]`).click();await attendre();
+   // (En v1, « L'arrivée des retours, face à ses horaires » est repliée d'abord sous le tableau des équipes — évolution 22 b.)
+   await nav.aller(page,'mu-services');await page.locator(`${M} [data-mu-choisir=plonge]`).click();await attendre();await nav.section(page,'retours');
    const ajout=page.locator(`${M} [data-mu-action=equipe]`);
    assert.equal(await ajout.count(),1,V+'le bouton reste quand la plonge a son équipe');
    assert.equal(await ajout.innerText(),'+ Ajouter une équipe de plonge');
@@ -99,6 +100,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(calcul.mixte,false);
 
    // 4. La frise : deux équipes, dans l'ordre des heures, qui se passent leurs tunnels.
+   //    (En v1, la frise est dans la fiche du service ; l'équipe ajoutée a ouvert la sienne — évolution 22 b.)
+   await nav.service(page,'plonge');await nav.section(page,'retours');
    assert.deepEqual(await page.locator(`${F} .mr-equipe`).evaluateAll(l=>l.map(r=>r.getAttribute('data-info').split('\n')[0])),['Plonge matin','Plonge']);
    assert.match(await page.locator(F).innerText(),/« Plonge matin » et « Plonge » sont là ensemble de 13:00 à \d\d:\d\d : elles se passent les tunnels Tunnel 1 et Tunnel 2 ; chacun ne lave qu’un vol à la fois/);
    // L'infobulle se ferme quand la page défile : la frise d'abord à l'écran, puis le survol.
@@ -108,10 +111,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.mouse.move(5,5);
 
    // 5. L'heure au clavier, dans le champ où est le curseur.
+   await nav.equipe(page,a.id);
    const heure=page.locator(`[data-at="${a.id}"] [data-at-champ="debut"]`);
    await heure.fill('0530');await heure.press('Enter');await attendre();
    assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(x=>x.id===id).debut,a.id),'05:30',V+'« 0530 » donne 05:30');
+   await nav.service(page,'plonge');
    assert.match(await page.locator(F).innerText(),/05:30 → 13:30/);
+   await nav.equipe(page,'pl-apm');
    // Le mode de lavage vaut pour toute la plonge ; « Annuler » le défait pour les deux.
    await page.locator(`[data-at="pl-apm"] [data-at-champ="plonge-mode"]`).selectOption('debit');await attendre();
    assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(x=>x.service==='plonge').map(x=>!!x.parVol)),[false,false],V+'les deux équipes passent au débit');

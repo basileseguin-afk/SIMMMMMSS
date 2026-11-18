@@ -1,0 +1,97 @@
+/* « Services et équipes » (version 1, évolution 22 b) : six pages en une.
+ * Une liste à gauche, une fiche à droite, des sections repliées ; la page
+ * tient dans l'écran d'un portable (1 366 × 768) : chaque colonne défile
+ * seule. Les fiches sont celles de unite.js et de ateliers.js (unite.css,
+ * ateliers.css, communs avec la version 2 : cette feuille ne les modifie pas). */
+
+/* La page ne défile pas : sa hauteur est celle qui reste sous son titre. */
+#mu-services{margin-bottom:0}
+#mu-services .se-cadre{grid-template-columns:minmax(220px,264px) minmax(0,1fr);gap:16px;align-items:stretch;
+  height:calc(100dvh - var(--haut-entete,170px) - var(--se-marge,62px));min-height:300px}
+#mu-services .se-liste{position:static;max-height:none;min-height:0;overflow:auto;padding:2px 4px 2px 2px}
+#mu-services .se-fiche{min-height:0;overflow:auto;padding:12px 18px 16px;font-size:var(--ds-t-13)}
+
+/* La liste : « Ajouter un service » en tête, les services de l'amont vers l'aval, les services supprimés en bas. */
+.se-ajout{margin-bottom:6px}
+.se-ajout>summary{list-style:none;display:flex;justify-content:center;cursor:pointer}
+.se-ajout>summary::-webkit-details-marker{display:none}
+.se-ajout[open]>summary{margin-bottom:6px}
+.se-ajout .mu-nouveau{margin:0}
+.se-liste .mu-svc{flex:none}
+.se-vers-supprimes{flex:none;align-self:flex-start;margin-top:8px;padding:4px 2px;font-size:var(--ds-t-13);text-align:left}
+.se-vers-supprimes.actif{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+
+/* L'en-tête de la fiche : son nom, ce qu'il fait, et le lien vers les résultats. */
+.se-fiche .se-tete{flex-wrap:wrap;row-gap:8px;margin-bottom:8px}
+.se-fiche .se-tete .mu-nature{display:flex;flex-direction:column;gap:2px;margin:0;font-size:var(--ds-t-13)}
+.se-fiche .se-tete .mu-nature select{max-width:300px}
+.se-resultats{white-space:nowrap}
+.se-fiche .mu-etape{margin-top:12px}
+.se-section>summary>h3{font-size:var(--ds-t-14)}
+
+/* « Ses équipes » : un tableau ; une ligne ouvre la fiche de l'équipe. */
+.se-equipes{width:100%;font-size:var(--ds-t-13)}
+.se-equipes th,.se-equipes td{padding:6px 10px;text-align:left;vertical-align:middle;white-space:nowrap}
+.se-equipes td.se-eq-prepare{white-space:normal;min-width:160px;color:var(--ds-texte-2)}
+.se-equipes tbody tr{cursor:pointer}
+.se-equipes tbody tr:hover{background:var(--ds-survol)}
+.se-eq-nom{all:unset;cursor:pointer;font-weight:var(--ds-g-fort);color:var(--ds-accent-texte)}
+.se-eq-nom:hover{text-decoration:underline}
+.se-eq-nom:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
+.se-chaine{font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
+.se-effectif{margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-bordure)}
+.se-effectif>summary{cursor:pointer;color:var(--ds-texte-2)}
+.se-effectif>summary b{color:var(--ds-texte-1)}
+.se-effectif[open]>summary{margin-bottom:8px}
+.se-retours{margin-top:10px}
+.se-retours>summary{cursor:pointer;font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.se-retours>.mu-retours{margin-top:8px}
+.se-fiche .mu-ajout{margin:10px 0 0}
+
+/* Ses temps, quand ils se règlent dans la fiche de son équipe : un rappel, et le lien qui y mène. */
+.se-durees{width:auto;min-width:280px;font-size:var(--ds-t-13)}
+.se-durees th,.se-durees td{padding:4px 10px;text-align:left}
+.se-durees td.num{text-align:right;font-variant-numeric:tabular-nums}
+.se-vers{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px 14px}
+
+/* Réglages avancés : le rattachement, la place sur le plan, supprimer. */
+.se-rattache{display:flex;flex-direction:column;gap:2px;margin:10px 0 0;font-size:var(--ds-t-13)}
+.se-rattache select{max-width:340px}
+.se-rattache small{color:var(--ds-texte-3)}
+.se-place,.se-supprimer{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.se-place>span:first-child{font-weight:var(--ds-g-moyen)}
+.se-supprimer{padding-top:10px;border-top:1px solid var(--ds-bordure)}
+
+/* La fiche d'une équipe, à la place de celle de son service : un retour, puis tous ses réglages. */
+.se-retour{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:0 0 10px;font-size:var(--ds-t-14)}
+.se-retour .se-resultats{margin-left:auto;font-size:var(--ds-t-13)}
+.se-fil{color:var(--ds-texte-3)}
+.se-titre{margin:0 0 10px;font-size:var(--ds-t-16)}
+.se-equipe>article{margin:0}
+.se-supprimes .svc-bloc:first-child{margin-top:0}
+
+/* Sur un écran étroit, la liste passe au-dessus de la fiche, et la page défile comme avant. */
+@media (max-width:900px){
+  #mu-services .se-cadre{grid-template-columns:1fr;height:auto}
+  #mu-services .se-liste{max-height:240px}
+  #mu-services .se-fiche{overflow:visible}
+}
+
+/* Aucun résultat sur la page : la charge du jour d'un service par compagnie (ses vols du jour, ses heures sur la
+   journée, leur total) se lit dans les résultats ; ici, ses temps par vol se règlent. */
+.se-fiche .mu-cat-table tr>:nth-child(n+3),.se-fiche .mu-cat-table tfoot{display:none}
+
+/* Texte de 13 px au moins sur la page. Les fiches reprises (unite.css, ateliers.css, reglages.css, communs) écrivent
+   leurs libellés, leurs champs, leurs boutons et leurs notes en 11 ou 12 px : ici, jamais sous 13 px. Ce qui est déjà
+   plus grand le reste (`max` avec la taille héritée). */
+#mu-services .se-cadre :is(small,i,label,th,td,li,p,summary,input,select,textarea,button,output,
+  .mini-note,.btn,.unite,.mu-badge,.mu-regles,.mu-ordre-cmd,.mu-ordre-cmd b,.mu-ordre>span,.mu-eq-pers,.nj-raison,.nj-champ,.aide-corps,
+  .at-tunnel-unite,.at-tunnel-etat,.at-carte-nom span,.at-lot-tete b,.at-mm span,.at-sous-titre span,.mini-note b,.aide-corps b,span.mini-note,
+  .rg-svc-digest,.rg-zero,.at-chip,.at-cmd-chip,.mu-chez,.mu-svc-chaine,.at-pers-calc){font-size:max(var(--ds-t-13),1em)}
+#mu-services .se-cadre :is(h3,h4) small,#mu-services .se-cadre :is(.mu-question,.mu-ordre,.mu-eq-pers,label) small{font-size:var(--ds-t-13)}
+#mu-services .se-cadre svg text{font-size:13px}
+
+/* La grille « ce qu'elle prépare » : les initiales de l'équipe qui prépare déjà la commande se lisent à 13 px, à côté de
+   la case à cocher, jamais dessus — la case se décale à gauche, la cellule s'élargit, et un clic sur elles coche. */
+#mu-services .se-cadre .mu-c label{width:58px;justify-content:flex-start;padding-left:9px}
+#mu-services .se-cadre .mu-chez{pointer-events:none}

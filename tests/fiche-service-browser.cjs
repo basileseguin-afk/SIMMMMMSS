@@ -8,7 +8,10 @@
  *      repliée dit ce qui y est réglé.
  *   4. La grille est une matrice : en-têtes collants, la ligne et la colonne
  *      survolées s'éclairent ; Espace coche au clavier.
- * Rien ne change dans les données en ouvrant ou en repliant. v1 et v2. */
+ * Rien ne change dans les données en ouvrant ou en repliant. v1 et v2.
+ * En version 1 (évolution 22 b), la fiche du service a son type en tête (plus de section « Ce qu'il fait »), « Ses
+ * équipes » en tableau, « Ses temps par vol » et « Réglages avancés » repliés ; la fiche d'une équipe s'ouvre d'un clic
+ * sur sa ligne, à la place de celle du service. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -25,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const etat=()=>page.evaluate(()=>localStorage.getItem('ory-ateliers-v1'));
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
-   const V=version+' : ';
+   const V=version+' : ',v1=version==='v1';
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
@@ -35,17 +38,27 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'mu-services');await page.locator(`${M} [data-mu-choisir=prepa]`).click();await attendre();
    const avant=await etat();
 
-   // 1. Des sections repliables, ouvertes d'abord ; le repli est gardé.
-   for(const cle of ['nature','equipes','temps'])assert.equal(await ouverte(cle),true,V+cle+' ouverte');
-   await titre('nature').click();await attendre();
-   assert.equal(await ouverte('nature'),false);
-   assert.equal(await page.locator(`${M} [data-mu-nature]`).isVisible(),false,V+'repliée, elle cache ses champs');
+   // 1. Des sections repliables ; le repli est gardé. v2 : toutes ouvertes d'abord. v1 : « Ses équipes » ouverte,
+   //    « Ses temps par vol » repliée ; le type du service est en tête de fiche, toujours visible.
+   const premiere=v1?'temps':'nature',champ=v1?`${M} .rg-fiche`:`${M} [data-mu-nature]`;
+   if(v1){
+    assert.deepEqual([await ouverte('equipes'),await ouverte('temps')],[true,false],V+'« Ses équipes » ouverte, « Ses temps par vol » repliée');
+    assert.equal(await page.locator(`${M} [data-mu-section=nature]`).count(),0,V+'plus de section « Ce qu’il fait »');
+    assert.equal(await page.locator(`${M} .se-tete [data-mu-nature]`).isVisible(),true,V+'le type, en tête de fiche');
+    assert.deepEqual(await page.locator(`${M} .se-fiche details.mu-etape > summary h3`).evaluateAll(hs=>hs.map(h=>h.firstChild.textContent)),['Ses équipes','Ses temps par vol','Réglages avancés']);
+    await titre('temps').click();await attendre();
+    assert.equal(await ouverte('temps'),true,V+'elle s’ouvre');
+    assert.equal(await page.locator(champ).isVisible(),true,V+'avec les temps par vol du service');
+   }else for(const cle of ['nature','equipes','temps'])assert.equal(await ouverte(cle),true,V+cle+' ouverte');
+   await titre(premiere).click();await attendre();
+   assert.equal(await ouverte(premiere),false);
+   assert.equal(await page.locator(champ).isVisible(),false,V+'repliée, elle cache ses champs');
    await page.locator(`${M} [data-mu-choisir=dotation]`).click();await attendre();
-   assert.equal(await ouverte('nature'),false,V+'gardée d’un service à l’autre');
+   assert.equal(await ouverte(premiere),false,V+'gardée d’un service à l’autre');
    await page.evaluate(()=>Sim.ateliers.rendre());await attendre();
-   assert.equal(await ouverte('nature'),false,V+'et au rendu suivant');
-   await titre('nature').click();await attendre();
-   assert.equal(await ouverte('nature'),true);
+   assert.equal(await ouverte(premiere),false,V+'et au rendu suivant');
+   await titre(premiere).click();await attendre();
+   assert.equal(await ouverte(premiere),true);
    // Au clavier aussi : la ligne d'une section se prend au Tab, Entrée la replie.
    await titre('equipes').focus();await page.keyboard.press('Enter');await attendre();
    assert.equal(await ouverte('equipes'),false,V+'Entrée replie');
@@ -55,7 +68,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 2. L'avancé : replié, il dit ce qui y est réglé.
    await page.locator(`${M} [data-mu-choisir=prepa]`).click();await attendre();
    assert.equal(await ouverte('avance'),false,V+'l’avancé est replié');
-   assert.match(await titre('avance').innerText(),/Avancé[\s\S]*rien de réglé/);
+   assert.match(await titre('avance').innerText(),v1?/Réglages avancés[\s\S]*rien de réglé/:/Avancé[\s\S]*rien de réglé/);
    assert.equal(await page.locator(`${M} [data-mu-encadrement=prepa]`).isVisible(),false);
    await titre('avance').click();await attendre();
    assert.equal(await page.locator(`${M} [data-mu-parallele=prepa]`).isVisible(),true,V+'« en même temps que » est dans l’avancé');
@@ -66,11 +79,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator(`${M} [data-mu-encadrement=prepa]`).fill('0');await page.locator(`${M} [data-mu-encadrement=prepa]`).press('Tab');await attendre();
 
    // 3. « Plus de réglages » : la règle ⚡ y est ; la ligne dit ce qui est réglé.
+   //    v1 : la fiche de l'équipe s'ouvre d'un clic sur sa ligne du tableau.
+   if(v1){
+    assert.equal(await page.locator(`${M} article.mu-equipe`).count(),0,V+'la fiche du service ne porte plus les fiches de ses équipes');
+    assert.deepEqual(await page.locator(`${M} .se-equipes tr[data-se-equipe=m1]`).locator('th,td').evaluateAll(cs=>cs.map(c=>c.textContent.trim())),['Montage matin','05:00','J','calculé','AF BC, AF YC'],V+'sa ligne : son nom, son début, son jour, ses personnes (son effectif se calcule : aucun nombre, ce serait un résultat), ce qu’elle prépare');
+    await nav.equipe(page,'m1');
+    assert.equal(await page.locator(`${M} .se-fiche`).getAttribute('data-se-vue'),'equipe');
+   }
    const plus=page.locator(`${M} article.mu-equipe[data-at="m1"] details.mu-plus > summary`);
    assert.match(await plus.innerText(),/1 pause/,V+'la ligne repliée dit la pause');
    assert.equal(await page.locator(`${M} article.mu-equipe[data-at="m1"] [data-at-action=cond-ajouter]`).isVisible(),false,V+'⚡ est dans « Plus de réglages »');
    await plus.click();await attendre();
    assert.equal(await page.locator(`${M} article.mu-equipe[data-at="m1"] [data-at-action=cond-ajouter]`).isVisible(),true);
+   // v1 : ce qui ne se réglait que dans « Équipes une par une » y est aussi — le service de l'équipe, son type.
+   if(v1)assert.deepEqual([await page.locator(`${M} article.mu-equipe[data-at="m1"] [data-at-champ=service]`).inputValue(),await page.locator(`${M} article.mu-equipe[data-at="m1"] [data-at-champ=type]`).inputValue()],['prepa','manuel'],V+'son service et son type, dans sa fiche');
 
    // 4. La matrice : en-têtes collants, ligne et colonne survolées.
    const grille=page.locator(`${M} table[data-mu-equipe="m1"]`);

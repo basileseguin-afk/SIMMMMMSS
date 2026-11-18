@@ -258,10 +258,27 @@ le rouge ne sert qu’aux retards.
 3. **Équipes** — qui prépare quoi, quand, en combien de temps : tout le
    paramétrage, **service par service**, pour quelqu’un qui connaît l’unité sans
    connaître le site.
-   - *Services et équipes* : la liste des services à gauche (utilisés, avec
-     un point orange s’il manque quelque chose ; pas utilisés), la **fiche**
-     du service choisi à droite — une feuille de propriétés dont chaque
-     section se replie (le repli est gardé d’un service à l’autre) :
+   - *Services et équipes* (version 1, évolution 22 b : la page réunit six
+     pages d’avant) : **à gauche, la liste des services**, de l’amont vers
+     l’aval, avec pour chacun son nombre d’équipes ou « toujours ouvert » (un
+     point orange s’il manque quelque chose) ; en tête, « Ajouter un
+     service » ; en bas, les services supprimés et les zones du plan qui n’en
+     sont pas. **À droite, la fiche du service choisi** : son nom et son type
+     en tête, « Voir ce service dans les résultats », puis « Ses équipes » —
+     un tableau (équipe, début, jour, personnes, ce qu’elle prépare),
+     « Ajouter une équipe », et l’effectif du service, replié —, « Ses temps
+     par vol » (ou ses minutes par compagnie, ses débits, ses durées de
+     lavage : ce qui joue pour lui, rien d’autre) et « Réglages avancés »,
+     repliés (en parallèle, encadrement, rattachement, place sur le plan, part
+     de surface et poste de travail de la vue en direct, supprimer). **Un clic
+     sur la ligne d’une équipe ouvre sa fiche au même endroit**, avec tous ses
+     réglages et un retour au service ; une équipe ajoutée ouvre la sienne.
+     La page ne montre **aucun résultat** — ni heure de fin, ni attente, ni
+     charge ; un effectif calculé se dit « calculé », sans nombre. Elle ne
+     défile pas : chaque colonne défile seule ; son texte fait 13 px au
+     moins. Les réglages eux-mêmes sont ceux d’avant, décrits ci-dessous
+     (en version 2, gelée, la fiche du service porte encore ses équipes à la
+     suite, sous une section « Ce qu’il fait ») :
      1. *Ce qu’il fait* : des équipes préparent les commandes, un robot, il
         sert tout le monde (légumerie, magasin, réception), plonge, ou il
         charge les vols (handling) ;
@@ -1837,6 +1854,7 @@ aucun vol.
 | `interface.css` | Disposition et hiérarchie visuelle |
 | `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10, deuxième passe du 15/10 pour le thème clair : navigation bleu nuit, fond pierre (gris à peine chaud), cartes posées avec une ombre douce, titre de page avec sa partie en surtitre, indicateurs à voyant, palette des données validée pour les daltoniens) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, état du calcul, « Aller à… », Annuler / Rétablir), titre de la page ; la palette et la fiche des raccourcis ; les mouvements (180 ms au plus), coupés quand les animations sont réduites |
 | `unite.js` / `unite.css` | Prêt à simuler ?, Chemins de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
+| `services-page.js` / `services-page.css` | « Services et équipes » (v1, évolution 22 b) : la page hérite de `MonUnite` (`unite.js`, commun, non modifié) ; la liste des services de l’amont vers l’aval, « Ajouter un service », les services supprimés ; la fiche du service (nom et type, tableau « Ses équipes », section des temps selon le type, réglages avancés) et la fiche d’une équipe au même endroit, faites des morceaux de la fiche d’avant, sans aucun résultat ; `resumeEquipe`, `sousTitre` (ce que disent le tableau et la liste) ; la feuille de style : une liste à gauche, une fiche à droite, chaque colonne défile seule, texte de 13 px au moins |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | `stockage.js` | Plusieurs onglets ne s’écrasent plus (correction 14) : chargé avant les autres scripts, un garde à la place de `localStorage` ; les données du site portent un numéro de révision, un onglet en retard n’écrit rien et le dit par un bandeau (« Recharger »), averti aussi par l’événement `storage` |
 | `theme-tot.js` | Le thème, avant tout dessin, et le premier accès au stockage (correction 22 b) : appelé en tête de `index.html` et de `accueil.html`, il lit `document.cookie` (une barrière : le navigateur n’y répond qu’une fois le document installé), puis le thème choisi. Plus de script en ligne qui lit le stockage : un document qui le touche trop tôt peut en être détaché |
@@ -2099,6 +2117,8 @@ aucun vol.
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/champs.test.cjs` | L’heure tapée → « HH:MM » (« 0430 », « 4h30 », « 7 »…), une heure impossible refusée jamais devinée, ↑↓ au quart d’heure, Maj à l’heure, dix pas dans les bornes ; v1 et v2 portent le même `champs.js` |
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
+| `tests/services-page.test.cjs` | « Services et équipes » (v1, évolution 22 b), sans navigateur : ce que le tableau dit d’une équipe (nom, début, jour, personnes — « calculé » sans nombre quand l’effectif se calcule —, ce qu’elle prépare), d’une plonge, d’un handling, d’une mise à disposition ; ce que la liste dit d’un service (son nombre d’équipes, « toujours ouvert ») ; le nom de la section des temps selon le type |
+| `tests/services-page-browser.cjs` | « Services et équipes » dans la page (v1, évolution 22 b), sur l’unité fictive : la liste de l’amont vers l’aval, « Ajouter un service » en tête, un service supprimé retrouvé par le lien du bas et remis ; la fiche du service (nom et type en tête, tableau des équipes, section des temps selon le type, réglages avancés repliés, lien vers les résultats) ; la fiche d’une équipe au même endroit, au clic et au clavier, avec un retour ; aucun résultat sur chaque service et chaque équipe ; dix-huit réglages faits ici et, par les pages d’avant, dans la version 2 : les deux sauvegardes changent des mêmes champs, aux mêmes valeurs ; une équipe changée de service, que la page suit ; la page ne défile pas |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
 | `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites ; en version 1, la rubrique « En direct » de la fiche des raccourcis, avec les touches de la scène (évolution 16 g), celle de la version 2 inchangée |

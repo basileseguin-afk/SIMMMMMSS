@@ -26,7 +26,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 1. La plonge, sans équipe : la frise dit quand les retours arrivent.
    await nav.aller(page,'mu-services');
-   await page.locator('#mu-services [data-mu-choisir=plonge]').click();await attendre();
+   // (En v1, « L'arrivée des retours, face à ses horaires » est repliée d'abord sous le tableau des équipes — évolution 22 b.)
+   await page.locator('#mu-services [data-mu-choisir=plonge]').click();await attendre();await nav.section(page,'retours');
    assert.match(await page.locator(F).innerText(),/\d+ retours à laver, le jour J, de \d\d:\d\d à \d\d:\d\d — d’après les vols retour du programme/,version);
    assert.match(await page.locator(F).innerText(),/Aucune équipe de plonge : les retours attendent/);
 
@@ -36,6 +37,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual(await jour.evaluate(s=>[...s.options].map(o=>o.textContent)),
      ['Veille de l’arrivée (J-1)','Jour d’arrivée des retours (J)','Lendemain de l’arrivée (J+1)'],version+' : plus de « jour du départ » pour la plonge');
    assert.equal(await jour.inputValue(),'0');
+   await nav.service(page,'plonge');   // (v1 : la frise est dans la fiche du service ; l'équipe ajoutée a ouvert la sienne)
    assert.match(await page.locator(F).innerText(),/arrive(nt)? après la dernière équipe .* reste(nt)? sales?/,'les retours du soir restent sales');
    assert.equal(await page.locator(`${F} .mr-retour.seul`).count()>0,true,'en orange sur la frise');
    const sale=()=>page.evaluate(()=>(Sim.ateliers.resultat.plonge||{}).resteSale);
@@ -47,9 +49,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      if(st.ateliers.filter(x=>x.service==='plonge').length<2)st.ateliers.push({...JSON.parse(JSON.stringify(a)),id:a.id+'-nuit'});
      const n=st.ateliers.filter(x=>x.service==='plonge')[1];n.nom='Plonge de nuit';n.debut='02:00';n.jour=0;},''));
    await attendre();
+   await nav.equipe(page,await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Plonge de nuit').id));
    const jourNuit=page.locator('#mu-services .at-carte:has(input[value="Plonge de nuit"]) [data-at-champ=jour], #mu-services .at-carte [data-at-champ=jour]').last();
    await jourNuit.selectOption('1');await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Plonge de nuit').jour),1,version+' : J+1 retenu');
+   await nav.service(page,'plonge');
    assert.match(await page.locator(F).innerText(),/J\+1 · lendemain/);
    assert.match(await page.locator(F).innerText(),/Plonge de nuit[\s\S]*J\+1 02:00 → J\+1 10:00/);
    assert.match(await page.locator(F).innerText(),/sans équipe de plonge .* attend(ent)? « Plonge de nuit » \(J\+1 02:00\)/);

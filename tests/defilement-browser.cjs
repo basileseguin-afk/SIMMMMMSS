@@ -8,7 +8,9 @@
  * défile — Firefox et Safari bloquaient la Liste des services).
  * Et l'on n'est jamais « bloqué en bas » (retour d'usage du 05/10 : « quand je
  * scrolle tout en bas, après je ne peux plus remonter ») : la liste collante de
- * gauche (services, commandes) arrêtait la molette même arrivée au bout. */
+ * gauche (services, commandes) arrêtait la molette même arrivée au bout.
+ * En version 1 (évolution 22 b), « Services et équipes » tient dans l'écran : la vue ne défile plus, chaque colonne (la
+ * liste, la fiche) défile seule, et la molette sur l'une ne retient pas l'autre. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -33,8 +35,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('#mu-services [data-mu-action=equipe]').click();await page.waitForTimeout(300);
    assert.ok(await page.locator('#mu-services [data-at-champ]').count()>0,'l’équipe de plonge est là');
    assert.equal(await deborde(),0,version+' : la fiche de la plonge n’allonge pas la page');
-   const vue=page.locator('#view-ateliers');
-   assert.ok(await vue.evaluate(v=>v.scrollHeight>v.clientHeight),'c’est la vue qui défile');
+   const v1=version==='v1';
+   // v2 : c'est la vue qui défile. v1 : la vue tient dans l'écran, la fiche défile dans sa colonne.
+   const vue=page.locator(v1?'#mu-services .se-fiche':'#view-ateliers');
+   if(v1)assert.ok(await page.locator('#view-ateliers').evaluate(v=>v.scrollHeight<=v.clientHeight+1),version+' : la vue ne défile pas');
+   assert.ok(await vue.evaluate(v=>v.scrollHeight>v.clientHeight),v1?'c’est la fiche qui défile, dans sa colonne':'c’est la vue qui défile');
    // La molette, sur la fiche puis sur l'en-tête (la barre du haut) : l'en-tête reste en place.
    await page.mouse.move(800,600);await page.mouse.wheel(0,800);await attendre();
    assert.ok(await vue.evaluate(v=>v.scrollTop)>0,'la fiche défile');
@@ -52,7 +57,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await page.mouse.move(await gauche(),500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
     assert.equal(await v.evaluate(x=>x.scrollTop),0,version+' : '+id+' remonte, la souris sur la liste de gauche');
    };
-   await remonte('mu-services','plonge');
+   if(v1){
+    // v1 : la fiche descend dans sa colonne ; la molette sur la liste ne la retient pas, et la page ne bouge pas.
+    await nav.equipe(page,await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='plonge').id));
+    const f=page.locator('#mu-services .se-fiche');
+    await page.mouse.move(900,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,600);await page.waitForTimeout(40);}await attendre();
+    const bas=await f.evaluate(x=>x.scrollTop);
+    assert.ok(bas>100,version+' : la fiche descend');
+    await page.mouse.move(await gauche(),500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
+    assert.equal(await f.evaluate(x=>x.scrollTop),bas,version+' : la molette sur la liste ne remonte pas la fiche');
+    assert.equal(await deborde(),0,version+' : et la page ne bouge pas');
+    await page.mouse.move(900,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
+    assert.equal(await f.evaluate(x=>x.scrollTop),0,version+' : la molette sur la fiche la remonte : on n’est pas bloqué en bas');
+   }else await remonte('mu-services','plonge');
    await remonte('at-chemins');
 
    // 2 bis. Sur la Liste des services, et sur chaque service de Services et
@@ -70,6 +87,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'mu-services');
    for(const s of await page.locator('#mu-services [data-mu-choisir]').evaluateAll(bs=>bs.map(x=>x.dataset.muChoisir))){
     await page.locator(`#mu-services [data-mu-choisir="${s}"]`).click();await page.waitForTimeout(150);
+    if(v1){
+     // v1 : la fiche de chaque service descend jusqu'en bas et remonte, dans sa colonne ; la vue ne défile jamais.
+     const f=page.locator('#mu-services .se-fiche');
+     await page.mouse.move(900,600);for(let k=0;k<10;k++){await page.mouse.wheel(0,500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+     const bas=await f.evaluate(e=>[e.scrollTop,e.scrollHeight-e.clientHeight]);
+     if(bas[1]>0)assert.ok(bas[0]>=bas[1]-2,version+' : '+s+' descend jusqu’en bas '+bas);
+     for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+     assert.equal(await f.evaluate(e=>e.scrollTop),0,version+' : '+s+' remonte');
+     assert.ok(await page.locator('#view-ateliers').evaluate(v=>v.scrollHeight<=v.clientHeight+1&&v.scrollTop===0),version+' : '+s+' : la vue ne défile pas');
+     continue;
+    }
     const [bas,haut]=await bout('ateliers',900);
     if(bas[1]>0)assert.ok(bas[0]>=bas[1]-2,version+' : '+s+' descend jusqu’en bas '+bas);
     assert.equal(haut,0,version+' : '+s+' remonte, la souris sur la liste');

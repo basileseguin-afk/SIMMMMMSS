@@ -35,15 +35,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual(await lots(),['AF/BC'],version+' : ses équipes ne préparent plus l’Éco');
 
    // 2. Dans la Cuisine, l'Éco n'y passe plus : grisée, pas cochée.
-   await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=cuisine]').click();await attendre();
+   // (La grille de l'équipe est dans sa fiche : en v1, ouverte par sa ligne du tableau « Ses équipes » — évolution 22 b.)
+   await nav.equipe(page,'cu');await attendre();
    assert.match(await classe('AF/YC'),/\bhors\b/);
    assert.equal(await cellule('AF/YC').isChecked(),false);
    assert.equal(await page.locator('.mu-hors-flux').count(),0,'rien à signaler');
    // Hors de son flux, elle ne se coche pas ; on fait d'abord passer le flux par ici.
    assert.equal(await cellule('AF/YC').isDisabled(),true,version+' : pas cochable');
    assert.equal(await cellule('AF/BC').isDisabled(),false);
+   await nav.service(page,'cuisine');
    await page.locator('#mu-services [data-mu-flux-ici=cuisine]').selectOption('eco');await attendre();
    assert.ok((await eco()).includes('cuisine'),version+' : la Cuisine revient dans l’Éco');
+   await nav.equipe(page,'cu');
    assert.equal(await cellule('AF/YC').isDisabled(),false,version+' : et ses commandes se cochent');
    await cellule('AF/YC').check();await attendre();
    assert.deepEqual(await lots(),['AF/BC','AF/YC']);
@@ -54,12 +57,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      Sim.ateliers.parcours.cliquer({target:b});});await attendre();
    assert.ok(!(await eco()).includes('cuisine'),version+' : retirée du chemin');
    assert.deepEqual(await lots(),['AF/BC'],version+' : ses équipes la lâchent aussi');
-   await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=cuisine]').click();await attendre();
+   await nav.equipe(page,'cu');await attendre();
    assert.equal(await cellule('AF/YC').isDisabled(),true);
 
    // 3. Une ancienne saisie (le flux changé avant ce correctif) : signalée, retirée en un clic.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='cu').lots.push(['AF/YC'],['TX/YC']);},''));await attendre();
    assert.match(await classe('AF/YC'),/hors-flux/);
+   await nav.service(page,'cuisine');
    assert.match(await page.locator('.mu-hors-flux').innerText(),/2 commandes sont encore cochées ici \(AF YC, TX YC\), mais leur (flux|chemin) ne passe plus par CUISINE/i);
    await page.locator('.mu-hors-flux [data-mu-action=liberer]').click();await attendre();
    assert.deepEqual(await lots(),['AF/BC']);

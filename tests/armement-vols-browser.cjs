@@ -45,6 +45,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 3. La fiche : pas de case « Effectif constant », les vols du jour et la journée par compagnie.
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
+   // (Ses minutes par compagnie : une section de sa fiche, repliée d'abord en v1 — évolution 22 b.)
+   await nav.section(page,'temps');await nav.section(page,'effectif');
    assert.equal(await page.locator('#mu-services [data-mu-effectif]').count(),0,version+' : pas de case « constant »');
    assert.match(await page.locator('#mu-services .mu-par-vols').innerText(),/vols de chaque compagnie/);
    assert.equal(await page.locator('#mu-services [data-at=ar] select[data-at-champ=effectif] option[value=fixe]').count(),0,version+' : pas de choix « constant » pour l’équipe');

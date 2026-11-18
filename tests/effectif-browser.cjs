@@ -39,12 +39,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 1. La cuisine se calcule : la case n'est pas cochée, l'effectif se lit.
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   // (En v1, le choix de l'effectif du service est replié sous le tableau de ses équipes — évolution 22 b.)
+   await nav.section(page,'effectif');
    assert.equal(await page.locator(`${M} [data-mu-effectif=cuisine]`).isChecked(),false,version+' : la cuisine se calcule');
    let e=await effectif('cu');
    assert.ok(e&&e.hommeMinutes>0,version+' : un effectif calculé');
    assert.equal(e.personnes,Math.ceil(e.hommeMinutes/(e.poste*e.rendement)-1e-9),'homme-minutes ÷ poste, arrondi au-dessus');
    assert.equal((await equipe('cu')).personnes,e.personnes,'l’équipe porte l’effectif calculé');
-   assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-calcule="cu"]`).first().innerText(),String(e.personnes));
+   // v1 (évolution 22 b) : « Services et équipes » ne montre aucun résultat — la fiche de l'équipe, ouverte par sa ligne
+   // du tableau, dit « calculé », sans nombre ; le tableau aussi. v2 : la fiche du service donne l'effectif calculé.
+   if(version==='v1'){
+    assert.equal(await page.locator(`${M} .se-equipes tr[data-se-equipe=cu] td`).nth(2).innerText(),'calculé',version+' : le tableau dit « calculé »');
+    await nav.equipe(page,'cu');
+    assert.equal(await page.locator(`${M} [data-at="cu"] .at-pers-calc output`).first().innerText(),'calculé',version+' : sa fiche aussi, sans nombre');
+    assert.equal(await page.locator(`${M} [data-at-calcule]`).count(),0,version+' : aucun effectif calculé à l’écran');
+   }else assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-calcule="cu"]`).first().innerText(),String(e.personnes));
    assert.equal(await page.locator(`${M} .mu-equipe-tete [data-at="cu"] [data-at-champ=personnes], ${M} [data-at="cu"] .mu-equipe-tete [data-at-champ=personnes]`).count(),0,'pas de champ à saisir');
    assert.match(await page.locator(`${M} [data-at="cu"] .at-pers-calc`).first().innerText(),/calculé/);
 
@@ -65,8 +74,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 3 bis. Une équipe à part (06/10 : « le poste ne dépend pas forcément des vols ») :
    //        constante dans un service calculé, elle retrouve son effectif saisi.
-   await nav.aller(page,'mu-services');
-   await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   await nav.equipe(page,'cu');await attendre();
    const choix=page.locator(`${M} [data-at="cu"] [data-at-champ=effectif]`).first();
    assert.match(await choix.locator('option[value=""]').innerText(),/Comme le service \(dépend des vols\)/,version+' : par défaut, comme le service');
    await choix.selectOption('fixe');await attendre();
@@ -79,29 +87,35 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await equipe('cu')).personnes,e2.personnes,'revenue au service : calculée à nouveau');
 
    // 3 ter. « Effectif imposé (essai) » : les minutes par vol s'appliquent à l'effectif saisi.
+   // (L'effectif du service se règle dans sa fiche ; les personnes de l'équipe, dans la sienne — évolution 22 b.)
+   await nav.effectif(page,'cuisine');
    await page.locator(`${M} [data-mu-impose=cuisine]`).check();await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'impose');
    assert.equal(await effectif('cu'),null,version+' : imposé, pas calculé');
+   await nav.equipe(page,'cu');
    const imp=page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).first();
    await imp.fill('9');await imp.dispatchEvent('change');await attendre();
    assert.ok(await page.evaluate(()=>{const l=Sim.ateliers.resultat.lots.filter(x=>x.atelier==='cu');return l.length&&l.every(x=>x.hommeMinutes>0&&Math.abs(x.duree-x.hommeMinutes/9)<1e-6);}),
      version+' : durée = homme-minutes ÷ 9 personnes');
+   await nav.effectif(page,'cuisine');
    await page.locator(`${M} [data-mu-impose=cuisine]`).uncheck();await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'calcule');
    assert.equal((await equipe('cu')).personnes,e2.personnes,'décoché : calculé à nouveau');
 
    // 4. « Effectif constant » : l'effectif se saisit, et il reste.
    await nav.aller(page,'mu-services');
-   await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();await nav.section(page,'effectif');
    await page.locator(`${M} [data-mu-effectif=cuisine]`).check();await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'fixe');
    assert.equal(await effectif('cu'),null,version+' : plus de calcul');
+   await nav.equipe(page,'cu');
    const champ=page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).first();
    assert.equal(await champ.inputValue(),'9','elle retrouve l’effectif saisi avant le calcul : rien ne se perd');
    await champ.fill('7');await champ.dispatchEvent('change');await attendre();
    assert.equal((await equipe('cu')).personnes,7,version+' : l’effectif saisi reste');
    assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='cu').personnes),7,'la journée se joue avec lui');
    // Décochée : le calcul reprend.
+   await nav.effectif(page,'cuisine');
    await page.locator(`${M} [data-mu-effectif=cuisine]`).uncheck();await attendre();
    assert.equal((await equipe('cu')).personnes,e2.personnes,version+' : le calcul reprend');
    // Rechargé : le choix est gardé.
@@ -111,9 +125,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 5. CF départ food est constant par défaut : ses checkeurs gardent leur effectif.
    await nav.aller(page,'mu-services');
-   await page.locator(`${M} [data-mu-choisir=handling]`).click();await attendre();
+   await page.locator(`${M} [data-mu-choisir=handling]`).click();await attendre();await nav.section(page,'effectif');
    assert.equal(await page.locator(`${M} [data-mu-effectif=handling]`).isChecked(),true,version+' : CF départ food est constant');
+   await nav.equipe(page,'cf');
    assert.equal(await page.locator(`${M} [data-at="cf"] [data-at-champ=personnes]`).first().inputValue(),'3');
+   await nav.service(page,'handling');
    assert.deepEqual(await page.evaluate(()=>['magasin','decontam','bobduty','appros','handling','cuisine','prepa','dotation'].filter(s=>!Sim.ateliers.effectifConstant(s))),
      ['prepa','dotation'],'constants par défaut : CF départ food, magasin, légumerie, duty free, appros (et la cuisine, cochée ici)');
 
@@ -137,8 +153,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 5 ter. La cuisine, constante : ses postes n'ont pas d'heures par vol.
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   await nav.section(page,'temps');
    assert.match(await page.locator(`${M} [data-mu-section=temps]`).innerText(),/pas d’heures par vol/,version+' : pas d’heures par vol à saisir');
    assert.doesNotMatch(await page.locator(`${M} .mu-afaire`).count()?await page.locator(`${M} .mu-afaire`).innerText():'',/heures de travail à remplir/);
+   await nav.equipe(page,'cu');
    assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=heures]`).count(),0,'ni heures propres');
    assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.atelier==='cu').every(l=>l.hommeMinutes===0&&l.duree===0)),'ses commandes passent en temps nul');
    await nav.aller(page,'rg-recap');await attendre();
@@ -161,11 +179,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    //    qui reviennent, ou se saisit (« Effectif constant »).
    await page.locator(`${M} [data-mu-choisir=plonge]`).click();await attendre();
    if(!(await page.evaluate(()=>Sim.ateliers.state.ateliers.some(a=>a.type==='lavage')))){await page.locator(`${M} [data-mu-action=equipe]`).first().click();await attendre();}
+   await nav.effectif(page,'plonge');
    assert.equal(await page.locator(`${M} [data-mu-effectif=plonge]`).isChecked(),false,version+' : à la plonge aussi, la case « Effectif constant »');
    await page.locator(`${M} [data-mu-action=appui]`).click();await attendre();
    const ht=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type==='appui'&&a.service==='plonge'));
    assert.ok(ht&&/hors tunnel/.test(ht.nom),version+' : une équipe hors tunnel');
    // En heures par vol (08/10), gardées en minutes : 5 h = 300 min.
+   await nav.equipe(page,ht.id);
    const min=page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-h][data-cie="*"]`);
    if(!(await min.count())){await page.locator(`${M} [data-at="${ht.id}"] button`).first().click();await attendre();}
    await min.fill('5');await min.dispatchEvent('change');await attendre();
@@ -177,6 +197,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await equipe(ht.id)).personnes,eh.personnes);
    assert.match(await page.locator(`${M} [data-at="${ht.id}"] .at-appui-note`).innerText(),new RegExp(eh.vols+' vols?'));
    // Effectif constant : elle reprend l'effectif saisi.
+   await nav.effectif(page,'plonge');
    await page.locator(`${M} [data-mu-effectif=plonge]`).check();await attendre();
    assert.equal((await equipe(ht.id)).personnes,1,version+' : constant, l’effectif saisi revient');
    assert.equal(await page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-h]`).count(),0,'plus d’heures par vol à saisir');

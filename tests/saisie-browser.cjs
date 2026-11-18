@@ -35,6 +35,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.ateliers.push({id:'leurre-'+k,nom:'Leurre '+k,service:'dotation',type:'manuel',debut:'03:00',jour:0,personnes:1,pauses:[],lots:[],regime:{actif:true}});},'');
      window.__rendu=OrlyRendu.attentes();},ms);},[++n,ms]);
    const champ=sel=>page.locator(`${M} [data-at="${equipe}"] ${sel}`).first();
+   // Les équipes « leurre » que la page a dessinées. v2 : leurs fiches, à la suite dans celle du service. v1 (évolution 22 b) :
+   // la fiche de l'équipe est seule à droite ; la liste, à gauche, compte les équipes du service (la vraie, puis les leurres).
+   const v1=version==='v1';
+   const leurres=()=>v1?page.locator(`${M} .se-liste [data-mu-choisir=dotation] small`).innerText().then(t=>parseInt(t,10)-1):page.locator(`${M} [data-at^=leurre]`).count();
    const etat=()=>page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return {debut:a.debut,personnes:a.personnes};},equipe);
 
    // 1. L'heure : « 05 », un rendu, « 45 ».
@@ -43,13 +47,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await champ('[data-at-champ=debut]').click({position:{x:14,y:12}});await page.keyboard.type('0545',{delay:120});
    // Le rendu est arrivé au milieu, et il a attendu : on écrivait dans la fiche.
    assert.equal(await page.evaluate(()=>window.__rendu),1,version+' : le rendu attend la fin de la saisie');
-   assert.equal(await page.locator(`${M} [data-at^=leurre]`).count(),0);
+   assert.equal(await leurres(),0);
    assert.equal(await champ('[data-at-champ=debut]').inputValue(),'05:45',version+' : l’heure tapée est toujours là');
    // On quitte le champ (un clic ailleurs ; Tab, dans une heure, passe des heures aux minutes).
-   await page.locator(`${M} .mu-tete`).first().click();await attendre();
+   await page.locator(`${M} .mu-tete, ${M} .se-retour b`).first().click();await attendre();
    assert.equal((await etat()).debut,'05:45',version+' : et retenue');
    // Validée : la fiche se redessine, le focus suit le champ suivant.
-   assert.equal(await page.locator(`${M} [data-at^=leurre]`).count()>0,true,'la fiche s’est redessinée');
+   assert.equal(await leurres()>0,true,'la fiche s’est redessinée');
    assert.equal(await page.evaluate(()=>OrlyRendu.attentes()),0);
 
    // 2. Les personnes : « 1 », un rendu, « 2 ».
@@ -61,6 +65,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await etat()).personnes,12);
 
    // 3. Les heures par vol (le barème du service), « 4 », un rendu, « 2 ».
+   //    (En v1, dans la fiche du service, section « Ses temps par vol », repliée d'abord — évolution 22 b.)
+   await nav.service(page,'dotation');await nav.section(page,'temps');
    const bc=page.locator(`${M} [data-rg-champ=heures][data-service=dotation][data-cle="*/BC"]`).first();
    await renduDans(250);
    await bc.click();await page.keyboard.press('Control+A');await page.keyboard.type('42',{delay:250});
@@ -69,6 +75,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator(`${M} [data-rg-champ=heures][data-service=dotation][data-cle="*/BC"]`).first().inputValue(),'42','et sont retenues');
 
    // 4. Un champ validé se redessine normalement, avec la valeur retenue.
+   await nav.equipe(page,equipe);
    await champ('[data-at-champ=personnes]').click();await page.keyboard.press('Control+A');await page.keyboard.type('5000',{delay:30});
    await page.keyboard.press('Tab');await attendre();
    assert.equal((await etat()).personnes,999,'borné à 999');

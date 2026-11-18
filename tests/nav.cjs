@@ -116,6 +116,44 @@ async function entree(page, v1, v2) {
   await page.locator(neuf ? `#menu [data-entree="${v1}"]` : `#menu [data-vers-partie=${v2}]`).click();
   await page.waitForTimeout(150);
 }
+/* La fiche d'une équipe, dans la fiche de son service — ou d'un service `depuis` qu'elle fait aussi, à la chaîne.
+ * Version 1 (évolution 22 b) : dans « Services et équipes », le service dans la liste, puis la ligne de l'équipe dans le
+ * tableau « Ses équipes », comme à la main ; sa fiche s'ouvre à la place de celle du service, avec tous ses réglages.
+ * Version 2 (gelée) : la fiche du service porte déjà celles de ses équipes — choisir le service suffit.
+ * `retour(page)` revient à la fiche du service. */
+async function equipe(page, id, depuis) {
+  const service = depuis || await page.evaluate(id => { const a = Sim.ateliers.state.ateliers.find(x => x.id === id); return a ? a.service : null; }, id);
+  if (!service) throw new Error('équipe inconnue : ' + id);
+  await aller(page, 'mu-services');
+  const neuf = await page.evaluate(() => !!(Sim.unite && Sim.unite.ouvrirEquipe));
+  if (neuf && await page.evaluate(([id, s]) => Sim.unite.equipeOuverte === id && Sim.unite.choisi === s, [id, service])) return;
+  await page.locator(`#mu-services .mu-liste [data-mu-choisir="${service}"]`).click(); await page.waitForTimeout(150);
+  if (neuf) { await page.locator(`#mu-services .se-equipes .se-eq-nom[data-se-equipe="${id}"]`).click(); await page.waitForTimeout(200); }
+}
+/* La fiche d'un service : son bouton dans la liste de « Services et équipes » (en version 1, la fiche d'une équipe ouverte se referme). */
+async function service(page, id) {
+  await aller(page, 'mu-services');
+  await page.locator(`#mu-services .mu-liste [data-mu-choisir="${id}"]`).click(); await page.waitForTimeout(150);
+}
+/* La fiche d'un service, son choix d'effectif déplié (« Effectif constant », « Effectif imposé ») : en version 1, il est replié
+ * sous le tableau de ses équipes. */
+async function effectif(page, id) { await service(page, id); await section(page, 'effectif'); }
+/* Une section de la fiche d'un service (« equipes », « temps », « avance » ; en version 1, « effectif » : le choix de l'effectif
+ * du service, sous le tableau de ses équipes) : repliée, elle s'ouvre par son titre, comme à la main. En version 1
+ * (évolution 22 b), « Ses temps par vol », « Réglages avancés » et l'effectif sont repliés d'abord. */
+async function section(page, cle) {
+  const d = page.locator(`#mu-services details[data-mu-section="${cle}"]`);
+  if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
+}
+/* « Ajouter un service » (v1, évolution 22 b) : son formulaire se déplie en tête de la liste. En version 2, il est déjà là. */
+async function ajouterService(page) {
+  const d = page.locator('#mu-services details.se-ajout');
+  if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
+}
+async function retour(page) {
+  const b = page.locator('#mu-services [data-se-retour]');
+  if (await b.count()) { await b.click(); await page.waitForTimeout(150); }
+}
 const accueil = async page => { await terminerPlan(page); await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
 /* Un chemin à elle pour une commande (Chemins › Chemin d’une commande) : si elle
@@ -165,4 +203,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { aller, vue, vueDuPlan, entree, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { aller, vue, vueDuPlan, entree, equipe, service, effectif, retour, section, ajouterService, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

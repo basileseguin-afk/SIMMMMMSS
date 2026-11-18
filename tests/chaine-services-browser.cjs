@@ -14,6 +14,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const kase=id=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),id);
  const ouvrir=async s=>{await nav.aller(page,'mu-services');await page.locator(`[data-mu-choisir=${s}]`).click();await attendre();};
  const carte=sel=>page.locator(`#mu-services article.mu-equipe[data-at="mo"] ${sel}`);
+ // La fiche d'une équipe, dans la fiche d'un service : en version 1 (évolution 22 b), elle s'ouvre d'un clic sur sa ligne
+ // du tableau « Ses équipes » ; en version 2, la fiche du service la porte déjà.
+ const equipe=(id,service)=>nav.equipe(page,id,service);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
@@ -27,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.ateliers.push(c('pr','Prépa eco','preparation',[['TX/YC']]),c('mo','Montage AF','prepa',[['AF/YC']],{personnes:2,fusion:'preparation'}),c('mt','Montage TX','prepa',[['TX/YC']]));},''));
 
    // 1. Au Montage : l'équipe, avec son badge « + Prépa à la chaîne ».
-   await ouvrir('prepa');
+   await ouvrir('prepa');await equipe('mo','prepa');
    assert.match(await carte('.mu-badge.chaine').innerText(),/\+ PRÉPA à la chaîne/i);
    // Elle fait aussi le Montage seul de CRL YC, dont le flux n'a pas de Prépa.
    const auMontage=c=>page.locator(`#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="${c}"]`);
@@ -40,8 +43,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 2. À la Prépa : la même équipe, dite « équipe du Montage », modifiable.
    await ouvrir('preparation');
+   if(version==='v1'){
+    // v1 : le tableau de la Prépa la liste, avec d'où elle vient ; sa fiche s'ouvre d'ici.
+    assert.match(await page.locator('#mu-services .se-equipes tr[data-se-equipe=mo]').innerText(),/Montage AF[\s\S]*équipe du MONTAGE/i,'v1 : l’équipe à la chaîne est aussi dans le tableau de la Prépa');
+    await equipe('mo','preparation');
+   }else assert.match(await page.locator('#mu-services .mu-chainees').innerText(),/cette équipe fait aussi PRÉPA/i);
    assert.equal(await carte('').count(),1,version+' : l’équipe à la chaîne est aussi dans la Prépa');
-   assert.match(await page.locator('#mu-services .mu-chainees').innerText(),/cette équipe fait aussi PRÉPA/i);
    assert.match(await carte('.mu-badge.chaine').innerText(),/équipe du MONTAGE · PRÉPA \+ MONTAGE à la chaîne/i);
    const pers=carte('[data-at-champ=personnes]');
    await pers.fill('3');await pers.press('Tab');await attendre();
@@ -52,21 +59,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await qr.isDisabled(),true);
    assert.equal(await page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="AF/YC"]').isChecked(),true);
    // Dans la grille de l'équipe de la Prépa, AF YC est faite à la chaîne : pas cochable.
+   await equipe('pr','preparation');
    const cellule=page.locator('#mu-services table[data-mu-equipe="pr"] [data-mu-cocher="AF/YC"]');
    assert.equal(await cellule.isDisabled(),true);
    assert.match(await cellule.evaluate(i=>i.closest('td').className),/chaine/);
    // Ce qu'elle prépare se règle aussi d'ici (ses commandes, pour les deux étapes).
+   await equipe('mo','preparation');
    await page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="TX/YC"]').check();await attendre();
    assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','CRL/YC','TX/YC']);
    // Et le lien ramène au Montage, où l'on retrouve le même réglage.
    await carte('[data-mu-ouvrir=prepa]').click();await attendre();
    assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'prepa');
+   await equipe('mo','prepa');
    assert.equal(await carte('[data-at-champ=personnes]').inputValue(),'3');
 
    // 3. Plus à la chaîne : elle ne reste qu'au Montage.
    await carte('[data-at-champ=fusion]').selectOption('');await attendre();
    await ouvrir('preparation');
    assert.equal(await carte('').count(),0);
+   if(version==='v1')assert.equal(await page.locator('#mu-services .se-equipes tr[data-se-equipe=mo]').count(),0,'v1 : plus dans le tableau de la Prépa');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('chaine-services-browser : ok');

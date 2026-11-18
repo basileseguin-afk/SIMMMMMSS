@@ -1127,7 +1127,7 @@
       const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
       const regle = '<p class="mini-note">Le jour d’une équipe de plonge se compte <b>depuis l’arrivée des retours</b> : '
         + '<b>J</b> le jour où ils arrivent, <b>J+1</b> le lendemain, <b>J-1</b> la veille. D’où viennent les retours : '
-        + '<button type="button" class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>';
+        + '<button type="button" class="lien-discret" data-page="rg-simulation">Simulation › Réglages →</button></p>';
       if (!retours.length) return `<div class="mu-retours"><h4>L’arrivée des retours</h4>
         <p>Aucun retour à laver d’après ${esc(dou)}.</p>${regle}</div>`;
       const dedans = t => equipes.some(e => t >= e.t0 && t < e.t1);

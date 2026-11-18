@@ -45,6 +45,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const cases=()=>page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
    assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
    assert.deepEqual(await cases(),[],version+' : pas encore dans les chemins, pas de case');
+   // (Ses minutes par compagnie : une section de sa fiche, repliée d'abord en v1 — évolution 22 b.)
+   await nav.section(page,'temps');
    assert.match(await fiche('').innerText(),/Aucune compagnie n’a d’armement : aucun chemin ne passe par/);
    // Un handling dont la liste ne cite pas FWI ; puis l'armement, encore dans aucun chemin, ajouté à tous d'un clic.
    const sansFWI=construites.filter(c=>c!=='FWI');

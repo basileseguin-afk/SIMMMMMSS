@@ -2106,10 +2106,10 @@
       if (!(etat.ateliers || []).length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <div class="vide-carte qf-vide">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>Aucune équipe pour l’instant</b>
           <p>Ce tableau se remplit tout seul : quelle équipe prépare chaque commande, service par service, et à quelle heure.</p>
-          <p>Pour commencer : dans Équipes › Services et équipes, cochez ce que prépare chaque équipe.</p>
+          <p>Pour commencer : dans L’unité › Services et équipes, cochez ce que prépare chaque équipe.</p>
           <div class="row-btns"><button class="btn btn-play" data-page="mu-services">Ouvrir Services et équipes</button></div></div></section>`;
       if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
-        <p class="mini-note">Aucune commande ne passe encore par un service : cochez ce que prépare chaque équipe dans Équipes › Services et équipes.</p></section>`;
+        <p class="mini-note">Aucune commande ne passe encore par un service : cochez ce que prépare chaque équipe dans L’unité › Services et équipes.</p></section>`;
 
       // Les heures d'un lot, pour lire le tableau comme un planning.
       const lots = new Map();

@@ -22,6 +22,9 @@ const mot = (source, drapeaux = 'g') => new RegExp(AVANT + source + APRES, drape
 const groupe = (source, drapeaux = 'g') => new RegExp('(?<![\\wÀ-ÿ\\-_])' + source + APRES, drapeaux);
 
 const generales = [
+  // ---- le menu de la version 1 (évolution 22) : deux blocs, « Lire » et « Régler » ; les espaces ont changé de nom ----
+  [/Équipes › Services et équipes/g, 'L’unité › Services et équipes'],
+  [/Simulation › Réglages de la simulation/g, 'Simulation › Réglages'],
   // ---- « flux » → « chemin » (le chemin que suivent les commandes) ----
   [groupe('(les|des|ces|aux|leurs|ses|vos|tous les|plusieurs|quels|deux|trois|en) flux'), '$1 chemins'],
   [groupe('(Les|Des|Ces|Aux|Leurs|Ses|Vos|Tous les|Plusieurs|Quels|Deux|Trois) flux'), '$1 chemins'],

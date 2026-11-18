@@ -33,6 +33,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator(`${M} [data-mu-nature=bobduty]`).inputValue(),'atelier');
    assert.equal(await page.locator(`${M} [data-mu-action=equipe]`).count(),0,'pas de « + Ajouter une équipe »');
    // 2. Ses personnes et ses compagnies.
+   // En version 1 (évolution 22 b), sa fiche s'ouvre d'un clic sur sa ligne, dans le tableau « Ses équipes ».
+   await nav.equipe(page,await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='bobduty').id));
    const pers=page.locator(`${M} .mu-atelier-unique [data-at-champ=personnes]`);await pers.fill('3');await pers.dispatchEvent('change');await attendre();
    await page.locator(`${M} [data-mu-atelier-cie="AF"]`).check();await attendre();
    await page.locator(`${M} [data-mu-atelier-cie="TX"]`).check();await attendre();

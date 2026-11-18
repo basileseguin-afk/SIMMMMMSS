@@ -15,7 +15,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const attendre=()=>page.waitForTimeout(350);
  const nomDe=id=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).nom,id);
  const champ=id=>page.locator(`#mu-services [data-at="${id}"] [data-at-champ=nom]`);
- const saisir=async(id,v)=>{await champ(id).fill(v);await champ(id).press('Tab');await attendre();};
+ // (La fiche de l'équipe : en v1, par sa ligne du tableau « Ses équipes » — évolution 22 b ; en v2, dans la fiche du service.)
+ const saisir=async(id,v)=>{await nav.equipe(page,id);await champ(id).fill(v);await champ(id).press('Tab');await attendre();};
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();

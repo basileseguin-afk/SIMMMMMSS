@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-17 — Évolution 22 (b1) : « Services et équipes », la nouvelle page
+
+Deuxième partie de l’étape B de l’audit, coupée en deux : (b1) la page
+nouvelle, (b2) les cinq pages d’avant qui y mènent. Aucun calcul ne change,
+ni le format de la sauvegarde. La version 2 n’est pas touchée, ni aucun
+fichier commun.
+
+- **À gauche, la liste des services**, de l’amont vers l’aval, avec pour
+  chacun son nombre d’équipes ou « toujours ouvert » ; « Ajouter un
+  service » en tête ; les services supprimés et les zones du plan, par un
+  lien en bas.
+- **À droite, la fiche du service** : son nom et son type en tête, « Voir ce
+  service dans les résultats », « Ses équipes » en tableau (équipe, début,
+  jour, personnes, ce qu’elle prépare), « Ses temps par vol » — ou ses
+  minutes par compagnie, ses débits, ses durées de lavage, selon son type —
+  et « Réglages avancés », repliés.
+- **Un clic sur la ligne d’une équipe ouvre sa fiche au même endroit**, avec
+  tous ses réglages d’aujourd’hui — y compris son service, son type, ses
+  postes de travail, son ordre, qui ne se réglaient que dans « Équipes une
+  par une » — et un retour au service.
+- **Plus aucun résultat sur la page** : ni heure de fin, ni lien vers le
+  planning, ni effectif calculé (« calculé », sans nombre), ni charge du jour
+  par compagnie.
+- **La page tient dans l’écran** : elle ne défile pas, chaque colonne défile
+  seule ; texte de 13 px au moins.
+- Les phrases des modules communs qui nomment une page disent le nouveau
+  menu (« L’unité › Services et équipes », « Simulation › Réglages ») : deux
+  règles de vocabulaire de plus, `mots/` régénéré.
+
+Fichiers : `services-page.js`, `services-page.css` (nouveaux), `ateliers.js`,
+`sim.js`, `index.html`, `outils/vocabulaire-regles.cjs`, `mots/*.js` ;
+`tests/services-page.test.cjs`, `tests/services-page-browser.cjs`
+(nouveaux), `tests/nav.cjs` et les tests navigateur qui réglaient une équipe
+dans la fiche de son service ; `README.md`.
+
+---
+
 ## 2026-11-17 — Évolution 22 (a) : le menu en deux blocs, quatorze entrées
 
 Première partie de l’étape B de l’audit de l’interface (« regrouper : une

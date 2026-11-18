@@ -895,8 +895,20 @@
       return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
     }
 
+    /**
+     * L'effectif de cette équipe est-il calculé (d'après ses temps par vol et les vols), plutôt que saisi ? Vrai quand le
+     * calcul lui en a donné un — comme pour la fiche d'avant, qui montrait alors le nombre calculé à la place du champ.
+     * Sinon son effectif saisi vaut, et il se saisit : un service à effectif constant ou imposé, un robot sans temps par
+     * vol propres à son service, un calcul qui s'arrête.
+     */
+    effectifSeCalcule(a) { return !!a && !!this.effectifCalcule(a); }
+
     /* Le champ « Personnes » d'une équipe : à saisir, ou calculé (en lecture). */
     champPersonnes(a, classe) {
+      // Dans « Services et équipes » (évolution 22 b), aucun résultat : un effectif calculé le dit, sans donner son nombre.
+      if (this.pageServices && this.effectifSeCalcule(a)) return `<span class="${classe ? classe + ' ' : ''}at-pers-calc"
+        title="Le nombre de personnes se calcule : temps par vol × vols de chaque compagnie ÷ heures de son poste. Il se lit dans les résultats. Pour le saisir à la main, cochez « Effectif constant » dans la fiche du service.">Personnes
+        <output>calculé</output><small>d’après ses temps par vol et les vols</small></span>`;
       const e = this.effectifCalcule(a), cls = classe ? ` class="${classe}"` : '';
       if (!e) return `<label${cls}>Personnes${avecUnite(`<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes">`, 'pers.')}</label>`;
       const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
@@ -2240,6 +2252,11 @@
       const dansChemin = o.cmd !== undefined;
       const ouvert = dansChemin || this.ouvert === a.id;
       const dispo = a.type === 'dispo';
+      // Dans « Services et équipes » (évolution 22 b) : aucun résultat (ni heure de fin, ni lien vers le planning), et la
+      // fiche repliée d'une équipe (`compact`) porte aussi ce qui ne se réglait que dans « Équipes une par une » — son
+      // service, son type, ses postes de travail, son ordre, son poste.
+      const sansResultat = !!this.pageServices, reduit = o.compact && !this.pageServices;
+      if (sansResultat) calcul = null;
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
       // Évolution 19 (c) : plus d'attente en minutes ici (une ancienne définition, qui contredisait la Synthèse). L'heure de
       // fin simulée reste, avec un lien vers le planning des équipes, où l'on voit quand l'équipe travaille et quand elle attend.
@@ -2267,7 +2284,7 @@
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
             : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion' + (Object.keys(a.volsCamion || {}).length ? ' (sauf ' + Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ') + ')' : '')
               : ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois') : '')
-          + ' → fin ' + esc(fin);
+          + (sansResultat ? '' : ' → fin ' + esc(fin));
 
       const entete = dansChemin
         ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Équipe « ${esc(a.nom)} »</strong><span>${sous}</span></div>${versPlanning}</div>`
@@ -2340,7 +2357,7 @@
       return `<article class="at-carte ouverte" data-at="${esc(a.id)}">${entete}
         <div class="at-champs">
           ${o.compact ? '' : `<label>Nom<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>`}
-          ${o.compact ? '' : `<label>Service<select data-at-champ="service">${services.map(s => `<option value="${esc(s.id)}" ${s.id === a.service ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')}</select></label>
+          ${reduit ? '' : `<label>Service<select data-at-champ="service">${services.map(s => `<option value="${esc(s.id)}" ${s.id === a.service ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')}</select></label>
           <label>Type<select data-at-champ="type">
             <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe qui prépare</option>
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
@@ -2360,10 +2377,10 @@
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)">`, 'pl/h')}</label>`}
           <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>
           <label title="Autour de la ligne, jamais plus de personnes que de postes de travail : son effectif calculé s’y arrête, et les renforts ne la portent pas au-delà. Des personnes en plus n’accélèrent pas la ligne. Vide : pas de limite">Postes de travail <small>au plus, renforts compris</small>${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
-          ${a.type === 'manuel' && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
+          ${a.type === 'manuel' && !reduit && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
           <label title="Les renforts ne la portent pas au-delà de ses postes de travail. Vide : pas de limite">Postes de travail${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
-          ${(a.type === 'manuel' || a.type === 'robot') && !o.compact ? this.champOrdre(a) : ''}
-          ${o.compact ? '' : this.champPoste(a)}
+          ${(a.type === 'manuel' || a.type === 'robot') && !reduit ? this.champOrdre(a) : ''}
+          ${reduit ? '' : this.champPoste(a)}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
@@ -2622,7 +2639,7 @@
       const ch = a.chauffeurs || {}, R = P.reglagesChauffeurs({}, null);
       const nombre = (cle, lib, unite, min, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${min}" max="${max}" value="${ch[cle] ?? ''}"
         placeholder="${{ pasDebut: 30, retardPauseMax: R.retardPauseMax, iterationsMax: R.iterationsMax }[cle]}" data-at-champ="ch-nombre" data-cle="${cle}" title="${esc(titre)}">`, unite)}</label>`;
-      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
+      const r = this.pageServices ? null : this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
       const duree = m => P.dureeLisible(m);
       return `
         <p class="mini-note at-regle">Le moteur cherche le <b>plus petit nombre de vacations</b> qui charge et décharge tous les avions à l’heure :
@@ -2680,7 +2697,7 @@
       const R = P.reglages24h({});
       const champ = (cle, lib, unite, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${cle === 'dechargementsParTournee' ? 1 : 0}" max="${max}"
         value="${a[cle] ?? ''}" placeholder="${R[cle]}" data-at-champ="h24" data-cle="${cle}" title="${esc(titre)}">`, unite)}</label>`;
-      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null;
+      const r = this.pageServices ? null : this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null;
       const ts = (vue && vue.tournees) || [], vols = r && r.ok ? (r.vols || []).filter(v => v.atelier === a.id) : [];
       const CAUSES = { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'fenêtre trop courte' };
       const causes = {}; for (const v of vols) if (v.cause) causes[v.cause] = (causes[v.cause] || 0) + 1;
@@ -2737,7 +2754,7 @@
 
     /* Les commandes qu'une vague a servies, d'après le dernier calcul. */
     servisParVague(atelierId, i) {
-      const r = this.resultat; if (!r || !r.ok) return '';
+      const r = this.pageServices ? null : this.resultat; if (!r || !r.ok) return '';
       const a = this.state.ateliers.find(x => x.id === atelierId);
       const vs = a ? P.vaguesDe(a) : [];
       const l = (r.lots || []).find(x => x.dispo && x.atelier === atelierId && x.debut === vs[i]);
@@ -2746,7 +2763,7 @@
     }
 
     finLot(atelierId, index) {
-      const r = this.resultat; if (!r || !r.ok) return '';
+      const r = this.pageServices ? null : this.resultat; if (!r || !r.ok) return '';
       const lots = (r.ateliers.find(a => a.id === atelierId) || {}).lots || [];
       const l = lots[index];
       if (!l) return '';

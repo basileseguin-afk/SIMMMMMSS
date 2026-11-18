@@ -20,13 +20,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    // 1. La cuisine chaude : un service à part entière, près de la cuisine ; un seul atelier, pour AF.
-   await nav.aller(page,'mu-services');
+   await nav.aller(page,'mu-services');await nav.ajouterService(page);   // (en v1, « Ajouter un service » se déplie en tête de la liste — évolution 22 b)
    const form=page.locator(`${M} [data-mu-nouveau]`);
    await form.locator('[name=nom]').fill('Cuisine chaude');await form.locator('[name=parent]').selectOption('cuisine');
    await form.locator('button[type=submit]').click();await attendre();
    const id=await page.evaluate(()=>Sim.editor.state.zones.find(v=>v.nom==='Cuisine chaude').id);
    await page.locator(`${M} [data-mu-choisir="${id}"]`).click();await attendre();
    await page.locator(`${M} [data-mu-nature="${id}"]`).selectOption('atelier');await attendre();
+   // (L'atelier se règle dans sa fiche : en v1, ouverte par sa ligne du tableau « Ses équipes » — évolution 22 b.)
+   await nav.equipe(page,await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.service===id).id,id));
    await page.locator(`${M} [data-mu-atelier-cie="AF"]`).check();await attendre();
    // Le chemin d'AF Business (le flux de sa classe) : la cuisine chaude y est, quelque part.
    const chemin=()=>page.evaluate(()=>{const st=Sim.ateliers.state,p=OrlyParcours.fluxDe(st,Sim.ateliers.classes.find(c=>c.id==='AF/BC'));
@@ -35,6 +37,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(c0.noeuds.includes(id)&&c0.noeuds.includes('cuisine'),version+' : la cuisine chaude est dans le chemin d’AF Business '+JSON.stringify(c0));
 
    // 2. « En même temps que la Cuisine », dans l'avancé de la fiche (étape 7).
+   await nav.service(page,id);
    await page.locator(`${M} [data-mu-section=avance] > summary`).click();await attendre();
    await page.locator(`${M} [data-mu-parallele="${id}"]`).selectOption('cuisine');await attendre();
    assert.match(await page.locator(`${M} [data-mu-section=avance] > summary`).innerText(),/en même temps que Cuisine/,version+' : l’avancé le dit, replié ou non');
@@ -52,12 +55,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(r.boucle,0,version+' : pas de boucle');
 
    // 3. Une compagnie cochée ensuite : la cuisine chaude se range d'elle-même à côté de la cuisine.
+   await nav.equipe(page,await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.service===id).id,id));
    await page.locator(`${M} [data-mu-atelier-cie="TX"]`).check();await attendre();
    const tx=await page.evaluate(id=>{const st=Sim.ateliers.state,ps=[...new Set(Sim.ateliers.classes.filter(c=>c.cie==='TX').map(c=>OrlyParcours.fluxDe(st,c)).filter(Boolean))];
      return ps.filter(p=>p.noeuds.includes(id)&&p.noeuds.includes('cuisine')).map(p=>p.liens.filter(l=>(l.de===id&&l.vers==='cuisine')||(l.de==='cuisine'&&l.vers===id)).length);},id);
    assert.ok(tx.every(n=>n===0),version+' : pas de flèche entre elles dans les chemins de TX '+JSON.stringify(tx));
 
    // 4. « Annuler » revient en arrière ; « aucun » garde les chemins tels quels.
+   await nav.service(page,id);await nav.section(page,'avance');
    await page.locator(`${M} [data-mu-parallele="${id}"]`).selectOption('');await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.paralleles),undefined);
    assert.deepEqual((await chemin()).liens.filter(l=>l.includes(id)).length>0,true);

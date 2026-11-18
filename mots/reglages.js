@@ -330,7 +330,7 @@
         </div>
         <p class="rg-version" id="rg-version" data-sous="rg-simulation"></p>
         <p class="mini-note rg-ailleurs" data-sous="rg-simulation">Ce qui est propre à une équipe (ses tunnels, ses chauffeurs, ses horaires)
-          se règle dans la fiche de son service, <b>Équipes › Services et équipes</b>. Les vols et la planche retour sont dans <b>Vols</b>.</p>`;
+          se règle dans la fiche de son service, <b>L’unité › Services et équipes</b>. Les vols et la planche retour sont dans <b>Vols</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.
@@ -381,7 +381,7 @@
       this.persEquipe = eq => {
         const e = this.a.effectifCalcule ? this.a.effectifCalcule(eq.id) : null;
         return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif calculé, ses heures par vol × ses vols ÷ son poste">${e.personnes}</output>`
-          : `<output class="rgr-calc saisi" data-rg-equipe="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif saisi dans sa fiche (Équipes › Services et équipes)">${eq.personnes}</output>`;
+          : `<output class="rgr-calc saisi" data-rg-equipe="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif saisi dans sa fiche (L’unité › Services et équipes)">${eq.personnes}</output>`;
       };
       this.surChange = e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;

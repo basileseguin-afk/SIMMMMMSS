@@ -41,11 +41,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-mu-nature=prepa]').inputValue(),'manuel');
 
   // 4. Deux équipes ; la première prépare toute la ligne AF, la seconde toute la colonne YC.
+  //    (Évolution 22 b : une équipe ajoutée ouvre sa fiche, à la place de celle du service ; on revient au service pour
+  //    ajouter la suivante. La fiche d'une équipe s'ouvre aussi d'un clic sur sa ligne du tableau « Ses équipes ».)
   await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
+  assert.equal(await page.locator('.mu-fiche').getAttribute('data-se-vue'),'equipe','l’équipe ajoutée ouvre sa fiche');
+  await nav.retour(page);
+  assert.equal(await page.locator('.mu-fiche').getAttribute('data-se-vue'),'service','le retour ramène à la fiche du service');
   await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
   const [e1,e2]=(await st()).ateliers.filter(a=>a.service==='prepa').map(a=>a.id);
   assert.ok(e1&&e2,'deux équipes');
+  await nav.retour(page);
+  assert.deepEqual(await page.locator('.mu-fiche .se-equipes tbody tr').evaluateAll(ls=>ls.map(l=>l.dataset.seEquipe)),[e1,e2],'les deux équipes, dans le tableau du service');
+  await nav.equipe(page,e1);
   await page.locator(`table[data-mu-equipe="${e1}"] [data-mu-ligne=AF]`).click();await attendre();
+  await nav.equipe(page,e2);
   await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-col=YC]`).click();await attendre();
   let s=await st();
   const lots=id=>s.ateliers.find(a=>a.id===id).lots.flat();
@@ -56,6 +65,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const ech=await page.evaluate(ids=>ids.map(id=>Sim.ateliers.classes.find(c=>c.id===id).echeance),s.ateliers.find(a=>a.id===e1).lots.map(l=>l[0]));
   assert.deepEqual(ech,[...ech].sort((a,b)=>a-b),'la plus pressée d’abord');
   // Cocher une commande de l'autre équipe la déplace.
+  await nav.equipe(page,e1);
   await page.locator(`table[data-mu-equipe="${e1}"] [data-mu-cocher="TX/YC"]`).check();await attendre();
   s=await st();
   assert.ok(lots(e1).includes('TX/YC')&&!lots(e2).includes('TX/YC'));
@@ -76,6 +86,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Décocher la dernière équipe d'une commande : le site demande s'il faut
   //    retirer le service de son flux — pour tout le flux, ou pour elle seule.
+  await nav.equipe(page,e2);
   await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).uncheck();await attendre();
   assert.match(await page.locator('.mu-q').innerText(),/reste sur le chemin de FWI YC/);
   const ecoAvant=(await chemin('AF/YC')).services;
@@ -86,6 +97,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).evaluate(e=>e.closest('td').className),/hors/);
 
   // 7. Les heures de travail se règlent dans la fiche (en heures depuis le 08/10, gardées en minutes).
+  //    (Dans la fiche du service, section « Ses temps par vol », repliée d'abord — évolution 22 b.)
+  await nav.service(page,'prepa');await nav.section(page,'temps');
   const min=page.locator('.mu-fiche .rg-fiche input[data-rg-champ=heures][data-cle="*/BC"]');
   await min.fill('0.7');await min.press('Tab');await attendre();
   assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.prepa['*/BC']),42);
@@ -100,6 +113,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(!(await chemin('TX/BC')).services.includes('decontam'),'pour toutes ses commandes');
 
   // 9. Une salle de plus du Montage : elle prend sa place dans le chemin.
+  await nav.ajouterService(page);
   await page.locator('[data-mu-nouveau] input[name=nom]').fill('Atelier APM');
   await page.locator('[data-mu-nouveau] select[name=parent]').selectOption('prepa');
   // Une salle de plus du Montage : elle se place dans le chemin comme lui (un service
@@ -167,6 +181,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await sous(),'mu-services');
   assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-mu-fiche'),'prepa');
   // Dans une équipe, une commande de « Dans l'ordre » ouvre son chemin.
+  await nav.equipe(page,e1);
   await page.locator(`.mu-equipe[data-at="${e1}"] [data-mu-chemin="AF/BC"]`).click();await attendre();
   assert.equal(await sous(),'at-chemins');
   // Le bandeau renvoie au flux, pour toutes ses commandes.

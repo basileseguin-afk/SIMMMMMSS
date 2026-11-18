@@ -36,7 +36,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Effectif constant : les personnes se saisissent (sinon elles se calculent).
    await page.evaluate(()=>Sim.ateliers.regleEffectif('dotation',true));
    await page.reload();await attendre();
-   await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=dotation]').click();await attendre();
+   // (La fiche de l'équipe : en v1, par sa ligne du tableau « Ses équipes » — évolution 22 b ; en v2, dans la fiche du service.)
+   await nav.equipe(page,'d1');await attendre();
 
    // 1. Plus de champ natif, plus de « AM ».
    const debut=champ('d1','debut');
@@ -93,6 +94,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await equipe('d1')).personnes,0,V+'jamais sous zéro');
 
    // 4. Un nom refusé se lit sous son champ.
+   await nav.equipe(page,'d2');
    const nom=champ('d2','nom');
    await nom.fill('dotation 1');await nom.press('Tab');await attendre();
    assert.equal((await equipe('d2')).nom,'Dotation 2',V+'un nom déjà pris est refusé');
@@ -103,6 +105,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await m2.innerText(),/^« dotation 1 » est déjà le nom d’une autre équipe/);
    assert.equal(await page.locator('.notif').filter({hasText:/Refusé/}).count(),0,V+'plus de notification « Refusé »');
    // Le nom d'un service.
+   await nav.service(page,'dotation');
    const svc=page.locator('#mu-services [data-mu-nom=dotation]'),garde=await svc.inputValue();
    await svc.fill('  ');await svc.press('Enter');await attendre();
    const svc2=page.locator('#mu-services [data-mu-nom=dotation]');

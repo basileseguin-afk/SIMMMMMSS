@@ -104,14 +104,15 @@ function sauvegarde(){
   // Dans « Services et équipes » aussi (la fiche du service, dessinée par le module commun).
   const service=async id=>{await nav.aller(page,'mu-services');await page.evaluate(id=>Sim.unite.ouvrir(id),id);
     await page.waitForFunction(id=>Sim.unite.choisi===id&&!!document.querySelector('#mu-services .mu-fiche'),id);await attendre();};
-  await service('prepa');
+  // (La fiche de l'équipe s'ouvre d'un clic sur sa ligne du tableau « Ses équipes » — évolution 22 b.)
+  await service('prepa');await nav.equipe(page,'rb');
   await page.waitForSelector('#view-ateliers article.mu-equipe[data-at="rb"]');
   const dansService=page.locator('#view-ateliers article.mu-equipe[data-at="rb"]').first();
   assert.equal(await visible(dansService,'debit'),0,'dans le service : pas de débit général non plus');
   assert.equal((await ligne(dansService)).titre,'1 réglage ne joue pas ici');
   assert.equal(await page.locator('#view-ateliers article.mu-equipe[data-at="rb"] .nj-hote').count(),1,'une seule ligne par fiche');
   await changer('rb',a=>{a.debits={};});await attendre();
-  await service('prepa');
+  await service('prepa');await nav.equipe(page,'rb');
   assert.equal(await visible(page.locator('#view-ateliers article.mu-equipe[data-at="rb"]').first(),'debit'),1,'une commande sans débit propre : le débit général revient');
   assert.equal(await ligne(page.locator('#view-ateliers article.mu-equipe[data-at="rb"]').first()),null,'et la ligne s’en va');
   fiche=await ouvrir('rb');

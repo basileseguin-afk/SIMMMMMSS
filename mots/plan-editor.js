@@ -258,7 +258,7 @@ class PlanEditor{
   },seconde?'Seconde salle créée : déplacez-la, puis décrivez ses équipes dans « Équipes ».'
           :'Copie créée comme annotation : elle ne crée aucun service.');
  }
- remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis Équipes › Services et équipes (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
+ remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis L’unité › Services et équipes (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
  /* Supprimer une zone (pas un service du plan d'origine). La page prévient
     d'abord si elle porte des équipes (avantSuppression : vrai, faux, ou une
     question, c'est-à-dire une promesse), puis les fait passer dans son parent.

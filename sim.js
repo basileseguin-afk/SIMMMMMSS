@@ -294,6 +294,7 @@ function etatService(id){
   return {cases,cmds,etat,texte};
 }
 function renderServices(){
+  if(Sim.unite&&Sim.unite.rendreServices&&document.body.dataset.sous==='mu-services')Sim.unite.rendreServices();
   const box=document.getElementById('services-unite');if(!box)return;
   // On ne redessine pas sous les doigts de quelqu'un qui renomme un service.
   if(box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
@@ -322,11 +323,7 @@ function renderServices(){
       const pere=annexe&&ZONES[annexe.parent]?nomLisible(ZONES[annexe.parent].nom):'';
       return '<tr data-svc="'+escapeHTML(l.id)+'" class="svc-'+l.etat+'">'
         +'<td><input class="svc-nom" data-svc-nom="'+escapeHTML(l.id)+'" maxlength="120" value="'+escapeHTML(brut(l.id))+'" aria-label="Nom du service '+escapeHTML(l.nom)+'">'
-        +(annexe?'<label class="svc-parent">rattaché à <select data-svc-reparent="'+escapeHTML(l.id)+'"><option value=""'+(annexe.autonome?' selected':'')+'>aucun — service à part entière</option>'
-            // Son service de rattachement a pu être supprimé : on le montre tel
-            // quel, sans quoi la liste afficherait un autre service que le sien.
-            +(estRetire(annexe.parent)&&ZONES[annexe.parent]?'<option value="'+escapeHTML(annexe.parent)+'" selected>'+escapeHTML(nomDeService(annexe.parent))+'</option>':'')
-            +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(!annexe.autonome&&id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
+        +(annexe?'<label class="svc-parent">rattaché à '+choixRattachement(annexe)+'</label>'
           :'<small>service du plan</small>')+'</td>'
         +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
           +(type[a.type]?' <small>'+type[a.type]+((a.type==='dispo'||a.type==='appui')&&+a.personnes>0?' · '+a.personnes+' pers.':'')+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
@@ -342,6 +339,35 @@ function renderServices(){
     }).join('')+'</tbody></table></div>'
     +sectionOrphelines()+sectionLocaux()+sectionRetires();
   filtrerServices(box);
+}
+/* Le choix « rattaché à » d'un service ajouté au plan (une salle de plus d'un service, ou un service à part entière). */
+function choixRattachement(annexe){
+  return '<select data-svc-reparent="'+escapeHTML(annexe.id)+'"><option value=""'+(annexe.autonome?' selected':'')+'>aucun — service à part entière</option>'
+    // Son service de rattachement a pu être supprimé : on le montre tel
+    // quel, sans quoi la liste afficherait un autre service que le sien.
+    +(estRetire(annexe.parent)&&ZONES[annexe.parent]?'<option value="'+escapeHTML(annexe.parent)+'" selected>'+escapeHTML(nomDeService(annexe.parent))+'</option>':'')
+    +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(!annexe.autonome&&id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select>';
+}
+/* Le rattachement d'un service, dans ses réglages avancés (« Services et équipes », évolution 22 b). */
+function rattachementService(id){
+  const annexe=!ZONES[id]?annexes().find(a=>a.id===id):null;
+  if(!annexe)return '<p class="se-rattache mini-note">Un service du plan d’origine : il n’est rattaché à aucun autre.</p>';
+  return '<label class="svc-parent se-rattache">Rattaché à '+choixRattachement(annexe)
+    +'<small>À part entière : ses propres temps par vol et ses propres liens. Rattaché : une salle de plus de ce service, qui en reprend les liens.</small></label>';
+}
+/* Les services supprimés (à remettre), ceux que des équipes ou des chemins citent encore, les équipes sans service et
+ * les zones du plan qui ne sont pas des services : ce que « Services et équipes » ouvre depuis le bas de sa liste. */
+function servicesSupprimes(){
+  return {n:Object.keys(ZONES).filter(estRetire).length,html:sectionFantomes()+sectionOrphelines()+sectionLocaux()+sectionRetires()};
+}
+/* « Voir ce service dans les résultats » : la Synthèse, sur sa ligne. */
+function voirDansLesResultats(service){
+  allerPage('j-chiffres');
+  const l=document.querySelector('#bilan-journee tr[data-service="'+CSS.escape(service)+'"]');
+  if(!l)return;
+  l.scrollIntoView({block:'center'});
+  const b=l.querySelector('button');if(b)b.focus({preventScroll:true});
+  l.classList.add('pal-trouvee');setTimeout(()=>l.classList.remove('pal-trouvee'),1600);
 }
 /* Chercher un service par son nom : la liste est longue, et un service sans
  * équipe se range en tête, loin de l'ordre alphabétique. */
@@ -495,13 +521,13 @@ function initServices(){
     if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les équipes et les temps par vol.');renderServices();
       const i=box.querySelector('[data-svc-nom="'+CSS.escape(id)+'"]');if(i)i.closest('tr').classList.add('svc-nouveau-ligne');}
   });
-  box.addEventListener('change',e=>{
+  const surChange=e=>{
     const rp=e.target.closest('[data-svc-reparent]');
     if(rp){const id=rp.dataset.svcReparent;Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
         if(rp.value){z.parent=rp.value;delete z.autonome;}else{z.autonome=true;delete z.parent;}},'Rattachement enregistré.');
       toast(rp.value?'Rattaché à « '+nomLisible(ZONES[rp.value].nom)+' » : il en reprend les liens.':'Service à part entière : ses propres minutes et ses propres liens.');renderServices();}
-  });
-  box.addEventListener('click',e=>{
+  };
+  const surClic=(e,box)=>{
     const sp=e.target.closest('[data-svc-supprimer]');
     if(sp){Promise.resolve(Sim.editor.supprimer(sp.dataset.svcSupprimer)).then(fait=>{if(fait)toast('Service supprimé.',{parDefaut:true});renderServices();});return;}
     const rt=e.target.closest('[data-svc-retirer]');
@@ -522,7 +548,13 @@ function initServices(){
       const vieux=a.service;reaffecterEquipe(id,sel.value,vieux);renderServices();return;}
     const c=e.target.closest('[data-svc-case]');
     if(c){const id=c.dataset.svcCase;if(!Sim.ateliers.ouvrirFiche(id)){Sim.ateliers.ouvert=id;if(Sim.onglets)Sim.onglets.choisir('at-equipes');Sim.ateliers.rendre();}return;}
-  });
+  };
+  box.addEventListener('change',surChange);
+  box.addEventListener('click',e=>surClic(e,box));
+  // Les mêmes gestes dans « Services et équipes » (évolution 22 b) : le rattachement d'un service, dans ses réglages
+  // avancés ; les services supprimés et les zones du plan, depuis le bas de sa liste.
+  document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#mu-services [data-svc-reparent]'))surChange(e);});
+  document.addEventListener('click',e=>{const h=e.target.closest&&e.target.closest('#mu-services [data-svc-hote]');if(h)surClic(e,h);});
   // Les boutons d'un service peuvent vivre ailleurs : le panneau du plan, les contrôles.
   document.addEventListener('click',e=>{const b=e.target.closest('[data-svc-action]');if(b)actionService(b.dataset.svcAction,b.dataset.svc||null);});
 }
@@ -924,7 +956,10 @@ async function supprimerServiceUnite(id){
 }
 function initUnite(){
   if(!window.OrlyUnite||!Sim.ateliers)return;
-  Sim.unite=new OrlyUnite.MonUnite({
+  // « Services et équipes » (évolution 22 b) : la page de la version 1 hérite de celle de unite.js, commun aux deux versions.
+  const Page=(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
+  Sim.unite=new Page({
+    resultats:voirDansLesResultats, rattachement:rattachementService, supprimes:servicesSupprimes, jouent:()=>window.OrlyJouent||null,
     at:()=>Sim.ateliers, rg:()=>Sim.reglages,
     services:servicesDisponibles,
     parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
@@ -1199,6 +1234,13 @@ function initAnnuler(){
 /** Une équipe : la fiche de son service, l'équipe à l'écran, marquée un instant. */
 function ouvrirEquipe(a){
   if(!Sim.unite)return;
+  // « Services et équipes » (évolution 22 b) : la fiche de l'équipe s'ouvre, à la place de celle de son service.
+  if(Sim.unite.ouvrirEquipe){
+    Sim.unite.ouvrirEquipe(a.id);
+    const f=document.querySelector('#mu-services .se-equipe [data-at="'+CSS.escape(a.id)+'"]');
+    if(f){f.tabIndex=-1;f.focus({preventScroll:true});f.classList.add('pal-trouvee');setTimeout(()=>f.classList.remove('pal-trouvee'),1600);}
+    return;
+  }
   Sim.unite.ouvrir(a.service);
   const art=document.querySelector('#mu-services .mu-equipe[data-at="'+CSS.escape(a.id)+'"]');
   if(!art)return;

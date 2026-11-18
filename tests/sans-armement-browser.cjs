@@ -26,7 +26,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.reload();await attendre();
    const code=await page.evaluate(()=>Sim.ateliers.state.categories.armement[0].id);
    const cases=()=>page.evaluate(()=>Sim.ateliers.classesDe('armement').map(c=>c.cie).sort());
-   const fiche=async()=>{await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();return page.locator('#mu-services');};
+   // (Ses minutes par compagnie : une section de sa fiche, repliée d'abord en v1 — évolution 22 b.)
+   const fiche=async()=>{await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();await nav.section(page,'temps');return page.locator('#mu-services');};
    assert.ok((await cases()).includes('TX'),version+' : TX a sa case');
 
    // 1. TX a son chemin à elle, sans armement — mais une équipe d'armement l'a encore cochée :
@@ -49,6 +50,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 2. Décochée dans l'équipe : ni chemin, ni équipe — pas d'armement. Pas de case, rien à cocher
    //    ni à remplir pour elle ; la fiche la nomme ; le handling ne l'attend pas.
    // Sa ligne quitte la grille aussitôt : un clic, pas « décocher et vérifier ».
+   // (La grille de l'équipe est dans sa fiche : en v1, ouverte par sa ligne du tableau « Ses équipes » — évolution 22 b.)
+   await nav.equipe(page,'ar');
    await f.locator(`table[data-mu-equipe="ar"] [data-mu-cocher="TX/@${code}"]`).click();await attendre();
    f=await fiche();
    assert.ok(!(await cases()).includes('TX'),version+' : plus de case TX');

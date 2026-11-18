@@ -20,7 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
 
    // 1. Créé depuis Mon unité, près de la Dotation : à part entière par défaut.
-   await nav.aller(page,'mu-services');
+   await nav.aller(page,'mu-services');await nav.ajouterService(page);
    const form=page.locator('#mu-services [data-mu-nouveau]');
    await form.locator('[name=nom]').fill('Roulés couverts');
    await form.locator('[name=parent]').selectOption('dotation');
@@ -74,7 +74,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(id=>Sim.editor.state.zones.find(v=>v.id===id).autonome,id),true);
 
    // 6. La salle reste un choix : rangée sous son service, elle en reprend minutes et liens.
-   await nav.aller(page,'mu-services');
+   await nav.aller(page,'mu-services');await nav.ajouterService(page);
    await form.locator('[name=nom]').fill('Dotation 2');
    await form.locator('[name=parent]').selectOption('dotation');
    await form.locator('[name=genre]').selectOption('salle');

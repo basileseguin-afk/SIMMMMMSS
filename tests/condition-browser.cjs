@@ -25,14 +25,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(af>0,version+' : le programme de démonstration a des vols AF');
 
    // 0. Le jour de l'équipe : chaque choix par son nom (J-2 n'est pas « la veille »).
-   await nav.aller(page,'mu-services');
-   await page.locator('[data-mu-choisir=prepa]').click();await attendre();
+   // (La fiche de l'équipe : en v1, par sa ligne du tableau « Ses équipes » — évolution 22 b ; en v2, dans la fiche du service.)
+   await nav.equipe(page,'mo');await attendre();
    assert.deepEqual(await page.locator('#mu-services article.mu-equipe[data-at="mo"] [data-at-champ=jour] option').allTextContents(),
      ['jour du vol (J)','la veille (J-1)','l’avant-veille (J-2)','3 jours avant (J-3)']);
 
    // 1. Dans la fiche de l'équipe : un bouton, puis une phrase à compléter.
-   await nav.aller(page,'mu-services');
-   await page.locator('[data-mu-choisir=prepa]').click();await attendre();
+   // (La fiche de l'équipe : en v1, par sa ligne du tableau « Ses équipes » — évolution 22 b ; en v2, dans la fiche du service.)
+   await nav.equipe(page,'mo');await attendre();
    const carte=sel=>page.locator(`#mu-services article.mu-equipe[data-at="mo"] ${sel}`);
    // Dans « Plus de réglages » (étape 7), qui dit ensuite ce qui y est réglé.
    await carte('details.mu-plus > summary').click();await attendre();

@@ -117,6 +117,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const e0=await equipes();assert.ok(e0>0);
    await nav.aller(page,'mu-services');
    await page.locator(`[data-mu-choisir="${svc}"]`).click();await attendre();
+   // (En v1, « Supprimer ce service » est dans ses « Réglages avancés », repliés d'abord — évolution 22 b.)
+   await nav.section(page,'avance');
    await page.locator('#mu-services [data-mu-action=supprimer]').click();await attendre();
    const q=page.locator('dialog.question[open]');
    assert.equal(await q.count(),1,V+'la question s’ouvre');
