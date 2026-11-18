@@ -17,12 +17,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const liste=()=>page.evaluate(()=>Sim.ateliers.state.sansChargement||null);
  /** Le résultat de la journée, sans les avis. */
  const journee=()=>page.evaluate(()=>{const r=Sim.ateliers.resultat;return JSON.stringify({...r,anomalies:(r.anomalies||[]).filter(a=>a.code!=='handling-sans')});});
- /** Le panneau « Problèmes », ouvert : ses avis de compagnie sans handling, avec leur bouton. */
+ /** « Contrôles » (évolution 22 d : le panneau « Problèmes » l'a rejointe), ouverte : ses avis de compagnie sans handling, avec leur bouton. */
  const panneau=async()=>{
-   if(!(await page.locator('#problemes').evaluate(e=>e.matches(':popover-open'))))await page.locator('#btn-problemes').click();
-   await page.waitForFunction(()=>document.getElementById('problemes').matches(':popover-open'));
-   return page.evaluate(()=>[...document.querySelectorAll('#problemes .pb-groupe li')].filter(li=>/aucun handling ne charge cette compagnie/.test(li.textContent))
-     .map(li=>({groupe:li.closest('.pb-groupe').className,titre:li.querySelector('.pb-corps b').textContent,boutons:[...li.querySelectorAll('[data-pb-voulu]')].map(b=>[b.dataset.pbVoulu,b.textContent])})));};
+   if(await page.evaluate(()=>document.body.dataset.sous)!=='mu-pas')await nav.aller(page,'mu-pas');
+   await page.waitForFunction(()=>!!document.querySelector('#mu-pas .ct-cadre'));
+   return page.evaluate(()=>[...document.querySelectorAll('#mu-pas .ct-point')].filter(li=>/aucun handling ne charge cette compagnie/.test(li.textContent))
+     .map(li=>({groupe:li.closest('.ct-niveau').className,titre:li.querySelector('.ct-corps b').textContent,
+       boutons:[...li.querySelectorAll('[data-ct-voulu]')].map(b=>[b.dataset.ctVoulu,b.textContent,b.getAttribute('aria-label')]),aller:(li.querySelector('[data-ct-aller]')||{}).textContent||''})));};
  try{
   const ch=await F.charger(page,nav,site.url('index.html'),{pageId:'mu-services'});
   await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.problemes);
@@ -40,19 +41,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(p1.length,cies.length-1,'un avis par compagnie sans handling');
   assert.match(a1.titre,new RegExp('vols? '+voulue+' : aucun handling ne charge cette compagnie\\. Ajoutez-la à un handling, ou videz sa liste de compagnies\\.$'));
   assert.match(a1.groupe,/corriger/);
-  assert.deepEqual(a1.boutons,[[voulue,'C’est voulu : pas de chargement pour cette compagnie']]);
+  // Le bouton dit « C'est voulu » ; sa phrase entière est son nom accessible. À côté, le bouton qui mène à l'équipe du handling.
+  assert.deepEqual(a1.boutons,[[voulue,'C’est voulu','C’est voulu : pas de chargement pour cette compagnie ('+voulue+')']]);
+  assert.equal(a1.aller,'Régler dans Services et équipes →');
 
   // 2. Le choix : l'avis de cette compagnie disparaît, les autres restent ; le résultat est le même, à l'avis près.
-  await page.locator(`#problemes [data-pb-voulu="${voulue}"]`).click();
+  await page.locator(`#mu-pas [data-ct-voulu="${voulue}"]`).click();
   await page.waitForFunction(c=>(Sim.ateliers.state.sansChargement||[]).includes(c)&&!(Sim.ateliers.resultat.anomalies||[]).some(a=>a.code==='handling-sans'&&a.compagnie===c),voulue);
   assert.deepEqual(await liste(),[voulue]);
   assert.deepEqual(await avis(),cies.filter(c=>c!==chargee&&c!==voulue));
   assert.equal(await journee(),avant,'le calcul ne change pas d’un champ');
-  await page.waitForFunction(c=>!document.querySelector(`#problemes [data-pb-voulu="${c}"]`),voulue);
+  await page.waitForFunction(c=>!document.querySelector(`#mu-pas [data-ct-voulu="${c}"]`),voulue);
   assert.equal((await panneau()).length,cies.length-2);
-  assert.ok(await page.locator('#problemes').evaluate(e=>e.matches(':popover-open')),'le panneau reste ouvert après le choix');
-  assert.ok(await page.evaluate(()=>document.getElementById('problemes').contains(document.activeElement)),'le clavier reste dans le panneau');
-  if(await page.locator('#problemes').evaluate(e=>e.matches(':popover-open')))await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','on reste sur « Contrôles » après le choix');
+  await page.waitForFunction(()=>document.getElementById('mu-pas').contains(document.activeElement));
+  assert.ok(await page.evaluate(()=>document.getElementById('mu-pas').contains(document.activeElement)),'le clavier reste dans la page');
 
   // 3. La liste se voit dans la fiche du handling, et s'y défait : l'avis revient.
   //    (Sa fiche, dans « Services et équipes » — évolution 22 b.)

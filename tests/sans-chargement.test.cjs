@@ -68,23 +68,26 @@ test('la journée jouée depuis la sauvegarde lit la liste', () => {
   assert.deepEqual(avis(J.jouer(args(['XB']))), []);
 });
 
-test('le panneau des Problèmes : l’avis garde son texte et gagne le bouton « C’est voulu », pour sa compagnie', () => {
-  const Avis = require('../avis.js');
+// (Évolution 22 d : le panneau « Problèmes » a rejoint la page « Contrôles » ; l'avis y garde son texte et son bouton.)
+test('« Contrôles » : l’avis garde son texte et gagne le bouton « C’est voulu », pour sa compagnie', () => {
+  const Avis = require('../avis.js'), Controles = require('../controles-page.js');
+  const page = liste => Controles.html(liste, { etat: 'ok', nomPage: id => id });
   const r = jouer(), a = r.anomalies.filter(x => x.code === 'handling-sans');
   assert.deepEqual(a.map(x => x.compagnie), ['XB']);
   const liste = Avis.lister({ anomalies: r.anomalies }), avis = liste.filter(p => p.voulu);
   assert.deepEqual(avis.map(p => [p.niveau, p.titre, p.voulu]), [['corriger', a[0].message, 'XB']], 'le même avis, au même niveau, avec sa compagnie');
-  const html = Avis.panneau(liste, id => id);
+  const html = page(liste);
   assert.equal(Avis.VOULU, 'C’est voulu : pas de chargement pour cette compagnie');
-  assert.equal(html.split('class="pb-voulu"').length - 1, 1, 'un seul bouton : celui de cet avis');
-  assert.ok(html.includes('<button type="button" class="pb-voulu" data-pb-voulu="XB" aria-label="' + Avis.VOULU + ' (XB)">' + Avis.VOULU + '</button></li>'), html);
+  assert.equal(html.split('data-ct-voulu=').length - 1, 1, 'un seul bouton : celui de cet avis');
+  // Le bouton dit « C'est voulu » ; sa phrase entière est son nom accessible et son infobulle.
+  assert.ok(html.includes('data-ct-voulu="XB" aria-label="' + Avis.VOULU + ' (XB)" title="' + Avis.VOULU + '">C’est voulu</button>'), html);
   // Les autres avis n'ont pas de bouton ; le choix fait, l'avis et son bouton s'en vont.
   assert.equal(Avis.lister({ anomalies: [{ code: 'handling-sans', message: 'sans compagnie' }, { code: 'bareme', message: 'x', compagnie: 'XB' }] }).some(p => 'voulu' in p), false);
   const apres = Avis.lister({ anomalies: jouer({ sansChargement: ['XB'] }).anomalies });
   assert.equal(apres.some(p => p.voulu), false);
-  assert.equal(Avis.panneau(apres, id => id).includes('pb-voulu'), false);
+  assert.equal(page(apres).includes('data-ct-voulu'), false);
   // Un code de compagnie venu d'un fichier est échappé avant d'entrer dans la page.
-  assert.ok(Avis.panneau(Avis.lister({ anomalies: [{ code: 'handling-sans', message: 'm', compagnie: '"><b>' }] }), id => id).includes('data-pb-voulu="&quot;&gt;&lt;b&gt;"'));
+  assert.ok(page(Avis.lister({ anomalies: [{ code: 'handling-sans', message: 'm', compagnie: '"><b>' }] })).includes('data-ct-voulu="&quot;&gt;&lt;b&gt;"'));
 });
 
 test('la liste, mise au propre : des codes comme ceux d’un handling ; plusieurs handlings ; un handling qui charge tout', () => {

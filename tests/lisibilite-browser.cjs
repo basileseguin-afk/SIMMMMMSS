@@ -70,16 +70,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('.jour').textContent(),/journée de J-1 \d\d:\d\d à J \d\d:\d\d/);
 
   // 6. Les Contrôles : ce que le calcul signale, séparé des résultats de la journée.
+  //    (Évolution 22 d : dans « Contrôles », où mène « Contrôles détaillés » — une colonne par niveau.)
   await nav.aller(page,'u-lecture');await attendre();
-  const calcul=await page.locator('#fc-calcul').innerText();
-  assert.match(calcul,/informations? : une commande sans vol ce jour-là, ou ce que la journée montre/,'les postes trop courts sont des résultats : une information');
-  assert.match(calcul,/(point|points) à corriger|L’organisation se lit de bout en bout/);
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas');
+  assert.ok(await page.locator('#mu-pas .ct-niveau.information .ct-point').count()>=1,'les postes trop courts sont des résultats : une information');
+  assert.match(await page.locator('#mu-pas .ct-niveau.information').evaluate(e=>e.textContent),/le poste se termine avant la fin|après leur départ|ne sont pas lavé/);
+  assert.match(await page.locator('#mu-pas .ct-niveau.corriger').innerText(),/À corriger\s*\d+/i);
   // Une étape du chemin sans case : un point à corriger, compté dans le badge.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;const p=st.parcours.find(x=>x.id==='ch');
     p.noeuds.push('dotation');p.liens.push({de:'cuisine',vers:'dotation'});}));await attendre();
   await nav.aller(page,'u-lecture');await attendre();
-  assert.match(await page.locator('#fc-calcul .fc-alerte.grave').innerText(),/Dotation[\s\S]*aucune équipe ne l’y prépare/i);
-  assert.ok(+(await page.locator('[data-sous-onglet=u-lecture] .so-badge, [data-sous-onglet=u-lecture] [class*=badge]').first().textContent())>=1,'le badge le compte');
+  assert.match(await page.locator('#mu-pas .ct-niveau.corriger').innerText(),/Dotation[\s\S]*aucune équipe ne l’y prépare/i);
+  assert.ok(+(await page.locator('#menu [data-entree="mu-pas"] .so-badge').textContent())>=1,'la pastille de « Contrôles » le compte');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('lisibilite-browser : ok');

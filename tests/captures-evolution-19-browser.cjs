@@ -132,30 +132,29 @@ const AVIS=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,repas=Sim.a
     for(const d of dispos){await nav.service(page,d);
       assert.equal(await page.locator('#mu-services [data-mu-section="temps"]').count(),0,V+d+' : une mise à disposition n’a pas de section de temps');}
 
-    /* ---- le panneau des problèmes ---------------------------------------------------------------------- */
+    /* ---- « Contrôles » : le panneau des problèmes l'a rejointe (évolution 22 d) ------------------------------- */
     await page.evaluate(AVIS);
     await page.waitForFunction(()=>['bloquant','corriger','information'].every(n=>Sim.problemes.liste.some(p=>p.niveau===n)));
-    await nav.aller(page,'j-chiffres');
+    await nav.aller(page,'mu-pas');
     await poserTheme();
-    await page.locator('#btn-problemes').click();
-    await page.waitForFunction(()=>document.getElementById('problemes').matches(':popover-open'));
-    const pb=await page.evaluate(()=>{const l=Sim.problemes.liste,c=document.querySelector('#btn-problemes .pb-compte'),p=document.getElementById('problemes');
-      return {groupes:[...p.querySelectorAll('.pb-groupe')].map(g=>g.tagName+' '+g.className),compte:+c.textContent,
+    await page.waitForFunction(()=>!!document.querySelector('#mu-pas .ct-cadre'));
+    const pb=await page.evaluate(()=>{const l=Sim.problemes.liste,c=document.querySelector('#menu [data-entree="mu-pas"] .so-badge'),p=document.getElementById('mu-pas');
+      return {groupes:[...p.querySelectorAll('.ct-niveau')].map(g=>g.dataset.ctNiveau),compte:+c.textContent,
         problemes:l.filter(a=>a.niveau!=='information').length,infos:l.filter(a=>a.niveau==='information').length,
-        repliees:!p.querySelector('details.pb-groupe.information').open,total:p.querySelector('.pb-total').textContent,
+        vues:p.querySelectorAll('.ct-niveau.information .ct-points:not(.ct-plus .ct-points) > .ct-point').length,total:c.title,
         handling:l.some(a=>a.niveau==='corriger'&&/aucun handling ne charge cette compagnie/.test(a.titre)),
         sansVol:l.some(a=>a.niveau==='information'&&/aucun vol ce jour-là/.test(a.titre)),
         commande:l.some(a=>a.niveau==='bloquant'&&/préparée/.test(a.titre+a.detail))};});
-    assert.deepEqual(pb.groupes,['SECTION pb-groupe bloquant','SECTION pb-groupe corriger','DETAILS pb-groupe information'],V+'les trois niveaux, dans l’ordre');
+    assert.deepEqual(pb.groupes,['bloquant','corriger','information'],V+'les trois niveaux, dans l’ordre');
     assert.ok(pb.commande&&pb.handling&&pb.sansVol,V+'un avis de chaque niveau : '+JSON.stringify(pb));
-    assert.ok(pb.compte===pb.problemes&&pb.infos>=1&&pb.repliees,V+'le compteur ne compte pas les informations, repliées : '+JSON.stringify(pb));
+    assert.ok(pb.compte===pb.problemes&&pb.infos>=1&&pb.vues<=3,V+'la pastille ne compte pas les informations ; trois au plus se lisent d’emblée : '+JSON.stringify(pb));
     assert.match(pb.total,/^\d+ bloquants? · \d+ à corriger$/,V+pb.total);
-    assert.ok(await aLEcran('#problemes .pb-tete')&&await aLEcran('#problemes .pb-groupe.bloquant h3'),V+'le panneau est à l’écran');
+    assert.ok(await aLEcran('#mu-pas .ct-etat')&&await aLEcran('#mu-pas .ct-niveau.bloquant h3'),V+'la page est à l’écran');
     await capturer('problemes');
     assert.deepEqual(errors,[],V+'aucune erreur de page');
    }finally{if(x&&x.effacer)x.effacer();await ctx.close();}
   }
   assert.equal(faites.length,20);   // cinq captures par thème et par taille (six avant l'évolution 22 b)
-  console.log('captures-evolution-19-browser : ok — '+faites.length+' captures (la page des vols ; une fiche de plonge par vol et au débit ; les temps par vol ; le panneau des problèmes), en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080, dans '+dossier);
+  console.log('captures-evolution-19-browser : ok — '+faites.length+' captures (la page des vols ; une fiche de plonge par vol et au débit ; les temps par vol ; « Contrôles », où le panneau des problèmes a rejoint les contrôles), en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080, dans '+dossier);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

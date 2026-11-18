@@ -27,17 +27,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#onglets-internes').isVisible(),false,'sans onglets internes');
   assert.equal(await page.locator('#mu-flux .ch-liste').isVisible(),true);
   assert.equal(await page.locator('[data-mu-graphe]').count(),1,'un seul éditeur de chemin');
-  await page.locator('#menu [data-entree="groupe:controles"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','Contrôles s’ouvre sur « Prêt à simuler ? »');
+  // (Évolution 22 d : « Contrôles » est une seule page — « Prêt à simuler ? », « Contrôles détaillés » et le panneau « Problèmes » en une.)
+  await page.locator('#menu [data-entree="mu-pas"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','« Contrôles »');
+  assert.equal(await page.locator('#view-title').textContent(),'Contrôles');
 
-  // 2. Le pas à pas : les vols d'exemple, puis les services sans équipe.
+  // 2. « Contrôles » : les vols d'exemple (une information), les services sans équipe (à corriger), les commandes que
+  //    personne ne prépare (bloquant).
   const pas=await page.locator('#mu-pas').innerText();
+  assert.match(await page.locator('#mu-pas .ct-niveau.information').innerText(),/vols d’exemple[\s\S]*Voir dans Programme des vols/);
+  assert.match(await page.locator('#mu-pas .ct-niveau.corriger').innerText(),/Vos services et leurs équipes/);
+  assert.match(await page.locator('#mu-pas .ct-niveau.bloquant').innerText(),/ne sont préparées par aucune équipe/);
   assert.match(pas,/vols d’exemple/);
   assert.match(pas,/Vos services et leurs équipes/);
   assert.match(pas,/ne sont préparées par aucune équipe/);
 
-  // 3. Un service depuis le pas à pas : sa fiche s'ouvre.
-  await page.locator('#mu-pas [data-mu-ouvrir=prepa]').click();await attendre();
+  // 3. « Vos services et leurs équipes » mène à « Services et équipes » ; on y ouvre un service.
+  await page.locator('#mu-pas .ct-point',{hasText:'Vos services et leurs équipes'}).locator('[data-ct-aller]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
+  await nav.service(page,'prepa');await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
   assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'prepa');
   assert.equal(await page.locator('[data-mu-nature=prepa]').inputValue(),'manuel');

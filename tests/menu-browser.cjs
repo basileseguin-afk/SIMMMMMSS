@@ -75,9 +75,9 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     // « Services et équipes » : une seule page depuis l'évolution 22 (b), sans onglets internes.
     ['mu-services','L’unité','Services et équipes'],
     // « Chemins » : une seule page depuis l'évolution 22 (c), sans onglets internes ; « Liens entre services » n'est
-    // jamais au menu. « Contrôles » : les pages d'aujourd'hui en onglets internes, en attendant leur fusion.
+    // jamais au menu. « Contrôles » : une seule page depuis l'évolution 22 (d) — deux pages et un panneau en un.
     ['mu-flux','L’unité','Chemins'],
-    ['rg-simulation','Simulation','Réglages de la simulation'],['groupe:controles','Simulation','Contrôles',['mu-pas','u-lecture']]];
+    ['rg-simulation','Simulation','Réglages de la simulation'],['mu-pas','Simulation','Contrôles']];
   for(const [cle,espace,titre,pages] of attendues){
     await page.locator(`#menu [data-entree="${cle}"]`).click();await attendre();
     assert.equal(await courant(),cle);
@@ -160,7 +160,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await page.keyboard.press('Home');await attendre();
   assert.equal(await actif(),'j-chiffres');
   await page.keyboard.press('ArrowUp');await attendre();
-  assert.equal(await courant(),'groupe:controles','avant la première, on revient à la dernière');
+  assert.equal(await courant(),'mu-pas','avant la première, on revient à la dernière');
   // La dernière page ouverte d'un groupe est retenue d'une visite à l'autre : son entrée y ramène.
   // (Évolution 22 c : « Chemins » n'est plus un groupe ; « Détails » en est un.)
   await nav.aller(page,'j-stocks');await nav.aller(page,'j-comparer');
@@ -288,7 +288,8 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     const pastilles=await p.evaluate(()=>({menu:[...document.querySelectorAll('#menu [data-sous-onglet]')].filter(b=>b.querySelector('.so-badge')).map(b=>[b.dataset.entree,+b.querySelector('.so-badge').textContent]),
       compte:OrlyAvis.compte(Sim.problemes.liste),infos:Sim.problemes.liste.length-OrlyAvis.compte(Sim.problemes.liste)}));
     assert.ok(pastilles.compte>0,T+'l’unité fictive a des problèmes : '+JSON.stringify(pastilles));
-    assert.deepEqual(pastilles.menu,[['groupe:controles',pastilles.compte]],T+'une seule pastille, sur « Contrôles »');
+    assert.deepEqual(pastilles.menu,[['mu-pas',pastilles.compte]],T+'une seule pastille, sur « Contrôles »');
+    assert.equal(await p.locator('#btn-problemes').count(),0,T+'plus de bouton « Problèmes » au bas du menu (évolution 22 d)');
     // L'accueil suit : avec un programme daté, sa tuile « Lire » liste « Période ».
     await p.locator('#btn-accueil').click();await p.waitForTimeout(150);
     assert.equal(await p.locator('#view-accueil').isVisible(),true,T+'la marque mène à l’accueil');
@@ -302,8 +303,10 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
       ...Object.entries(OrlyOnglets.ANCIENNES).flatMap(([id,a])=>[[a.vers,a.nom,a.nom,a.lieu,id],...(a.ancien?[[a.vers,a.ancien,a.nom,a.lieu,id]]:[])])]);
      // Évolution 22 (c) : « Chemins » a repris trois pages de plus (« Vue d'ensemble », « Chemin d'une commande »,
      // « Étapes de chaque commande ») et garde l'ancien nom de la sienne (« Chemins de production ») : dix-neuf pages.
-     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,19,'les dix-neuf pages');
-     assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','rg-minutes','rg-recap','u-services'],'et les neuf noms repris');
+     // Évolution 22 (d) : « Contrôles » a repris « Contrôles détaillés », et garde l'ancien nom de sa page (« Prêt à
+     // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris.
+     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,18,'les dix-huit pages');
+     assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','mu-pas:avant','mu-pas:problemes','rg-minutes','rg-recap','u-lecture','u-services'],'et les douze noms repris');
      const AU_BON_ENDROIT={'mu-services:equipes':'#mu-services details[data-mu-section=equipes][open]','mu-services:temps':'#mu-services details[data-mu-section=temps][open]','mu-services:liste':'#mu-services .se-liste',
        'mu-flux:liste':'#mu-flux .ch-liste .mu-svc.actif','mu-flux:etapes':'#mu-flux .ch-etape'};
      for(const [id,cherche,nom,lieu] of noms){

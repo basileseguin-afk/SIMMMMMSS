@@ -23,8 +23,11 @@
  *  (tests/avis.test.cjs relit sa liste : ni plus, ni moins).
  *
  *  Module de la version 1 : problemes.js, commun avec la version 2, n'est pas
- *  touché. `lister`, `compte`, `panneau` et `blocs` sont purs (testés en
- *  Node) ; `Registre` est le panneau.
+ *  touché. `lister`, `compte` et `blocs` sont purs (testés en Node) ;
+ *  `Registre` tient la liste à jour. Depuis l'évolution 22 (d), le panneau
+ *  « Problèmes » n'existe plus : la page « Contrôles » (controles-page.js) lit
+ *  le registre, et chaque avis porte de quoi mener là où il se règle (son code,
+ *  son équipe, ses commandes, son service).
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -72,11 +75,14 @@
    *   anomalies : ce que le calcul dit ({code, message, service?}) ;
    *   fantomes  : services supprimés encore cités ({id, nom, cases, chemins}) ;
    *   liens     : alertes des liens de l'unité, quand ils servent ({texte, grave}) ;
-   *   etapes    : étapes à faire de « Prêt à simuler ? » ({id, titre, texte, page, services?}) ;
+   *   etapes    : étapes à faire ({id, titre, texte, page, services?}) ; `information` : elle se lit, rien n'est demandé ;
    *   enClair   : le texte d'une anomalie, avec les mots de la page (facultatif).
-   * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string}>}
+   * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string,
+   *   code?:string, equipe?:string, classes?:string[], etape?:string, services?:string[], fantome?:string, lien?:boolean}>}
    *   page : où il se règle ; aussi : les pages qui le montrent aussi (et le comptent) ; voulu : la compagnie d'un
    *   avis « aucun handling ne charge cette compagnie », qui propose de dire que c'est voulu (évolution 21 e).
+   *   Évolution 22 (d) : de quoi mener à l'endroit précis — le code du point, son équipe, ses commandes ; l'étape et ses
+   *   services à compléter ; le service supprimé ; un avis des liens entre services.
    */
   function lister(s = {}) {
     const clair = typeof s.enClair === 'function' ? s.enClair : (t => t);
@@ -86,27 +92,31 @@
       const cite = [f.cases ? pl(f.cases, 'équipe') : '', f.chemins ? pl(f.chemins, 'chemin') : ''].filter(Boolean).join(' et ');
       out.push({ niveau: 'corriger', titre: '« ' + f.nom + ' » n’existe plus dans l’unité',
         detail: (cite ? cite + ' le citent encore. ' : '') + 'Effacez-le partout, ou faites passer son travail dans un autre service.',
-        page: 'u-services', aussi: ['u-lecture'] });
+        page: 'mu-services', aussi: ['mu-pas'], fantome: f.id });
     }
     // Ce que le calcul dit : son code donne le niveau. Ce que la journée montre se lit dans les résultats.
     for (const a of s.anomalies || []) {
       const resultat = JOURNEE.includes(a.code);
       out.push({ niveau: niveauDuCode(a.code), titre: clair(a.message || a.code || ''), detail: '',
-        page: resultat ? 'j-chiffres' : a.service ? 'mu-services' : 'at-chemins', aussi: resultat ? [] : ['u-lecture', 'mu-pas'],
+        // Une étape du chemin que personne ne prépare se règle dans « Chemins » (le tableau de l'étape) ; ce qui touche
+        // un service ou une équipe, dans « Services et équipes » ; le reste, dans « Chemins ».
+        page: resultat ? 'j-chiffres' : a.code === 'parcours-trou' || !a.service ? 'mu-flux' : 'mu-services', aussi: resultat ? [] : ['mu-pas'],
         service: !resultat && a.service ? a.service : undefined,
+        ...(resultat ? {} : { code: a.code, ...(a.atelier ? { equipe: a.atelier } : {}), ...(Array.isArray(a.classes) && a.classes.length ? { classes: a.classes.slice() } : {}) }),
         // Une compagnie qu'aucun handling ne charge (évolution 21 e) : l'avis propose de dire que c'est voulu.
         ...(a.code === 'handling-sans' && a.compagnie ? { voulu: String(a.compagnie) } : {}) });
     }
-    // Les liens de l'unité : la page « Contrôles détaillés » dit « à corriger » ce qui est grave ; un service en
-    // bout de chaîne ne demande rien. (Une boucle qui arrête le calcul, c'est le calcul qui la dit : bloquant.)
+    // Les liens de l'unité : ce qui est grave est « à corriger » ; un service en bout de chaîne ne demande rien.
+    // (Une boucle qui arrête le calcul, c'est le calcul qui la dit : bloquant.) Ils se règlent dans « Liens entre services ».
     for (const a of s.liens || [])
-      out.push({ niveau: a.grave ? 'corriger' : 'information', titre: a.texte, detail: '', page: 'u-lecture', aussi: [] });
+      out.push({ niveau: a.grave ? 'corriger' : 'information', titre: a.texte, detail: '', page: 'u-liens', aussi: ['mu-pas'], lien: true });
     // Les étapes à faire.
     for (const e of s.etapes || []) {
       const noms = (e.services || []).map(x => x.nom);
-      out.push({ niveau: ETAPES_BLOQUANTES.has(e.id) ? 'bloquant' : 'corriger', titre: e.titre,
+      // Une étape qui se lit sans rien demander (les vols d'exemple, évolution 22 d) : une information.
+      out.push({ niveau: e.information ? 'information' : ETAPES_BLOQUANTES.has(e.id) ? 'bloquant' : 'corriger', titre: e.titre,
         detail: noms.length ? (noms.length > 4 ? noms.slice(0, 4).join(', ') + ' et ' + pl(noms.length - 4, 'autre') : noms.join(', ')) + ' : à corriger.' : (e.texte || ''),
-        page: e.page || 'mu-pas', aussi: ['mu-pas'] });
+        page: e.page || 'mu-pas', aussi: ['mu-pas'], etape: e.id, ...(e.services && e.services.length ? { services: e.services.map(x => x.id) } : {}) });
     }
     // Du bloquant à l'information ; dans un niveau, l'ordre des sources.
     return out.map((p, i) => [p, i]).sort((a, b) => RANG[a[0].niveau] - RANG[b[0].niveau] || a[1] - b[1]).map(x => x[0]);
@@ -159,30 +169,6 @@
   /** Le bouton d'un avis « aucun handling ne charge cette compagnie » (évolution 21 e). */
   const VOULU = 'C’est voulu : pas de chargement pour cette compagnie';
   /**
-   * Le panneau des problèmes : les bloquants, les points à corriger, puis les
-   * informations, repliées.
-   * @param {Array} liste    le registre de `lister`
-   * @param {Function} nomPage  le nom d'une page, pour le lien
-   */
-  function panneau(liste, nomPage) {
-    const item = p => `<li><button type="button" class="pb" data-pb-page="${esc(p.page)}"${p.service ? ` data-pb-service="${esc(p.service)}"` : ''}>`
-      + `<span class="pb-corps"><b>${esc(p.titre)}</b>${p.detail ? `<span>${esc(p.detail)}</span>` : ''}`
-      + `<span class="pb-lien">Ouvrir « ${esc(nomPage(p.page))} »${pic('droite')}</span></span></button>`
-      + (p.voulu ? `<button type="button" class="pb-voulu" data-pb-voulu="${esc(p.voulu)}" aria-label="${esc(VOULU + ' (' + p.voulu + ')')}">${esc(VOULU)}</button>` : '') + '</li>';
-    const de = id => liste.filter(p => p.niveau === id);
-    const problemes = NIVEAUX.filter(nv => nv.probleme).map(nv => {
-      const d = de(nv.id);
-      return d.length ? `<section class="pb-groupe ${nv.id}"><h3>${pic(nv.ico)}${esc(nv.nom)}<span>${d.length}</span></h3>`
-        + `<p class="pb-dit">${esc(nv.dit)}</p><ul>${d.map(item).join('')}</ul></section>` : '';
-    }).join('');
-    const infos = de('information'), nvI = niveau('information');
-    return `<div class="pb-tete"><h2 id="problemes-titre">Problèmes</h2> <span class="pb-total">${esc(resume(liste) || 'aucun')}</span></div>`
-      + (problemes || `<p class="pb-vide">${pic('check')}Rien de bloquant, rien à corriger : la journée se calcule sur une organisation complète.</p>`)
-      + (infos.length ? `<details class="pb-groupe information"><summary>${pic(nvI.ico)}<span class="pb-nom">${esc(nvI.nom)}</span>`
-        + `<span class="pb-n">${infos.length}</span></summary><ul>${infos.map(item).join('')}</ul></details>` : '');
-  }
-
-  /**
    * Les avis d'une page, rangés par niveau avec les mêmes mots : les bloquants,
    * les points à corriger, puis les informations repliées.
    * @param {Array<{niveau:string, html:string}>} items  `html` est déjà échappé par celui qui l'écrit
@@ -199,62 +185,26 @@
   }
 
   /**
-   * Le panneau des problèmes, ouvert depuis le pied de la barre latérale.
-   * @param {{sources:Function, aller:Function, nomPage:Function, voulu?:Function, bouton:HTMLElement, panneau:HTMLElement}} a
-   *   sources()            — les sources de `lister` ;
-   *   aller(page, service) — ouvrir la page où l'avis se règle ;
-   *   nomPage(page)        — le nom d'une page, pour le lien ;
-   *   voulu(compagnie)     — retenir qu'une compagnie n'a pas de chargement, et que c'est voulu ; rend vrai si le
-   *                          choix est retenu.
+   * Le registre des avis, tenu à jour. (Le panneau « Problèmes », ouvert depuis le pied de la barre latérale, a rejoint
+   * la page « Contrôles » — évolution 22 d.)
+   * @param {{sources:Function, change?:Function}} a
+   *   sources() — les sources de `lister` ;
+   *   change()  — appelé quand la liste a changé.
    */
   class Registre {
-    constructor(a) {
-      this.a = a; this.liste = [];
-      a.panneau.addEventListener('click', e => {
-        // « C'est voulu » (évolution 21 e) : le choix se retient, le panneau reste ouvert et se redessine sans l'avis.
-        const v = e.target.closest('[data-pb-voulu]');
-        if (v) { if (typeof a.voulu === 'function') this.reprendre = a.voulu(v.dataset.pbVoulu) === true; return; }
-        const b = e.target.closest('[data-pb-page]'); if (!b) return;
-        if (a.panneau.hidePopover) a.panneau.hidePopover();
-        a.aller(b.dataset.pbPage, b.dataset.pbService || null);
-      });
-    }
+    constructor(a) { this.a = a; this.liste = []; this.sig = ''; }
 
-    /** Après chaque changement : le nombre de problèmes, au pied de la barre, et la liste (refaite seulement si elle change).
-     *  Une source en panne ne bloque pas la page : on garde la liste d'avant, et on le dit dans la console. */
+    /** Après chaque changement : la liste, refaite. Une source en panne ne bloque pas la page : on garde la liste
+     *  d'avant, et on le dit dans la console. */
     maj() {
       try { this.liste = lister(this.a.sources()); }
-      catch (e) { if (root.console) root.console.error('Problèmes : liste non mise à jour', e); }
-      const n = compte(this.liste), infos = this.liste.length - n, c = this.a.bouton.querySelector('.pb-compte');
-      if (c) {
-        c.hidden = !n; c.textContent = n;
-        for (const nv of NIVEAUX) if (nv.ton) c.classList.toggle(nv.ton, !!n && ton(this.liste) === nv.ton);
-      }
-      this.a.bouton.title = (n ? resume(this.liste) : 'Aucun problème : rien de bloquant, rien à corriger')
-        + (infos ? ' ; ' + dire(infos, 'information') + ' à lire' : '');
+      catch (e) { if (root.console) root.console.error('Avis : liste non mise à jour', e); }
       const sig = JSON.stringify(this.liste);
-      if (sig !== this.sig) { this.sig = sig; this.rendre(); }
-    }
-
-    /** Le nombre d'un onglet (badge de onglets.js) : les problèmes qui se règlent sur sa page. */
-    badge(page) {
-      const ici = this.liste.filter(p => pages(p).includes(page));
-      if (!ici.length) return null;
-      return { n: ici.length, ton: ton(ici), titre: resume(ici) + ', à régler ici' };
-    }
-
-    rendre() {
-      this.a.panneau.innerHTML = panneau(this.liste, this.a.nomPage);
-      // Après « C'est voulu », le bouton est parti avec son avis : le clavier reste dans le panneau, sur son premier bouton.
-      if (this.reprendre) {
-        this.reprendre = false;
-        const b = this.a.panneau.querySelector('button') || this.a.bouton;
-        if (b && typeof b.focus === 'function') b.focus();
-      }
+      if (sig !== this.sig) { this.sig = sig; if (typeof this.a.change === 'function') this.a.change(); }
     }
   }
 
-  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, estProbleme, pages, compte, parNiveau, resume, ton, panneau, blocs, facultatif, marquerFacultatifs, Registre };
+  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, estProbleme, pages, compte, parNiveau, resume, ton, blocs, facultatif, marquerFacultatifs, Registre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyAvis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

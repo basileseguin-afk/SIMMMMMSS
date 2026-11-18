@@ -50,13 +50,16 @@
 
   /** Les commandes qui n'ont pas de chemin : ni le leur, ni celui de leur classe. */
   const sansChemin = (etat, classes) => (classes || []).filter(c => !PC.fluxDe(etat, c));
+  /** Une équipe qui sert toutes les commandes à la fois : une mise à disposition, une plonge, un chargement. */
+  const sertTout = a => a.type === 'dispo' || a.type === 'lavage' || a.type === 'handling';
 
   /**
    * Ce que le tableau d'une étape dit d'une commande : qui la prépare ici.
    *   equipe   une équipe qui prépare la prépare (elle se choisit ici) ;
    *   chaine   l'équipe d'un autre service la fait ici aussi, à la chaîne ;
    *   commune  le service sert toutes les commandes (mise à disposition, plonge, chargement) ;
-   *   aucune   personne : l'étape serait sautée — à corriger.
+   *   aucune   personne : l'étape serait sautée — à corriger. Une équipe d'appui (hors chemin) ne prépare aucune
+   *            commande : seule dans son service, elle le laisse « à corriger », comme le calcul le dit.
    * @returns {{genre: string, equipe: object|null, choix: object[]}} `choix` : les équipes du service qui préparent
    */
   function ligneEtape(etat, service, cmd) {
@@ -65,7 +68,8 @@
     if (a && fabrique(a)) return { genre: 'equipe', equipe: a, choix };
     const chaine = PC.fusionneePar(etat, service, cmd);
     if (chaine) return { genre: 'chaine', equipe: chaine, choix };
-    if (a && !choix.length) return { genre: 'commune', equipe: a, choix };
+    const commune = duService.find(sertTout);
+    if (commune && !choix.length) return { genre: 'commune', equipe: commune, choix };
     return { genre: 'aucune', equipe: null, choix };
   }
 
@@ -77,7 +81,7 @@
   const pic = (nom, classe) => (I() ? I().ico(nom, classe) : '');
   const GENRES = { chemin: 'Chemins', variante: 'Variantes', apart: 'Chemins à part' };
   const COMMUNE = { dispo: 'mise à disposition : elle sert toutes les commandes', lavage: 'elle lave pour toutes les commandes',
-    handling: 'elle charge les vols de toutes les commandes', appui: 'hors tunnel : elle sert toutes les commandes' };
+    handling: 'elle charge les vols de toutes les commandes' };
 
   class PageChemins extends S.PageServices {
     constructor(a) {
@@ -359,8 +363,10 @@
               return { id: s, nom: u.nom(s), ico: ico(s), sous: n + '/' + pl(propres.length, 'compagnie'), ton: n < propres.length ? 'neutre' : 'ok' };
             }
             const prep = fab.length ? cmds.filter(c => ligneEtape(u.etat, s, c.id).genre !== 'aucune').length : null;
-            const sous = !eq.length ? 'aucune équipe' : fab.length ? prep + '/' + cmds.length + ' préparées' : eq[0].type === 'dispo' ? 'mise à disposition' : eq[0].type === 'lavage' ? 'plonge' : 'par vol';
-            return { id: s, nom: u.nom(s), ico: ico(s), sous, ton: !eq.length || (fab.length && prep < cmds.length) ? 'neutre' : 'ok' };
+            // Une équipe d'appui seule ne prépare aucune commande : l'étape n'a pas d'équipe qui prépare.
+            const sert = eq.find(sertTout);
+            const sous = !eq.length ? 'aucune équipe' : fab.length ? prep + '/' + cmds.length + ' préparées' : !sert ? 'aucune équipe ne prépare' : sert.type === 'dispo' ? 'mise à disposition' : sert.type === 'lavage' ? 'plonge' : 'par vol';
+            return { id: s, nom: u.nom(s), ico: ico(s), sous, ton: !eq.length || (fab.length ? prep < cmds.length : !sert) ? 'neutre' : 'ok' };
           });
         },
         groupes: () => {

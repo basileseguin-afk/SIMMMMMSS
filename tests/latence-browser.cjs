@@ -43,8 +43,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      c.registrePendant=Sim.problemes.liste.length-avant;
      phase='apres';await new Promise(r=>setTimeout(r,60));
      c.registreApres=Sim.problemes.liste.length-avant;
-     c.badge=+(document.querySelector('#btn-problemes .pb-compte')||{}).textContent||0;
-     c.registre=Sim.problemes.liste.length;
+     // (Version 1, évolution 22 d : le compte est la pastille de l'entrée « Contrôles ».)
+     c.badge=+(document.querySelector('#btn-problemes .pb-compte')||document.querySelector('#menu [data-entree="mu-pas"] .so-badge')||{}).textContent||0;
+     // (En version 1, la pastille compte les problèmes, pas les informations — les vols d'exemple en sont une.)
+     c.registre=window.OrlyAvis?OrlyAvis.compte(Sim.problemes.liste):Sim.problemes.liste.length;
      U.bilan=o;delete liste.scrollWidth;
      c.services=Sim.unite.a.services().length;
      return c;},quoi);

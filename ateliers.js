@@ -1236,7 +1236,7 @@
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="mu-flux" hidden></details>
-<section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
+<section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Contrôles"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="hors-page"></div>

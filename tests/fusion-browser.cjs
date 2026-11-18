@@ -107,14 +107,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await attendre();
   assert.equal((await kase('mo')).fusion,'preparation');
 
-  // 7. Prêt à simuler ? : la liste des services garde chaque nom en face de son
-  //    état. La mention « à la chaîne » prenait une troisième cellule de la
-  //    grille et décalait toutes les lignes suivantes (audit du 08/10).
+  // 7. « Prêt à simuler ? » a rejoint « Contrôles » (évolution 22 d), qui n'a plus sa liste des services : la mention
+  //    « à la chaîne » d'un service se lit dans la liste de « Services et équipes » (partie 4 bis), sous son nom.
   await nav.aller(page,'mu-pas');
-  const lignes=await page.locator('.mu-pas-services li').evaluateAll(ls=>ls.map(li=>{const b=li.querySelector('button').getBoundingClientRect(),s=li.querySelector('span').getBoundingClientRect(),i=li.querySelector('i');
-    return {nom:li.querySelector('button').textContent.trim(),ecart:Math.abs(b.top-s.top),chaine:!!i,sous:i?i.getBoundingClientRect().top>=s.bottom-1&&Math.abs(i.getBoundingClientRect().left-s.left)<2:true};}));
+  assert.equal(await page.locator('.mu-pas-services, .mu-pas-liste').count(),0,'plus de pas à pas');
+  assert.equal(await page.locator('#mu-pas .ct-cadre').count(),1,'« Contrôles », à sa place');
+  await nav.aller(page,'mu-services');
+  const lignes=await page.locator('#mu-services .se-liste .mu-svc').evaluateAll(ls=>ls.map(li=>{const i=li.querySelector('.mu-svc-chaine'),n=li.querySelector('b,strong')||li;
+    return {nom:n.textContent.trim().slice(0,30),chaine:!!i,sous:i?i.getBoundingClientRect().top>=n.getBoundingClientRect().top:true};}));
   assert.ok(lignes.some(l=>l.chaine),'une mention « à la chaîne » est là');
-  for(const l of lignes){assert.ok(l.ecart<3,l.nom+' : son état est en face');assert.ok(l.sous,l.nom+' : « à la chaîne » sous son état');}
+  for(const l of lignes)assert.ok(l.sous,l.nom+' : « à la chaîne » sous son nom');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('fusion-browser : ok');

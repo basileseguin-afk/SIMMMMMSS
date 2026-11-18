@@ -1,0 +1,58 @@
+/* « Contrôles » (version 1, évolution 22 d) : deux pages et un panneau en un. Une ligne d'état, puis trois colonnes —
+ * « Bloquant », « À corriger », « Information ». La page tient dans l'écran d'un portable (1 366 × 768) : chaque colonne
+ * défile seule. unite.css, commun avec la version 2, n'est pas modifié. */
+
+/* La page ne défile pas : la vue range ses blocs en colonne, le cadre des trois colonnes prend la hauteur qui reste. */
+#mu-pas{margin:0;max-width:none}
+body[data-sous="mu-pas"] #view-ateliers:not([hidden]){display:flex;flex-direction:column;padding-bottom:12px}
+body[data-sous="mu-pas"] #view-ateliers>*{flex:none}
+body[data-sous="mu-pas"] #view-ateliers>#mu-pas{flex:1 1 0;min-height:320px;display:flex;flex-direction:column;gap:12px}
+
+/* La ligne d'état : où en est le calcul, le dernier réglage changé et son heure, la Synthèse. */
+.ct-etat{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;margin:0;padding:10px 14px;border:1px solid var(--ds-bordure);
+  border-radius:var(--ds-r-2);background:var(--ds-surface-1);font-size:var(--ds-t-14)}
+.ct-calcul{display:inline-flex;align-items:center;gap:8px;font-weight:var(--ds-g-fort)}
+.ct-voyant{width:9px;height:9px;border-radius:50%;background:var(--vert)}
+.ct-etat.vide .ct-voyant{background:var(--ds-texte-3,var(--txt2))}
+.ct-etat.arret .ct-voyant{background:var(--rouge)}
+.ct-dernier{flex:1 1 320px;min-width:0;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.ct-synthese{font-size:var(--ds-t-13);white-space:nowrap}
+
+/* Les trois colonnes. */
+.ct-cadre{flex:1 1 0;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.ct-niveau{min-height:0;display:flex;flex-direction:column;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-2);background:var(--ds-surface-1);
+  box-shadow:inset 0 3px 0 var(--ds-bordure)}
+.ct-niveau.bloquant{box-shadow:inset 0 3px 0 var(--rouge)}
+.ct-niveau.corriger{box-shadow:inset 0 3px 0 var(--warn-stroke,var(--orange))}
+.ct-niveau.vide{box-shadow:inset 0 3px 0 var(--ds-bordure)}
+.ct-niveau>h3{flex:none;display:flex;align-items:center;gap:8px;margin:0;padding:14px 14px 2px;font-size:var(--ds-t-15,15px);font-weight:var(--ds-g-fort)}
+.ct-niveau>h3 .ct-n{margin-left:auto;min-width:24px;padding:1px 8px;border-radius:99px;background:var(--ds-surface-2);font-size:var(--ds-t-13);text-align:center;font-variant-numeric:tabular-nums}
+.ct-niveau.bloquant:not(.vide)>h3 .ct-n{background:var(--rouge);color:#fff}
+.ct-dit{flex:none;margin:0;padding:2px 14px 10px;border-bottom:1px solid var(--ds-bordure);color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.ct-liste{flex:1 1 0;min-height:0;overflow:auto;padding:4px 14px 12px}
+.ct-points{list-style:none;margin:0;padding:0}
+.ct-point{padding:10px 0;border-bottom:1px solid var(--ds-bordure)}
+.ct-points>.ct-point:last-child{border-bottom:0}
+.ct-corps{display:grid;gap:3px;font-size:var(--ds-t-13);line-height:1.4}
+.ct-corps>b{font-weight:var(--ds-g-moyen,600);overflow-wrap:anywhere}
+.ct-corps>span{color:var(--ds-texte-2)}
+.ct-gestes{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px}
+.ct-gestes .btn{font-size:var(--ds-t-13)}
+.ct-vide{display:flex;align-items:flex-start;gap:6px;margin:12px 0 0;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.ct-plus{margin-top:6px;padding-top:8px;border-top:1px solid var(--ds-bordure)}
+.ct-plus>summary{cursor:pointer;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen,600)}
+
+/* Sur un écran étroit, les colonnes passent l'une sous l'autre, et la page défile. */
+@media (max-width:1000px){
+  body[data-sous="mu-pas"] #view-ateliers:not([hidden]){display:block}
+  body[data-sous="mu-pas"] #view-ateliers>#mu-pas{display:block}
+  .ct-etat{margin-bottom:12px}
+  .ct-cadre{grid-template-columns:1fr}
+  .ct-liste{overflow:visible}
+}
+
+/* Ce que le calcul lit des liens entre services (ce que portait « Contrôles détaillés ») : un repli, sous le diagramme de
+   « Liens entre services ». flow-center.css, commun avec la version 2, n'est pas modifié. */
+.fc-lecture-repli{margin:18px 0 0;padding:10px 0 0;border-top:1px solid var(--ds-bordure)}
+.fc-lecture-repli>summary{cursor:pointer;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
+.fc-lecture-repli[open]>summary{margin-bottom:10px}

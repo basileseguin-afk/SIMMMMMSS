@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (d) : « Contrôles », deux pages et un panneau en un
+
+Quatrième partie de l’étape B de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **« Contrôles » réunit « Prêt à simuler ? », « Contrôles détaillés » et le
+  panneau « Problèmes ».** Le bouton « Problèmes » quitte le bas du menu.
+- **Une ligne d’état** : « Le calcul est à jour », le dernier réglage changé
+  et son heure, un lien vers la Synthèse.
+- **Trois colonnes** : « Bloquant », « À corriger », « Information » — les
+  mêmes avis qu’avant, au même niveau. Une colonne vide le dit en une phrase.
+  Au-delà de trois, les informations sont repliées.
+- **Chaque avis a un bouton nommé par sa destination** (« Régler dans
+  Chemins »), qui mène à la page et à l’endroit où il se règle ; « C’est
+  voulu » quand il en a un.
+- **La pastille du menu**, sur « Contrôles », compte les bloquants et les
+  « à corriger », jamais les informations.
+- Les noms d’avant (« Prêt à simuler ? », « Contrôles détaillés »,
+  « Problèmes ») mènent à « Contrôles ». Ce que le calcul lit des liens entre
+  services se lit avec eux, dans « Liens entre services », sous le diagramme,
+  dans un repli.
+- Correctif de (c1) : dans « Chemins », un service qui n’a qu’une équipe
+  d’appui (hors chemin) reste « à corriger » à son étape, comme le calcul le
+  dit.
+
+Fichiers : `controles-page.js`, `controles-page.css` (nouveaux), `avis.js`,
+`onglets.js`, `sim.js`, `ateliers.js`, `chemins-page.js`, `index.html` ;
+`tests/controles-page.test.cjs`, `tests/controles-page-browser.cjs`
+(nouveaux), et les tests qui suivent la page ; `README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (c2) : les quatre pages d’avant mènent à « Chemins »
 
 Seconde moitié de la partie (c). Aucun calcul ne change, ni le format de la

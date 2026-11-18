@@ -611,7 +611,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{suivreGestes();if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
+    change:r=>{suivreGestes();if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -747,8 +747,9 @@ let problemesPrevus=0;
 function majProblemes(){
   if(problemesPrevus||!Sim.problemes)return;
   problemesPrevus=setTimeout(()=>{problemesPrevus=0;Sim.problemes.maj();
-    // Les nombres des onglets se lisent dans le registre : ils le suivent.
-    if(Sim.onglets)Sim.onglets.rendre();},0);
+    // Les nombres des onglets se lisent dans le registre : ils le suivent. « Contrôles », ouverte, aussi (évolution 22 d).
+    if(Sim.onglets)Sim.onglets.rendre();
+    if(Sim.unite&&document.body.dataset.sous==='mu-pas')Sim.unite.rendrePas();},0);
 }
 function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
@@ -761,37 +762,24 @@ function controlesDuCalcul(){
   const an=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[];
   return {corriger:an.filter(a=>!CODES_JOURNEE.has(a.code))};
 }
-/* Ce que le calcul dit, rangé par niveau d'avis (évolution 19 d) : « bloquant »,
- * « à corriger », « information ». Le niveau se lit dans le code du point. */
-function avisDuCalcul(){
-  const an=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[],de=n=>an.filter(a=>OrlyAvis.niveauDuCode(a.code)===n);
-  return {bloquant:de('bloquant'),corriger:de('corriger'),information:de('information')};
-}
 function sansChemin(){
   return Sim.ateliers&&window.OrlyParcours?Sim.ateliers.classes.filter(c=>!OrlyParcours.fluxDe(Sim.ateliers.state,c)).length:0;
 }
-function renderControles(){
+/* « Contrôles détaillés » a rejoint « Contrôles » (évolution 22 d) : ce que le calcul dit s'y lit, par niveau. Ce qu'il lit
+ * des liens entre services reste avec eux, sous le diagramme de « Liens entre services » : ici, la phrase qui dit s'ils servent. */
+function renderLectureLiens(){
   const box=document.getElementById('fc-calcul');if(!box)return;
-  const {bloquant,corriger,information}=avisDuCalcul(),n=sansChemin();
-  const liste=l=>'<ul>'+l.slice(0,40).map(a=>'<li>'+escapeHTML(a.message||a.code)+'</li>').join('')+(l.length>40?'<li>… et '+(l.length-40)+' autres</li>':'')+'</ul>';
-  const dit=id=>escapeHTML(OrlyAvis.NIVEAUX.find(x=>x.id===id).dit);
-  const chemins='<button type="button" class="lien-fort" data-page="mu-flux">Ouvrir les chemins →</button>';
-  box.innerHTML=(bloquant.length?'<div class="fc-alerte grave avis-bloquant"><b>'+bloquant.length+(bloquant.length>1?' points bloquants':' point bloquant')+'</b>'
-        +'<span class="avis-dit">'+dit('bloquant')+'</span>'+liste(bloquant)+chemins+'</div>':'')
-    +(corriger.length?'<div class="fc-alerte grave avis-corriger"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger</b>'
-        +'<span class="avis-dit">'+dit('corriger')+'</span>'+liste(corriger)+chemins+'</div>':'')
-    +(!bloquant.length&&!corriger.length?'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a son équipe, chaque équipe sait quoi préparer.</p>':'')
-    +(information.length?'<details class="fc-alerte avis-information"><summary><b>'+OrlyAvis.dire(information.length,'information')
-        +'</b> : une commande sans vol ce jour-là, ou ce que la journée montre (retards, postes trop courts, attentes).</summary>'+liste(information)
-        +'<button type="button" class="lien-fort" data-page="j-chiffres">Voir les résultats →</button></details>':'')
-    +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
-      :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
+  const n=sansChemin();
+  // Ces liens servent au calcul (une commande sans chemin) : leur lecture s'ouvre d'elle-même.
+  const repli=document.getElementById('fc-lecture-repli');if(repli&&n)repli.open=true;
+  box.innerHTML='<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services.'
+      :'Toutes les commandes ont leur chemin : ces liens ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
 }
 /* La pastille du menu (évolution 22 a) : une seule, sur l'entrée « Contrôles » — le nombre des problèmes (bloquants et à
  * corriger) de toute l'unité. Il dérive du registre (avis.js) : un seul compte, partout (refonte du 08/10) ; une
  * information n'y compte pas (évolution 19 d). Les autres entrées n'en portent plus. */
 function badgeOnglet(cle){
-  if(cle!=='groupe:controles'||!Sim.problemes)return null;
+  if(cle!=='mu-pas'||!Sim.problemes)return null;
   const pb=Sim.problemes.liste.filter(OrlyAvis.estProbleme);
   return pb.length?{n:pb.length,ton:OrlyAvis.ton(pb),titre:OrlyAvis.resume(pb)}:null;
 }
@@ -807,6 +795,8 @@ function sourcesProblemes(){
   const serviceDe=a=>a.service||((Sim.ateliers.state.ateliers.find(x=>x.id===a.atelier)||{}).service);
   const etapes=[];
   for(const e of (Sim.unite?Sim.unite.etapes():[])){
+    // Les vols d'exemple (« Prêt à simuler ? » le disait, à l'état « exemple ») : une information, dans « Contrôles » (évolution 22 d).
+    if(e.etat==='exemple'){etapes.push({id:e.id,titre:e.titre,texte:e.texte,page:(e.geste||{}).page,information:true});continue;}
     if(e.etat!=='afaire'||e.id==='corriger')continue;
     let services;
     if(e.id==='services'&&e.services&&e.services.length){
@@ -818,18 +808,34 @@ function sourcesProblemes(){
   }
   // Les liens de l'unité ne comptent que s'ils servent au calcul (une commande sans chemin) : un service qui fournit
   // sans équipe est à corriger, un service en bout de chaîne est une information.
-  return {anomalies:duCalcul.map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
+  // Une compagnie qu'aucun handling ne charge se règle dans l'équipe du handling : son avis y mène (évolution 22 d).
+  const handling=(Sim.ateliers.state.ateliers.find(x=>x.type==='handling')||{}).id;
+  const situer=a=>(a.code==='handling-sans'&&!a.atelier&&handling?{...a,atelier:handling}:a);
+  return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
     etapes,enClair:MoteurProduction.enClair};
 }
+/* Le dernier réglage changé, et son heure (évolution 22 d) : « Contrôles » le dit. Un historique qui avance (les équipes et
+ * les chemins, les temps par vol, les liens, le plan) est un réglage changé ; ce que la page annonce dans le même geste dit
+ * lequel. Gardé dans ce navigateur, hors de la sauvegarde. notifications.js, commun, n'est pas modifié. */
+// Une préférence d'affichage (`ory-ui-…`) : le garde des onglets (stockage.js) ne la compte pas parmi les données.
+const CLE_DERNIER_REGLAGE='ory-ui-dernier-reglage';
+let dernierReglage=null;
+function initDernierReglage(){
+  try{const d=JSON.parse(localStorage.getItem(CLE_DERNIER_REGLAGE)||'null');if(d&&Number.isFinite(d.a))dernierReglage={a:d.a,domaine:String(d.domaine||''),texte:String(d.texte||'')};}catch(e){dernierReglage=null;}
+  const N=window.OrlyNotif;if(!N||N.marquer.suivi)return;
+  const marquer=N.marquer,notifier=N.notifier;let enCours=null;
+  const garder=()=>{try{localStorage.setItem(CLE_DERNIER_REGLAGE,JSON.stringify(dernierReglage));}catch(e){/* stockage indisponible */}};
+  N.marquer=nom=>{dernierReglage=enCours={a:Date.now(),domaine:nom,texte:''};setTimeout(()=>{enCours=null;},0);garder();return marquer(nom);};
+  N.marquer.suivi=true;
+  N.notifier=(texte,o={})=>{
+    if(enCours&&texte&&!o.consigne&&!N.REFUS.test(String(texte))){enCours.texte=String(texte).trim();garder();}
+    return notifier(texte,o);};
+}
 function initProblemes(){
-  const bouton=document.getElementById('btn-problemes'),panneau=document.getElementById('problemes');
-  if(!bouton||!panneau||!window.OrlyAvis)return;
-  Sim.problemes=new OrlyAvis.Registre({bouton,panneau,sources:sourcesProblemes,
-    nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
-    aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);},
-    // Une compagnie sans chargement par camion (évolution 21 e) : le bouton « C'est voulu » de son avis retient le choix.
-    voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true))});
+  if(!window.OrlyAvis)return;
+  // Le registre des avis (évolution 22 d : le panneau « Problèmes » a rejoint la page « Contrôles », qui le lit).
+  Sim.problemes=new OrlyAvis.Registre({sources:sourcesProblemes});
   Sim.problemes.maj();
   // Les alertes des liens (flow-center.js, commun) : sous « Information », un geste proposé dit « Facultatif » (évolution 19, retouche).
   const liens=document.getElementById('fc-alertes');
@@ -864,7 +870,7 @@ async function supprimerServiceUnite(id){
 function initUnite(){
   if(!window.OrlyUnite||!Sim.ateliers)return;
   // « Services et équipes » (évolution 22 b) : la page de la version 1 hérite de celle de unite.js, commun aux deux versions.
-  const Page=(window.OrlyCheminsPage&&OrlyCheminsPage.PageChemins)||(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
+  const Page=(window.OrlyControlesPage&&OrlyControlesPage.PageControles)||(window.OrlyCheminsPage&&OrlyCheminsPage.PageChemins)||(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
   Sim.unite=new Page({
     resultats:voirDansLesResultats, rattachement:rattachementService, supprimes:servicesSupprimes, jouent:()=>window.OrlyJouent||null,
     at:()=>Sim.ateliers, rg:()=>Sim.reglages,
@@ -882,7 +888,12 @@ function initUnite(){
     plan:id=>actionService('plan',id),
     vols:()=>({departs:flights.filter(f=>f.sens==='DEP').length,importes:dataSource!=='Jeu de démonstration'}),
     page:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
-    // Le chemin d'une commande, ouvert sur un service.
+    // « Contrôles » (évolution 22 d) : le registre des avis, le dernier réglage changé, « C'est voulu », et où mène un avis.
+    avis:()=>(Sim.problemes?Sim.problemes.liste:[]),
+    dernierReglage:()=>dernierReglage,
+    voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true)),
+    nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
+    aller:(page,lieu)=>allerPage(page,lieu),
     notify:toast
   });
   // Le temps de travail d'un service se règle aussi dans sa fiche.
@@ -990,7 +1001,7 @@ function initOnglets(){
       if(id==='v-departs')renderFlights();
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
-      if(id==='u-lecture'&&Sim.flows){Sim.flows.refresh();renderControles();}
+      if(id==='u-liens'&&Sim.flows){Sim.flows.refresh();renderLectureLiens();}
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
       if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
@@ -1006,6 +1017,14 @@ function initOnglets(){
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
     e.dataset.vueOutils=vue;if(onglet)e.dataset.sous=onglet;outils.appendChild(e);
+  }
+  // « Contrôles détaillés » a rejoint « Contrôles » (évolution 22 d) : ce que le calcul lit des liens entre services se lit
+  // avec eux, sous le diagramme, dans un repli (flow-center.js, commun avec la version 2, n'est pas modifié).
+  const lecture=document.getElementById('fc-lecture');
+  if(lecture&&!document.getElementById('fc-lecture-repli')){
+    const repli=document.createElement('details');repli.id='fc-lecture-repli';repli.className='fc-lecture-repli';repli.dataset.sous='u-liens';
+    repli.innerHTML='<summary>Ce que le calcul lit de ces liens</summary>';
+    lecture.parentNode.appendChild(repli);lecture.dataset.sous='u-liens';repli.appendChild(lecture);
   }
   Sim.onglets.rendre();
 }
@@ -1201,8 +1220,7 @@ function elementsPalette(){
   const un=document.getElementById('btn-annuler'),re=document.getElementById('btn-retablir');
   if(un&&!un.disabled)geste('Annuler',()=>annulerOuRetablir(false),{ico:'annuler',indice:OrlyPalette.MOD+' Z'});
   if(re&&!re.disabled)geste('Rétablir',()=>annulerOuRetablir(true),{ico:'retablir',indice:OrlyPalette.MOD+' Maj Z'});
-  const pb=Sim.problemes?OrlyAvis.resume(Sim.problemes.liste):'';
-  geste('Problèmes',()=>{const b=document.getElementById('btn-problemes');if(b)b.click();},{ico:'alerte',indice:pb||'aucun',mots:'bloquant corriger information avis'});
+  // (Évolution 22 d : « Problèmes » n'est plus un panneau ; son nom mène à « Contrôles », avec les pages d'avant.)
   const sombre=document.documentElement.dataset.theme==='sombre';
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
   geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier excel période'});
@@ -1235,7 +1253,7 @@ function majCalcul(){
     b.querySelector('.calcul-mot').textContent={ok:'Calcul à jour',vide:'Rien à calculer',arret:'Calcul arrêté'}[etat];
     b.title={ok:'La journée se recalcule à chaque changement : voir la synthèse',
       vide:'Aucune équipe ne prépare encore de commande : décrire votre unité',
-      arret:'Le calcul s’arrête sur un point bloquant : voir les problèmes'}[etat];
+      arret:'Le calcul s’arrête sur un point bloquant : voir les contrôles'}[etat];
   }
   // Le point bat une fois : le calcul vient de suivre ce qu'on a changé. Le battement repart deux
   // images plus tard, sans forcer de mise en page au milieu du calcul (la latence d'un changement).
@@ -1253,7 +1271,7 @@ function initPalette(){
     b.title='Aller à une page, un service, une équipe, une commande ('+OrlyPalette.MOD+' K)';}
   const c=document.getElementById('calcul-etat');
   if(c)c.addEventListener('click',()=>{const e=c.dataset.etat;
-    if(e==='arret'){const p=document.getElementById('btn-problemes');if(p)p.click();}else allerPage(e==='ok'?'j-chiffres':'mu-pas');});
+    allerPage(e==='ok'?'j-chiffres':'mu-pas');});
   // Le plan rejoué : Espace lit la journée, ou la met en pause — hors d'un champ, d'un bouton, d'une fenêtre.
   document.addEventListener('keydown',e=>{
     if(e.code!=='Space'||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||editMode||activeView==='accueil'||document.body.dataset.sous!=='j-plan')return;
@@ -3544,7 +3562,7 @@ function updateRunState() {
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
   // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
-  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde,#btn-problemes').forEach(b => b.disabled = editMode);
+  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
   if (Sim.onglets) Sim.onglets.rendre();
   majAnnuler();
 }
@@ -3995,7 +4013,7 @@ const pannes=[];
 const etape=(nom,fn)=>{try{fn();}catch(e){pannes.push(nom+' : '+(e&&e.message||e));console.error('Démarrage — '+nom,e);}};
 etape('plan',()=>{chargerZones();construirePlan();});
 etape('vols',()=>chargerVols(SAMPLE));
-etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
+etape('dernier réglage',initDernierReglage); etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('équipes et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); etape('robot',migrerRobot); etape('armement',migrerArmement);
 etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});

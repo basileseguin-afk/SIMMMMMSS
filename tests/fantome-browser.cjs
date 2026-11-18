@@ -27,7 +27,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Les contrôles ne demandent plus une équipe à l'Armement : son travail
   //    se fait dans sa salle. Ils le disent, avec le geste qui le supprime.
-  await nav.aller(page,'u-lecture');
+  await nav.lectureLiens(page);   // (évolution 22 d : la lecture des liens est avec les liens, dans un repli)
   assert.doesNotMatch(await page.locator('#fc-alertes .grave').innerText().catch(()=>''),/Armement(?! AF)[^.]*fournit sans avoir d’équipe/,
     'pas de point à corriger pour un service dont les salles travaillent');
   // Ce n'est pas à corriger : une information, repliée sous le reste (évolution 19 d). On la déplie pour la lire.
@@ -53,7 +53,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 3. Supprimé depuis les contrôles : sa salle garde ses liens, et plus
   //    aucune alerte ne le nomme.
-  await nav.aller(page,'u-lecture');
+  await nav.lectureLiens(page);   // (évolution 22 d : la lecture des liens est avec les liens, dans un repli)
   await infos.locator('summary').click();await attendre();      // le geste est sous l'information : on la déplie
   await bouton.click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='armement').retire),true,'supprimé de l’unité');

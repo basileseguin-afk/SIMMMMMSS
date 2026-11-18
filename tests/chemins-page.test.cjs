@@ -53,6 +53,12 @@ test('le tableau d’une étape : l’équipe qui prépare la commande ici, ou �
   assert.deepEqual([d.genre, d.equipe.id, d.choix], ['commune', 'd1', []]);
   // Un service sans équipe : à corriger, et aucune équipe à choisir.
   assert.deepEqual(C.ligneEtape(e, 'cuisine', 'NO/BC'), { genre: 'aucune', equipe: null, choix: [] });
+  // Une équipe d'appui (hors chemin) ne prépare aucune commande : seule dans son service, l'étape reste « à corriger »,
+  // comme le calcul le dit ; une plonge ou un chargement servent toutes les commandes.
+  const f = etat([equipe({ id: 'ap', nom: 'Dotation hors chemin', service: 'dotation', type: 'appui' }), equipe({ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage' }),
+    equipe({ id: 'h', nom: 'Quais', service: 'quais', type: 'handling' })]);
+  assert.deepEqual(C.ligneEtape(f, 'dotation', 'NO/BC'), { genre: 'aucune', equipe: null, choix: [] });
+  assert.deepEqual([C.ligneEtape(f, 'plonge', 'NO/BC').genre, C.ligneEtape(f, 'quais', 'NO/BC').genre], ['commune', 'commune']);
 });
 
 test('une étape faite à la chaîne par l’équipe du service d’avant : elle le dit, ce n’est pas « à corriger »', () => {

@@ -38,7 +38,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await edition(),true,V+'la page ouvre l’édition');
    assert.equal(await page.locator('#ariane-partie').textContent(),version==='v1'?'L’unité':'Équipes');
    assert.equal(await page.locator('#view-title').textContent(),'Plan de l’unité');
-   assert.equal(await page.locator('#btn-problemes').isDisabled(),true,V+'le menu attend la fin de l’édition');
+   // (Version 1, évolution 22 d : plus de bouton « Problèmes » ; l'entrée « Contrôles » attend, comme le reste du menu.)
+   assert.equal(await page.locator(version==='v1'?'#menu [data-entree="mu-pas"]':'#btn-problemes').isDisabled(),true,V+'le menu attend la fin de l’édition');
    assert.equal(await page.locator('#en-ce-moment').getAttribute('aria-label'),'La zone choisie');
 
    // 2. Calques à gauche, toile au centre, inspecteur à droite.

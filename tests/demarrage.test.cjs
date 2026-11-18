@@ -135,9 +135,9 @@ test('ce qu’il y a à faire ensuite mène à une page qui existe', () => {
   const O = require('../onglets.js');
   for (const page of Object.values(D.PAGE_DE_VUE)) assert.ok(O.page(page), page);
   // Ce qu'on décrit mène à « Services et équipes » (une seule page depuis l'évolution 22 b) ;
-  // les alertes de l'unité, à la liste de ce qu'il reste à faire avant de simuler (la première de « Contrôles »).
+  // les alertes de l'unité, à « Contrôles » (une seule page depuis l'évolution 22 d).
   for (const v of ['ateliers', 'reglages']) assert.equal(D.PAGE_DE_VUE[v], 'mu-services', v);
   assert.equal(O.page('mu-services').groupe, undefined, '« Services et équipes » est une page, plus un groupe');
   assert.equal(D.PAGE_DE_VUE.flux, 'mu-pas');
-  assert.equal(D.PAGE_DE_VUE.flux, O.pagesDuGroupe('controles')[0].id);
+  assert.deepEqual([O.page('mu-pas').nom, O.page('mu-pas').groupe], ['Contrôles', undefined]);
 });

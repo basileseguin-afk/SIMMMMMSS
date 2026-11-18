@@ -238,6 +238,15 @@ async function cheminDe(page, cmd, service) {
   await page.evaluate(([c, s]) => (window.OrlyCheminsPage ? Sim.unite.chemin(c, s) : Sim.ateliers.parcours.ouvrir(c, s)), [cmd, service || '']);
   await page.waitForTimeout(250);
 }
+/* Ce que le calcul lit des liens entre services, et leurs alertes : en version 1 (évolution 22 d), un repli sous le
+ * diagramme de « Liens entre services » ; en version 2, la page « Contrôles détaillés ». */
+async function lectureLiens(page) {
+  if (!(await v1(page))) { await aller(page, 'u-lecture'); return; }
+  await aller(page, 'u-liens');
+  const d = page.locator('#fc-lecture-repli');
+  if (await d.count() && !(await d.evaluate(e => e.open))) await d.locator('> summary').click();
+  await page.waitForTimeout(200);
+}
 /** Le tableau des minutes range les classes sous leur compagnie, repliées (02/10) : tout déplier. */
 async function deplier(page) {
   const b = page.locator('#rg-recap [data-rg-action=recap-tout][data-ouvrir="1"]');
@@ -276,4 +285,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

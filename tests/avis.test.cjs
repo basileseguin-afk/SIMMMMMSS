@@ -6,6 +6,8 @@
  * que les deux premiers ; les informations se lisent repliées, sous les autres,
  * dans un repli qui s'appelle « Information » ; un geste qu'une information
  * propose dit « Facultatif » (évolution 19, retouche).
+ * Évolution 22 (d) : le panneau « Problèmes » a rejoint la page « Contrôles » (tests/controles-page.test.cjs) ; chaque
+ * avis porte de quoi mener à l'endroit où il se règle.
  * Aucune donnée de l'unité : des services, des équipes et des vols fictifs. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -92,16 +94,27 @@ test('le registre : du bloquant à l’information, chacun à son niveau', () =>
 test('sans vol, rien ne se calcule : l’étape des vols est bloquante', () => {
   const l = A.lister({ etapes: [{ id: 'vols', titre: 'Les vols de la journée', texte: 'Aucun vol : importez votre programme.', page: 'v-programme' }] });
   assert.deepEqual(l.map(p => [p.niveau, p.titre, p.detail, p.page]), [['bloquant', 'Les vols de la journée', 'Aucun vol : importez votre programme.', 'v-programme']]);
+  // Les vols d'exemple (évolution 22 d) : l'étape se lit, rien n'est demandé — une information, qui ne compte pas.
+  const ex = A.lister({ etapes: [{ id: 'vols', titre: 'Les vols de la journée', texte: '13 départs — ce sont les vols d’exemple : importez les vôtres.', page: 'v-programme', information: true }] });
+  assert.deepEqual(ex.map(p => [p.niveau, p.titre, p.page, p.etape]), [['information', 'Les vols de la journée', 'v-programme', 'vols']]);
+  assert.equal(A.compte(ex), 0);
 });
 
 test('chaque avis mène à la page où il se règle ; le texte du moteur passe par les mots de la page', () => {
   const l = A.lister({ ...sources(), enClair: t => t.replace('SUD/YC', 'Sud · Éco') });
   const par = t => l.find(p => p.titre.startsWith(t));
-  assert.deepEqual([par('Le chemin').page, par('Le chemin').service], ['at-chemins', undefined]);
-  assert.deepEqual([par('Dressage').page, par('Dressage').service], ['mu-services', 'dressage']);
-  assert.equal(par('« Vieux service »').page, 'u-services');
-  assert.equal(par('Magasin').page, 'u-lecture');
-  assert.equal(par('Les chemins').page, 'mu-flux');
+  // (Évolution 22 d : les pages d'aujourd'hui — « Chemins », « Services et équipes », « Liens entre services ».)
+  assert.deepEqual([par('Le chemin').page, par('Le chemin').service, par('Le chemin').code], ['mu-flux', undefined, 'cycle']);
+  assert.deepEqual([par('Dressage').page, par('Dressage').service, par('Dressage').code], ['mu-services', 'dressage', 'bareme']);
+  assert.deepEqual([par('« Vieux service »').page, par('« Vieux service »').fantome], ['mu-services', 'vieux']);
+  assert.deepEqual([par('Magasin').page, par('Magasin').lien], ['u-liens', true]);
+  assert.deepEqual([par('Les chemins').page, par('Les chemins').etape], ['mu-flux', 'flux']);
+  // Une étape du chemin que personne ne prépare se règle dans « Chemins » : son service, ses commandes ; un point
+  // d'une équipe porte son équipe.
+  const trou = A.lister({ anomalies: [{ code: 'parcours-trou', message: '« Dotation » est sur le chemin de 2 commandes…', service: 'dotation', classes: ['NO/BC', 'SU/BC'] },
+    { code: 'hors-parcours', message: 'Montage bis : ZEN/YC est cochée ici…', service: 'montage', atelier: 'mob', classes: ['ZEN/YC'] }] });
+  assert.deepEqual(trou.map(p => [p.page, p.service, p.code, p.equipe, p.classes]),
+    [['mu-flux', 'dotation', 'parcours-trou', undefined, ['NO/BC', 'SU/BC']], ['mu-services', 'montage', 'hors-parcours', 'mob', ['ZEN/YC']]]);
   // Ce que la journée montre se lit dans les résultats ; une commande sans vol, dans son service.
   assert.equal(par('Montage : le poste').page, 'j-chiffres');
   assert.deepEqual([par('Montage : Sud · Éco').page, par('Montage : Sud · Éco').service], ['mu-services', 'montage']);
@@ -117,9 +130,9 @@ test('le compteur ne compte que « bloquant » et « à corriger » : une comman
   assert.deepEqual(niveaux(infos), ['information', 'information']);
   assert.equal(A.compte(infos), 0);
   // Le nombre d'un onglet : ce qui se règle sur sa page ; une information n'y compte jamais.
-  assert.equal(A.compte(l, 'mu-services'), 3);      // la commande sans équipe, Dressage, l'étape des services ; la commande sans vol n'y est pas
+  assert.equal(A.compte(l, 'mu-services'), 4);      // la commande sans équipe, Dressage, l'étape des services, le service supprimé ; la commande sans vol n'y est pas
   assert.equal(A.compte(l, 'j-chiffres'), 0);
-  assert.equal(A.compte(l, 'u-lecture'), 5);
+  assert.equal(A.compte(l, 'mu-pas'), 8);           // « Contrôles » les montre tous
   for (const p of l.filter(x => x.niveau === 'information')) assert.deepEqual(A.pages(p), []);
 });
 
@@ -138,47 +151,6 @@ test('les nombres se disent avec les mots des niveaux', () => {
   assert.equal(A.ton(l), 'retard');
   assert.equal(A.ton(l.filter(p => p.niveau !== 'bloquant')), 'attente');
   assert.equal(A.ton(l.filter(p => p.niveau === 'information')), '');
-});
-
-test('le panneau : les deux premiers niveaux, puis les informations repliées, dessous', () => {
-  const l = A.lister(sources());
-  const html = A.panneau(l, id => 'Page ' + id);
-  assert.match(html, /<h2 id="problemes-titre">Problèmes<\/h2>\s*<span class="pb-total">2 bloquants · 6 à corriger<\/span>/);
-  const iB = html.indexOf('pb-groupe bloquant'), iC = html.indexOf('pb-groupe corriger'), iI = html.indexOf('pb-groupe information');
-  assert.ok(iB > 0 && iB < iC && iC < iI, 'bloquant, à corriger, puis information');
-  assert.match(html, /<section class="pb-groupe bloquant"><h3>[^]*?Bloquant<span>2<\/span><\/h3>/);
-  assert.match(html, /<section class="pb-groupe corriger"><h3>[^]*?À corriger<span>6<\/span><\/h3>/);
-  // Les informations : un bloc replié (pas d'attribut open), qui s'appelle « Information », avec son nombre.
-  const infos = html.slice(html.indexOf('<details class="pb-groupe information"'));
-  assert.match(infos, /^<details class="pb-groupe information"><summary>[^<]*(<svg[^]*?<\/svg>)?<span class="pb-nom">Information<\/span><span class="pb-n">3<\/span><\/summary>/);
-  assert.doesNotMatch(html, /rien à faire/i, 'le repli ne dit plus « rien à faire » : il peut porter un geste');
-  assert.doesNotMatch(html, /<details[^>]* open/);
-  assert.equal((infos.match(/class="pb"/g) || []).length, 3);
-  assert.equal((html.match(/class="pb"/g) || []).length, 11);
-  // Chaque avis mène à sa page ; celui d'un service, à sa fiche.
-  assert.match(html, /data-pb-page="mu-services" data-pb-service="dressage"/);
-  assert.match(html, /Ouvrir « Page u-lecture »/);
-});
-
-test('le panneau, sans problème : il le dit, et les informations restent lisibles dessous', () => {
-  const infos = A.lister({ anomalies: [{ code: 'commande-absente', message: 'Montage : SUD/YC n’a aucun vol ce jour-là.', service: 'montage' }] });
-  const html = A.panneau(infos, id => id);
-  assert.match(html, /<span class="pb-total">aucun<\/span>/);
-  assert.match(html, /<p class="pb-vide">[^]*?Rien de bloquant, rien à corriger/);
-  assert.match(html, /<details class="pb-groupe information">/);
-  assert.doesNotMatch(html, /<section class="pb-groupe/);
-  const vide = A.panneau([], id => id);
-  assert.match(vide, /Rien de bloquant, rien à corriger/);
-  assert.doesNotMatch(vide, /<details/);
-});
-
-test('le texte venu d’un fichier est échappé avant d’entrer dans le panneau', () => {
-  const l = A.lister({ anomalies: [{ code: 'bareme', message: '<img src=x onerror=alert(1)> : aucun temps par vol', service: 'a"b' }],
-    fantomes: [{ id: 'f', nom: '<b>Faux</b>', cases: 1, chemins: 0 }] });
-  const html = A.panneau(l, id => '<i>' + id + '</i>');
-  assert.doesNotMatch(html, /<img|<b>Faux|<i>/);
-  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
-  assert.match(html, /data-pb-service="a&quot;b"/);
 });
 
 test('dans une page : les mêmes niveaux, les mêmes mots, les informations repliées dessous', () => {

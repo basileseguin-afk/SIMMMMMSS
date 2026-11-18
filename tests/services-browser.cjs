@@ -50,7 +50,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 3. Les contrôles : les quais livrent la plonge sans équipe. Le point à
   //    corriger porte son geste, et une plonge n'est plus « une équipe qui ne prépare rien ».
-  await nav.aller(page,'u-lecture');
+  await nav.lectureLiens(page);   // (évolution 22 d : la lecture des liens est avec les liens, dans un repli)
   assert.match(await page.locator('#fc-alertes').textContent(),/Quais · Réception fournit sans avoir d’équipe/);
   assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/Plonge : une équipe est décrite mais ne prépare rien/,
     'une plonge lave pour tout le monde : pas d’alerte');
@@ -158,7 +158,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    e. Une équipe dont le service n'existe plus (ancienne sauvegarde) : signalée, puis rattachée.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'orph1',nom:'Équipe perdue',service:'zone-disparue',
     type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true}});},''));
-  await nav.aller(page,'u-lecture');
+  await nav.lectureLiens(page);   // (évolution 22 d : la lecture des liens est avec les liens, dans un repli)
   assert.match(await page.locator('#fc-alertes').textContent(),/Équipe perdue travaille dans un service qui n’existe plus/);
   await supprimes();
   await page.selectOption(`${M} [data-svc-orpheline=orph1]`,'cuisine');await page.locator(`${M} [data-svc-rattacher=orph1]`).click();await attendre();

@@ -39,7 +39,9 @@
       { id: 'v-departs', nom: 'Vols', ancien: 'Vols prêts au départ', ico: 'depart' }
     ],
     ateliers: [
-      { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
+      // Évolution 22 (d) : « Contrôles » réunit « Prêt à simuler ? » (c'était le nom de cette page), « Contrôles détaillés »
+      // et le panneau « Problèmes » (voir ANCIENNES).
+      { id: 'mu-pas', nom: 'Contrôles', ico: 'alerte' },
       // Évolution 19 (a) : un seul mot par chose — « chemin », « temps par vol ». Les anciens noms se cherchent toujours (« Aller à… »).
       // Évolution 22 (c) : « Chemins » réunit cinq pages ; « Chemins de production » en était le nom (voir ANCIENNES).
       { id: 'mu-flux', nom: 'Chemins', ancien: 'Flux de production', ico: 'reseau' },
@@ -67,7 +69,6 @@
     ],
     flux: [
       { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
-      { id: 'u-lecture', nom: 'Contrôles détaillés', ico: 'info' },
       { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
     ]
   };
@@ -124,9 +125,8 @@
       resume: 'Régler, vérifier',
       pages: [
         { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
-        // « Contrôles » : deux pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 d).
-        { id: 'mu-pas', groupe: 'controles', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
-        { id: 'u-lecture', groupe: 'controles', intro: 'Ce que le calcul comprend de votre organisation, point par point, et ce qu’il faut corriger.' }
+        // « Contrôles » : deux pages et un panneau en un (évolution 22 d) — l'état du calcul, puis les avis par niveau.
+        { id: 'mu-pas', intro: 'Ce qui bloque le calcul, ce qui est à corriger et ce qui se lit : chaque point mène là où il se règle.' }
       ] },
     { id: 'fichier', nom: 'Fichiers', ancien: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true, bas: true,
       resume: 'Votre travail dans un fichier',
@@ -141,8 +141,7 @@
    * « Contrôles » (évolution 22 a) rassemblent les pages d'aujourd'hui que les parties suivantes fusionnent.
    */
   const GROUPES = {
-    details: { nom: 'Détails', ico: 'info' },
-    controles: { nom: 'Contrôles', ico: 'alerte' }
+    details: { nom: 'Détails', ico: 'info' }
   };
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
@@ -164,7 +163,12 @@
     'mu-carte': { vers: 'mu-flux', lieu: 'liste', nom: 'Vue d’ensemble' },
     'mu-flux:avant': { vers: 'mu-flux', lieu: 'liste', nom: 'Chemins de production' },
     'at-chemins': { vers: 'mu-flux', lieu: 'etapes', nom: 'Chemin d’une commande' },
-    'at-grille': { vers: 'mu-flux', lieu: 'etapes', nom: 'Étapes de chaque commande' }
+    'at-grille': { vers: 'mu-flux', lieu: 'etapes', nom: 'Étapes de chaque commande' },
+    // Évolution 22 (d) : « Contrôles » reprend « Contrôles détaillés », le panneau « Problèmes », et garde l'ancien nom
+    // de sa page (deux clés qui ne sont pas des pages).
+    'mu-pas:avant': { vers: 'mu-pas', nom: 'Prêt à simuler ?' },
+    'u-lecture': { vers: 'mu-pas', nom: 'Contrôles détaillés' },
+    'mu-pas:problemes': { vers: 'mu-pas', nom: 'Problèmes' }
   };
   /** La page qui s'ouvre pour cet identifiant : elle-même, ou celle qui l'a reprise. */
   const resoudre = id => (ANCIENNES[id] ? ANCIENNES[id].vers : id);

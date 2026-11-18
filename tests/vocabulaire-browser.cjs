@@ -43,8 +43,8 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   const x=await F.charger(page,nav,URL,{sauvegarde:U.sauvegarde(),csv:U.volsCsv(),pageId:'j-chiffres'});
   // Les noms de l'unité fictive ne portent aucun mot banni : ce que le test trouve vient de la page.
   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>p.pages.map(q=>q.id)).filter(id=>OrlyOnglets.montree(id)));
-  // (Dix-huit au moins depuis l'évolution 22 c : « Chemins » a repris trois pages.)
-  assert.ok(pages.length>=18,'toutes les pages du menu ('+pages.length+')');
+  // (Dix-sept au moins depuis l'évolution 22 : « Chemins » a repris trois pages (c), « Contrôles » une (d).)
+  assert.ok(pages.length>=17,'toutes les pages du menu ('+pages.length+')');
   const trouves=new Map();
   const visiter=async(id,options,nom)=>{
     await nav.aller(page,id,options);await page.waitForTimeout(350);
@@ -60,11 +60,10 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   await nav.aller(page,'mu-flux');await page.evaluate(()=>Sim.unite.allerChemins('etapes'));
   await nav.sectionChemin(page,'suivi');await nav.sectionChemin(page,'commandes');await noter('mu-flux (une étape, sections dépliées)');
   await nav.etapesCommandes(page);await noter('at-repas (étapes de chaque commande)');
-  // Le panneau des problèmes, la palette et la fiche des raccourcis s'affichent aussi.
-  await nav.aller(page,'j-chiffres');
-  await page.locator('#btn-problemes').click();await page.waitForTimeout(300);
-  for(const h of await relever(page,true)){const k=h.ou+'|'+h.extrait;if(!trouves.has(k))trouves.set(k,{...h,page:'problèmes'});}
-  await page.keyboard.press('Escape');
+  // « Contrôles » (évolution 22 d : le panneau des problèmes l'a rejointe), ses informations dépliées.
+  await nav.aller(page,'mu-pas');
+  if(await page.locator('#mu-pas details.ct-plus').count())await page.locator('#mu-pas details.ct-plus>summary').click();
+  await noter('mu-pas (informations dépliées)');
   const liste=[...trouves.values()];
   if(RAPPORT){for(const h of liste)console.log('· ['+h.page+'] ('+h.ou+') '+h.extrait);console.log('## '+liste.length+' écarts sur '+pages.length+' pages');}
   else assert.deepEqual(liste.map(h=>'['+h.page+'] ('+h.ou+') '+h.extrait),[],'aucun mot banni dans ce qui s’affiche');
