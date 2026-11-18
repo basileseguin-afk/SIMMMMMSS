@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const O = require('../onglets.js');
 
-test('chaque vue a au moins deux onglets, le premier par défaut ; un espace du menu, six entrées au plus', () => {
+test('chaque vue a ses pages, la première par défaut ; un espace du menu, six entrées au plus', () => {
   // Ce qu'on voit, ce sont les entrées d'un ESPACE du menu, pas les onglets d'une vue ni les pages d'un groupe :
   // c'est sur elles que porte la limite (évolution 22 a : toutes les entrées sont visibles, sans défilement).
   O.conditions.periode = () => true;
@@ -12,7 +12,8 @@ test('chaque vue a au moins deux onglets, le premier par défaut ; un espace du 
   finally { delete O.conditions.periode; }
   for (const vue of ['vols', 'ateliers', 'reglages', 'plan', 'flux']) {
     const l = O.ONGLETS[vue];
-    assert.ok(l && l.length >= 2, vue + ' : ' + (l || []).length + ' onglets');
+    // La vue des réglages n'a plus qu'une page : « Services et équipes » a repris ses deux pages de temps par vol (évolution 22 b).
+    assert.ok(l && l.length >= (vue === 'reglages' ? 1 : 2), vue + ' : ' + (l || []).length + ' pages');
     assert.equal(O.defaut(vue), l[0].id);
     for (const o of l) assert.ok(o.nom && o.ico, o.id + ' a un nom et un pictogramme');
   }
@@ -22,7 +23,7 @@ test('chaque vue a au moins deux onglets, le premier par défaut ; un espace du 
 test('les identifiants sont uniques et désignent leur vue', () => {
   const ids = Object.values(O.ONGLETS).flat().map(o => o.id);
   assert.equal(new Set(ids).size, ids.length);
-  assert.equal(O.vueDe('at-equipes'), 'ateliers');
+  assert.equal(O.vueDe('mu-services'), 'ateliers');
   assert.equal(O.vueDe('j-comparer'), 'plan');
   assert.equal(O.vueDe('u-sauvegarde'), 'flux');
   assert.equal(O.vueDe('rien'), null);
@@ -60,7 +61,6 @@ test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler 
   // Une entrée est une page, ou un groupe de pages qui se suivent en onglets internes : aucune mention « Plus ».
   assert.deepEqual(O.entrees().filter(o => o.groupe).map(o => [o.nom, o.pages]), [
     ['Détails', ['at-repas', 'v-departs', 'j-stocks', 'j-details']],
-    ['Services et équipes', ['mu-services', 'at-recap', 'rg-recap', 'u-services', 'at-equipes', 'rg-minutes']],
     ['Chemins', ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille']],
     ['Contrôles', ['mu-pas', 'u-lecture']]
   ]);
@@ -70,7 +70,7 @@ test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler 
   const icos = O.entrees().map(o => o.ico);
   icos.forEach((x, i) => assert.notEqual(x, icos[i + 1], O.libelle(O.entrees()[i]) + ' et la suivante : ' + x));
   // L'entrée qui mène à une page : elle-même, ou son groupe ; une page hors du menu a encore la sienne.
-  assert.equal(O.entreeDe('at-equipes').nom, 'Services et équipes');
+  assert.equal(O.entreeDe('mu-services').nom, 'Services et équipes');
   assert.equal(O.entreeDe('at-grille').nom, 'Chemins');
   assert.equal(O.entreeDe('u-liens').nom, 'Chemins');
   assert.equal(O.entreeDe('u-lecture').nom, 'Contrôles');
@@ -79,7 +79,7 @@ test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler 
   assert.equal(O.entreeDe('rien'), null);
 });
 
-test('aucune page n’a disparu : chacune est dans un seul espace, et garde son nom et ses anciens noms', () => {
+test('chaque page est dans un seul espace, et garde son nom et ses anciens noms', () => {
   const pages = O.PARTIES.flatMap(p => p.pages.map(x => x.id));
   assert.equal(new Set(pages).size, pages.length, 'aucune page en double');
   assert.deepEqual([...pages].sort(), Object.values(O.ONGLETS).flat().map(o => o.id).sort(), 'aucune page oubliée');
@@ -93,11 +93,45 @@ test('aucune page n’a disparu : chacune est dans un seul espace, et garde son 
   const noms = Object.fromEntries(Object.values(O.ONGLETS).flat().map(o => [o.id, o.nom]));
   assert.deepEqual(noms, { 'v-programme': 'Programme des vols', 'v-planche': 'Planche retour', 'v-departs': 'Vols', 'mu-pas': 'Prêt à simuler ?',
     'mu-carte': 'Vue d’ensemble', 'mu-flux': 'Chemins de production', 'mu-services': 'Services et équipes', 'at-chemins': 'Chemin d’une commande',
-    'at-equipes': 'Équipes une par une', 'at-grille': 'Étapes de chaque commande', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes',
-    'at-recap': 'Horaires des équipes', 'rg-minutes': 'Temps par vol par service', 'rg-recap': 'Temps par vol', 'rg-simulation': 'Réglages de la simulation',
+    'at-grille': 'Étapes de chaque commande', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes', 'rg-simulation': 'Réglages de la simulation',
     'j-plan': 'En direct', 'j-chiffres': 'Synthèse', 'j-periode': 'Période', 'j-stocks': 'Stocks et retours', 'j-details': 'Heures sup et renforts',
-    'j-comparer': 'Comparer deux essais', 'u-plan': 'Plan de l’unité', 'u-liens': 'Liens entre services', 'u-services': 'Liste des services',
+    'j-comparer': 'Comparer deux essais', 'u-plan': 'Plan de l’unité', 'u-liens': 'Liens entre services',
     'u-lecture': 'Contrôles détaillés', 'u-sauvegarde': 'Sauvegarde et limites' });
+});
+
+/* Évolution 22 (b) : « Services et équipes » reprend cinq pages. Elles n'existent plus, mais leur nom, leur identifiant
+ * et leurs liens mènent à elle, au bon endroit dedans. */
+test('les cinq pages reprises par « Services et équipes » : leur nom et leur identifiant y mènent, au bon endroit', () => {
+  assert.deepEqual(Object.entries(O.ANCIENNES).map(([id, a]) => [id, a.nom, a.ancien || '', a.vers, a.lieu]), [
+    ['at-recap', 'Horaires des équipes', '', 'mu-services', 'equipes'],
+    ['at-equipes', 'Équipes une par une', 'Les cases · Ateliers de travail', 'mu-services', 'equipes'],
+    ['rg-recap', 'Temps par vol', 'Heures de travail', 'mu-services', 'temps'],
+    ['rg-minutes', 'Temps par vol par service', 'Barème par service', 'mu-services', 'temps'],
+    ['u-services', 'Liste des services', '', 'mu-services', 'liste']]);
+  const pages = Object.values(O.ONGLETS).flat().map(o => o.id);
+  for (const [id, a] of Object.entries(O.ANCIENNES)) {
+    assert.ok(!pages.includes(id), id + ' n’est plus une page');
+    assert.ok(pages.includes(a.vers), id + ' mène à une page qui existe');
+    assert.ok(!O.regles().includes('"' + id + '"'), id + ' : plus de règle d’affichage — ce qui porte encore son nom reste caché');
+    // Son identifiant vaut celui de la page qui l'a reprise : sa vue, son espace, son nom, son entrée au menu.
+    assert.equal(O.resoudre(id), 'mu-services');
+    assert.deepEqual([O.vueDe(id), O.partieDe(id).id, O.page(id).id, O.page(id).nom, O.entreeDe(id).id], ['ateliers', 'organisation', 'mu-services', 'Services et équipes', 'mu-services']);
+    assert.equal(O.montree(id), true);
+  }
+  assert.equal(O.resoudre('j-chiffres'), 'j-chiffres');
+  assert.equal(O.resoudre('rien'), 'rien');
+  // L'ouvrir ouvre la page qui l'a reprise, puis l'endroit ; un lien peut demander un autre endroit.
+  const vus = [];
+  const s = new O.SousOnglets({ hote: () => null, vue: () => 'ateliers', lieu: (id, lieu) => vus.push([id, lieu]) });
+  s.choisir('rg-recap');
+  assert.equal(s.page, 'mu-services');
+  assert.deepEqual([s.choix.organisation, s.parVue.ateliers], ['mu-services', 'mu-services'], 'c’est la page nouvelle qui est retenue');
+  s.choisir('u-services');
+  s.choisir('at-equipes');
+  s.choisir('mu-services', undefined, false, 'supprimes');
+  s.choisir('u-services', undefined, false, 'supprimes');
+  s.choisir('mu-services');
+  assert.deepEqual(vus, [['mu-services', 'temps'], ['mu-services', 'liste'], ['mu-services', 'equipes'], ['mu-services', 'supprimes'], ['mu-services', 'supprimes']]);
 });
 
 test('une page se range selon sa nature, pas selon l’écran qui la porte', () => {
@@ -106,9 +140,9 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   assert.equal(partie('v-programme'), 'donnees');
   assert.equal(partie('v-planche'), 'donnees');
   // L'unité (évolution 22 a) : ses services et ses équipes, ses chemins, son plan.
-  for (const id of ['mu-services', 'at-recap', 'rg-recap', 'u-services', 'at-equipes', 'rg-minutes']) assert.deepEqual([partie(id), O.page(id).groupe], ['organisation', 'services'], id);
+  assert.deepEqual([partie('mu-services'), O.page('mu-services').groupe], ['organisation', undefined], '« Services et équipes » : une page, plus un groupe (évolution 22 b)');
   for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'at-grille', 'u-liens']) assert.deepEqual([partie(id), O.page(id).groupe], ['organisation', 'chemins'], id);
-  assert.equal(O.pagesDuGroupe('services')[0].id, 'mu-services', '« Services et équipes » commence par les services');
+  assert.deepEqual(O.pagesDuGroupe('services'), [], 'plus de groupe « Services et équipes »');
   assert.equal(O.pagesDuGroupe('chemins')[0].id, 'mu-carte', '« Chemins » commence par la vue d’ensemble');
   // Le plan de l'unité a son entrée (refonte, étape 5) : la même toile que le plan rejoué.
   assert.deepEqual([partie('u-plan'), O.page('u-plan').groupe], ['organisation', undefined]);
@@ -145,7 +179,10 @@ test('v2 : l’organisation d’avant, chaque page dans une seule partie', () =>
   for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'u-liens']) assert.equal(V.partieDe(id).id, 'chemins', id);
   // La version 2 est gelée : elle garde ses six parties et ses mentions « Plus » ; la version 1 a son menu en deux blocs
   // (évolution 22 a). Une page commune garde le même identifiant et la même vue dans les deux.
-  for (const id of V.PARTIES.flatMap(p => p.pages.map(x => x.id)).filter(id => O.page(id))) assert.equal(O.vueDe(id), V.vueDe(id), id + ' : la même vue en v1 et v2');
+  // (Une page que « Services et équipes » a reprise en version 1 — évolution 22 b — n'y est plus une page : elle mène à elle.)
+  const v1 = new Set(Object.values(O.ONGLETS).flat().map(o => o.id));
+  for (const id of V.PARTIES.flatMap(p => p.pages.map(x => x.id)).filter(id => v1.has(id))) assert.equal(O.vueDe(id), V.vueDe(id), id + ' : la même vue en v1 et v2');
+  for (const id of Object.keys(O.ANCIENNES)) assert.ok(V.page(id), id + ' : toujours une page en version 2');
 });
 
 /* Le plan de l'unité est une page de passage (refonte, étape 5) : on l'ouvre
@@ -153,11 +190,11 @@ test('v2 : l’organisation d’avant, chaque page dans une seule partie', () =>
  * le rouvrent ensuite d'elles-mêmes. */
 test('une page de passage n’est pas retenue', () => {
   const s = new O.SousOnglets({ hote: () => null, vue: () => 'plan' });
-  s.choisir('rg-recap');
+  s.choisir('mu-services');
   s.choisir('j-plan');
   s.choisir('u-plan');
   assert.equal(s.page, 'u-plan', 'elle est ouverte');
-  assert.equal(s.actifDe('organisation'), 'rg-recap', 'l’unité rouvre la page d’avant');
+  assert.equal(s.actifDe('organisation'), 'mu-services', 'l’unité rouvre la page d’avant');
   assert.equal(s.parVue.plan, 'j-plan', 'arriver « sur le plan » rouvre le plan rejoué');
   assert.equal(O.page('u-plan').passage, true);
   for (const o of Object.values(O.ONGLETS).flat().filter(o => o.id !== 'u-plan')) assert.ok(!o.passage, o.id);

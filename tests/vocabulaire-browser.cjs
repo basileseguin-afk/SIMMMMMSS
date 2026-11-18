@@ -63,8 +63,9 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   else assert.deepEqual(liste.map(h=>'['+h.page+'] ('+h.ou+') '+h.extrait),[],'aucun mot banni dans ce qui s’affiche');
 
   // 2. « Aller à… » trouve encore une page par son ancien nom, et y mène ; l'ancien nom ne s'affiche pas.
-  for(const [ancien,nom,id] of [['Flux de production','Chemins de production','mu-flux'],['Barème par service','Temps par vol par service','rg-minutes'],
-    ['Heures de travail','Temps par vol','rg-recap'],['Les cases','Équipes une par une','at-equipes']]){
+  // Les trois pages que « Services et équipes » a reprises (évolution 22 b) mènent à cette page.
+  for(const [ancien,nom,id] of [['Flux de production','Chemins de production','mu-flux'],['Barème par service','Temps par vol par service','mu-services'],
+    ['Heures de travail','Temps par vol','mu-services'],['Les cases','Équipes une par une','mu-services']]){
     await nav.aller(page,'j-chiffres');
     await page.keyboard.press('Control+k');await page.keyboard.type(ancien);await page.waitForTimeout(200);
     const options=await page.locator('dialog.palette [role=option]').evaluateAll(os=>os.map(o=>o.textContent));
@@ -79,7 +80,7 @@ const relever=(page,flux)=>page.evaluate(flux=>{
   // feuilles et ses en-têtes d'avant et une valeur changée dans Excel, se réimporte : la valeur est lue.
   const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-vocabulaire-'));
   try{
-    await nav.aller(page,'at-equipes');
+    await nav.aller(page,'mu-services');
     const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#at-export').click()]);
     const fichier=path.join(dossier,'equipes.xlsx');await d.saveAs(fichier);
     const feuilles=await T.lireClasseur(fs.readFileSync(fichier));

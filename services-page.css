@@ -4,12 +4,13 @@
  * seule. Les fiches sont celles de unite.js et de ateliers.js (unite.css,
  * ateliers.css, communs avec la version 2 : cette feuille ne les modifie pas). */
 
-/* La page ne défile pas : sa hauteur est celle qui reste sous son titre. */
-#mu-services{margin-bottom:0}
+/* La page ne défile pas : sa hauteur est celle qui reste sous son titre, à 16 px du titre et 12 px du bas de l'écran. */
+#mu-services{margin:0}
+body[data-sous="mu-services"] #view-ateliers{padding-bottom:12px}
 #mu-services .se-cadre{grid-template-columns:minmax(220px,264px) minmax(0,1fr);gap:16px;align-items:stretch;
-  height:calc(100dvh - var(--haut-entete,170px) - var(--se-marge,62px));min-height:300px}
+  height:calc(100dvh - var(--haut-entete,170px) - var(--se-marge,30px));min-height:300px}
 #mu-services .se-liste{position:static;max-height:none;min-height:0;overflow:auto;padding:2px 4px 2px 2px}
-#mu-services .se-fiche{min-height:0;overflow:auto;padding:12px 18px 16px;font-size:var(--ds-t-13)}
+#mu-services .se-fiche{min-height:0;overflow:auto;padding:12px 18px;font-size:var(--ds-t-13)}
 
 /* La liste : « Ajouter un service » en tête, les services de l'amont vers l'aval, les services supprimés en bas. */
 .se-ajout{margin-bottom:6px}
@@ -22,16 +23,21 @@
 .se-vers-supprimes.actif{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
 
 /* L'en-tête de la fiche : son nom, ce qu'il fait, et le lien vers les résultats. */
-.se-fiche .se-tete{flex-wrap:wrap;row-gap:8px;margin-bottom:8px}
+.se-fiche .se-tete{flex-wrap:wrap;row-gap:4px;margin-bottom:6px;padding-bottom:8px}
 .se-fiche .se-tete .mu-nature{display:flex;flex-direction:column;gap:2px;margin:0;font-size:var(--ds-t-13)}
 .se-fiche .se-tete .mu-nature select{max-width:300px}
 .se-resultats{white-space:nowrap}
-.se-fiche .mu-etape{margin-top:12px}
+/* La fiche d'un service de quatre équipes tient dans l'écran d'un portable (1 366 × 768), sections repliées : les
+   sections, le tableau et les notes se resserrent. */
+.se-fiche .mu-etape{margin-top:8px;padding-top:8px}
 .se-section>summary>h3{font-size:var(--ds-t-14)}
+.se-fiche .se-section[open]>summary>h3{margin-bottom:6px}
+.se-fiche .mu-flux-passent{margin-bottom:8px}
+.se-fiche .mu-afaire{margin-top:8px;padding-top:6px;padding-bottom:6px}
 
 /* « Ses équipes » : un tableau ; une ligne ouvre la fiche de l'équipe. */
 .se-equipes{width:100%;font-size:var(--ds-t-13)}
-.se-equipes th,.se-equipes td{padding:6px 10px;text-align:left;vertical-align:middle;white-space:nowrap}
+.se-equipes th,.se-equipes td{padding:4px 10px;text-align:left;vertical-align:middle;white-space:nowrap}
 .se-equipes td.se-eq-prepare{white-space:normal;min-width:160px;color:var(--ds-texte-2)}
 .se-equipes tbody tr{cursor:pointer}
 .se-equipes tbody tr:hover{background:var(--ds-survol)}
@@ -39,14 +45,15 @@
 .se-eq-nom:hover{text-decoration:underline}
 .se-eq-nom:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
 .se-chaine{font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
-.se-effectif{margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-bordure)}
+.se-effectif{margin-top:8px;padding-top:8px;border-top:1px solid var(--ds-bordure)}
 .se-effectif>summary{cursor:pointer;color:var(--ds-texte-2)}
 .se-effectif>summary b{color:var(--ds-texte-1)}
 .se-effectif[open]>summary{margin-bottom:8px}
 .se-retours{margin-top:10px}
 .se-retours>summary{cursor:pointer;font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
 .se-retours>.mu-retours{margin-top:8px}
-.se-fiche .mu-ajout{margin:10px 0 0}
+.se-fiche .mu-ajout{margin:8px 0 0;flex-wrap:nowrap}
+.se-fiche .mu-ajout>.btn{flex:none}
 
 /* Ses temps, quand ils se règlent dans la fiche de son équipe : un rappel, et le lien qui y mène. */
 .se-durees{width:auto;min-width:280px;font-size:var(--ds-t-13)}
@@ -95,3 +102,4 @@
    la case à cocher, jamais dessus — la case se décale à gauche, la cellule s'élargit, et un clic sur elles coche. */
 #mu-services .se-cadre .mu-c label{width:58px;justify-content:flex-start;padding-left:9px}
 #mu-services .se-cadre .mu-chez{pointer-events:none}
+.se-exemple{margin:0 0 10px;padding:8px 12px}

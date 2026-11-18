@@ -36,7 +36,7 @@ const UNITE=()=>{
  const cases=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('ory-ateliers-v1')||'null'));
  const equipe=async()=>(await cases()).ateliers.find(a=>a.id==='nuit');
  const nuit=()=>page.evaluate(()=>{const v=Sim.ateliers.resultat.ateliers.find(a=>a.id==='nuit');return {personnes:v.personnes,cs:v.conditionSale||null};});
- const ouvrir=async()=>{await nav.aller(page,'at-equipes');await page.evaluate(()=>{Sim.ateliers.ouvert='nuit';Sim.ateliers.rendre();});await attendre();};
+ const ouvrir=async()=>{await nav.reglagesEquipe(page,'nuit');await attendre();};
  const fiche=()=>page.locator('[data-at="nuit"]');
  const choisir=async(sel,val)=>{await fiche().locator(sel).selectOption(val);await attendre();};
  const bilan=()=>fiche().locator('.at-bilan-sale').innerText();

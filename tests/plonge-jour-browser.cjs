@@ -58,6 +58,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await page.locator(F).innerText(),/Plonge de nuit[\s\S]*J\+1 02:00 → J\+1 10:00/);
    assert.match(await page.locator(F).innerText(),/sans équipe de plonge .* attend(ent)? « Plonge de nuit » \(J\+1 02:00\)/);
    assert.equal(await sale(),0,'la plonge du lendemain lave ce qui est arrivé le soir');
+   if(await nav.v1(page)){
+    // v1 (évolution 22 b) : « Horaires des équipes » a quitté l'écran ; le tableau « Ses équipes » de la plonge dit la
+    // même chose — son jour se compte depuis l'arrivée des retours.
+    await nav.service(page,'plonge');
+    assert.deepEqual(await page.locator('#mu-services .se-equipes tbody tr').evaluateAll(ls=>ls.filter(l=>/Plonge de nuit/.test(l.textContent)).map(l=>[l.cells[1].textContent.trim(),l.cells[2].textContent.trim()])),[['02:00','J+1 de l’arrivée']]);
+    // Une équipe qui prépare, elle, reste avant le départ.
+    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'cui-test',nom:'Cuisine test',service:'cuisine',type:'manuel',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true}});},''));await attendre();
+    await nav.equipe(page,'cui-test');
+    assert.deepEqual(await page.locator('#mu-services [data-at="cui-test"] [data-at-champ=jour]').first().evaluate(s=>[...s.options].map(o=>o.value)),['0','-1','-2','-3']);
+   }else{
    // Le tableau des horaires dit la même chose.
    await nav.aller(page,'at-recap');await attendre();
    const sel=page.locator('#rc-liste tr:has-text("Plonge de nuit") [data-at-champ=jour]');
@@ -68,6 +78,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'cui-test',nom:'Cuisine test',service:'cuisine',type:'manuel',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true}});},''));await attendre();
    const autre=page.locator('#rc-liste tr:has-text("Cuisine test") [data-at-champ=jour]').first();
    assert.deepEqual(await autre.evaluate(s=>[...s.options].map(o=>o.textContent)),['J','J-1','J-2','J-3']);
+   }
 
    // 4. Rechargé : tout est là.
    await page.reload();await attendre();

@@ -18,82 +18,72 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Un atelier réel, pour mesurer l'effet des réglages sur quelque chose.
   await nav.vue(page,'ateliers');await attendre();
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await attendre();
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const at=await nav.ajouterEquipe(page,'cuisine');await nav.reglagesEquipe(page,at);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await attendre();
   const avant=await duree();
   assert.ok(avant>0,'l’atelier travaille');
 
-  // 2. Le modèle passe AVANT l'ancien moteur, et chacun dit ce qu'il pilote.
-  await nav.vue(page,'reglages');await attendre();
-  // Le titre porte désormais un « ? » : on ne lit que son propre texte, pas
-  // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
-  const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
-    .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
-  assert.equal(ordre[0],'Temps par vol, pour une personne','il vient en premier');
-  assert.ok(!ordre.includes('Ancien moteur de démonstration'),'l’ancien moteur a disparu');
-  // Les temps de travail, et eux seuls : la comparaison est un onglet de « La journée ».
-  assert.ok(!ordre.includes('Comparer deux essais'),'la comparaison n’encombre plus les temps de travail');
+  // 2. Les temps par vol d'un service se règlent dans sa fiche (évolution 22 b : « Temps par vol par service » n'est plus
+  //    une page ; sa section « Ses temps par vol » en reprend l'éditeur, service par service).
+  const FT='#mu-services .rg-fiche[data-service=cuisine]';
+  await nav.service(page,'cuisine');await attendre();
+  assert.equal(await page.locator('#mu-services details[data-mu-section=temps]').evaluate(d=>d.open),false,'repliée à l’arrivée');
+  assert.equal(await page.locator('#mu-services [data-rg-champ=heures]:visible').count(),0,'aucun champ à l’arrivée');
+  await nav.section(page,'temps');await attendre();
+  // L'ancien moteur a disparu ; la comparaison est une page des résultats.
+  assert.doesNotMatch(await page.locator('#view-reglages').textContent(),/Ancien moteur de démonstration/);
   assert.equal(await page.evaluate(()=>document.getElementById('view-comparer').contains(document.getElementById('snap-a'))),true);
   // Ce sont des chiffres d'exemple : le dire là où on les modifie.
-  assert.match(await page.locator('#rg-alerte').textContent(),/chiffres d’exemple/);
+  assert.match(await page.locator('#mu-services [data-mu-section=temps] .se-exemple').textContent(),/temps par vol d’exemple/);
 
-  // 3. Le barème se lit un service à la fois : cent dix champs d'un bloc ne se
-  //    lisaient pas. Replié, chaque service tient en une ligne.
-  assert.equal(await page.locator('#rg-bareme input:visible').count(),0,'aucun champ à l’arrivée');
-  assert.ok(await page.locator('.rg-service').count()>=10,'un pli par service');
-  assert.match(await page.locator('.rg-service[data-service=cuisine] .rg-svc-digest').textContent(),
-    /BC 0,583 · .* h\/vol/,'le résumé replié dit l’essentiel, en heures par vol');
-  await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
-  assert.equal(await page.locator('#rg-bareme input:visible').count(),5,'une valeur commune par classe');
-  // Un seul service ouvert à la fois : sinon on retrouve le mur.
-  await page.locator('.rg-service[data-service=magasin] > summary').click();await attendre();
-  assert.equal(await page.locator('.rg-service[open]').count(),1);
-  await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
+  // 3. Les temps par vol se lisent un service à la fois : cent dix champs d'un bloc ne se lisaient pas.
+  assert.equal(await page.locator(`${FT} [data-rg-champ=heures]:visible`).count(),5,'une valeur commune par classe');
+  assert.equal(await page.locator('#mu-services .rg-fiche').count(),1,'un seul service à la fois : sinon on retrouve le mur');
 
   // Le barème pilote la durée : doubler les heures par vol double la durée.
   // Saisies et lues en heures (08/10), gardées en minutes : 35 min ≈ 0,583 h ; 1,1667 h = 70 min.
-  const cuisineBC='[data-rg-champ=heures][data-service=cuisine][data-cle="*/BC"]';
+  const cuisineBC='#mu-services [data-rg-champ=heures][data-service=cuisine][data-cle="*/BC"]';
   assert.equal(await page.locator(cuisineBC).inputValue(),'0.583','la valeur est lisible, en heures, pas vide');
+  assert.equal(await page.locator('#mu-services [data-mu-section=temps] .se-exemple').count(),1,'tant qu’on n’a rien changé : des chiffres d’exemple');
   await ecrire(cuisineBC,'1.1667');
   assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine['*/BC']),70,'gardée en minutes');
+  assert.equal(await page.locator('#mu-services [data-mu-section=temps] .se-exemple').count(),0,'ce ne sont plus les chiffres d’exemple');
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la durée a doublé');
   // Une compagnie peut avoir sa valeur propre : elle l'emporte sur la commune.
-  await page.selectOption('[data-rg-champ=propre-ajout][data-service=cuisine]','CRL/BC');await attendre();
-  const crlBC='[data-rg-champ=heures][data-service=cuisine][data-cle="CRL/BC"]';
+  await page.selectOption('#mu-services [data-rg-champ=propre-ajout][data-service=cuisine]','CRL/BC');await attendre();
+  const crlBC='#mu-services [data-rg-champ=heures][data-service=cuisine][data-cle="CRL/BC"]';
   assert.equal(await page.locator(crlBC).inputValue(),'1.167','elle naît à la valeur commune');
   await ecrire(crlBC,'0.5833');
   assert.ok(Math.abs(await duree()-avant)<1e-6,'CRL/BC suit sa propre valeur');
-  await page.locator('[data-rg-action=propre-retirer][data-cle="CRL/BC"]').click();await attendre();
+  await page.locator('#mu-services [data-rg-action=propre-retirer][data-cle="CRL/BC"]').click();await attendre();
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'retirée, la valeur commune revient');
-  // Saisir ne referme pas la fiche qu'on était en train de remplir.
-  assert.equal(await page.locator('.rg-service[data-service=cuisine][open]').count(),1);
+  // Saisir ne referme pas la section qu'on était en train de remplir.
+  assert.equal(await page.locator('#mu-services details[data-mu-section=temps][open]').count(),1);
 
   // 3 bis. Saisie par compagnie × classe : une grille, une case par couple.
-  await page.locator('[data-rg-action=mode][data-mode=compagnie][data-service=cuisine]').click();await attendre();
-  assert.equal(await page.locator('.rg-service[data-service=cuisine] .rg-grille').count(),1,'la grille paraît');
-  assert.ok(await page.locator('.rg-service[data-service=cuisine] .rg-grille tbody tr').count()>=2,'une ligne par compagnie + « autres »');
+  await page.locator('#mu-services [data-rg-action=mode][data-mode=compagnie][data-service=cuisine]').click();await attendre();
+  assert.equal(await page.locator(`${FT} .rg-grille`).count(),1,'la grille paraît');
+  assert.ok(await page.locator(`${FT} .rg-grille tbody tr`).count()>=2,'une ligne par compagnie + « autres »');
   assert.equal(await page.locator(crlBC).inputValue(),'','case vide : la valeur commune s’applique');
   assert.equal(await page.locator(crlBC).getAttribute('placeholder'),'1,167');
   await ecrire(crlBC,'0.5833');
   assert.ok(Math.abs(await duree()-avant)<1e-6,'la case de la grille pilote la durée');
-  assert.match(await page.locator('.rg-service[data-service=cuisine] .rg-svc-digest').textContent(),/par compagnie × classe/);
   // Sans valeur commune, la case sans valeur propre est signalée.
   // La valeur d'origine, au dix-millième d'heure : la remettre retrouve les minutes exactes.
-  const communePC='[data-rg-champ=heures][data-service=cuisine][data-cle="*/PC"]',pc=String(await page.evaluate(()=>MoteurProduction.versHeures(Sim.reglages.etat.bareme.cuisine['*/PC'],4)));
+  const communePC='#mu-services [data-rg-champ=heures][data-service=cuisine][data-cle="*/PC"]',pc=String(await page.evaluate(()=>MoteurProduction.versHeures(Sim.reglages.etat.bareme.cuisine['*/PC'],4)));
   await ecrire(communePC,'');
-  assert.ok(await page.locator('.rg-service[data-service=cuisine] input.rg-manque').count()>0,'case à renseigner signalée');
+  assert.ok(await page.locator(`${FT} input.rg-manque`).count()>0,'case à renseigner signalée');
   await ecrire(communePC,pc);
   await ecrire(crlBC,'');
-  await page.locator('[data-rg-action=mode][data-mode=classe][data-service=cuisine]').click();await attendre();
-  assert.equal(await page.locator('.rg-service[data-service=cuisine] .rg-grille').count(),0,'retour à la saisie par classe');
+  await page.locator('#mu-services [data-rg-action=mode][data-mode=classe][data-service=cuisine]').click();await attendre();
+  assert.equal(await page.locator(`${FT} .rg-grille`).count(),0,'retour à la saisie par classe');
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la valeur commune revient');
 
   // 4. Le rendement allonge la journée sans toucher au barème. Il a son onglet,
   //    avec les pauses : les heures par vol restent seules sur le leur.
   await nav.aller(page,'rg-simulation');await attendre();
-  assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'le barème attend derrière son onglet');
+  assert.equal(await page.locator('#view-reglages [data-rg-champ=heures]').count(),0,'les temps par vol ne sont pas ici : ils se règlent dans la fiche de chaque service');
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
   await ecrire('#rg-rendement','1');
@@ -112,16 +102,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await seuils(),n);
   await ecrire('#rg-presence','495');
 
-  // 6. Un service que le barème ne connaît pas est signalé — seulement si une
-  //    case y lit le barème : sinon il travaillerait en temps nul sans rien dire.
-  //    Un service sans équipe qui prépare (handling, quais…) n'est pas une alerte.
-  assert.equal(await page.locator('.rg-service.vide .rg-zero').count(),0,'aucune fausse alerte');
-  const sans=await page.locator('.rg-service.inutile').first().getAttribute('data-service');
-  assert.ok(sans,'des services sans barème, mais que personne ne lit');
+  // 6. Un service sans temps par vol est signalé — seulement si une équipe y lit ses temps par vol : sinon il
+  //    travaillerait en temps nul sans rien dire. Un service sans équipe qui prépare (handling, quais…) n'est pas une alerte.
+  //    (Dans la liste des services : son point, et ce qu'il dit.)
+  await nav.aller(page,'mu-services');await attendre();
+  const point=id=>page.locator(`#mu-services .se-liste [data-mu-choisir="${id}"] .mu-point`);
+  const sans=await page.evaluate(()=>Sim.ateliers.a.services().map(s=>s.id).find(id=>!Sim.ateliers.state.ateliers.some(a=>a.service===id)&&!Object.keys(Sim.reglages.etat.bareme[id]||{}).length));
+  assert.ok(sans,'des services sans temps par vol, mais que personne ne lit');
+  assert.doesNotMatch(await point(sans).getAttribute('title'),/temps par vol à remplir/,'aucune fausse alerte');
+  //    (La liste le dit dès que l'équipe prépare une commande : sans commande, elle dit d'abord qu'elle ne prépare rien.)
   await page.evaluate(s=>Sim.ateliers.changer(()=>Sim.ateliers.state.ateliers.push({id:'x-vide',nom:'Équipe sans barème',service:s,type:'manuel',
-    debut:'06:00',jour:0,personnes:1,pauses:[],lots:[],regime:{actif:true}})),sans);await attendre();
-  assert.equal(await page.locator(`.rg-service.vide[data-service="${sans}"] .rg-zero`).count(),1,
-    'une équipe y travaille : le service sans barème se voit sans qu’on ait à l’ouvrir');
+    debut:'06:00',jour:0,personnes:1,pauses:[],lots:[['CRL/BC']],regime:{actif:true}})),sans);await attendre();
+  assert.match(await point(sans).getAttribute('title'),/temps par vol à remplir/,
+    'une équipe y travaille : le service sans temps par vol se voit sans qu’on ait à l’ouvrir');
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=Sim.ateliers.state.ateliers.filter(a=>a.id!=='x-vide');}));await attendre();
 
   // 7. Annuler et rétablir.
@@ -130,7 +123,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const valeur=cle=>page.evaluate(c=>Sim.reglages.etat.bareme.cuisine[c],cle);
   assert.equal(await valeur('*/BC'),70);
 
-  // 8. Le barème s'exporte en Excel et se réimporte : c'est ainsi qu'une étude arrive en bloc.
+  // 8. Le barème s'exporte en Excel et se réimporte : c'est ainsi qu'une étude arrive en bloc. (Depuis « Fichiers »,
+  //    évolution 22 b ; « Remettre les temps par vol d'exemple » est dans « Réglages de la simulation ».)
+  await nav.aller(page,'u-sauvegarde');await attendre();
   const dl=await Promise.all([page.waitForEvent('download'),page.locator('#rg-export').click()]);
   assert.match(dl[0].suggestedFilename(),/^ory-bareme-.*\.xlsx$/);
   const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-'));
@@ -147,7 +142,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   bareme.lignes[ligne('CUISINE','CRL','BC')][3]=0.25;   // un quart d'heure
   const modifie=path.join(dossier,'bareme-modifie.xlsx');
   fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
-  await nav.aller(page,'rg-minutes');await page.locator('#rg-reset').click();await attendre();
+  await nav.aller(page,'rg-simulation');await page.locator('#rg-reset').click();await attendre();
   assert.equal(await valeur('*/BC'),35,'les valeurs de démonstration sont revenues');
   await page.locator('#rg-import').setInputFiles(modifie);await page.waitForTimeout(400);
   assert.equal(await valeur('*/BC'),70,'le fichier a repris la main');

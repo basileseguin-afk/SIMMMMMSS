@@ -13,7 +13,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const kase=id=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),id);
  const lot=at=>page.evaluate(at=>Sim.ateliers.resultat.lots.find(l=>l.atelier===at&&!l.impossible),at);
  const fiche=(id,sel)=>page.locator(`[data-at="${id}"] ${sel}:visible`);
- const ouvrir=async id=>{await nav.aller(page,'at-equipes');await page.locator(`#at-liste [data-at="${id}"] .at-carte-nom`).click();await attendre();};
+ const ouvrir=async id=>{await nav.reglagesEquipe(page,id);await attendre();};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   // Deux équipes robot dans le même service : matin 06:00, après-midi 07:00 (elles se chevauchent).
@@ -45,9 +45,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await fiche('ra','[data-at-champ=ligne-propre]').uncheck();await attendre();
   assert.equal((await kase('ra')).lignePropre,undefined);
 
-  // 4. Le récap des cases le dit.
-  await nav.aller(page,'at-recap');
-  assert.match(await page.locator('tr.rc-case[data-at="rm"] .rc-type').innerText(),/ligne partagée/);
+  // 4. La fiche de l'équipe le dit. (Évolution 22 b : « Horaires des équipes », qui le disait aussi, a quitté l'écran.)
+  await nav.equipe(page,'rm');
+  assert.match(await page.locator('#mu-services [data-at="rm"] .mu-badge.ligne').first().innerText(),/ligne partagée/);
 
   // 5. Tout survit au rechargement.
   await page.reload();await attendre();

@@ -27,10 +27,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
       c('mo','Montage AF','prepa',[['AF/YC']],{personnes:2}),c('mt','Montage TX','prepa',[['TX/YC']]));},''));
 
   // 1. Dans la fiche de « Montage AF » : à la chaîne avec la Prépa.
-  // La fiche s'ouvre sur le chemin d'une de ses commandes, dans la fenêtre de droite.
+  // (Évolution 22 b : sa fiche, dans « Services et équipes », tous ses réglages dépliés.)
   const fiche=sel=>page.locator(`[data-at="mo"] ${sel}:visible`);
-  await nav.aller(page,'at-equipes');
-  await page.locator('#at-liste [data-at="mo"] .at-carte-nom').click();await attendre();
+  await nav.reglagesEquipe(page,'mo');await attendre();
   const choix=fiche('[data-at-champ=fusion]');
   assert.equal(await choix.inputValue(),'','par défaut, chaque étape a sa case');
   assert.ok((await choix.locator('option').allTextContents()).some(t=>/Oui, avec PRÉPA/i.test(t)),'l’étape d’avant est proposée');
@@ -54,9 +53,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(Math.abs((seul.fin-seul.debut)-(seul.minutesFusion+seul.minutesIci))<0.01);
   assert.match(await fiche('.at-fusion-bilan').innerText(),/seule/);
 
-  // 2. Le récap des cases le dit.
-  await nav.aller(page,'at-recap');
-  assert.match(await page.locator('tr.rc-case[data-at="mo"] .rc-type').innerText(),/PRÉPA à la chaîne/i);
+  // 2. La fiche de l'équipe le dit. (Évolution 22 b : « Horaires des équipes », qui le disait aussi, a quitté l'écran.)
+  assert.match(await page.locator('#mu-services [data-at="mo"] .mu-badge.chaine').first().innerText(),/PRÉPA à la chaîne/i);
 
   // 3. « Qui prépare quoi » : la Prépa d'AF est faite, par la case du Montage.
   await nav.aller(page,'at-grille');
@@ -95,8 +93,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#at-planning').textContent(),/Montage AF\s+\+PRÉPA/i);
 
   // 5. Revenir à deux cases : la Prépa d'AF est de nouveau « à faire ».
-  await nav.aller(page,'at-equipes');
-  await page.locator('#at-liste [data-at="mo"] .at-carte-nom').click();await attendre();
+  await nav.reglagesEquipe(page,'mo');await attendre();
   await fiche('[data-at-champ=fusion]').selectOption('');await attendre();
   assert.equal((await kase('mo')).fusion,undefined);
   await nav.aller(page,'at-grille');

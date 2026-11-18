@@ -266,7 +266,7 @@
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
-          <p class="rg-reset-ligne"><button class="lien-discret danger" id="rg-reset">Remettre les chiffres d’exemple</button></p>
+          <p class="rg-reset-ligne"><button class="lien-discret danger" id="rg-reset">Remettre les temps par vol d’exemple</button></p>
         </div>
         <div class="panneau" id="rg-recap-panneau" data-sous="rg-recap">
           <div class="titre-aide"><h3>Tous les temps par vol, d’un coup d’œil</h3><details class="aide">

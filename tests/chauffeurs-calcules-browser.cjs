@@ -26,8 +26,11 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-ch-'));
  const csv=path.join(dossier,'vols-ch.csv');fs.writeFileSync(csv,VOLS_CSV);
  const equipe=()=>page.evaluate(()=>(JSON.parse(localStorage.getItem('ory-ateliers-v1')||'{"ateliers":[]}').ateliers||[]).find(a=>a.id==='ha'));
- const ouvrir=async()=>{await nav.aller(page,'at-equipes');await page.evaluate(()=>{Sim.ateliers.ouvert='ha';Sim.ateliers.rendre();});await attendre();};
- const fiche=()=>page.locator('[data-at="ha"]');
+ const ouvrir=async()=>{await nav.reglagesEquipe(page,'ha');await attendre();};
+ const fiche=()=>page.locator('#mu-services [data-at="ha"]');
+ // Ce que le calcul a fait de l'équipe (ses tournées, le plan de ses chauffeurs) se lit dans « Détails › Vols » : « Services et
+ // équipes », où elle se règle, ne montre plus aucun résultat (évolution 22 b).
+ const resultats=async()=>{await nav.aller(page,'v-departs');await attendre();return page.locator('#vols-handling [data-at="ha"]');};
  const plan=()=>page.evaluate(()=>{const v=Sim.ateliers.resultat.ateliers.find(a=>a.id==='ha');return v.planChauffeurs||null;});
  const saisir=async(sel,val)=>{const l=fiche().locator(sel);await l.fill(val);await l.press('Tab');await attendre();};
  try{
@@ -54,10 +57,12 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.ok(p&&p.total>=2,'au moins un gros camion et un VL');
   assert.ok(p.borneBasse.total<=p.total);
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.resultat.vols.filter(v=>v.cause==='chauffeur').length),0,'aucun vol sans chauffeur');
-  const lignes=fiche().locator('.at-plan tbody tr');
+  const lignes=(await resultats()).locator('.at-plan tbody tr');
   assert.equal(await lignes.count(),p.vacations.length);
   assert.match(await lignes.first().innerText(),/gros camion\s+\d\d:\d\d\s+\d\d:\d\d\s+\d+/);
-  assert.match(await fiche().locator('.at-bilan-plan').innerText(),/chauffeurs? \(\d+ en gros camion, \d+ en VL\).*borne basse/s);
+  assert.match(await (await resultats()).locator('.at-bilan-plan').innerText(),/chauffeurs? \(\d+ en gros camion, \d+ en VL\).*borne basse/s);
+  await ouvrir();
+  assert.equal(await fiche().locator('.at-plan, .at-bilan-plan').count(),0,'la fiche, où l’équipe se règle, ne montre pas le plan calculé');
   assert.equal(await fiche().locator('[data-at-champ=creneau-de]').count(),0,'les créneaux ne s’affichent plus');
   assert.equal((await equipe()).creneaux.length,1,'mais restent enregistrés');
 

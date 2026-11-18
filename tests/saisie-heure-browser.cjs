@@ -28,54 +28,53 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{for(let i=0;i<30;i++)Sim.ateliers.state.ateliers.push(
     {id:'c'+i,nom:'Case '+String(i).padStart(2,'0'),service:'cuisine',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[]});},''));
 
-  // 1. Récap des cases, en bas du tableau : « 1430 » donne 14:30.
-  await nav.aller(page,'at-recap');
-  const champ='tr[data-at="c25"] [data-at-champ=debut]';
-  await page.locator(champ).scrollIntoViewIfNeeded();
-  const haut=await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop);
-  assert.ok(haut>100,'le tableau a défilé');
+  // (Évolution 22 b : « Horaires des équipes », le tableau où les heures se tapaient à la suite, a quitté l'écran ; une
+  //  heure se tape dans la fiche de son équipe, dans « Services et équipes ». Ce test en garde tout ce qui tient à la
+  //  frappe : les quatre chiffres, rien d'enregistré avant de quitter le champ, Entrée, la fiche qui ne bouge pas.)
+  const M='#mu-services';
+  const ouverte=()=>page.evaluate(()=>Sim.unite.equipeOuverte);
+  const ligne=id=>page.locator(`${M} .se-equipes tr[data-se-equipe="${id}"] td`).first().innerText();
+
+  // 1. Dans la fiche d'une équipe, loin dans le tableau de son service (trente équipes) : « 1430 » donne 14:30.
+  await nav.service(page,'cuisine');
+  await page.locator(`${M} .se-equipes tr[data-se-equipe="c25"]`).scrollIntoViewIfNeeded();
+  assert.ok(await page.locator(`${M} .se-fiche`).evaluate(f=>f.scrollTop)>100,'le tableau des équipes a défilé, dans la fiche');
+  await nav.equipe(page,'c25');
+  const champ=`${M} [data-at="c25"] input[data-at-champ=debut]`;
+  assert.equal(await page.locator(champ).count(),1,'la fiche porte l’heure de départ, une seule fois');
   await taper(champ,'1430');
   assert.equal(await page.locator(champ).inputValue(),'14:30','les quatre chiffres sont tous entrés');
-  assert.equal(await page.evaluate(()=>document.activeElement.closest('tr')?.dataset.at),'c25','le champ n’a pas été arraché');
+  assert.equal(await page.evaluate(()=>document.activeElement.closest('[data-at]')?.dataset.at),'c25','le champ n’a pas été arraché');
   assert.equal(await debut('c25'),'05:00','rien n’est enregistré pendant la frappe');
-  // Quitter le champ enregistre ; le tableau reste où il était.
-  await page.locator('.rc-legende').click();await attendre();
+  // Quitter le champ enregistre ; la fiche reste ouverte.
+  await page.locator(`${M} .se-retour b`).click();await attendre();
   assert.equal(await debut('c25'),'14:30');
-  assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop)-haut)<2,'le tableau ne remonte pas en haut');
+  assert.equal(await ouverte(),'c25','la fiche ne se referme pas');
   assert.equal(await page.locator(champ).inputValue(),'14:30');
 
-  // 2. Entrée enregistre aussi ; elle descend à la case suivante (étape 8 : le
-  //    tableau des horaires se remplit au clavier), et sur la dernière ligne
-  //    on reste dans le champ. Le tableau ne remonte pas.
-  const dessous=await page.evaluate(()=>{const tr=document.querySelector('tr[data-at="c25"]');let n=tr.nextElementSibling;while(n&&!n.dataset.at)n=n.nextElementSibling;return n&&n.dataset.at;});
+  // 2. Entrée enregistre aussi, et la fiche reste là.
   await taper(champ,'1615');
   await page.keyboard.press('Enter');await attendre();
   assert.equal(await debut('c25'),'16:15');
-  assert.equal(await page.evaluate(()=>document.activeElement.closest('tr')?.dataset.at),dessous||'c25',dessous?'Entrée descend à la case suivante':'dernière ligne : on reste dans le champ');
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.atChamp),'debut','dans la même colonne');
-  assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop)-haut)<40,'le tableau ne remonte pas');
+  assert.equal(await ouverte(),'c25');
+  assert.equal(await page.locator(champ).inputValue(),'16:15');
 
-  // 3. Passer d'une heure à l'autre : la première est enregistrée, la seconde garde la main.
-  const autre='tr[data-at="c26"] [data-at-champ=debut]';
+  // 3. Passer d'une équipe à l'autre : la première heure est enregistrée en la quittant, le tableau du service la dit ;
+  //    la seconde se tape en entier.
   await taper(champ,'1500');
-  await taper(autre,'1305');
+  await page.locator(`${M} .se-retour b`).click();await attendre();
   assert.equal(await debut('c25'),'15:00','la première heure est enregistrée en la quittant');
+  await nav.retour(page);
+  assert.equal(await ligne('c25'),'15:00','le tableau « Ses équipes » la dit');
+  await nav.equipe(page,'c26');
+  const autre=`${M} [data-at="c26"] input[data-at-champ=debut]`;
+  await taper(autre,'1305');
   assert.equal(await page.locator(autre).inputValue(),'13:05','la seconde se tape en entier');
   await page.keyboard.press('Enter');await attendre();
   assert.equal(await debut('c26'),'13:05');
 
-  // 4. Même chose dans la fiche d'une case (Organisation › Cases).
-  await nav.aller(page,'at-equipes');
-  await page.locator('#at-liste [data-at="c3"] .at-carte-nom').click();await attendre();
-  const sel='#at-liste [data-at="c3"] input[data-at-champ=debut]';
-  assert.equal(await page.locator(sel).count(),1,'la fiche porte l’heure de départ');
-  await taper(sel,'1645');
-  assert.equal(await page.locator(sel).inputValue(),'16:45');
-  await page.keyboard.press('Enter');await attendre();
-  assert.equal(await debut('c3'),'16:45');
-
-  // 5. Une saisie par programme (import, fill) s'enregistre tout de suite, comme avant.
-  await nav.aller(page,'at-recap');
+  // 4. Une saisie par programme (import, fill) s'enregistre tout de suite, comme avant.
+  await nav.equipe(page,'c25');
   await page.locator(champ).fill('07:10');await page.locator(champ).dispatchEvent('change');await attendre();
   assert.equal(await debut('c25'),'07:10');
 

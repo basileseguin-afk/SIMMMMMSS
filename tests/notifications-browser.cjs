@@ -38,13 +38,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
 
    // 1. Créer puis supprimer une case : aucune question, une notification avec « Annuler ».
-   await nav.aller(page,'at-equipes');
+   // v1 (évolution 22 b) : une équipe naît dans la fiche de son service (« Ajouter une équipe ») et sa fiche s'ouvre ; sa
+   // suppression est au bas de ses réglages. v2 : « + Équipe hors chemin », dans « Équipes une par une ».
+   const v1=await nav.v1(page);
    const n0=await cases();
-   await page.locator('#at-new').click();await attendre();
-   const id=await page.evaluate(()=>Sim.ateliers.ouvert);
+   let id;
+   if(v1){id=await nav.ajouterEquipe(page,'cuisine');await nav.reglagesEquipe(page,id);}
+   else{await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();id=await page.evaluate(()=>Sim.ateliers.ouvert);}
+   const AJOUT=v1?'#mu-services [data-mu-action=equipe]':'#at-new';
    let n=await notifs();
    assert.equal(n.length,1,V+'la création se dit');
-   assert.match(n[0].texte,/(Case|Équipe) créée/);assert.equal(n[0].annuler,true,V+'et se défait');
+   assert.match(n[0].texte,/(Case|Équipe) (créée|ajoutée)/);assert.equal(n[0].annuler,true,V+'et se défait');
    assert.equal(await page.locator('#at-status').isVisible(),false,V+'l’ancienne ligne d’état n’est plus à l’écran');
    await page.locator(`[data-at="${id}"] [data-at-action=supprimer]`).click();await attendre();
    assert.equal(await cases(),n0,V+'supprimée, sans question');
@@ -104,11 +108,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>OrlyNotif.notifier('Message à fermer.',{cle:'essai'}));
    await page.locator('#notifs .notif-fermer').click();await attendre(300);
    assert.equal((await notifs()).length,0,V+'× la ferme');
-   await page.locator('#at-new').focus();
+   if(v1)await nav.service(page,'cuisine');
+   await page.locator(AJOUT).first().focus();
    await page.evaluate(()=>OrlyNotif.notifier('Message au clavier.',{cle:'essai'}));
    await page.locator('#notifs .notif-fermer').focus();await page.keyboard.press('Escape');await attendre(300);
    assert.equal((await notifs()).length,0,V+'Échap la ferme');
-   assert.equal(await page.evaluate(()=>document.activeElement.id),'at-new',V+'le focus revient d’où il venait');
+   assert.equal(await page.evaluate(sel=>document.activeElement===document.querySelector(sel),AJOUT),true,V+'le focus revient d’où il venait');
 
    // 6. Supprimer un service qui porte des équipes : une question.
    const svc=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,id);

@@ -15,7 +15,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const kase=id=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),id);
  const effectif=id=>page.evaluate(id=>(Sim.ateliers.resultat.effectifs||{})[id]||null,id);
  const champ=(id,nom)=>page.locator(`[data-at="${id}"] [data-at-champ=${nom}]:visible`);
- const ouvrir=async id=>{await nav.aller(page,'at-equipes');await page.locator(`#at-liste [data-at="${id}"] .at-carte-nom`).click();await champ(id,'debut').waitFor();};
+ const ouvrir=async id=>{await nav.reglagesEquipe(page,id);await champ(id,'debut').waitFor();};
  /** Saisit une valeur dans un champ de la fiche et la valide ; attend son effet : la valeur gardée dans l'équipe (vide : le champ ôté)… */
  const saisir=async(id,nom,valeur)=>{const f=champ(id,nom);await f.fill(valeur);await f.press('Tab');
    await page.waitForFunction(([id,nom,v])=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return v===''?!(nom in a):String(a[nom])===v;},[id,nom,valeur]);};
@@ -59,11 +59,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await kase('rb')).personnesMax,max);
   await page.waitForFunction(([id,n])=>{const e=(Sim.ateliers.resultat.effectifs||{})[id];return !!e&&e.personnes===n;},['rb',max]);
   assert.deepEqual(await effectif('rb').then(e=>[e.personnes,e.plafond,e.hommeMinutes]),[max,max,avant.hommeMinutes],'plafonné, pour le même travail');
-  const calcule=page.locator('[data-at="rb"] .at-pers-calc:visible').first();
-  await page.waitForFunction(n=>{const o=document.querySelector('[data-at="rb"] .at-pers-calc output');return !!o&&o.textContent.trim()===String(n);},max);
-  assert.equal((await calcule.locator('output').innerText()).trim(),String(max));
-  assert.match(await calcule.innerText(),new RegExp('au plus '+max+' postes'));
-  assert.match(await calcule.getAttribute('title'),new RegExp('sans dépasser ses '+max+' postes de travail'));
+  // « Services et équipes » ne montre aucun résultat (évolution 22 b) : la fiche dit « calculé », sans le nombre ni son
+  // plafond — ils se lisent dans les résultats ; le réglage du plafond, lui, est bien là.
+  const calcule=page.locator('#mu-services [data-at="rb"] .at-pers-calc:visible').first();
+  assert.equal((await calcule.locator('output').innerText()).trim(),'calculé');
+  assert.doesNotMatch(await calcule.innerText(),/\d/,'aucun nombre calculé dans la fiche');
+  assert.equal(await page.locator('#mu-services [data-at="rb"] [data-at-champ=personnesMax]').first().inputValue(),String(max));
 
   // 5. Le minimum ne passe pas au-dessus des postes de travail.
   await refuser('rb','personnesMin',String(max+1));

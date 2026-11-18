@@ -45,8 +45,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
   const creer=async(nom,service,lots)=>{
-    await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
-    const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+    // (Évolution 22 b : une équipe s'ajoute dans la fiche de son service.)
+    const id=await nav.ajouterEquipe(page,service);await attendre();
     await page.evaluate(([id,nom,service,lots])=>Sim.ateliers.changer(()=>{
       Object.assign(Sim.ateliers.state.ateliers.find(a=>a.id===id),{nom,service,debut:'05:00',personnes:2,lots});
     }),[id,nom,service,lots]);

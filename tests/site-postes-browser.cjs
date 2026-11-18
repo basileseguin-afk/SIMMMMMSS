@@ -34,8 +34,7 @@ const URL=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
  const choixDe=async service=>(await fiche(service)).locator(`[data-site-poste="${service}"]`);
  /** La fiche d'une équipe, ouverte : son choix « Poste de travail, dans la vue en direct ». */
  const posteDeLEquipe=async id=>{
-   await nav.aller(page,'at-equipes');
-   await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);
+   await nav.reglagesEquipe(page,id);
    await page.waitForSelector(`[data-at="${id}"] [data-at-champ=poste]`,{state:'attached'});
    return page.locator(`[data-at="${id}"] [data-at-champ=poste]`);
  };

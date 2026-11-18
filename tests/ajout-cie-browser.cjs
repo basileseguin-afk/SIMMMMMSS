@@ -49,8 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 3. Le tableau par compagnie du handling : une compagnie absente des vols s'y ajoute.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'ha',nom:'Handling',service:'handling',type:'handling',debut:'04:00',jour:0,
     personnes:0,pauses:[],lots:[],regime:{actif:true},durees:{'*':30},simultanes:1,avance:180,compagnies:[]});},''));
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(()=>{Sim.ateliers.ouvert='ha';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
+  await nav.reglagesEquipe(page,'ha');await attendre();
   assert.equal(await page.locator('[data-at="ha"] [data-at-champ=duree][data-cie=EZY]').count(),1,'EZY, ajoutée, a déjà sa ligne');
   await page.locator('[data-at="ha"] [data-at-champ=cie-nouvelle]').fill('vy');
   await page.locator('[data-at="ha"] [data-at-champ=cie-nouvelle]').dispatchEvent('change');await attendre();

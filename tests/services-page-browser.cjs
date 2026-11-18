@@ -278,8 +278,79 @@ function ecarts(avant,apres,chemin='',out=[]){
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).tunnels[0].personnes,ids['Plonge matin']),seuil+1,'le réglage est enregistré');
   assert.ok(Math.abs(await page.locator(`${M} .se-fiche`).evaluate(f=>f.scrollTop)-120)<=40,'la fiche est restée à sa place : '+await page.locator(`${M} .se-fiche`).evaluate(f=>f.scrollTop));
 
+  /* ---- 7. un service de quatre équipes tient en un écran, à 1 366 × 768 (évolution 22 b2) ---------------------------- */
+  // Quatre équipes à la cuisine, chacune avec ses commandes ; la fiche à l'ouverture : « Ses équipes » dépliée, le reste replié.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,cu=st.ateliers.filter(a=>a.service==='cuisine');
+    const copie=(a,id,nom,lots)=>({...JSON.parse(JSON.stringify(a)),id,nom,lots});
+    st.ateliers.push(copie(cu[0],'se-q3','Cuisine équipe 3',cu[0].lots.splice(1,2)),copie(cu[1],'se-q4','Cuisine équipe 4',cu[1].lots.splice(1,2)));},''));
+  await attendre(page,400);
+  await page.evaluate(()=>{Sim.unite.sections.clear();});
+  await nav.service(page,'cuisine');
+  const q=await page.evaluate(()=>{const f=document.querySelector('#mu-services .se-fiche'),r=f.getBoundingClientRect();
+    return {lignes:f.querySelectorAll('.se-equipes tbody tr').length,deborde:f.scrollHeight-f.clientHeight,doc:document.documentElement.scrollHeight-innerHeight,
+      ecran:[innerWidth,innerHeight],bas:Math.round(r.bottom),blocs:[...f.children].map(e=>[e.tagName+'.'+String(e.className).split(' ')[0],Math.round(e.getBoundingClientRect().height)]),
+      sections:[...f.querySelectorAll('details[data-mu-section]')].map(d=>[d.dataset.muSection,d.open,Math.round(d.querySelector('summary').getBoundingClientRect().bottom)<=Math.round(r.bottom)])};});
+  assert.deepEqual(q.ecran,[1366,768]);
+  assert.equal(q.lignes,4,'quatre équipes dans le tableau');
+  assert.ok(q.deborde<=1,'la fiche d’un service de quatre équipes tient dans sa colonne, sans défiler ('+q.deborde+' px de trop : '+JSON.stringify(q.blocs)+')');
+  assert.equal(q.doc,0,'et la page dans l’écran');assert.ok(q.bas<=768);
+  assert.deepEqual(q.sections,[['equipes',true,true],['effectif',false,true],['temps',false,true],['avance',false,true]],'ses sections se voient : « Ses équipes » dépliée, le reste replié');
+
+  /* ---- 8. les cinq pages d'avant n'existent plus : leurs noms et leurs liens mènent ici, au bon endroit ---------------- */
+  assert.equal(await page.locator('#at-liste, #at-new, #at-filtre, .recap-cases, #rc-filtre, #rg-recap-panneau, #rg-bareme-panneau, #services-unite, #onglets-internes:not([hidden]) [data-sous-onglet=at-recap]').count(),0,'ni leurs listes, ni leurs tableaux, ni leurs onglets');
+  assert.deepEqual(await page.evaluate(()=>Object.keys(OrlyOnglets.ANCIENNES).map(id=>[id,OrlyOnglets.resoudre(id),OrlyOnglets.ANCIENNES[id].lieu])),
+    [['at-recap','mu-services','equipes'],['at-equipes','mu-services','equipes'],['rg-recap','mu-services','temps'],['rg-minutes','mu-services','temps'],['u-services','mu-services','liste']]);
+  // Un lien vers une page d'avant (data-page) mène à la page nouvelle, au bon endroit : la fiche d'une équipe se referme.
+  await nav.equipe(page,ids['Robot']);await nav.aller(page,'j-chiffres');
+  await page.evaluate(()=>{const b=document.createElement('button');b.id='se-vieux-lien';b.dataset.page='rg-minutes';b.textContent='Temps par vol par service';document.querySelector('#view-title').after(b);});
+  await page.locator('#se-vieux-lien').click();await attendre(page,300);
+  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.unite.equipeOuverte,!!document.querySelector('#mu-services details[data-mu-section=temps][open]')]),['mu-services',null,true],'« Temps par vol par service » : la fiche du service, ses temps dépliés');
+  await page.evaluate(()=>document.getElementById('se-vieux-lien').remove());
+  // Le service choisi n'a pas de temps par vol (une mise à disposition) : le premier de la liste qui en a.
+  await nav.service(page,dispo);
+  await page.evaluate(()=>Sim.unite.allerA('temps'));await attendre(page,300);
+  assert.notEqual(await page.evaluate(()=>Sim.unite.choisi),dispo);
+  assert.equal(await page.locator(`${M} details[data-mu-section=temps][open]`).count(),1,'« Temps par vol » mène à un service qui a des temps');
+  // Les services supprimés : le lien du bas de la liste.
+  await page.evaluate(()=>Sim.unite.allerA('supprimes'));await attendre(page,300);
+  assert.equal(await page.locator(`${M} .se-vers-supprimes.actif`).count(),1);
+  await page.evaluate(()=>Sim.unite.allerA('liste'));await attendre(page,300);
+  assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#mu-services .se-liste')),true,'« Liste des services » : la liste, à gauche');
+
+  /* ---- 9. « Annuler » défait le dernier geste de la page : une équipe, ou un temps par vol ----------------------------- */
+  await nav.equipe(page,cu[0]);
+  const heureAvant=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).debut,cu[0]);
+  await saisir(page,`${M} .se-equipe [data-at-champ=debut]`,'03:15');
+  await nav.service(page,'cuisine');await nav.section(page,'temps');
+  const cleTemps=await page.locator(`${M} .se-fiche [data-rg-champ=heures][data-service=cuisine]`).first().getAttribute('data-cle');
+  const temps=()=>page.evaluate(cle=>(Sim.reglages.etat.bareme.cuisine||{})[cle],cleTemps),heure=()=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).debut,cu[0]);
+  const tempsAvant=await temps();
+  await saisir(page,`${M} .se-fiche [data-rg-champ=heures][data-service=cuisine][data-cle="${cleTemps}"]`,'0.9');
+  assert.deepEqual([await heure(),await temps()],['03:15',54]);
+  await page.locator('#btn-annuler').click();await attendre(page,300);
+  assert.deepEqual([await heure(),await temps()],['03:15',tempsAvant],'« Annuler » défait d’abord le temps par vol, réglé en dernier');
+  await page.locator('#btn-annuler').click();await attendre(page,300);
+  assert.deepEqual([await heure(),await temps()],[heureAvant,tempsAvant],'puis l’heure de l’équipe');
+  await page.locator('#btn-retablir').click();await attendre(page,300);
+  assert.deepEqual([await heure(),await temps()],['03:15',tempsAvant],'« Rétablir » refait l’heure');
+  await page.locator('#btn-retablir').click();await attendre(page,300);
+  assert.deepEqual([await heure(),await temps()],['03:15',54],'puis le temps par vol');
+
+  /* ---- 10. leurs classeurs Excel restent, dans « Fichiers » -------------------------------------------------------- */
+  await nav.aller(page,'u-sauvegarde');
+  assert.deepEqual(await page.locator('#fi-classeurs tbody tr').evaluateAll(ts=>ts.map(t=>[t.dataset.classeur,t.querySelector('th').firstChild.textContent,
+    [...t.querySelectorAll('td')].map(td=>[...td.querySelectorAll('button')].map(b=>[b.id,b.textContent.trim(),b.getAttribute('aria-label')]))])),[
+    ['equipes','Équipes et horaires',[[['rc-import-btn','Importer','Importer : Équipes et horaires']],[['rc-export','Exporter','Exporter : Équipes et horaires']]]],
+    ['temps','Temps par vol, vue d’ensemble',[[['rg-recap-import-btn','Importer','Importer : Temps par vol, vue d’ensemble']],[['rg-recap-export','Exporter','Exporter : Temps par vol, vue d’ensemble']]]],
+    ['etude','Temps par vol, service par service',[[['rg-import-btn','Importer','Importer : Temps par vol, service par service']],[['rg-export','Exporter','Exporter : Temps par vol, service par service']]]]]);
+  for(const [id,nom] of [['rc-export',/^ory-cases-.*\.xlsx$/],['rg-recap-export',/^ory-heures-travail-.*\.xlsx$/],['rg-export',/^ory-bareme-.*\.xlsx$/]]){
+    assert.equal(await page.locator('#'+id).count(),1,id+' : un seul bouton, dans « Fichiers »');
+    const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#fi-classeurs #'+id).click()]);
+    assert.match(dl.suggestedFilename(),nom,id+' : le même classeur qu’avant');await dl.cancel();
+  }
+
   assert.deepEqual(erreurs,[],'aucune erreur de page');
   await v1.site.effacer();
-  console.log('services-page-browser : ok — la liste de l’amont vers l’aval (équipes, « toujours ouvert »), « Ajouter un service » en tête, les services supprimés en bas ; la fiche du service (nom et type en tête, tableau des équipes, temps selon le type, réglages avancés repliés) ; la fiche d’une équipe au même endroit, avec un retour ; aucun résultat sur '+attendu.length+' services et '+fiches+' équipes ; '+GESTES.length+' réglages écrivent la même sauvegarde que l’ancienne page ; la page ne défile pas');
+  console.log('services-page-browser : ok — la liste de l’amont vers l’aval (équipes, « toujours ouvert »), « Ajouter un service » en tête, les services supprimés en bas ; la fiche du service (nom et type en tête, tableau des équipes, temps selon le type, réglages avancés repliés) ; la fiche d’une équipe au même endroit, avec un retour ; aucun résultat sur '+attendu.length+' services et '+fiches+' équipes ; '+GESTES.length+' réglages écrivent la même sauvegarde que l’ancienne page ; la page ne défile pas ; un service de quatre équipes tient en un écran à 1 366 × 768 ; les cinq pages d’avant mènent ici, au bon endroit ; « Annuler » défait le dernier geste, équipe ou temps par vol ; leurs trois classeurs sont dans « Fichiers »');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
 })();

@@ -1222,40 +1222,23 @@
 </div>
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
-<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-recap" hidden></details>
+<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-grille" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
 <section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler son équipe</span></h3>
-<div class="at-barre" data-sous="at-equipes">
-  <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
-  <span class="at-barre-fin"></span>
-  <button class="btn" id="at-new" title="Une équipe qui ne suit pas une commande : une plonge, une mise à disposition">+ Équipe hors chemin</button>
-</div>
-<div id="at-liste" data-sous="at-equipes"></div>
-<p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
-  <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages →</button></p>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="hors-page"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 <section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
 
-<section class="recap-cases" data-sous="at-recap" aria-label="Récap des équipes">
-  <div class="rc-outils">
-    <label class="rc-cherche">Chercher <input id="rc-filtre" type="search" placeholder="Équipe, service ou compagnie"></label>
-    <span class="rc-fin"></span>
-    <button class="btn btn-sm" id="rc-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button>
-    <button class="btn btn-sm" id="rc-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button>
-    <button class="btn btn-sm" id="rc-export" title="Toutes les équipes dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">${pic('telecharger')}Équipes</button>
-    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des équipes modifié">${pic('importer')}Importer</button>
-    <input id="rc-import" type="file" accept=".xlsx" hidden>
-  </div>
-  <p class="rc-legende"><span class="rc-deroule unique">tâche unique</span> une seule préparation, de son départ à sa fin ·
-    <span class="rc-deroule suite">à la suite</span> les lignes s’enchaînent, chacune quand la précédente est finie ·
-    <span class="rc-ensemble-lab">ensemble</span> plusieurs commandes préparées en même temps, qui sortent ensemble.</p>
-  <div id="rc-liste"></div>
-</section>
+<!-- « Équipes une par une » et « Horaires des équipes » ne sont plus des pages (évolution 22 b) : une équipe se règle
+     dans sa fiche, dans « Services et équipes ». Le classeur Excel des équipes reste : ses boutons rejoignent « Fichiers ». -->
+<div id="rc-classeur" data-sous="hors-page">
+  <button class="btn btn-sm" id="rc-export" title="Toutes les équipes dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">${pic('telecharger')}Exporter</button>
+  <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des équipes modifié">${pic('importer')}Importer</button>
+  <input id="rc-import" type="file" accept=".xlsx" hidden>
+</div>
 <h3 class="at-titre" data-sous="at-repas">Les commandes à préparer <span class="pc-sous">une par compagnie et par classe, pour la journée</span></h3>
 <div id="at-classes" data-sous="at-repas"></div>`;
     }
@@ -1265,18 +1248,13 @@
       const on = (id, ev, fn) => document.getElementById(id).addEventListener(ev, fn);
       on('at-undo', 'click', () => this.histoire(false));
       on('at-redo', 'click', () => this.histoire(true));
-      on('at-filtre', 'change', e => { this.filtre = e.target.value; this.rendreListe(this.resultat || {}); });
-      on('at-new', 'click', () => this.creer());
       on('at-export', 'click', () => this.exporter());
       on('at-export-horaires', 'click', () => this.exporterHoraires());
       on('at-import-btn', 'click', () => document.getElementById('at-import').click());
       on('at-import', 'change', e => this.importer(e));
-      on('rc-undo', 'click', () => this.histoire(false));
-      on('rc-redo', 'click', () => this.histoire(true));
       on('rc-export', 'click', () => this.exporterRecapCases());
       on('rc-import-btn', 'click', () => document.getElementById('rc-import').click());
       on('rc-import', 'change', e => this.importerRecapCases(e));
-      on('rc-filtre', 'input', e => { this.rcFiltre = e.target.value.trim().toLowerCase(); this.rendreRecapCases(this.resultat || {}); });
 
       // Un seul écouteur pour toute la liste : les cartes sont redessinées à
       // chaque changement, des écouteurs par carte fuiraient.
@@ -1300,27 +1278,6 @@
     }
 
     /* ---- actions ----------------------------------------------------- */
-
-    /* Une case hors chemin : une plonge, une mise à disposition, ou une case
-     * qu'on rattachera ensuite. Elle s'ouvre ici, dans la liste. */
-    creer(dans) {
-      const services = this.a.services();
-      // Depuis la page d'un service : la case naît dans ce service, et la liste
-      // des cases se resserre sur lui.
-      if (dans) this.filtre = dans;
-      const service = dans || this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
-      const nom = (services.find(s => s.id === service) || {}).nom || 'Case';
-      // Dans le handling, la case née est un handling : elle charge des vols.
-      // Seulement quand on la crée DANS ce service (page Services) : une case
-      // neuve sans service choisi reste une équipe qui prépare.
-      const atelier = dans === 'handling' ? PC.caseHandling(this.state, service, nom)
-        : dans && PC.SERVICES_DISPO.includes(dans) ? PC.caseDispo(this.state, service, nom)
-        : { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
-          debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
-      this.changer(() => this.state.ateliers.push(atelier),
-        'Équipe créée, hors chemin. Donnez-lui son type (plonge, mise à disposition…) ; une équipe qui prépare se rattache à une commande dans son chemin.');
-      this.ouvert = atelier.id; this.rendre();
-    }
 
     /* Le handling en un geste : sa case, et au bout de chaque chemin. Il vit
      * dans son service à lui, jamais dans CF départ food (la zone « handling »
@@ -2010,16 +1967,15 @@
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
       this.rendreMateriel(r);
-      this.rendreFiltre();
       // Seul l'onglet affiché se redessine : à deux cents commandes, la liste
       // des cases, le planning, les commandes et le tableau coûtent cher, et
       // personne ne les regarde. Les autres attendent qu'on les ouvre.
-      this.aDessiner = new Set(['at-equipes', 'at-planning', 'at-repas', 'at-grille', 'at-recap']);
+      this.aDessiner = new Set(['at-planning', 'at-repas', 'at-grille']);
       const visible = this.ongletVisible();
       if (visible !== 'at-grille') this.parcours.rendre();
       this.surOnglet(visible);
-      for (const id of ['at-undo', 'rc-undo']) document.getElementById(id).disabled = !this.undo.length;
-      for (const id of ['at-redo', 'rc-redo']) document.getElementById(id).disabled = !this.redo.length;
+      document.getElementById('at-undo').disabled = !this.undo.length;
+      document.getElementById('at-redo').disabled = !this.redo.length;
       if (this.a.change) this.a.change(r);
     }
 
@@ -2036,10 +1992,8 @@
       if (id === 'at-grille' && document.querySelector('#at-parcours .qf[data-a-dessiner]')) this.aDessiner.add(id);
       if (!this.aDessiner.has(id)) return;
       this.aDessiner.delete(id);
-      if (id === 'at-equipes') this.rendreListe(r);
       if (id === 'at-planning') this.rendrePlanning(r);
       if (id === 'at-repas') this.rendreClasses(r);
-      if (id === 'at-recap') this.rendreRecapCases(r);
       if (id === 'at-grille') this.parcours.rendre();
     }
 
@@ -2091,7 +2045,7 @@
           + [f.cases ? f.cases + (f.cases > 1 ? ' équipes' : ' équipe') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
-          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Services et équipes › Liste des services →</button>'));
+          + '<button class="lien-discret" data-page="mu-services" data-lieu="supprimes">Ou le remplacer, dans L’unité › Services et équipes →</button>'));
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
@@ -2148,13 +2102,6 @@
       box.innerHTML = !list.length ? ''
         : problemes ? '<summary><strong>Points à regarder ici</strong></summary>' + AV.blocs(list)
         : '<summary><strong>Information</strong></summary><ul>' + list.map(x => '<li>' + x.html + '</li>').join('') + '</ul>';
-    }
-
-    rendreFiltre() {
-      const sel = document.getElementById('at-filtre');
-      sel.innerHTML = '<option value="">Tous les services</option>' +
-        this.a.services().map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('');
-      sel.value = this.filtre || '';
     }
 
     /* Les trolleys et la porcelaine ne s'achètent pas : ils reviennent. Ce bloc
@@ -2218,31 +2165,6 @@
     ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + (bilan.enAttente > 1 ? ' préparations jamais servies' : ' préparation jamais servie') : '')}
   </div>` : ''}
 </section>`;
-    }
-
-    /* La liste des cases, calculée : chacune dit ses commandes dans l'ordre ;
-     * une commande mène à son chemin, où la case se règle. */
-    rendreListe(r) {
-      const services = this.a.services();
-      const nom = id => (services.find(s => s.id === id) || {}).nom || id;
-      const parAtelier = new Map(((r && r.ateliers) || []).map(a => [a.id, a]));
-      const montrer = this.filtre ? this.state.ateliers.filter(a => a.service === this.filtre) : this.state.ateliers;
-      const box = document.getElementById('at-liste');
-      if (!montrer.length) {
-        box.innerHTML = '<p class="at-vide">Aucune équipe' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
-          + '. Les équipes se créent dans L’unité › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
-          + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Une commande » →</button></p>';
-        return;
-      }
-      const groupes = {};
-      for (const a of montrer) (groupes[a.service] || (groupes[a.service] = [])).push(a);
-      const rang = s => services.findIndex(x => x.id === s);
-      const I = root.OrlyIcones;
-      box.innerHTML = Object.keys(groupes).sort((x, y) => rang(x) - rang(y)).map(service => {
-        const cartes = groupes[service].map(a => this.carte(a, parAtelier.get(a.id))).join('');
-        return `<section class="at-service"><h3><span class="at-service-nom">${I ? I.ico(I.icoService(service, nom(service))) : ''}${esc(nom(service))}</span>
-          <span>${groupes[service].length}</span></h3>${cartes}</section>`;
-      }).join('');
     }
 
     /* Une case. Dans la liste : son résumé, et ses commandes qui mènent à leur
@@ -2633,14 +2555,13 @@
           (une vague), chacun chargé avant sa limite${plusieurs ? ' ; quai / vol en plus : la préparation au quai, par vol de plus' : ''}.` : ''}</p>`;
     }
 
-    /* Les chauffeurs calculés au plus juste : les réglages du calcul, et le plan du dernier calcul, lisible
-     * comme des créneaux. */
+    /* Les chauffeurs calculés au plus juste : les réglages du calcul et, hors de « Services et équipes », le plan du
+     * dernier calcul, lisible comme des créneaux. Le reprendre en créneaux saisis est un geste de réglage : il reste ici. */
     blocPlanChauffeurs(a) {
       const ch = a.chauffeurs || {}, R = P.reglagesChauffeurs({}, null);
       const nombre = (cle, lib, unite, min, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${min}" max="${max}" value="${ch[cle] ?? ''}"
         placeholder="${{ pasDebut: 30, retardPauseMax: R.retardPauseMax, iterationsMax: R.iterationsMax }[cle]}" data-at-champ="ch-nombre" data-cle="${cle}" title="${esc(titre)}">`, unite)}</label>`;
-      const r = this.pageServices ? null : this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
-      const duree = m => P.dureeLisible(m);
+      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
       return `
         <p class="mini-note at-regle">Le moteur cherche le <b>plus petit nombre de vacations</b> qui charge et décharge tous les avions à l’heure :
           il place les tournées dans leurs fenêtres, les donne à des vacations (présence et pauses du régime ; une pause se prend entre deux
@@ -2654,7 +2575,18 @@
           ${nombre('retardPauseMax', 'Pause au plus tard après son seuil', 'min', 0, 240, 'Une pause se prend entre deux tournées, au plus tard tant de minutes après son heure')}
           ${nombre('iterationsMax', 'Vérifications au plus', '', 0, 20, 'Combien de fois la journée se rejoue pour ajouter une vacation là où un vol manque de chauffeur')}
         </div>
-        ${pl ? `<div class="table-scroll"><table class="at-cies at-plan" data-clavier>
+        ${this.pageServices ? '' : this.resultatPlanChauffeurs(a)}
+        ${pl ? `<div class="at-actions-lot"><button class="btn btn-sm" data-at-action="plan-en-creneaux" title="Les vacations du plan deviennent des créneaux saisis, modifiables">Reprendre ce plan en créneaux saisis</button>${
+          this.pageServices ? ' <button type="button" class="lien-discret" data-page="v-departs" title="Le plan du dernier calcul : ses vacations, ses chauffeurs, ses heures payées">Voir le plan calculé dans les résultats →</button>' : ''}</div>` : ''}`;
+    }
+
+    /* Le plan des chauffeurs du dernier calcul : ses vacations, lisibles comme des créneaux, et son bilan. Un résultat :
+     * il se lit dans « Détails › Vols » (évolution 22 b), plus dans la fiche de l'équipe. */
+    resultatPlanChauffeurs(a) {
+      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
+      if (!pl) return '';
+      const duree = m => P.dureeLisible(m);
+      return `<div class="table-scroll"><table class="at-cies at-plan" data-clavier>
           <thead><tr><th scope="col">Véhicule</th><th scope="col">De</th><th scope="col">À</th><th scope="col">Chauffeurs</th></tr></thead><tbody>
           ${pl.vacations.map(v => `<tr data-vacation="${esc(v.vehicule + ' ' + v.debut)}"><td>${v.vehicule === 'vl' ? 'VL' : 'gros camion'}</td><td>${esc(v.debut)}</td>
             <td>${esc(P.hhmm((v.de + pl.presence) % 1440))}</td><td>${v.n}</td></tr>`).join('') || '<tr><td colspan="4">Aucune vacation : aucune tournée.</td></tr>'}
@@ -2664,11 +2596,9 @@
             · jusqu’à ${pl.vehiculesMax.camion} gros camion${pl.vehiculesMax.camion > 1 ? 's' : ''} et ${pl.vehiculesMax.vl} VL dehors${pl.heuresSupChauffeurs > 0 ? ' · heures sup : ' + duree(pl.heuresSupChauffeurs) : ''}
             ${pl.ajoutees.camion + pl.ajoutees.vl ? ' · ' + (pl.ajoutees.camion + pl.ajoutees.vl) + ' ajoutée' + (pl.ajoutees.camion + pl.ajoutees.vl > 1 ? 's' : '') + ' à la vérification' : ''}
             ${pl.retardsChauffeur ? ' · <b>' + pl.retardsChauffeur + ' vol' + (pl.retardsChauffeur > 1 ? 's' : '') + ' encore sans chauffeur</b>' : ''}
-            ${pl.horsVacations ? ' · ' + pl.horsVacations + ' tournée' + (pl.horsVacations > 1 ? 's' : '') + ' qu’aucune vacation possible ne peut mener (autres heures de début, ou heures sup)' : ''}.</p>
-          <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="plan-en-creneaux" title="Les vacations du plan deviennent des créneaux saisis, modifiables">Reprendre ce plan en créneaux saisis</button></div>` : ''}`;
+            ${pl.horsVacations ? ' · ' + pl.horsVacations + ' tournée' + (pl.horsVacations > 1 ? 's' : '') + ' qu’aucune vacation possible ne peut mener (autres heures de début, ou heures sup)' : ''}.</p>`;
     }
 
-    /* Les tournées du handling 24 h/24 : leurs réglages, et ce qu'elles ont donné au dernier calcul. */
     /* Le véhicule d'une compagnie, en 24 h/24 : gros camion, VL toute la journée, ou VL à partir de l'heure de départ saisie. */
     champVehicule(a, cie) {
       const des = (a.vlDes || {})[cie], v = (a.vl || []).includes(cie) ? 'vl' : des ? 'des' : 'camion';
@@ -2693,16 +2623,11 @@
             ${zones.map(z => `<option value="${esc(z.id)}" ${z.id === choisie ? 'selected' : ''}>${esc(z.nom)}</option>`).join('')}</select></label>`;
     }
 
+    /* Les tournées du handling 24 h/24 : leurs réglages (et, hors de « Services et équipes », ce qu'elles ont donné au dernier calcul). */
     blocTournees(a) {
       const R = P.reglages24h({});
       const champ = (cle, lib, unite, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${cle === 'dechargementsParTournee' ? 1 : 0}" max="${max}"
         value="${a[cle] ?? ''}" placeholder="${R[cle]}" data-at-champ="h24" data-cle="${cle}" title="${esc(titre)}">`, unite)}</label>`;
-      const r = this.pageServices ? null : this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null;
-      const ts = (vue && vue.tournees) || [], vols = r && r.ok ? (r.vols || []).filter(v => v.atelier === a.id) : [];
-      const CAUSES = { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'fenêtre trop courte' };
-      const causes = {}; for (const v of vols) if (v.cause) causes[v.cause] = (causes[v.cause] || 0) + 1;
-      const parType = t => ts.filter(x => x.vehicule === t).length, vagues = ts.filter(x => x.charges.length > 1);
-      const pic = (vue && vue.vehiculesMax) || { camion: 0, vl: 0 };
       return `
         <div class="at-sous-titre">Les tournées</div>
         <div class="at-champs at-handling at-tournees">
@@ -2712,11 +2637,36 @@
           ${champ('margeEscaleCourte', 'Escale courte : chargé avant le départ', 'min', 720, 'Quand un même tour décharge puis charge l’avion : chargé au plus tard tant de minutes avant le départ')}
           ${champ('delaiArrivee', 'Déchargement après l’arrivée', 'min', 240, 'Un avion se décharge au plus tôt tant de minutes après son arrivée')}
         </div>
-        ${vue ? `<p class="mini-note at-regle at-bilan-tournees"><b>${ts.length}</b> tournée${ts.length > 1 ? 's' : ''}
+        ${this.pageServices ? '' : this.resultatTournees(a)}`;
+    }
+
+    /* Ce que les tournées ont donné au dernier calcul : leur nombre, les véhicules dehors, les vols chargés à l'heure. Un
+     * résultat : il se lit dans « Détails › Vols » (évolution 22 b), plus dans la fiche de l'équipe. */
+    resultatTournees(a) {
+      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null;
+      const ts = (vue && vue.tournees) || [], vols = r && r.ok ? (r.vols || []).filter(v => v.atelier === a.id) : [];
+      const CAUSES = { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'fenêtre trop courte' };
+      const causes = {}; for (const v of vols) if (v.cause) causes[v.cause] = (causes[v.cause] || 0) + 1;
+      const parType = t => ts.filter(x => x.vehicule === t).length, vagues = ts.filter(x => x.charges.length > 1);
+      const pic = (vue && vue.vehiculesMax) || { camion: 0, vl: 0 };
+      if (!vue) return '';
+      return `<p class="mini-note at-regle at-bilan-tournees"><b>${ts.length}</b> tournée${ts.length > 1 ? 's' : ''}
           (${parType('camion')} en gros camion, ${parType('vl')} en VL${vagues.length ? `, dont ${vagues.length} qui ${vagues.length > 1 ? 'servent' : 'sert'} plusieurs vols, jusqu’à ${Math.max(...vagues.map(x => x.charges.length))}` : ''}) · jusqu’à ${pic.camion} gros camion${pic.camion > 1 ? 's' : ''} et ${pic.vl} VL dehors en même temps
           · <b>${vols.filter(v => v.aHeure).length}</b> vol${vols.length > 1 ? 's' : ''} sur ${vols.length} chargé${vols.length > 1 ? 's' : ''} à l’heure${Object.keys(causes).length
             ? ' ; en retard ou pas chargés : ' + Object.entries(causes).map(([c, n]) => n + ' ' + CAUSES[c]).join(', ') : ''}${vue.heuresSupChauffeurs > 0
-            ? ' · heures sup des chauffeurs : ' + P.dureeLisible(vue.heuresSupChauffeurs) : ''}.</p>` : ''}`;
+            ? ' · heures sup des chauffeurs : ' + P.dureeLisible(vue.heuresSupChauffeurs) : ''}.</p>`;
+    }
+
+    /**
+     * Ce que le dernier calcul a fait d'une équipe de handling, pour « Détails › Vols » (évolution 22 b) : le bilan de
+     * ses tournées (24 h/24) et le plan de ses chauffeurs (calculés au plus juste). Rien quand elle n'a ni l'un ni l'autre.
+     */
+    resultatsHandling(a) {
+      if (!a || a.type !== 'handling') return '';
+      const tournees = a.handling24h ? this.resultatTournees(a) : '';
+      const plan = this.resultatPlanChauffeurs(a);
+      return (tournees ? '<div class="at-sous-titre">Ses tournées</div>' + tournees : '')
+        + (plan ? '<div class="at-sous-titre">Le plan de ses chauffeurs, calculé au plus juste</div>' + plan : '');
     }
 
     /* La plonge par vol : un tunnel lave un vol en tant de temps, compagnie par compagnie. */
@@ -2963,137 +2913,6 @@
           <button class="btn btn-sm at-cond-retirer" type="button" data-at-action="cond-retirer" title="Retirer la condition : l’équipe travaille tous les jours">Retirer</button></p>
         ${etat ? `<p class="at-cond-etat ${etat.remplie ? 'oui' : 'non'}">${etat.texte}</p>` : ''}
       </div>`;
-    }
-
-    rendreRecapCases(r) {
-      const box = document.getElementById('rc-liste'); if (!box) return;
-      const services = this.a.services();
-      const nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
-      const ordre = new Map(services.map((s, i) => [s.id, i]));
-      const calc = new Map(((r && r.ateliers) || []).map(a => [a.id, a]));
-      const minDe = a => (a.jour || 0) * 1440 + (a.type === 'dispo' && a.permanent !== false ? -1e9 : P.minutes(a.debut || '00:00'));
-      const filtre = this.rcFiltre || '';
-      const cases = this.state.ateliers.slice()
-        .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
-        .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
-      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune équipe pour l’instant : décrivez vos équipes (L’unité › Services et équipes).</p>'; return; }
-      const I = root.OrlyIcones, hh = P.hhmm;
-      const jours = (v, attrs, plonge) => `<select ${attrs}>${(plonge ? [-1, 0, 1] : [0, -1, -2, -3]).map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${jourEcrit(j)}</option>`).join('')}</select>`;
-      // Une commande mène à son chemin, ouvert sur le service de cette case :
-      // c'est là qu'on la voit et qu'on la règle.
-      const chip = c => `<button type="button" class="rc-cmd" data-at-action="chemin" data-classe="${esc(c)}" title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</button>`;
-      const deroule = a => {
-        // Une mise à disposition : quand elle sert se choisit ici aussi.
-        if (a.type === 'dispo') {
-          const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
-          return `<select class="rc-mode" data-at-champ="mode-dispo" aria-label="Quand ${esc(a.nom)} sert-il ?">
-            <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>mise à disposition (de … à …)</option>
-            <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>toujours ouvert</option>
-            <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>${(a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'par vagues'}</option></select>`;
-        }
-        if (a.type === 'lavage') return '<span class="rc-deroule autre">plonge</span>';
-        if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
-        const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
-        if (!lignes.length) return '<span class="rc-deroule vide">rien</span>';
-        const chaine = a.fusion && a.type === 'manuel' ? ` <span class="rc-chaine" title="Fait aussi ${esc(nomSvc(a.fusion))}, à la chaîne">+ ${esc(nomSvc(a.fusion))} à la chaîne</span>`
-          : a.type === 'robot' && this.robotsDeLigne(a).length > 1 ? ` <span class="rc-chaine" title="Une seule ligne robot, partagée avec ${esc(this.robotsDeLigne(a).filter(x => x !== a).map(x => x.nom).join(', '))}">ligne partagée</span>` : '';
-        return (chaine ? chaine.trim() + ' ' : '') + (lignes.length === 1 ? '<span class="rc-deroule unique">tâche unique</span>' : `<span class="rc-deroule suite">${lignes.length} à la suite</span>`)
-          + (ens ? ` <span class="rc-ensemble-lab">${ens > 1 ? ens + ' lignes' : 'dont 1 ligne'} ensemble</span>` : '');
-      };
-      const traite = a => {
-        const vue = calc.get(a.id) || { lots: [] };
-        if (a.type === 'dispo') {
-          if (a.permanent !== false && a.ouverture) return `<span class="rc-vagues"><span class="rc-vague">de
-            <input ${HEURE} value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de" aria-label="Heure d’ouverture de ${esc(a.nom)}"> à
-            <input ${HEURE} value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a" aria-label="Heure de fermeture de ${esc(a.nom)}"></span></span>
-            <span class="mini-note">chaque jour : ouverte, on est servi ; fermée, on attend l’ouverture</span>`;
-          if (a.permanent !== false) return '<span class="mini-note">sert toutes les commandes, à tout moment</span>';
-          return `<span class="rc-vagues">${(a.vagues || []).map((v, i) => `<span class="rc-vague"><b>${i + 1}</b>
-            ${jours(v.jour, `data-at-champ="vague-jour" data-index="${i}" aria-label="Jour de la vague ${i + 1}"`)}
-            <input ${HEURE} value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}" aria-label="Heure de la vague ${i + 1}"></span>`).join('')}</span>
-            <span class="mini-note">sert toutes les commandes, chacune à la vague qui précède son besoin</span>`;
-        }
-        if (a.type === 'lavage') {
-          if (!a.parVol) return `<span class="mini-note">lave les retours de vols, à mesure qu’ils arrivent · ${P.debitLavage(a)} u/h</span>`;
-          // Un vol passé en relais (évolution 18) compte pour l'équipe qui le tient en dernier.
-          const lav = vue.lots.filter(l => l.retourVol && (!Array.isArray(l.parts) || l.parts[l.parts.length - 1].atelier === a.id)), faits = lav.filter(l => !l.impossible);
-          return `<span class="mini-note">lave ${faits.length} vol${faits.length > 1 ? 's' : ''} revenu${faits.length > 1 ? 's' : ''}, dans l’ordre des retours`
-            + (lav.length > faits.length ? ` · <b>${lav.length - faits.length} non lavé${lav.length - faits.length > 1 ? 's' : ''}</b>` : '')
-            + ` · ${(a.durees || {})[P.TOUTES] ?? '—'} min par vol (toutes compagnies)</span>`;
-        }
-        if (a.type === 'handling') {
-          const n = vue.lots.filter(l => l.vol).length;
-          const cr = a.creneaux || [];
-          return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · `
-            + (cr.length ? `chauffeurs ${cr.map(c => c.de + '–' + c.a + ' : ' + c.n).join(', ')} · camion : ${(a.chauffeurs || {}).long} chauffeurs en long courrier (${(a.longs || []).join(', ') || 'aucune compagnie'}), ${(a.chauffeurs || {}).court} en court`
-              + ` · ${a.volsParCamion || 1} vol${(a.volsParCamion || 1) > 1 ? 's' : ''} par camion` + (Object.keys(a.volsCamion || {}).length ? ` (${Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ')})` : '') + (a.camions ? ` · ${a.camions} camions` : '')
-              : `${a.simultanes || 1} à la fois`)
-            + ` · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
-        }
-        const lignes = (a.lots || []).filter(l => l.length);
-        if (!lignes.length) return '<span class="mini-note">aucune commande : rattachez-la dans un chemin</span>';
-        let k = 0;
-        // Sur la ligne d'un robot, une commande peut être en relais (évolution 21) : une équipe avance des vols de la
-        // suivante. Les lots d'une équipe se lisent alors par leur nom : ceux qu'elle a dans sa liste, pas ceux qu'elle avance.
-        const journal = (this.resultat && this.resultat.lots) || [], nomDe = id => (this.state.ateliers.find(x => x.id === id) || {}).nom || id;
-        const vols = n => n + (n > 1 ? ' vols' : ' vol');
-        const relais = a.type === 'robot' && (vue.lots || []).concat(journal.filter(x => x.atelier === a.id)).some(x => !x.retourVol && Array.isArray(x.parts));
-        const siens = relais ? new Map(journal.filter(x => x.atelier === a.id && !x.dispo).map(x => [x.nom, x])) : null;
-        const propres = relais ? null : vue.lots;
-        // « avance n vols de … » : ce que cette équipe a avancé pour la suivante.
-        const avances = new Map();
-        if (relais) for (const x of vue.lots) for (const p of (Array.isArray(x.parts) ? x.parts : [])) if (p.avance && p.atelier === a.id) avances.set(x.atelier, (avances.get(x.atelier) || 0) + (p.vols || []).length);
-        const motAvance = [...avances].map(([id, n]) => `<span class="mini-note rc-avance">avance ${vols(n)} de ${esc(nomDe(id))}</span>`).join('');
-        return `<ol class="rc-seq">${(a.lots || []).map(l => {
-          if (!l.length) return '';
-          const lot = siens ? siens.get(l.join(' + ')) : propres[k++];
-          // « n vols déjà faits par … » : la part de l'équipe d'avant ; l'heure est celle de la part de cette équipe.
-          const faits = lot && Array.isArray(lot.parts) ? lot.parts.filter(p => p.avance) : [], sienne = lot && Array.isArray(lot.parts) ? lot.parts.find(p => !p.avance && p.atelier === a.id && p.travail > 0) : null;
-          const deja = faits.map(p => `<small class="rc-quand rc-relais">${sienne ? vols((p.vols || []).length) + ' déjà faits' : 'déjà faite'} par ${esc(nomDe(p.atelier))}</small>`).join('');
-          const quand = !lot ? '' : lot.impossible ? '<small class="rc-quand ko">ne se fait pas</small>'
-            : faits.length ? (sienne ? `<small class="rc-quand">${hh(sienne.debut)}–${hh(sienne.fin)}</small>` : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}</small>`)
-            : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}</small>`;
-          return `<li class="${l.length > 1 ? 'ens' : ''}">${l.length > 1 ? '<span class="rc-ens-tete">ensemble</span>' : ''}<span class="rc-cmds">${l.map(chip).join('')}</span>${quand}${deja}</li>`;
-        }).join('<li class="rc-fleche" aria-hidden="true">→</li>')}</ol>${motAvance}`;
-      };
-      const depart = a => {
-        if (a.type === 'dispo') return '<td class="rc-jour">—</td><td class="rc-heure">—</td>';
-        const jourFixe = a.type === 'handling';
-        return `<td class="rc-jour">${jourFixe ? '<span title="Le handling travaille le jour J des vols">J</span>'
-          : a.type === 'lavage' ? jours(a.jour, `data-at-champ="jour" aria-label="Jour de travail de ${esc(a.nom)}, compté depuis l’arrivée des retours" title="Compté depuis l’arrivée des retours (J)"`, true)
-          : jours(a.jour, `data-at-champ="jour" aria-label="Jour de départ de ${esc(a.nom)}"`)}</td>
-          <td class="rc-heure"><input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut" aria-label="Heure de départ de ${esc(a.nom)}"></td>`;
-      };
-      let service = null;
-      const lignes = cases.map(a => {
-        const vue = calc.get(a.id) || {};
-        const tete = a.service !== service ? (service = a.service, `<tr class="rc-svc"><th colspan="6"><span>${I ? I.ico(I.icoService(a.service, nomSvc(a.service))) : ''}${esc(nomSvc(a.service))}</span>
-          <small>${this.state.ateliers.filter(x => x.service === a.service).length} équipe${this.state.ateliers.filter(x => x.service === a.service).length > 1 ? 's' : ''}</small></th></tr>`) : '';
-        return tete + `<tr data-at="${esc(a.id)}" class="rc-case">
-          <th scope="row"><button class="lien-discret" data-at-action="ouvrir" title="Régler « ${esc(a.nom)} » dans sa fiche">${esc(a.nom)}</button>
-            <small>${a.type === 'dispo' ? 'mise à disposition' + (+a.personnes > 0 ? ' · ' + a.personnes + ' pers.' : '') : a.type === 'lavage' ? 'plonge' : a.type === 'handling' ? 'handling' : a.type === 'robot' ? 'robot · ' + a.personnes + ' pers.' : a.personnes + ' pers.'}</small></th>
-          <td class="rc-type">${deroule(a)}</td>
-          ${depart(a)}
-          <td class="rc-traite">${traite(a)}</td>
-          <td class="rc-fin-h">${vue.fin != null && a.type !== 'dispo' ? hh(vue.fin) : '—'}</td>
-        </tr>`;
-      }).join('');
-      // Redessiner ne doit ni ramener le tableau en haut, ni faire perdre le
-      // champ où l'on est : on garde le défilement et le focus.
-      const avant = box.querySelector('.rc-scroll'), haut = avant ? avant.scrollTop : 0, gauche = avant ? avant.scrollLeft : 0;
-      const actif = box.contains(document.activeElement) && document.activeElement.dataset.atChamp ? document.activeElement : null;
-      const cle = actif && { at: actif.closest('[data-at]')?.dataset.at, champ: actif.dataset.atChamp, index: actif.dataset.index };
-      box.innerHTML = `<div class="rc-scroll"><table class="rc-table" data-clavier>
-        <thead><tr><th scope="col">Équipe</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
-          <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin <button type="button" class="lien-discret rc-vers-planning" data-page="at-planning" title="Voir quand chaque équipe travaille et attend, dans le planning des équipes">planning →</button></th></tr></thead>
-        <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune équipe ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
-      const apres = box.querySelector('.rc-scroll');
-      if (apres) { apres.scrollTop = haut; apres.scrollLeft = gauche; }
-      if (cle && cle.at) {
-        const el = [...box.querySelectorAll(`[data-at="${CSS.escape(cle.at)}"] [data-at-champ="${CSS.escape(cle.champ)}"]`)]
-          .find(x => x.dataset.index === cle.index);
-        if (el && el !== document.activeElement) el.focus({ preventScroll: true });
-      }
     }
 
     exporterRecapCases() {

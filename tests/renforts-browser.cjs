@@ -116,8 +116,7 @@ const UNITE=()=>{
   assert.deepEqual([await cible.isChecked(),await cible.isDisabled(),await main.count()],[true,true,0],'sans robot : coché et grisé, comme avant');
 
   // 5. Les postes de travail, dans la fiche de B : un seul poste, déjà pris ; vidé, plus de limite.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(()=>{Sim.ateliers.ouvert='mb';Sim.ateliers.rendre();});await attendre();
+  await nav.reglagesEquipe(page,'mb');await attendre();
   const postes=page.locator('[data-at="mb"] [data-at-champ=personnesMax]');
   assert.equal(await postes.inputValue(),'','sans limite par défaut');
   await postes.fill('1');await postes.press('Tab');await attendre();

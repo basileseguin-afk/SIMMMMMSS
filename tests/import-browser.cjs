@@ -55,9 +55,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Scénarios A/B sur le modèle par ateliers : une cuisine à deux, puis à douze.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const at=await nav.ajouterEquipe(page,'cuisine');await nav.reglagesEquipe(page,at);
   for(const c of ['AF/BC','AF/YC','FWI/YC'])await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);
   const personnes=n=>page.evaluate(([id,n])=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes=n;}),[at,n]);
   await personnes(2);

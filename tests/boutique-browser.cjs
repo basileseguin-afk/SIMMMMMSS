@@ -25,7 +25,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await cuisine()).debut,4*60,'par vagues : servie par celle de la veille');
 
   // 1. Les points à regarder proposent d'en faire une boutique, d'un clic.
-  await nav.aller(page,'at-equipes');
+  //    (Évolution 22 b : « Équipes une par une » n'est plus une page ; les mêmes points se lisent en tête des chemins.)
+  await nav.aller(page,'at-chemins');
   await page.locator('#at-anomalies').evaluate(d=>d.open=true);
   assert.match(await page.locator('#at-anomalies').innerText(),/Légumerie sert par vagues[\s\S]*Facultatif\s*Les ouvrir de 07:00 à 18:00/,'une information ; son geste dit « Facultatif »');
   await page.locator('#at-anomalies [data-at-action=boutiques]').click();await attendre();
@@ -35,20 +36,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. Fermée à 04:00 : la cuisine attend l'ouverture, et l'attente se voit.
   assert.deepEqual(await cuisine(),{debut:7*60,attente:180});
 
-  // 3. Le récap des cases montre ses heures, et les règle.
-  await nav.aller(page,'at-recap');
-  const ligne=page.locator('tr.rc-case[data-at="lg"]');
+  // 3. Le tableau de son service dit ses heures ; sa fiche les règle. (Évolution 22 b : « Horaires des équipes », qui
+  //    faisait les deux, a quitté l'écran.)
+  await nav.service(page,await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='lg').service));
+  assert.deepEqual(await page.locator('#mu-services .se-equipes tr[data-se-equipe="lg"] td').evaluateAll(cs=>cs.slice(0,2).map(c=>c.textContent.trim())),['de 07:00 à 18:00','chaque jour']);
+  await nav.reglagesEquipe(page,'lg');
+  const ligne=page.locator('#mu-services [data-at="lg"]').first();
   assert.equal(await ligne.locator('select[data-at-champ=mode-dispo]').inputValue(),'boutique');
-  assert.match(await ligne.innerText(),/chaque jour/);
   await ligne.locator('[data-at-champ=ouverture-de]').fill('03:00');await ligne.locator('[data-at-champ=ouverture-de]').dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='lg').ouverture.de),'03:00');
   assert.deepEqual(await cuisine(),{debut:4*60,attente:0},'ouverte dès 03:00 : servie sans attendre');
 
-  // 3 bis. Une case « toujours ouverte » devient une boutique depuis le récap aussi
-  //        (retour d'usage : « cela n'a pas modifié dans le récap des cases »).
+  // 3 bis. Une équipe « toujours ouverte » devient une boutique depuis sa fiche.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mg',nom:'Magasin',service:'magasin',type:'dispo',debut:'06:00',jour:0,
     personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});},''));await attendre();
-  const mag=page.locator('tr.rc-case[data-at="mg"]');
+  await nav.reglagesEquipe(page,'mg');
+  const mag=page.locator('#mu-services [data-at="mg"]').first();
   assert.equal(await mag.locator('select[data-at-champ=mode-dispo]').inputValue(),'toujours');
   await mag.locator('select[data-at-champ=mode-dispo]').selectOption('boutique');await attendre();
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='mg').ouverture),{de:'07:00',a:'18:00'});

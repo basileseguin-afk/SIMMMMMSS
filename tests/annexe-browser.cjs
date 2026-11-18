@@ -46,15 +46,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(iAnx,iArm+1,'elle est rangée juste sous son atelier');
 
   // 4. Elle accueille des ateliers de travail comme n'importe quel service.
+  //    (Évolution 22 b : l'équipe s'ajoute dans la fiche du service, « Services et équipes » ; sa fiche s'ouvre.)
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');
   const nombre=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
-  await page.locator('#at-new').click();await page.waitForFunction(n=>Sim.ateliers.state.ateliers.length===n+1,nombre);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await equipe(at,(a,z)=>a.service===z,zone.id);
-  await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');
-  await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=debut]`,'change');await equipe(at,a=>a.debut==='05:00');
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await equipe(at,a=>(a.lots||[]).some(l=>l.includes('CRL/BC')));
+  const at=await nav.ajouterEquipe(page,zone.id);
+  await page.waitForFunction(n=>Sim.ateliers.state.ateliers.length===n+1,nombre);
+  await equipe(at,(a,z)=>a.service===z,zone.id);
+  const fiche=await nav.reglagesEquipe(page,at);
+  const debut=page.locator(`${fiche} [data-at-champ=debut]`).first();
+  await debut.fill('05:00');await debut.dispatchEvent('change');await equipe(at,a=>a.debut==='05:00');
+  await nav.reglagesEquipe(page,at);
+  await page.locator(`${fiche} [data-at-champ=lot-nouveau]`).first().selectOption('CRL/BC');await equipe(at,a=>(a.lots||[]).some(l=>l.includes('CRL/BC')));
   await page.waitForFunction(()=>!!Sim.ateliers.resultat&&Sim.ateliers.resultat.ok!==undefined);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,at),zone.id);
 

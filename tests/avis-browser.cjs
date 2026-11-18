@@ -118,8 +118,9 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.ok(ici.avecInfos>ici.services,'la commande sans vol se règlerait dans « Services et équipes », et n’y compte pas');
 
   // 5. Les mêmes mots dans les pages.
-  //    Les équipes : « À corriger », puis l'information repliée.
-  await nav.aller(page,'at-equipes');
+  //    Les chemins : « À corriger », puis l'information repliée. (Évolution 22 b : « Équipes une par une », où ces avis
+  //    se lisaient aussi, n'est plus une page.)
+  await nav.aller(page,'at-chemins');
   const boite=page.locator('#at-anomalies');
   await boite.evaluate(d=>{d.open=true;});
   assert.deepEqual(await boite.locator('.avis-niveau').evaluateAll(s=>s.map(x=>x.tagName+' '+x.className)),
@@ -153,7 +154,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   r=await registre();
   assert.ok(de(r,'bloquant').some(p=>/NORD\/CRWE/.test(p.titre)),'ce que le calcul refuse est bloquant : '+JSON.stringify(de(r,'bloquant')));
   assert.equal(await page.locator('#calcul-etat').getAttribute('title'),'Le calcul s’arrête sur un point bloquant : voir les problèmes');
-  await nav.aller(page,'at-equipes');
+  await nav.aller(page,'at-chemins');
   await boite.evaluate(d=>{d.open=true;});
   assert.match(await boite.locator('.avis-niveau.bloquant h4').innerText(),/^Bloquant$/);
   assert.match(await boite.locator('.avis-niveau.bloquant').innerText(),/NORD\/CRWE/);
@@ -180,7 +181,7 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
     assert.equal(await page.locator('#problemes details.pb-groupe.information').evaluate(d=>d.open),false);
     await fermerPanneau();
     // Les équipes : rien que des informations ; la boîte est leur repli, et elle le dit.
-    await nav.aller(page,'at-equipes');
+    await nav.aller(page,'at-chemins');
     assert.match(await boite.locator('summary').first().innerText(),/^Information$/);
     assert.equal(await boite.locator('.avis-niveau').count(),0,'pas de repli dans le repli');
     assert.equal(await boite.evaluate(d=>d.classList.contains('at-informations')),true);

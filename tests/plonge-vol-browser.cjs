@@ -14,9 +14,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'pl',nom:'Plonge',service:'plonge',type:'lavage',debut:'05:00',jour:0,
     personnes:2,pauses:[],lots:[],regime:{actif:true},plafond:0,tunnels:[{nom:'T1',debit:300,personnes:1,actif:true},{nom:'T2',debit:300,personnes:1,actif:true}]});},''));
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(()=>{Sim.ateliers.ouvert='pl';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
-  const fiche=page.locator('[data-at="pl"]');
+  await nav.reglagesEquipe(page,'pl');await attendre();
+  const fiche=page.locator('#mu-services [data-at="pl"]');
 
   // 1. Par vol : le débit en u/h disparaît, une ligne par compagnie des vols revenus.
   await fiche.locator('[data-at-champ=plonge-mode]').selectOption('vol');await attendre();
@@ -49,15 +48,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [cie,d] of rapides)assert.equal(d,(cie===c0?45:30)/2,'en deux fois moins de temps');
   assert.match(await fiche.innerText(),/dans un tunnel normal \(×1\)/);
 
-  // 3. Le récap des cases le dit.
-  await nav.aller(page,'at-recap');
-  assert.match(await page.locator('tr.rc-case[data-at="pl"]').innerText(),/lave \d+ vols? revenus?, dans l’ordre des retours/);
+  // 3. Le tableau des équipes de son service le dit. (Évolution 22 b : « Horaires des équipes », qui le disait avec le
+  //    nombre de vols lavés — un résultat —, a quitté l'écran.)
+  await nav.service(page,'plonge');
+  assert.match(await page.locator('#mu-services .se-equipes tr[data-se-equipe="pl"]').innerText(),/lave les retours, vol par vol/);
 
   // 3 bis. Avec la boucle du matériel (retour d'usage : « j'ai essayé d'ajouter des tunnels et ça
   //        fait que crasher ») : un débit « infini » faisait tourner sans fin le graphique de la
   //        plonge. Chaque ajout de tunnel doit rester instantané, et la page des stocks s'afficher.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(()=>{Sim.ateliers.changer(()=>{Sim.ateliers.state.materiel.actif=true;},'');Sim.ateliers.ouvert='pl';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.materiel.actif=true;},''));
+  await nav.reglagesEquipe(page,'pl');await attendre();
   for(let i=0;i<3;i++){const t=Date.now();
     await fiche.locator('[data-at-action=tunnel-ajouter]').click({timeout:5000});
     assert.ok(Date.now()-t<3000,'ajouter un tunnel reste instantané ('+(Date.now()-t)+' ms)');}
@@ -68,8 +68,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.doesNotMatch(stocks,/Infinity|NaN/);
 
   // 4. Retour au débit : l'ancien réglage revient.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(()=>{Sim.ateliers.ouvert='pl';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
+  await nav.reglagesEquipe(page,'pl');await attendre();
   await fiche.locator('[data-at-champ=plonge-mode]').selectOption('debit');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='pl').parVol),undefined);
   assert.equal(await fiche.locator('[data-at-champ=tunnel-debit]').count(),5);

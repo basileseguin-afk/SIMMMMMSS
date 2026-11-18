@@ -268,77 +268,16 @@ function liaisonsServices(){
  *  produira rien.
  * ==========================================================================*/
 /* ==========================================================================
- *  LES SERVICES DE L'UNITÉ — Organisation › Services
- *  Un service par ligne : son nom (qu'on change ici), ses équipes, les
- *  commandes qui y passent, et ce qu'il lui manque. C'est la porte d'entrée
- *  d'un service : « il manque une équipe » doit se corriger d'ici, sans aller
- *  chercher l'édition du plan.
+ *  LES SERVICES DE L'UNITÉ — L'unité › Services et équipes
+ *  « Liste des services » n'est plus une page (évolution 22 b) : le nom d'un
+ *  service, son rattachement, sa place sur le plan, ses équipes et « Supprimer »
+ *  sont dans sa fiche (services-page.js) ; les services supprimés et les zones
+ *  du plan qui n'en sont pas, au bas de sa liste. Il reste ici ce que la page
+ *  appelle : le choix du rattachement, ces sections, et leurs gestes.
  * ==========================================================================*/
-function etatService(id){
-  const cases=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
-  const st=(Sim.ateliers&&Sim.ateliers.state)||{};
-  const classes=(Sim.ateliers&&Sim.ateliers.classes)||[];
-  const cmds=window.OrlyParcours?classes.filter(c=>{const p=OrlyParcours.fluxDe(st,c);return p&&MoteurProduction.servicesDuParcours(p).includes(id);}).length:0;
-  const lu=Sim.flows?lectureDuGraphe():{lignes:[],liens:[]};
-  // Il manque une équipe quand une commande passe par ce service, ou quand les
-  // liens de l'unité en attendent quelque chose (le même constat que les Contrôles).
-  const attendu=lu.lignes.some(l=>l.id===id&&!l.equipes);
-  const relie=(lu.liens||[]).some(l=>l.from===id||l.to===id);
-  let etat,texte;
-  if(!cases.length){etat=cmds||attendu?'manque':'libre';texte=cmds||attendu?'il manque une équipe':relie?'relié, sans équipe':'pas utilisé';}
-  else if(cases.some(a=>a.type==='dispo')){etat='ok';texte='mise à disposition';}
-  else if(cases.some(a=>a.type==='lavage')){etat='ok';texte='plonge';}
-  else if(cases.some(a=>a.type==='handling')){etat='ok';texte='charge les vols';}
-  else if(!cases.some(a=>(a.lots||[]).some(l=>l.length))){etat='manque';texte='équipe sans commande';}
-  else {etat='ok';texte=cases.length>1?cases.length+' équipes':'une équipe';}
-  return {cases,cmds,etat,texte};
-}
+/** Un service a changé (nom, rattachement, suppression…) : « Services et équipes » se redessine, si elle est ouverte. */
 function renderServices(){
   if(Sim.unite&&Sim.unite.rendreServices&&document.body.dataset.sous==='mu-services')Sim.unite.rendreServices();
-  const box=document.getElementById('services-unite');if(!box)return;
-  // On ne redessine pas sous les doigts de quelqu'un qui renomme un service.
-  if(box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
-  const zones=(Sim.editor&&Sim.editor.state.zones)||[];
-  const brut=id=>{const z=zones.find(x=>x.id===id);return z?z.nom:(ZONES[id]||{}).nom||id;};
-  const rang={manque:0,ok:1,libre:2};
-  const lignes=servicesDisponibles().map(s=>({...s,...etatService(s.id)}))
-    .sort((a,b)=>rang[a.etat]-rang[b.etat]||a.nom.localeCompare(b.nom));
-  const manque=lignes.filter(l=>l.etat==='manque').length;
-  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',handling:'par vol',appui:'hors tunnel',manuel:''};
-  const cherche=(box.querySelector('[data-svc-chercher]')||{}).value||'';
-  box.innerHTML='<div class="svc-tete"><p class="mini-note">'+(manque
-      ?'<b>'+manque+(manque>1?' services attendent':' service attend')+' une équipe ou du travail</b> : ils sont en tête de liste.'
-      :'Chaque service a ce qu’il lui faut.')+' Le nom se change ici ; la forme et la place, sur le plan.</p>'
-    +'<button class="btn btn-sm" type="button" data-svc-action="plan">Modifier le plan de l’unité</button></div>'
-    +sectionFantomes()
-    +'<div class="svc-chercher"><label>Chercher un service <input type="search" data-svc-chercher value="'+escapeHTML(cherche)+'" placeholder="ex. armement" autocomplete="off"></label>'
-    +'<span class="mini-note" data-svc-compte aria-live="polite"></span></div>'
-    +'<form class="svc-nouveau" data-svc-nouveau><b>Nouveau service</b><label>Nom <input name="nom" maxlength="120" placeholder="ex. Armement EZY/AF" required></label>'
-    +'<label>Rattaché à <select name="parent"><option value="">Aucun — service à part entière (comme Prépa, Dotation)</option>'+servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
-    +'<button class="btn btn-sm btn-play" type="submit">+ Créer le service</button>'
-    +'<span class="mini-note">À part entière : ses propres minutes et ses propres liens. Rattaché : une salle de plus de ce service, qui en reprend les liens.</span></form>'
-    +'<div class="table-scroll"><table class="svc-table"><thead><tr><th>Service</th><th>Équipes</th><th>Commandes qui y passent</th><th>État</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>'
-    +lignes.map(l=>{
-      const annexe=!ZONES[l.id]?annexes().find(a=>a.id===l.id):null;
-      const pere=annexe&&ZONES[annexe.parent]?nomLisible(ZONES[annexe.parent].nom):'';
-      return '<tr data-svc="'+escapeHTML(l.id)+'" class="svc-'+l.etat+'">'
-        +'<td><input class="svc-nom" data-svc-nom="'+escapeHTML(l.id)+'" maxlength="120" value="'+escapeHTML(brut(l.id))+'" aria-label="Nom du service '+escapeHTML(l.nom)+'">'
-        +(annexe?'<label class="svc-parent">rattaché à '+choixRattachement(annexe)+'</label>'
-          :'<small>service du plan</small>')+'</td>'
-        +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
-          +(type[a.type]?' <small>'+type[a.type]+((a.type==='dispo'||a.type==='appui')&&+a.personnes>0?' · '+a.personnes+' pers.':'')+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
-        +'<td>'+(l.cmds?l.cmds+(l.cmds>1?' commandes':' commande'):'—')+'</td>'
-        +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
-        +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'
-        +'<button class="btn btn-sm" type="button" data-svc-action="voir" data-svc="'+escapeHTML(l.id)+'">Voir sur le plan</button>'
-        // Un service du plan d'origine se « supprime » comme les autres : il sort
-        // de l'unité, et se remet d'un clic en bas de la page. « Retirer » ne
-        // se lisait pas comme une suppression : on cherchait le bouton.
-        +(annexe?'<button class="btn btn-sm svc-danger" type="button" data-svc-supprimer="'+escapeHTML(l.id)+'">Supprimer</button>'
-          :'<button class="btn btn-sm svc-danger" type="button" data-svc-retirer="'+escapeHTML(l.id)+'" title="Il sort des listes, des liens et du plan ; on peut le remettre en bas de la page">Supprimer</button>')+'</td></tr>';
-    }).join('')+'</tbody></table></div>'
-    +sectionOrphelines()+sectionLocaux()+sectionRetires();
-  filtrerServices(box);
 }
 /* Le choix « rattaché à » d'un service ajouté au plan (une salle de plus d'un service, ou un service à part entière). */
 function choixRattachement(annexe){
@@ -368,18 +307,6 @@ function voirDansLesResultats(service){
   l.scrollIntoView({block:'center'});
   const b=l.querySelector('button');if(b)b.focus({preventScroll:true});
   l.classList.add('pal-trouvee');setTimeout(()=>l.classList.remove('pal-trouvee'),1600);
-}
-/* Chercher un service par son nom : la liste est longue, et un service sans
- * équipe se range en tête, loin de l'ordre alphabétique. */
-function filtrerServices(box){
-  const q=box.querySelector('[data-svc-chercher]');if(!q)return;
-  const t=q.value.trim().toLowerCase();let n=0;
-  for(const tr of box.querySelectorAll('.svc-table tbody tr')){
-    const i=tr.querySelector('.svc-nom'),ok=!t||(i?i.value:tr.textContent).toLowerCase().includes(t);
-    tr.hidden=!ok;if(ok)n++;
-  }
-  const note=box.querySelector('[data-svc-compte]');
-  if(note)note.textContent=t?(n?n+(n>1?' services':' service'):'Aucun service de l’unité ne porte ce nom. Regardez les services supprimés, en bas de la page.'):'';
 }
 /* Les services du plan d'origine supprimés de l'unité : on peut les remettre. */
 function sectionRetires(){
@@ -435,10 +362,7 @@ function actionService(action,id){
   if(editMode&&action!=='plan')return;
   if(action==='equipe'){
     // La fiche du service : l'équipe y naît, avec sa grille à cocher.
-    if(Sim.unite){Sim.unite.ouvrir(id);Sim.unite.ajouterEquipe(id);return;}
-    if(Sim.onglets)Sim.onglets.choisir('at-equipes');
-    Sim.ateliers.creer(id);
-    toast('Équipe créée dans '+((servicesDisponibles().find(s=>s.id===id)||{}).nom||id)+' : réglez-la ici, puis rattachez-la à ses commandes dans leur chemin.');
+    if(Sim.unite){Sim.unite.ouvrir(id);Sim.unite.ajouterEquipe(id);}
   } else if(action==='voir'){
     if(Sim.onglets)Sim.onglets.choisir('j-plan');
     selection=null;selectionner(id);
@@ -452,8 +376,8 @@ function actionService(action,id){
     // là où on le voit (un service du plan d'origine se retire, et se remet).
     const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
     Promise.resolve(z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id)).then(fait=>{
-      if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Services et équipes › Liste des services.':'.'),{parDefaut:true});
-      if(document.body.dataset.sous==='u-services')renderServices();});
+      if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre depuis le bas de la liste, dans L’unité › Services et équipes.':'.'),{parDefaut:true});
+      renderServices();});
   }
 }
 /* Un service supprimé encore cité : ses cases et ses étapes de chemin passent
@@ -506,21 +430,6 @@ function renommerService(id,valeur,champ){
   renderServices();
 }
 function initServices(){
-  const vue=document.getElementById('view-flux');if(!vue)return;
-  const box=document.createElement('section');
-  box.id='services-unite';box.className='services-unite';box.dataset.sous='u-services';box.setAttribute('aria-label','Les services de l’unité');
-  vue.appendChild(box);
-  box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value,i);});
-  box.addEventListener('keydown',e=>{const i=e.target.closest('[data-svc-nom]');if(i&&e.key==='Enter'){e.preventDefault();i.blur();}});
-  box.addEventListener('input',e=>{if(e.target.closest('[data-svc-chercher]'))filtrerServices(box);});
-  box.addEventListener('submit',e=>{
-    const f=e.target.closest('[data-svc-nouveau]');if(!f)return;e.preventDefault();
-    const nom=f.elements.nom.value.trim();if(!nom){refuserAuChamp(f.elements.nom,'Donnez un nom au service.');return;}
-    if(servicesDisponibles().some(x=>x.nom.toLowerCase()===nomLisible(nom).toLowerCase())){refuserAuChamp(f.elements.nom,'« '+nom+' » existe déjà : choisissez un autre nom.');return;}
-    const id=Sim.editor.nouveauService(nom,f.elements.parent.value,!f.elements.parent.value);
-    if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les équipes et les temps par vol.');renderServices();
-      const i=box.querySelector('[data-svc-nom="'+CSS.escape(id)+'"]');if(i)i.closest('tr').classList.add('svc-nouveau-ligne');}
-  });
   const surChange=e=>{
     const rp=e.target.closest('[data-svc-reparent]');
     if(rp){const id=rp.dataset.svcReparent;Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
@@ -546,13 +455,9 @@ function initServices(){
     if(ra){const id=ra.dataset.svcRattacher,sel=box.querySelector('[data-svc-orpheline="'+CSS.escape(id)+'"]');
       const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a||!sel)return;
       const vieux=a.service;reaffecterEquipe(id,sel.value,vieux);renderServices();return;}
-    const c=e.target.closest('[data-svc-case]');
-    if(c){const id=c.dataset.svcCase;if(!Sim.ateliers.ouvrirFiche(id)){Sim.ateliers.ouvert=id;if(Sim.onglets)Sim.onglets.choisir('at-equipes');Sim.ateliers.rendre();}return;}
   };
-  box.addEventListener('change',surChange);
-  box.addEventListener('click',e=>surClic(e,box));
-  // Les mêmes gestes dans « Services et équipes » (évolution 22 b) : le rattachement d'un service, dans ses réglages
-  // avancés ; les services supprimés et les zones du plan, depuis le bas de sa liste.
+  // Dans « Services et équipes » (évolution 22 b) : le rattachement d'un service, dans ses réglages avancés ; les
+  // services supprimés et les zones du plan, depuis le bas de sa liste.
   document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#mu-services [data-svc-reparent]'))surChange(e);});
   document.addEventListener('click',e=>{const h=e.target.closest&&e.target.closest('#mu-services [data-svc-hote]');if(h)surClic(e,h);});
   // Les boutons d'un service peuvent vivre ailleurs : le panneau du plan, les contrôles.
@@ -668,7 +573,7 @@ function lectureDuGraphe(){
   const orphelines=equipesOrphelines();
   if(orphelines.length)alertes.push({grave:true,orphelines:true,
     texte:orphelines.map(a=>a.nom).join(', ')+(orphelines.length>1?' travaillent':' travaille')+' dans un service qui n’existe plus sur le plan. '
-      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Services et équipes › Liste des services).'});
+      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (L’unité › Services et équipes, en bas de la liste).'});
   // Un service supprimé qui reste une étape de chemins : l'étape est sautée,
   // et l'alerte du calcul le nomme sans qu'on puisse le retrouver nulle part.
   const fantomes=servicesFantomes().filter(f=>f.chemins);
@@ -676,7 +581,7 @@ function lectureDuGraphe(){
   if(fantomes.length)alertes.push({grave:true,fantomes:true,
     texte:fantomes.map(f=>f.nom).join(', ')+(fantomes.length>1?' restent des étapes':' reste une étape')+' de '
       +nChemins+(nChemins>1?' chemins':' chemin')+'. Effacez-'+(fantomes.length>1?'les':'le')+' partout, ou faites passer '
-      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Services et équipes › Liste des services, en tête de page).'});
+      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (L’unité › Services et équipes, en bas de la liste).'});
   // Un cycle bloquerait la fabrication sans jamais rien dire.
   const fourn=MoteurProduction.fournisseurs(liens);
   for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
@@ -706,7 +611,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
+    change:r=>{suivreGestes();if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -843,7 +748,7 @@ function majProblemes(){
     // Les nombres des onglets se lisent dans le registre : ils le suivent.
     if(Sim.onglets)Sim.onglets.rendre();},0);
 }
-function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
+function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 /* Les contrôles du calcul (audit du 29/09) : la page Contrôles ne parlait que
  * des liens entre services, qui ne servent plus quand chaque commande a son
@@ -945,7 +850,7 @@ async function supprimerServiceUnite(id){
   const dansChemins=(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id));
   if(cases||dansChemins){
     const oui=await OrlyNotif.demander((cases?'Ses '+cases+(cases>1?' équipes sont supprimées':' équipe est supprimée')+(dansChemins?', et ses étapes de chemin retirées.':'.'):'Ses étapes de chemin sont retirées.')
-      +(z.kind==='service'?' Le service, lui, se remet depuis Services et équipes › Liste des services.':''),
+      +(z.kind==='service'?' Le service, lui, se remet depuis le bas de la liste des services.':''),
       {titre:'Supprimer le service « '+nom+' » ?',oui:'Supprimer le service',danger:true});
     if(!oui)return false;
     reaffecterService(id,null,nom);
@@ -1069,7 +974,9 @@ function initOnglets(){
     // Pendant la modification du plan, le menu attend : ses entrées sont grisées.
     verrou:()=>editMode,
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
-    apres:id=>{afficherTitre();if(id==='u-services')renderServices();majHauteurEntete();
+    // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
+    lieu:(id,lieu)=>{if(id==='mu-services'&&Sim.unite&&Sim.unite.allerA)Sim.unite.allerA(lieu);},
+    apres:id=>{afficherTitre();majHauteurEntete();
       // Le plan de l'unité (refonte, étape 5) : y arriver ouvre l'édition ;
       // ailleurs, on retient la page, pour que « Terminer » y ramène.
       if(id==='u-plan'){if(!editMode)basculerEdition();}else Sim.pageAvantPlan=id;},
@@ -1091,13 +998,26 @@ function initOnglets(){
   const outils=document.getElementById('so-outils');
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
   // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
-  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins at-equipes'],
-                                 ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-simulation'],
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins'],
+                                 ['reglages','#rg-bareme-panneau .rg-actions','rg-simulation'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
     e.dataset.vueOutils=vue;if(onglet)e.dataset.sous=onglet;outils.appendChild(e);
   }
   Sim.onglets.rendre();
+}
+/* « Fichiers » (évolution 22 b) : les classeurs Excel des deux vues d'ensemble qui ont quitté l'écran (« Horaires des
+ * équipes », « Temps par vol ») y sont, avec leurs boutons d'avant. Ce qui reste de leurs pages, et de « Temps par vol
+ * par service », sort du document : reglages.js (commun avec la version 2, laissé tel quel) ne dessine un tableau que
+ * si sa boîte existe. « Remettre les chiffres d'exemple » rejoint « Réglages de la simulation ». */
+function initFichiers(){
+  const hote=document.getElementById('fi-classeurs');
+  if(hote&&window.OrlyFichiers)OrlyFichiers.poser(hote,document);
+  const remise=document.querySelector('#rg-bareme-panneau .rg-reset-ligne'),ailleurs=document.querySelector('#rg-modele .rg-ailleurs');
+  if(remise&&ailleurs){remise.dataset.sous='rg-simulation';ailleurs.before(remise);}
+  for(const sel of ['#rg-bareme-panneau','#rg-recap-panneau','#rg-modele > .titre-aide[data-sous="rg-minutes"]','#rc-classeur']){
+    const e=document.querySelector(sel);if(e)e.remove();
+  }
 }
 function initDemarrage(){
   // Les pictogrammes posés dans la page : un par indicateur, un par panneau.
@@ -1120,9 +1040,9 @@ function journeeCalculee(){
 }
 /* Le menu : ouvrir une page, une partie, ou revenir à l'accueil. Pendant
  * l'édition du plan, on ne s'en va pas : il faut d'abord la terminer. */
-function allerPage(id){
+function allerPage(id,lieu){
   if(editMode)return;
-  if(Sim.onglets)Sim.onglets.choisir(id);
+  if(Sim.onglets)Sim.onglets.choisir(id,undefined,false,lieu);
 }
 function allerPartie(p){
   if(editMode)return;
@@ -1167,11 +1087,25 @@ function afficherTitre(){
  *  saisie : un champ garde sa propre annulation, lettre à lettre.
  * ==========================================================================*/
 const HISTOIRES=[
-  [['mu-flux','mu-services','at-chemins','at-equipes','at-recap','v-planche'],'at-undo','at-redo'],
-  [['rg-minutes','rg-simulation'],'rg-undo','rg-redo'],
-  [['rg-recap'],'rg-recap-undo','rg-recap-redo'],
+  [['mu-flux','at-chemins','v-planche'],'at-undo','at-redo'],
+  [['rg-simulation'],'rg-undo','rg-redo'],
   [['u-liens'],'fc-undo','fc-redo']
 ];
+/* Dans « Services et équipes », on règle les équipes (une histoire) et les temps par vol (une autre) : depuis l'évolution
+ * 22 (b), ceux-ci ne se règlent plus que là. « Annuler » y défait le dernier geste, quelle que soit son histoire ;
+ * « Rétablir », le dernier annulé. On retient donc l'ordre des gestes des deux histoires, recalé à chaque changement sur
+ * la longueur de leurs piles (un geste de plus s'ajoute au bout, un geste de moins retire le dernier de son histoire). */
+const DEUX_HISTOIRES={at:['at-undo','at-redo'],rg:['rg-undo','rg-redo']};
+const ordreGestes={faits:[],defaits:[]};
+function suivreGestes(){
+  const piles={at:Sim.ateliers,rg:Sim.reglages};
+  const caler=(liste,longueur)=>{for(const k of ['at','rg']){
+    let ecart=longueur(k)-liste.filter(x=>x===k).length;
+    for(;ecart>0;ecart--)liste.push(k);
+    for(;ecart<0;ecart++)liste.splice(liste.lastIndexOf(k),1);}};
+  caler(ordreGestes.faits,k=>(piles[k]&&piles[k].undo?piles[k].undo.length:0));
+  caler(ordreGestes.defaits,k=>(piles[k]&&piles[k].redo?piles[k].redo.length:0));
+}
 /** Les boutons Annuler et Rétablir de la zone que la page ouverte modifie, ou rien. */
 function boutonsAnnuler(){
   if(editMode)return ['pe-undo','pe-redo'];
@@ -1179,6 +1113,10 @@ function boutonsAnnuler(){
   // « Disposer les zones » (évolution 20 b) règle la disposition, gardée avec les équipes : tant que son panneau est
   // ouvert, dans « En direct », le bouton du haut annule et rétablit ses gestes — et eux seuls (`gesteDeDisposition`).
   if(document.body.classList.contains('direct-dispose'))return ['at-undo','at-redo'];
+  if(document.body.dataset.sous==='mu-services'){
+    suivreGestes();
+    return [DEUX_HISTOIRES[ordreGestes.faits.at(-1)||'at'][0],DEUX_HISTOIRES[ordreGestes.defaits.at(-1)||'at'][1]];
+  }
   const h=HISTOIRES.find(([pages])=>pages.includes(document.body.dataset.sous));
   return h?[h[1],h[2]]:null;
 }
@@ -1271,6 +1209,10 @@ function elementsPalette(){
   // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
     indice:p.nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
+  // Une page qu'une autre a reprise (évolution 22 b) se cherche toujours par son nom, et par celui d'encore avant : elle
+  // mène à la page qui l'a reprise, au bon endroit dedans.
+  if(O&&O.ANCIENNES)for(const [id,a] of Object.entries(O.ANCIENNES)){const pg=O.page(a.vers);if(!pg)continue;
+    out.push({groupe:'Pages',nom:a.nom,indice:'dans '+pg.nom,ico:pg.ico,mots:[a.ancien,'ancienne page'].filter(Boolean).join(' '),faire:()=>vers(id)});}
   const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
   for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
   for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
@@ -3515,7 +3457,7 @@ function installerCentreReglages() {
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();},
+    change:()=>{suivreGestes();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();},
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
@@ -3881,7 +3823,11 @@ function renderHandlingVols() {
         + (vus - (k.volsCharges || 0) ? ', ' + (vus - k.volsCharges) + ' non chargé' + (vus - k.volsCharges > 1 ? 's' : '') : '') + '.' : 'Aucun vol suivi.')
       + '</p><p class="row-btns"><button class="btn btn-sm" type="button" data-vh-action="regler" data-vh-atelier="' + escapeHTML(a.id) + '">Régler le handling →</button>'
       + (sans ? '<button class="btn btn-sm" type="button" data-vh-action="brancher">L’ajouter aux ' + sans + ' chemin' + (sans > 1 ? 's' : '') + ' qui n’y passent pas</button>' : '')
-      + '</p>';
+      + '</p>'
+      // Ce que le calcul a fait de chaque équipe de handling (évolution 22 b) : ses tournées, le plan de ses chauffeurs. Ces
+      // résultats se lisaient dans la fiche de l'équipe ; « Services et équipes » n'en montre plus aucun.
+      + h.map(x => { const res = at.resultatsHandling ? at.resultatsHandling(x) : '';
+        return res ? '<div class="vh-resultats" data-at="' + escapeHTML(x.id) + '">' + (h.length > 1 ? '<p><b>« ' + escapeHTML(x.nom) + ' »</b></p>' : '') + res + '</div>' : ''; }).join('');
   }
   if (box.innerHTML !== html) box.innerHTML = html;
 }
@@ -3896,9 +3842,9 @@ function initHandlingVols() {
         : (r.cree ? 'Équipe Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
       renderFlights();
     } else if (b.dataset.vhAction === 'regler') {
-      Sim.ateliers.ouvert = b.dataset.vhAtelier;
-      allerPage('at-equipes');
-      Sim.ateliers.rendre();
+      // La fiche de l'équipe, dans « Services et équipes » (évolution 22 b) : elle ne se règle que là.
+      const a = Sim.ateliers.state.ateliers.find(x => x.id === b.dataset.vhAtelier);
+      if (a) ouvrirEquipe(a);
     }
   });
 }
@@ -3979,7 +3925,7 @@ function initWorkbench() {
   });
   document.addEventListener('click',e=>{
     const pg=e.target.closest('[data-page]');
-    if(pg&&!pg.disabled){allerPage(pg.dataset.page);return;}
+    if(pg&&!pg.disabled){allerPage(pg.dataset.page,pg.dataset.lieu);return;}
     const pa=e.target.closest('[data-vers-partie]');
     if(pa&&!pa.disabled)allerPartie(pa.dataset.versPartie);
   });
@@ -4059,7 +4005,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
 etape('période',initPeriode); etape('réglages qui jouent',initJouent);
-etape('menu',initOnglets); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
+etape('menu',initOnglets); etape('fichiers',initFichiers); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);

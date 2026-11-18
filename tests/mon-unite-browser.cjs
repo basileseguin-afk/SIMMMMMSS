@@ -200,12 +200,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#mu-flux [data-mu-flux-suivre="AF/BC"]').click();await attendre();
   assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id),cf,'elle reprend le flux de sa classe');
 
-  // 13. Les outils d'avant restent à portée : des onglets de « Services et équipes ».
+  // 13. Les pages d'avant ne sont plus des onglets de « Services et équipes » (évolution 22 b) : la page les a reprises.
+  //     Leur nom se cherche toujours par « Aller à… », et mène ici.
   await nav.aller(page,'mu-services');
-  await page.locator('#onglets-internes [data-sous-onglet=at-equipes]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
+  assert.equal(await page.locator('#onglets-internes').isVisible(),false,'plus d’onglets internes');
+  await nav.aller(page,'j-chiffres');
+  await page.keyboard.press('Control+k');await page.waitForSelector('dialog.palette [role=option]');
+  await page.keyboard.type('Équipes une par une');await attendre();
+  const anciennes=page.locator('dialog.palette [role=option]');
+  const rang=(await anciennes.evaluateAll(os=>os.map(o=>(o.querySelector('.pal-nom')||o).textContent.trim()))).indexOf('Équipes une par une');
+  assert.ok(rang>=0,'« Aller à… » propose encore « Équipes une par une »');
+  await anciennes.nth(rang).click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services','et mène à « Services et équipes »');
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
-  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'groupe:services','l’entrée reste marquée');
+  assert.equal(await page.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'mu-services','son entrée est marquée');
 
   // 14. Tout survit au rechargement.
   await page.reload();await attendre();

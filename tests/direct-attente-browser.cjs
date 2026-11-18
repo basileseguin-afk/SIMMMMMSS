@@ -24,8 +24,7 @@ const URL=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
  const zones=()=>page.evaluate(()=>Sim.ateliers.site(Sim.reglages.etat.regime).zones.map(z=>({id:z.id,nom:z.nom,services:z.services,x:z.x,y:z.y,w:z.w,h:z.h})));
  /** La fiche de l'équipe de handling, ouverte : son choix de la zone d'attente. */
  const choix=async()=>{
-   await nav.aller(page,'at-equipes');
-   await page.evaluate(()=>{Sim.ateliers.ouvert='h';Sim.ateliers.rendre();});
+   await nav.reglagesEquipe(page,'h');
    await page.waitForSelector('[data-at="h"] [data-at-champ=attente]');
    return page.locator('[data-at="h"] [data-at-champ=attente]');
  };
@@ -74,8 +73,8 @@ const URL=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
   assert.deepEqual(options.slice(1).map(o=>o[0]),s0.zones.filter(z=>z.id!=='quais').map(z=>z.id),'les autres zones, dans l’ordre du site');
   assert.deepEqual(options.slice(1).map(o=>o[1]),s0.zones.filter(z=>z.id!=='quais').map(z=>z.nom),'par leur nom');
   // Une équipe qui n'est pas de handling n'a pas ce choix.
-  await page.evaluate(()=>{Sim.ateliers.ouvert=Sim.ateliers.state.ateliers.find(a=>a.type!=='handling').id;Sim.ateliers.rendre();});
-  assert.equal(await page.locator('[data-at-champ=attente]').count(),0);
+  await nav.reglagesEquipe(page,await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type!=='handling').id));
+  assert.equal(await page.locator('#mu-services [data-at-champ=attente], #at-liste [data-at-champ=attente]').count(),0);
 
   // 3. On choisit la cuisine : le réglage est gardé avec les équipes ; aucun calcul ne change ; le site est le même.
   await (await choix()).selectOption('cuisine');

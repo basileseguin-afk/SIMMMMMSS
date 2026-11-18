@@ -69,9 +69,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#fc-parcours').textContent(),/Aucune équipe/);
   // Une équipe au montage met ses fournisseurs sur le chemin.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const eq=await nav.ajouterEquipe(page,'prepa');await nav.reglagesEquipe(page,eq);
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
   await nav.vue(page,'flux');await page.waitForTimeout(150);
   // Le nom du service est en TÊTE de ligne : le chercher dans toute la ligne
@@ -88,9 +87,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#fc-alertes').textContent(),/mise à disposition/);
   // Une mise à disposition sur ce fournisseur fait taire l'alerte le concernant.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const md=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${md}"] [data-at-champ=service]`,'magasin');await page.waitForTimeout(150);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const md=await nav.ajouterEquipe(page,'magasin');await nav.reglagesEquipe(page,md);
   await page.selectOption(`[data-at="${md}"] [data-at-champ=type]`,'dispo');await page.waitForTimeout(250);
   await nav.vue(page,'flux');await page.waitForTimeout(150);
   assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/Magasin/,

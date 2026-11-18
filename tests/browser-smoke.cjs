@@ -57,12 +57,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#flight-rows').textContent(),/Commandes sans équipe/);
   // Un atelier qui ouvre à 06:00 pour un départ de 05:00 : la classe sort, en retard.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
+  // (Évolution 22 b : l'équipe s'ajoute dans la fiche de son service, « Services et équipes » ; sa fiche s'ouvre.)
+  const at=await nav.ajouterEquipe(page,'prepa');await page.waitForTimeout(150);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,at),'prepa');
   // Le vol emporte BC, PC et YC : l'atelier fabrique les trois.
   for(const c of ['TX/BC','TX/PC','TX/YC']){
-    await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);await page.waitForTimeout(250);
+    const fiche=await nav.reglagesEquipe(page,at);
+    await page.locator(`${fiche} [data-at-champ=lot-nouveau]`).first().selectOption(c);await page.waitForTimeout(250);
   }
   await nav.vue(page,'plan');
   assert.equal(await page.locator('#btn-play').isDisabled(),false,'une journée existe : on peut la relire');

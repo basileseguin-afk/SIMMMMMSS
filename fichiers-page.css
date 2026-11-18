@@ -1,0 +1,9 @@
+/* « Fichiers » (version 1, évolution 22) : le tableau des classeurs Excel — une ligne par classeur, une colonne par
+ * sens. Le tableau lui-même est celui du système (.svc-table) ; cette feuille n'y ajoute que ses cellules. */
+.fi-classeurs th[scope="row"]{font-size:var(--ds-t-14);font-weight:var(--ds-g-fort);color:var(--ds-texte-1);background:none;text-transform:none;letter-spacing:0}
+.fi-classeurs th[scope="row"] small{display:block;margin-top:2px;font-size:var(--ds-t-13);font-weight:var(--ds-g-normal);color:var(--ds-texte-2)}
+.fi-classeurs td{vertical-align:middle;white-space:nowrap}
+.fi-classeurs .fi-sans{font-size:var(--ds-t-13);color:var(--ds-texte-3)}
+/* Le tableau prend toute la largeur de la page, sous la sauvegarde et les limites (trois colonnes). */
+#fichiers-classeurs{column-span:all}
+#fichiers-classeurs .mini-note{margin:0 0 10px}

@@ -45,9 +45,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator(`#mu-services table[data-mu-equipe="${eq[0].id}"] [data-mu-cocher="AF/BC"]`).check();await attendre();
 
    // 3. Ses heures, dans le tableau des heures de travail : une colonne à lui ; le calcul les compte.
+   let champ;
+   if(await nav.v1(page)){
+    // v1 (évolution 22 b) : ses temps par vol sont une section de sa fiche (la vue d'ensemble a quitté l'écran).
+    await nav.service(page,id);await nav.section(page,'temps');
+    assert.match(await page.locator('#mu-services .se-tete [data-mu-nom]').inputValue(),/Roulés couverts/,version+' : sa fiche');
+    champ=page.locator(`#mu-services [data-rg-champ=heures][data-service="${id}"][data-cle="*/BC"]`);
+   }else{
    await nav.aller(page,'rg-recap');await nav.deplier(page);
    assert.match(await page.locator('#rg-recap thead').innerText(),/Roulés couverts/,version+' : sa colonne');
-   const champ=page.locator(`#rg-recap input[data-rg-champ=recap][data-service="${id}"][data-classe="AF/BC"]`);
+   champ=page.locator(`#rg-recap input[data-rg-champ=recap][data-service="${id}"][data-classe="AF/BC"]`);
+   }
    await champ.fill('0.1');await champ.press('Tab');await attendre();   // 0,1 h = 6 min
    const r=await page.evaluate(([id,eq])=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.atelier===eq&&x.classes.includes('AF/BC'));
      const dot=r.lots.find(x=>x.service==='prepa'&&x.classes.includes('AF/BC'));return {hm:l&&l.hommeMinutes,vols:Sim.ateliers.classes.find(c=>c.id==='AF/BC').vols.length,
@@ -65,7 +73,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(await page.evaluate(id=>Sim.ateliers.state.ateliers.some(a=>a.service===id),id));
 
    // 5. Organisation › Services : « aucun » rattachement ; on peut le rattacher, puis le détacher.
-   await nav.aller(page,'u-services');
+   //    (v1, évolution 22 b : son rattachement est dans les réglages avancés de sa fiche ; v2 : dans « Liste des services ».)
+   if(await nav.v1(page)){await nav.service(page,id);await nav.section(page,'avance');}
+   else await nav.aller(page,'u-services');
    const sel=page.locator(`[data-svc-reparent="${id}"]`);
    assert.equal(await sel.inputValue(),'',version+' : rattaché à aucun');
    await sel.selectOption('dotation');await attendre();

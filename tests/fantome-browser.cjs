@@ -19,7 +19,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le décor : une salle « Armement AF Équipage » rattachée à l'Armement, qui
   // porte l'équipe ; les quais aussi. L'Armement d'origine, lui, n'a personne.
   const salle=await page.evaluate(()=>{const id=Sim.editor.nouveauService('Armement AF Équipage','armement');
-    Sim.ateliers.creer(id);Sim.ateliers.creer('quais');return id;});
+    Sim.unite.ajouterEquipe(id);Sim.unite.ajouterEquipe('quais');return id;});
   await attendre();
   const liensSalle=()=>page.evaluate(id=>Sim.ateliers.a.liaisons().filter(l=>l.from===id||l.to===id).map(l=>l.from+'>'+l.to).sort(),salle);
   const avant=await liensSalle();
@@ -43,12 +43,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Sur la page des services : on le cherche par son nom, et il se supprime
   //    avec un bouton qui s'appelle « Supprimer ».
-  await nav.aller(page,'u-services');
-  await page.fill('[data-svc-chercher]','armement');await attendre();
-  const visibles=await page.locator('.svc-table tbody tr:not([hidden])').evaluateAll(t=>t.map(r=>r.dataset.svc));
-  assert.deepEqual(visibles.sort(),['armement',salle].sort(),'la recherche ne garde que les armements');
-  assert.match(await page.locator('.svc-table tr[data-svc=armement] [data-svc-retirer]').innerText(),/Supprimer/);
-  await page.fill('[data-svc-chercher]','');await attendre();
+  //    (Évolution 22 b : « Liste des services » n'est plus une page. Dans « Services et équipes », la liste des services
+  //    montre l'Armement et sa salle ; sa fiche porte « Supprimer ce service », dans ses réglages avancés.)
+  await nav.aller(page,'mu-services');
+  const dansLaListe=await page.locator('#mu-services .se-liste [data-mu-choisir]').evaluateAll(bs=>bs.filter(b=>/armement/i.test(b.textContent)).map(b=>b.dataset.muChoisir));
+  assert.deepEqual(dansLaListe.sort(),['armement',salle].sort(),'la liste montre les deux armements');
+  await nav.service(page,'armement');await nav.section(page,'avance');
+  assert.match(await page.locator('#mu-services [data-mu-action=supprimer]').innerText(),/Supprimer/);
 
   // 3. Supprimé depuis les contrôles : sa salle garde ses liens, et plus
   //    aucune alerte ne le nomme.
@@ -58,9 +59,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='armement').retire),true,'supprimé de l’unité');
   assert.deepEqual(await liensSalle(),avant,'la salle garde les liens de l’Armement');
   assert.doesNotMatch(await alertes(),/\bArmement\b(?! AF)/,'plus rien ne le nomme');
-  await nav.aller(page,'u-services');
-  assert.match(await page.locator('.svc-bloc').last().innerText(),/Services supprimés de l’unité[\s\S]*Armement/,'il se remet en bas de page');
-  assert.equal(await page.locator(`[data-svc-reparent="${salle}"]`).inputValue(),'armement','la salle reste rattachée à lui');
+  const supprimes=async()=>{await nav.aller(page,'mu-services');
+    if(await page.evaluate(()=>Sim.unite.panneau!=='supprimes')){await page.locator('#mu-services [data-se-panneau=supprimes]').click();await attendre();}};
+  await supprimes();
+  assert.match(await page.locator('#mu-services .svc-bloc').last().innerText(),/Services supprimés de l’unité[\s\S]*Armement/,'il se remet depuis le bas de la liste');
+  await nav.service(page,salle);await nav.section(page,'avance');
+  assert.equal(await page.locator(`#mu-services [data-svc-reparent="${salle}"]`).inputValue(),'armement','la salle reste rattachée à lui');
 
   // 4. Un « Annuler » des cases, un vieil import… le remettent dans des cases
   //    et des chemins. Il est nommé lisiblement partout, et s'efface d'un clic.
@@ -69,10 +73,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     st.parcours.push({id:'pfa',nom:'Chemin AF/BC',noeuds:['appros','armement','prepa'],liens:[{de:'appros',vers:'armement'},{de:'armement',vers:'prepa'}]});
     st.parcoursClasse['AF/BC']='pfa';},''));
   await attendre();
-  await nav.aller(page,'u-services');
-  const fantomes=page.locator('[data-svc-fantomes]');
-  assert.match(await fantomes.innerText(),/Armement \(supprimé\)[\s\S]*1 équipe · 1 chemin/,'la page des services le montre en tête');
-  await nav.aller(page,'at-equipes');
+  // (Évolution 22 b : « Liste des services » n'est plus une page ; les services supprimés encore utilisés se retrouvent
+  //  par le lien du bas de la liste, dans « Services et équipes ». Les points à regarder se lisent en tête des chemins.)
+  await supprimes();
+  const fantomes=page.locator('#mu-services [data-svc-fantomes]');
+  assert.match(await fantomes.innerText(),/Armement \(supprimé\)[\s\S]*1 équipe · 1 chemin/,'la page des services le montre');
+  await nav.aller(page,'at-chemins');
   const points=await page.locator('#at-anomalies').innerText();
   assert.match(points,/« Armement \(supprimé\) » n’existe plus dans l’unité/);
   assert.doesNotMatch(points,/« armement »/,'jamais son identifiant brut');
@@ -84,13 +90,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le chemin ne se coupe pas en deux : ce qui livrait l'armement livre ce qu'il livrait.
   assert.deepEqual(reste,{cases:0,chemins:0,lien:['appros>prepa']},'effacé des cases et des chemins');
   assert.equal(await page.locator('#at-anomalies [data-at-action=fantome-effacer]').count(),0);
-  await nav.aller(page,'u-services');
+  await supprimes();
   assert.equal(await fantomes.count(),0,'plus rien à effacer');
 
   // 5. « Passer dans… » : le travail d'un service supprimé rejoint un autre service.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'fa2',nom:'Armement',service:'armement',type:'manuel',
     debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['AF/PC']],regime:{actif:true}});},''));
-  await nav.aller(page,'u-services');
+  await supprimes();
   await page.selectOption('[data-svc-vers=armement]',salle);await page.locator('[data-svc-remplacer=armement]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='fa2').service),salle,'la case passe dans la salle');
 

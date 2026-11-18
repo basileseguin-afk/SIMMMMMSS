@@ -31,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
 
    // 1. L'unité › Plan (v1), Équipes › Plan de l'unité (v2) ouvre l'édition.
-   await nav.entree(page,'groupe:services','organisation');await attendre();
+   await nav.entree(page,'mu-services','organisation');await attendre();
    assert.equal(await actif(),'mu-services');
    await page.locator('#sous-onglets [data-sous-onglet=u-plan]').click();await attendre(300);
    assert.equal(await actif(),'u-plan');
@@ -89,7 +89,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await edition(),false);
    assert.equal(await actif(),'mu-services',V+'« Terminer » ramène à la page d’avant');
    await nav.aller(page,'j-chiffres');
-   await nav.entree(page,'groupe:services','organisation');await attendre();
+   await nav.entree(page,'mu-services','organisation');await attendre();
    assert.equal(await actif(),'mu-services',V+'« Services et équipes » (v1), Équipes (v2) rouvre la page d’avant, pas le plan');
 
    // Les contours du plan rejoué gardent leur épaisseur à tout zoom.
@@ -104,11 +104,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await actif(),'j-plan',V+'retour au plan rejoué');
    assert.equal(await page.evaluate(()=>document.activeElement&&document.activeElement.id),'btn-edit',V+'le focus revient au bouton');
    // La fiche d'un service aussi.
+   if(await nav.v1(page)){
+    // v1 (évolution 22 b) : « Le déplacer sur le plan », dans les réglages avancés de la fiche du service.
+    await nav.service(page,'cuisine');await nav.section(page,'avance');
+    await page.locator('#mu-services [data-mu-action=plan]').click();await attendre(300);
+    assert.equal(await actif(),'u-plan');
+    await page.locator('#edit-done').click();await attendre(300);
+    assert.equal(await actif(),'mu-services',V+'retour à la fiche du service');
+   }else{
    await nav.aller(page,'u-services');
    await page.locator('.svc-tete [data-svc-action=plan]').click();await attendre(300);
    assert.equal(await actif(),'u-plan');
    await page.locator('#edit-done').click();await attendre(300);
    assert.equal(await actif(),'u-services',V+'retour à la liste des services');
+   }
    assert.equal(await page.evaluate(()=>Sim.onglets.actif('plan')),'j-plan',V+'arriver « sur le plan » rouvre le plan rejoué');
 
    // Ouvrir et fermer le plan n'enregistre rien.

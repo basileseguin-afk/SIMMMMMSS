@@ -62,14 +62,11 @@ const h=s=>{const [a,b]=s.split(':').map(Number);return a*60+b;};
   assert.doesNotMatch(sy.coince,/Robot/,'le relais suffit : '+sy.coince);
   assert.doesNotMatch(sy.fin,/l’équipe Robot/);
 
-  // 3. Le récapitulatif des équipes : qui avance, ce qui est déjà fait, les heures de chaque part.
-  await nav.aller(page,'at-recap');
-  await page.waitForSelector('tr.rc-case[data-at="rb2"] .rc-relais');
-  const rc=await page.evaluate(()=>Object.fromEntries(['rb','rb2'].map(id=>{const tr=document.querySelector(`tr.rc-case[data-at="${id}"]`);
-    return [id,{traite:tr.querySelector('.rc-traite').innerText.replace(/\s+/g,' ').trim(),fin:tr.querySelector('.rc-fin-h').textContent.trim()}];})));
-  assert.match(rc.rb.traite,/03:00–05:50[\s\S]*avance 3 vols de Robot soir/);
-  assert.match(rc.rb2.traite,/07:26–07:54 ?3 vols déjà faits par Robot matin[\s\S]*07:54–10:24/);
-  assert.deepEqual([rc.rb.fin,rc.rb2.fin],['07:26','10:24'],'la fin de chaque équipe est la fin de sa dernière part');
+  // 3. (Évolution 22 b : « Horaires des équipes », qui disait aussi qui avance, ce qui est déjà fait et les heures de
+  //    chaque part, a quitté l'écran. Ces résultats se lisent dans le planning et la Synthèse, ci-dessus ; la page où
+  //    les équipes se règlent n'en montre aucun.)
+  await nav.equipe(page,'rb2');
+  assert.doesNotMatch(await page.locator('#mu-services .se-fiche').innerText(),/déjà faits? par|avance \d+ vols?|\d\d:\d\d–\d\d:\d\d/,'la fiche de l’équipe ne dit rien du relais calculé');
   ch.effacer();
 
   /* ---- le relais ne suffit pas : le soir dépasse encore -------------------------------------------------- */

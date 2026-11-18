@@ -131,12 +131,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 2. Un seul Annuler, pour ce que la page ouverte modifie.
    await nav.aller(page,'v-programme');
    assert.equal(await eteint('#btn-annuler'),true,V+'rien à annuler dans les vols');
-   await nav.aller(page,'at-equipes');
+   // v1 (évolution 22 b) : une équipe naît dans la fiche de son service, et sa fiche s'ouvre ; v2 : « + Équipe hors
+   // chemin », dans « Équipes une par une ».
    const n0=await equipes();
-   await page.locator('#at-new').click();await attendre();
+   if(v1)await nav.ajouterEquipe(page,'cuisine');
+   else{await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();}
    assert.equal(await equipes(),n0+1);
    // Dans un champ de texte, Ctrl Z reste celui du champ : la case créée reste là.
-   const champ=page.locator('.at-carte.ouverte [data-at-champ=nom]').first();
+   const champ=page.locator(v1?'#mu-services .se-equipe [data-at-champ=nom]':'.at-carte.ouverte [data-at-champ=nom]').first();
    assert.equal(await champ.isVisible(),true,'la case créée s’ouvre, son nom à saisir');
    await champ.focus();await page.keyboard.press('Control+z');await attendre();
    assert.equal(await equipes(),n0+1,V+'Ctrl Z dans un champ ne défait pas la case');
@@ -156,7 +158,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('#btn-retablir').click();await attendre();
    assert.equal(await equipes(),n0+1,V+'le bouton Rétablir');
    // Le barème a son historique : sur sa page, Annuler défait le barème, pas les cases.
-   await nav.aller(page,'rg-minutes');
+   // (v1 : la page des réglages de la simulation ; « Temps par vol par service » n'est plus une page — évolution 22 b.)
+   await nav.aller(page,v1?'rg-simulation':'rg-minutes');
    assert.equal(await eteint('#btn-annuler'),await page.evaluate(()=>!Sim.reglages.undo.length),V+'Annuler suit l’historique du barème, pas celui des cases');
    const seuils=()=>page.evaluate(()=>Sim.reglages.etat.regime.seuils.length);
    const s0=await seuils();

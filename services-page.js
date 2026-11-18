@@ -123,6 +123,34 @@
     }
 
     /**
+     * Arriver par le nom ou le lien d'une page d'avant (évolution 22 b), au bon endroit : `liste` — la liste des
+     * services (« Liste des services ») ; `equipes` — la section « Ses équipes » du service choisi (« Horaires des
+     * équipes », « Équipes une par une ») ; `temps` — celle de ses temps par vol (« Temps par vol », « Temps par vol par
+     * service »), dépliée ; `supprimes` — les services supprimés et les zones du plan, au bas de la liste. La fiche d'une
+     * équipe se referme : on arrive sur le service.
+     */
+    allerA(lieu) {
+      this.equipeOuverte = null; this.panneau = lieu === 'supprimes' ? 'supprimes' : null;
+      if (lieu === 'equipes' || lieu === 'temps') this.sections.set(lieu, true);
+      this.rendreServices();
+      const box = root.document.getElementById('mu-services'); if (!box) return;
+      const section = () => box.querySelector(`.se-fiche details[data-mu-section="${lieu}"] > summary`);
+      // Le service choisi n'a pas cette section (une mise à disposition n'a pas de temps par vol) : le premier de la
+      // liste qui l'a, de l'amont vers l'aval.
+      if ((lieu === 'equipes' || lieu === 'temps') && !section()) {
+        const ids = [...box.querySelectorAll('.se-liste [data-mu-choisir]')].map(x => x.dataset.muChoisir);
+        const depart = this.choisi;
+        if (!ids.some(id => { super.ouvrir(id); return !!section(); }) && depart) super.ouvrir(depart);
+      }
+      const cible = lieu === 'supprimes' ? box.querySelector('.se-vers-supprimes')
+        : lieu === 'liste' ? box.querySelector('.se-liste .mu-svc.actif') || box.querySelector('.se-liste .mu-svc')
+        : section();
+      if (!cible) return;
+      cible.scrollIntoView({ block: 'nearest' });
+      cible.focus({ preventScroll: true });
+    }
+
+    /**
      * Une équipe de plus : sa fiche s'ouvre, pour lui donner son heure, ses personnes et ce qu'elle prépare. Le curseur
      * va dans son premier champ ; pour une équipe de plonge en plus (elle lave comme la première, à ses heures), dans
      * son heure : c'est ce qu'on règle, comme avant.
@@ -272,7 +300,11 @@
         : coche('[data-mu-impose]') ? 'imposé (essai)' : 'calculé, d’après ses temps par vol et les vols';
       const effectif = choix.length ? `<details class="se-effectif" data-mu-section="effectif"${this.sections.get('effectif') ? ' open' : ''}>
         <summary>Effectif de ses équipes : <b>${esc(dit)}</b></summary>${choix.map(html).join('')}</details>` : '';
-      const equipes = section('equipes', 'Ses équipes', tableau + reste + effectif, lignes ? 'cliquez une équipe pour ouvrir sa fiche' : '', true);
+      // La plonge lave ce qui revient : la boucle du matériel et les retours se règlent avec la simulation (« Équipes une
+      // par une » y renvoyait).
+      const renvoi = nature === 'lavage' ? `<p class="mini-note at-materiel-renvoi">La boucle du matériel et les retours des vols à la plonge se règlent dans
+        <button type="button" class="lien-discret" data-page="rg-simulation">Simulation › Réglages →</button></p>` : '';
+      const equipes = section('equipes', 'Ses équipes', tableau + reste + effectif + renvoi, lignes ? 'cliquez une équipe pour ouvrir sa fiche' : '', true);
 
       // 4. Ses temps : ce qui joue pour lui, rien d'autre.
       const temps = this.sectionTemps(s, nature, un('[data-mu-section="temps"]'), siennes, section);
@@ -303,17 +335,29 @@
       const corpsDe = e => (e ? [...e.children].filter(x => x.tagName !== 'SUMMARY').map(x => x.outerHTML).join('') : '');
       const vers = l => l.map(a => `<button type="button" class="lien-discret" data-se-equipe="${esc(a.id)}">Ouvrir la fiche de « ${esc(a.nom)} » →</button>`).join(' ');
       const pc = J ? J.parCompagnie(s.id, st) : null;
-      if (nature === 'categories') return section('temps', TITRES_TEMPS.categories, corpsDe(avant), 'pour une personne ; une cellule vide prend la valeur de « Toutes les compagnies »', false);
+      const P = root.MoteurProduction;
+      // Un service qui travaille par compagnie garde ses temps par classe, qui ne jouent pas : une ligne discrète les
+      // dit, grisés, comme depuis l'évolution 19 (« Temps par vol par service » la portait).
+      const gardes = pc && rg && rg.etat ? Object.entries((rg.etat.bareme || {})[s.id] || {}).filter(([, v]) => v !== null && v !== '' && Number.isFinite(+v)) : [];
+      const enHeures = m => (P && P.heuresFr ? P.heuresFr(m) : String(Math.round(m / 60 * 100) / 100).replace('.', ','));
+      const horsJeu = gardes.length && J.ligne ? `<div class="nj-hote">${J.ligne(gardes.map(([k, v]) => { const i = k.lastIndexOf('/'), cie = k.slice(0, i);
+        return { cle: k, libelle: k.slice(i + 1) + ' · ' + (cie === '*' ? 'toutes compagnies' : cie), valeur: enHeures(+v) + ' h par vol',
+          raison: 'Ce service travaille par compagnie : ses temps par classe ne sont pas lus.' }; }), 'svc-' + s.id)}</div>` : '';
+      if (nature === 'categories') return section('temps', TITRES_TEMPS.categories, corpsDe(avant) + horsJeu, 'pour une personne ; une cellule vide prend la valeur de « Toutes les compagnies »', false);
       if (pc && (pc.genre === 'handling' || pc.genre === 'plonge')) {
         const lu = pc.lignes.length ? `<table class="svc-table se-durees"><thead><tr><th scope="col">Compagnie</th><th scope="col">${esc(pc.unite)}</th></tr></thead><tbody>${
           pc.lignes.map(x => `<tr><th scope="row">${x.cie === '*' ? 'Toutes compagnies' : esc(x.cie)}</th><td class="num">${esc(String(x.minutes).replace('.', ','))}</td></tr>`).join('')}</tbody></table>`
           : '<p class="mini-note">Aucune durée n’est encore réglée.</p>';
         const porte = equipes.filter(a => a.id === pc.equipe);
         return section('temps', pc.genre === 'plonge' ? TITRES_TEMPS.lavage : TITRES_TEMPS.handling,
-          `<p class="mini-note">${esc(pc.raison)}</p>${lu}<p class="se-vers">${vers(porte.length ? porte : equipes.slice(0, 1))}</p>`, '', false);
+          `<p class="mini-note">${esc(pc.raison)}</p>${lu}<p class="se-vers">${vers(porte.length ? porte : equipes.slice(0, 1))}</p>${horsJeu}`, '', false);
       }
-      const bareme = rg ? rg.ficheTemps(s.id) : '';
-      if (nature === 'manuel') return section('temps', TITRES_TEMPS.manuel, corpsDe(avant), 'le temps d’une seule personne, pour une compagnie dans une classe', false);
+      // Des temps par vol d'exemple : le dire là où on les modifie (« Temps par vol par service » le disait).
+      const exemple = rg && rg.etat && P && P.BAREME_DEMO && JSON.stringify(rg.etat.bareme) === JSON.stringify(P.BAREME_DEMO)
+        ? `<p class="rg-avertissement se-exemple"><b>Ce sont des temps par vol d’exemple</b>, pas ceux de l’unité :
+          saisissez les vôtres, ou importez votre étude depuis <button type="button" class="lien-discret" data-page="u-sauvegarde">Fichiers →</button></p>` : '';
+      const bareme = rg ? exemple + rg.ficheTemps(s.id) : '';
+      if (nature === 'manuel') return section('temps', TITRES_TEMPS.manuel, exemple + corpsDe(avant), 'le temps d’une seule personne, pour une compagnie dans une classe', false);
       if (nature === 'robot') return section('temps', TITRES_TEMPS.robot, bareme
         + `<p class="mini-note">Le débit de la ligne (plateaux par heure) se règle dans la fiche de chaque équipe robot.</p><p class="se-vers">${vers(equipes.filter(a => a.type === 'robot'))}</p>`, '', false);
       if (nature === 'lavage') return section('temps', 'Ses temps par classe et ses débits', bareme

@@ -25,8 +25,11 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-vagues-'));
  const csv=path.join(dossier,'vols-vagues.csv');fs.writeFileSync(csv,VOLS_CSV);
  const equipe=()=>page.evaluate(()=>(JSON.parse(localStorage.getItem('ory-ateliers-v1')||'{"ateliers":[]}').ateliers||[]).find(a=>a.id==='ha'));
- const ouvrir=async()=>{await nav.aller(page,'at-equipes');await page.evaluate(()=>{Sim.ateliers.ouvert='ha';Sim.ateliers.rendre();});await attendre();};
- const fiche=()=>page.locator('[data-at="ha"]');
+ const ouvrir=async()=>{await nav.reglagesEquipe(page,'ha');await attendre();};
+ const fiche=()=>page.locator('#mu-services [data-at="ha"]');
+ // Ce que le calcul a fait de l'équipe (ses tournées, le plan de ses chauffeurs) se lit dans « Détails › Vols » : « Services et
+ // équipes », où elle se règle, ne montre plus aucun résultat (évolution 22 b).
+ const resultats=async()=>{await nav.aller(page,'v-departs');await attendre();return page.locator('#vols-handling [data-at="ha"]');};
  const vehicules=()=>page.evaluate(()=>Sim.ateliers.resultat.vols.map(x=>[x.id,x.vehicule]));
  const tournees=()=>page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='ha').tournees.map(t=>[t.vehicule,t.charges.join('+')]));
  const colonnes=()=>fiche().locator('.at-cies thead th').allInnerTexts();
@@ -75,7 +78,8 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await saisir('[data-at-champ=temps][data-map=volsVL][data-cie=SUD]','2');
   assert.deepEqual((await equipe()).volsVL,{SUD:2});
   assert.deepEqual(await tournees(),[['camion','SU1'],['camion','NO1'],['vl','SU2+SU3']]);
-  assert.match(await fiche().locator('.at-bilan-tournees').innerText(),/3 tournées \(2 en gros camion, 1 en VL, dont 1 qui sert plusieurs vols, jusqu’à 2\)/);
+  assert.match(await (await resultats()).locator('.at-bilan-tournees').innerText(),/3 tournées \(2 en gros camion, 1 en VL, dont 1 qui sert plusieurs vols, jusqu’à 2\)/);
+  await ouvrir();
   assert.ok((await colonnes()).includes('Quai / vol en plus'));
   await saisir('[data-at-champ=temps][data-map=quaiParVol][data-cie="*"]','3');
   assert.deepEqual((await equipe()).quaiParVol,{'*':3});

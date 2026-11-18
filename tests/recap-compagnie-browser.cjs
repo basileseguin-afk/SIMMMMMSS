@@ -25,6 +25,34 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20}});
      st.ateliers.push({id:'ar',nom:'Armement matin',service:'armement',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['AF/@ARM']],regime:{actif:true}});
      OrlyParcours.integrerArmement(st,['armement'],['quais']);},''));
+   if(version==='v1'){
+    // Évolution 22 (b) : en version 1, la vue d'ensemble « Temps par vol » a quitté l'écran. Les minutes par compagnie
+    // d'un service se règlent dans sa fiche (« Services et équipes ») — le même réglage, le même champ qu'avant.
+    assert.equal(await page.evaluate(()=>OrlyOnglets.resoudre('rg-recap')),'mu-services',version+' : « Temps par vol » mène à « Services et équipes »');
+    assert.equal(await page.locator('#rg-recap').count(),0,version+' : la vue d’ensemble n’est plus à l’écran');
+    await nav.service(page,'armement');await nav.section(page,'temps');
+    const champ=cie=>page.locator(`#mu-services .se-fiche [data-mu-cat-min="ARM"][data-cie="${cie}"]`);
+    // 1. Une ligne par compagnie ; en heures par vol (08/10) : 15 min = 0,25 h ; 10 min ≈ 0,167 h.
+    assert.match(await page.locator('#mu-services details[data-mu-section=temps] > summary').innerText(),/Ses minutes par compagnie/);
+    assert.equal(await champ('AF').inputValue(),'0.25','AF : sa valeur propre');
+    assert.equal(await champ('TX').inputValue(),'','TX : vide…');
+    assert.equal(await champ('TX').getAttribute('placeholder'),'0,167','… la valeur de toutes les compagnies');
+    // 2. Saisie : TX à 0,2 h (12 min) ; vidée, elle revient à la valeur de toutes les compagnies.
+    await champ('TX').fill('0.2');await champ('TX').press('Tab');await attendre();
+    assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : TX à 12 min, dans le réglage de l’armement');
+    await champ('TX').fill('');await champ('TX').press('Tab');await attendre();
+    assert.deepEqual(await minutes(),{'*':10,AF:15});
+    // « Annuler », en tête de page, revient en arrière.
+    await page.locator('#btn-annuler').click();await attendre();
+    assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : annulé');
+    assert.equal(await champ('TX').inputValue(),'0.2',version+' : la fiche de l’armement le montre, en heures');
+    // L'effectif de l'équipe se lit dans le tableau du service ; il se règle dans sa fiche (07/10).
+    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='ar').personnes=3;},''));await attendre();
+    assert.match(await page.locator('#mu-services .se-equipes tbody tr',{hasText:'Armement matin'}).innerText(),/3 pers\./,version+' : l’effectif se lit sur la ligne de l’équipe');
+    // 3. Sur la journée (heures par vol × départs) : un résultat — la page n'en montre plus.
+    assert.equal(await page.locator('#mu-services .se-fiche .mu-cat-jour:visible, #mu-services .se-fiche .mu-cat-vols:visible').count(),0,version+' : ni vols du jour, ni heures sur la journée');
+    continue;
+   }
    await nav.aller(page,'rg-recap');await attendre();
 
    // 1. Un bloc par compagnie : sa ligne total en tête, ses classes dessous, repliées.

@@ -31,9 +31,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.vue(page,'reglages');
   assert.equal(await page.locator('#plan-bande').isVisible(),false,'les chiffres de la journée rejouée ne décrivent pas un réglage');
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(200);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const eq=await nav.ajouterEquipe(page,'cuisine');await nav.reglagesEquipe(page,eq);
   await nav.vue(page,'plan');
   assert.match(await etat('cuisine'),/\bp-partiel\b/,'décrite, mais elle ne fabrique rien');
   // Ce qu'elle fabrique la rend aménagée.
@@ -59,9 +58,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 3. Un second service décrit fait baisser le reste à faire.
   const avant=await page.locator('#plan-etat').textContent();
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const at=await nav.ajouterEquipe(page,'prepa');await nav.reglagesEquipe(page,at);
   await nav.vue(page,'plan');
   assert.match(await etat('prepa'),/\bp-partiel\b/,'un atelier vide n’aménage rien');
   await nav.vue(page,'ateliers');

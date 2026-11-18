@@ -5,6 +5,45 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-18 — Évolution 22 (b2) : les cinq pages d’avant mènent à « Services et équipes »
+
+Fin de la partie (b). « Services et équipes » est une seule page : les cinq
+pages qu’elle reprend n’existent plus en version 1. Aucun calcul ne change,
+ni le format de la sauvegarde. La version 2 n’est pas touchée, ni aucun
+fichier commun.
+
+- **Cinq pages de moins** : « Horaires des équipes », « Équipes une par
+  une », « Temps par vol », « Temps par vol par service », « Liste des
+  services ». Leurs noms, et leurs noms plus anciens, se cherchent toujours
+  par « Aller à… » et mènent à « Services et équipes », **au bon endroit** :
+  « Ses équipes », les temps du service (du premier service qui en a, si le
+  service choisi n’en a pas), la liste. Un lien vers l’une d’elles y mène
+  aussi (`onglets.js` : `ANCIENNES`, `resoudre`).
+- **Les deux vues d’ensemble ont quitté l’écran** (tous les horaires d’un
+  coup, tous les temps par vol d’un coup). **Leurs classeurs Excel sont dans
+  « Fichiers »** : un tableau « Classeurs Excel », une ligne par classeur,
+  « Importer » et « Exporter » — les mêmes boutons qu’avant, déplacés
+  (`fichiers-page.js`).
+- **La fiche d’un service de quatre équipes tient en un écran** à
+  1 366 × 768, sections repliées : la page prend toute la hauteur sous son
+  titre, les sections se resserrent.
+- **« Annuler » et « Rétablir »**, en tête, défont et refont le dernier geste
+  de la page, qu’il règle une équipe ou un temps par vol (deux histoires).
+- Ce que la fiche d’un handling montrait du dernier calcul — ses tournées,
+  le plan de ses chauffeurs — se lit dans **« Détails › Vols »** ; « Reprendre
+  ce plan en créneaux saisis » reste dans la fiche.
+- « Remettre les temps par vol d’exemple » se trouve dans « Réglages » ; des
+  temps par vol d’exemple sont dits dans la section des temps de la fiche,
+  avec un lien vers « Fichiers ».
+
+Fichiers : `onglets.js`, `services-page.js`, `services-page.css`, `sim.js`,
+`ateliers.js`, `index.html`, `fichiers-page.js`, `fichiers-page.css`
+(nouveaux), `outils/vocabulaire-regles.cjs`, `mots/reglages.js` ;
+`tests/fichiers-page.test.cjs` (nouveau), `tests/onglets.test.cjs`,
+`tests/demarrage.test.cjs`, `tests/nav.cjs`, `tests/services-page-browser.cjs`
+et les tests navigateur qui passaient par les pages d’avant (liste dans le
+corps du commit) ; `README.md`.
+
 ## 2026-11-17 — Évolution 22 (b1) : « Services et équipes », la nouvelle page
 
 Deuxième partie de l’étape B de l’audit, coupée en deux : (b1) la page

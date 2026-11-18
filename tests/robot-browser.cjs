@@ -49,19 +49,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const l=await page.evaluate(id=>{const r=Sim.ateliers.resultat;const k=r.classes.find(c=>c.id==='TX/YC');const x=r.lots.find(y=>y.atelier===id&&y.classes.includes('TX/YC'));return {pax:k.pax,duree:x.fin-x.debut};},at);
   assert.ok(Math.abs(l.duree-l.pax/600*60)<0.01,'plateaux ÷ débit : '+JSON.stringify(l));
 
-  // 5. Le récap : une colonne Robot, un débit par commande et l'effectif, modifiables.
-  await nav.aller(page,'rg-recap');await nav.deplier(page);
-  const deb=page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] input[data-rg-champ=recap-debit]`);
+  // 5. Le débit d'une commande sur le robot se règle dans sa fiche. (Évolution 22 b : la vue d'ensemble des temps par
+  //    vol, où il se réglait aussi, a quitté l'écran ; son classeur Excel porte toujours la colonne du robot.)
+  await nav.reglagesEquipe(page,at);await attendre();
+  const deb=page.locator(`#mu-services [data-at="${at}"] [data-at-champ=debit-cmd][data-classe="CRL/YC"]`);
   assert.equal(await deb.count(),1,'le débit de CRL YC sur le robot');
   assert.equal(await deb.getAttribute('placeholder'),'300','vide : celui du robot');
   await deb.fill('450');await deb.dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).debits['CRL/YC'],at),450);
-  assert.match(await page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] td.robot + td.rgr-p`).getAttribute('title'),/tourne à partir de 2/);
-  assert.match(await page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] td.robot + td.rgr-p + td.rgr-d`).innerText(),/\d/,'la durée : plateaux ÷ débit');
-  // La fiche du robot le montre aussi.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},at);await attendre();
-  assert.equal(await page.locator(`[data-at="${at}"] [data-at-champ=debit-cmd][data-classe="CRL/YC"]`).inputValue(),'450');
+  assert.equal(await page.locator(`#mu-services [data-at="${at}"] [data-at-champ=debit-cmd][data-classe="CRL/YC"]`).inputValue(),'450');
+  const cellule=await page.evaluate(([id])=>{const l=OrlyEchanges.recapManMinutes(Sim.reglages.contexteRecap()).lignes.find(x=>x.classe.id==='CRL/YC');
+    const c=Object.values(l.cellules).find(x=>x.source==='robot');return c?{debit:c.debit,duree:c.duree}:null;},[at]);
+  assert.equal(cellule.debit,450,'le classeur « Temps par vol » : le débit de CRL YC sur le robot');
+  assert.ok(cellule.duree>0,'et sa durée : plateaux ÷ débit');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('robot-browser : ok');

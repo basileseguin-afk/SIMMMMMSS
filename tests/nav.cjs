@@ -4,8 +4,13 @@
  * tests navigateur.
  *
  * `vue(page, v)` garde l'ancienne écriture des tests (« aller à la vue des
- * ateliers ») : elle ouvre la page qui était la première de cette vue. */
+ * ateliers ») : elle ouvre la page qui était la première de cette vue.
+ *
+ * `v1(page)` dit si la page est la version 1 d'après l'évolution 22 (b) : « Services et équipes » y a repris cinq pages. */
 const PREMIERE = { vols: 'v-departs', ateliers: 'at-chemins', reglages: 'rg-minutes', plan: 'j-plan', flux: 'u-liens' };
+
+/** La version 1 d'après l'évolution 22 (b) ? (La version 2, gelée, garde ses pages d'avant.) */
+const v1 = page => page.evaluate(() => !!(window.OrlyOnglets && OrlyOnglets.ANCIENNES));
 
 /* Le plan de l'unité (refonte, étape 5) ouvre l'édition, et le menu attend
  * qu'on la termine : on la termine avant d'aller ailleurs, comme à la main. */
@@ -40,6 +45,11 @@ async function parAllerA(page, id) {
  * interne de son entrée (« Services et équipes », « Chemins », « Contrôles », « Détails ») ; « Fichiers » est en bas ;
  * une page hors du menu (« Liens entre services » quand toutes les commandes ont un chemin) s'ouvre par « Aller à… ». */
 async function parLeMenu(page, id) {
+  // Une page que « Services et équipes » a reprise (évolution 22 b : « Équipes une par une », « Horaires des équipes »,
+  // « Temps par vol », « Temps par vol par service », « Liste des services ») n'existe plus : son identifiant mène à
+  // l'entrée de la page nouvelle. Ce qu'on y fait ensuite — ouvrir un service, une équipe, une section — se fait par
+  // `service`, `equipe`, `section`, plus bas.
+  id = await page.evaluate(id => (OrlyOnglets.resoudre ? OrlyOnglets.resoudre(id) : id), id);
   if (await page.evaluate(() => document.body.dataset.sous) === id) return;
   const e = await page.evaluate(id => {
     const o = OrlyOnglets.page(id);
@@ -130,6 +140,29 @@ async function equipe(page, id, depuis) {
   await page.locator(`#mu-services .mu-liste [data-mu-choisir="${service}"]`).click(); await page.waitForTimeout(150);
   if (neuf) { await page.locator(`#mu-services .se-equipes .se-eq-nom[data-se-equipe="${id}"]`).click(); await page.waitForTimeout(200); }
 }
+/* Tous les réglages d'une équipe, à l'écran — ce que montrait sa carte dépliée dans « Équipes une par une ».
+ * Version 1 (évolution 22 b) : sa fiche dans « Services et équipes », « Plus de réglages » déplié. Version 2 (gelée) :
+ * sa carte, dépliée, dans « Équipes une par une ». Rend le sélecteur de sa fiche. */
+async function reglagesEquipe(page, id) {
+  if (await v1(page)) {
+    await equipe(page, id);
+    const d = page.locator(`#mu-services details.mu-plus[data-mu-plus="${id}"]`);
+    if (await d.count() && !(await d.evaluate(e => e.open))) { await d.locator('> summary').click(); await page.waitForTimeout(150); }
+    return '#mu-services .se-equipe';
+  }
+  await aller(page, 'at-equipes');
+  await page.evaluate(id => { Sim.ateliers.ouvert = id; if (Sim.ateliers.aDessiner) Sim.ateliers.aDessiner.add('at-equipes'); Sim.ateliers.rendre(); }, id);
+  await page.waitForTimeout(150);
+  return `#at-liste [data-at="${id}"]`;
+}
+/* Une équipe de plus dans un service, comme à la main. Version 1 : « Ajouter une équipe », dans la fiche du service — sa
+ * fiche s'ouvre. Version 2 : le même bouton, dans la fiche du service. Rend l'identifiant de l'équipe née. */
+async function ajouterEquipe(page, id) {
+  await service(page, id);
+  const avant = await page.evaluate(() => Sim.ateliers.state.ateliers.map(a => a.id));
+  await page.locator('#mu-services [data-mu-action=equipe]').first().click(); await page.waitForTimeout(200);
+  return page.evaluate(avant => (Sim.ateliers.state.ateliers.find(a => !avant.includes(a.id)) || {}).id || null, avant);
+}
 /* La fiche d'un service : son bouton dans la liste de « Services et équipes » (en version 1, la fiche d'une équipe ouverte se referme). */
 async function service(page, id) {
   await aller(page, 'mu-services');
@@ -203,4 +236,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { aller, vue, vueDuPlan, entree, equipe, service, effectif, retour, section, ajouterService, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

@@ -15,9 +15,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Saisir quelque chose : un atelier de travail, et une zone déplacée.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
+  // (Évolution 22 b : une équipe naît dans la fiche de son service, « Ajouter une équipe » ; sa fiche s'ouvre, tous ses réglages dépliés.)
+  const at=await nav.ajouterEquipe(page,'cuisine');await nav.reglagesEquipe(page,at);
   await page.fill(`[data-at="${at}"] [data-at-champ=nom]`,'Atelier témoin');
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=nom]`,'change');await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=personnes]`,'5');
@@ -32,11 +31,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(avant[0]&&avant[1],'plan et ateliers doivent exister après la saisie');
 
   // 2. Tout sauvegarder en un fichier.
-  await nav.vue(page,'reglages');
   // Comme le centre des flux, le barème n'écrit sa clé que si on y touche.
-  const champBareme='[data-rg-champ=heures][data-service=cuisine][data-cle="*/BC"]';
-  // Le barème se lit un service à la fois : il faut déplier celui qu'on modifie.
-  await page.locator('.rg-service[data-service=cuisine] > summary').click();
+  const champBareme='#mu-services [data-rg-champ=heures][data-service=cuisine][data-cle="*/BC"]';
+  // Les temps par vol d'un service se règlent dans sa fiche, section « Ses temps par vol », repliée d'abord (évolution 22 b).
+  await nav.service(page,'cuisine');await nav.section(page,'temps');
   await page.waitForTimeout(150);
   // En heures (08/10) : 0,6917 h = 41,5 min, gardées en minutes.
   await page.fill(champBareme,'0.6917');await page.dispatchEvent(champBareme,'change');

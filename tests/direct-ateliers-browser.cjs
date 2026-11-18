@@ -26,7 +26,7 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
  const relief=async()=>{await nav.aller(page,'j-plan',{relief:true});await page.waitForFunction(()=>document.body.dataset.direct==='relief'&&Sim.direct.etatVue().images>0);return dessinee();};
  const journee=()=>page.evaluate(()=>JSON.stringify(Sim.ateliers.resultat));
  const reglages=()=>page.evaluate(()=>Sim.ateliers.state.ateliers.map(a=>({id:a.id,service:a.service,poste:a.poste||null})));
- const fiche=async id=>{await nav.aller(page,'at-equipes');await page.evaluate(i=>{Sim.ateliers.ouvert=i;Sim.ateliers.rendre();},id);
+ const fiche=async id=>{await nav.reglagesEquipe(page,id);
    const champ=page.locator(`[data-at="${id}"] [data-at-champ=poste]`);await champ.waitFor();return champ;};
  try{
   const x=await F.charger(page,nav,URL,{pageId:'j-plan',relief:true});

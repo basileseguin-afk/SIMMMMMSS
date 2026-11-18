@@ -26,8 +26,11 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-h24-'));
  const csv=path.join(dossier,'vols-h24.csv');fs.writeFileSync(csv,VOLS_CSV);
  const equipe=()=>page.evaluate(()=>(JSON.parse(localStorage.getItem('ory-ateliers-v1')||'{"ateliers":[]}').ateliers||[]).find(a=>a.id==='ha'));
- const ouvrir=async()=>{await nav.aller(page,'at-equipes');await page.evaluate(()=>{Sim.ateliers.ouvert='ha';Sim.ateliers.rendre();});await attendre();};
- const fiche=()=>page.locator('[data-at="ha"]');
+ const ouvrir=async()=>{await nav.reglagesEquipe(page,'ha');await attendre();};
+ const fiche=()=>page.locator('#mu-services [data-at="ha"]');
+ // Ce que le calcul a fait de l'équipe (ses tournées, le plan de ses chauffeurs) se lit dans « Détails › Vols » : « Services et
+ // équipes », où elle se règle, ne montre plus aucun résultat (évolution 22 b).
+ const resultats=async()=>{await nav.aller(page,'v-departs');await attendre();return page.locator('#vols-handling [data-at="ha"]');};
  const resultat=()=>page.evaluate(()=>{const r=Sim.ateliers.resultat,v=r.ateliers.find(a=>a.id==='ha');
    return {tournees:v.tournees||null,vols:r.vols.map(x=>({id:x.id,limite:x.limite,arrivee:x.arrivee,etat:x.etat,vehicule:x.vehicule,escaleCourte:x.escaleCourte}))};});
  try{
@@ -70,7 +73,7 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.ok(r.tournees.some(t=>t.echange&&t.charges.includes('ES1')));
   assert.equal(r.vols.find(v=>v.id==='SU1').vehicule,'vl');
   assert.equal(r.vols.find(v=>v.id==='NO1').limite,9*60+15);
-  assert.match(await fiche().locator('.at-bilan-tournees').innerText(),/tournées \(\d+ en gros camion, 2 en VL\).*3 vols sur 3 chargés à l’heure/s);
+  assert.match(await (await resultats()).locator('.at-bilan-tournees').innerText(),/tournées \(\d+ en gros camion, 2 en VL\).*3 vols sur 3 chargés à l’heure/s);
 
   // 4. Les départs : l'échéance d'un vol est sa limite de chargement.
   await nav.aller(page,'v-departs');

@@ -81,9 +81,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      const bas=await v.evaluate(e=>[e.scrollTop,e.scrollHeight-e.clientHeight]);
      await page.mouse.move(await gauche(),600);for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
      return [bas,await v.evaluate(e=>e.scrollTop)];};
+   if(v1){
+    // v1 (évolution 22 b) : « Liste des services » n'est plus une page ; la liste des services est la colonne de gauche
+    // de « Services et équipes ». Elle défile seule : jusqu'en bas, puis elle remonte.
+    await nav.aller(page,'mu-services');
+    const l=page.locator('#mu-services .se-liste');await l.evaluate(e=>{e.scrollTop=0;});
+    await page.mouse.move(await gauche(),600);for(let k=0;k<10;k++){await page.mouse.wheel(0,500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+    const bas=await l.evaluate(e=>[e.scrollTop,e.scrollHeight-e.clientHeight]);
+    assert.ok(bas[1]>0&&bas[0]>=bas[1]-2,version+' : la liste des services descend jusqu’en bas '+bas);
+    for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+    assert.equal(await l.evaluate(e=>e.scrollTop),0,version+' : et remonte');
+   }else{
    await nav.aller(page,'u-services');
    {const [bas,haut]=await bout('flux',900);
     assert.ok(bas[1]>0&&bas[0]>=bas[1]-2,version+' : la Liste des services descend jusqu’en bas '+bas);assert.equal(haut,0,version+' : et remonte');}
+   }
    await nav.aller(page,'mu-services');
    for(const s of await page.locator('#mu-services [data-mu-choisir]').evaluateAll(bs=>bs.map(x=>x.dataset.muChoisir))){
     await page.locator(`#mu-services [data-mu-choisir="${s}"]`).click();await page.waitForTimeout(150);
@@ -106,6 +118,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 2 ter. Heures de travail : valider un temps ne ramène plus le tableau en haut
    //        (retour d'usage du 07/10 : « dès que je valide un horaire dans les
    //        man-hours, la page remonte »). Le tableau défile à part : sa place est gardée.
+   //        v1 (évolution 22 b) : les temps par vol se règlent dans la fiche de chaque service, qui défile à part ; en
+   //        valider un ne la ramène pas en haut.
+   if(v1){
+    // (La fiche tient dans l'écran sections repliées, évolution 22 b2 : ses temps dépliés, elle défile de quelques dizaines de pixels.)
+    await nav.service(page,'cuisine');await nav.section(page,'temps');await attendre();
+    const f=page.locator('#mu-services .se-fiche');
+    const temps=page.locator('#mu-services .se-fiche [data-rg-champ=heures]').last();
+    // (Un premier temps changé : la note « ce sont des temps par vol d'exemple » s'en va, et la fiche raccourcit d'autant.)
+    await temps.fill('0.4');await temps.press('Enter');await page.waitForTimeout(400);
+    await f.evaluate(z=>{z.scrollTop=z.scrollHeight;});await attendre();
+    const ici=await f.evaluate(z=>z.scrollTop);
+    assert.ok(ici>40,version+' : la fiche défile à part ('+ici+' px)');
+    await temps.fill('0.3');await temps.press('Enter');await page.waitForTimeout(400);
+    assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine&&Object.values(Sim.reglages.etat.bareme.cuisine).includes(18)),true,version+' : le temps est gardé (0,3 h = 18 min)');
+    assert.ok(Math.abs(await f.evaluate(z=>z.scrollTop)-ici)<40,version+' : après Entrée, la fiche reste où elle était');
+   }else{
    await nav.aller(page,'rg-recap');await nav.deplier(page);await attendre();
    const zone=page.locator('#rg-recap .rg-recap-scroll');
    const maxi=await zone.evaluate(z=>z.scrollHeight-z.clientHeight);
@@ -117,6 +145,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await champ.asElement().fill('0.3');await champ.asElement().press('Enter');await page.waitForTimeout(400);
    // Entrée descend à la ligne suivante (étape 8) : le tableau la montre au besoin, sans remonter.
    assert.ok(Math.abs(await page.locator('#rg-recap .rg-recap-scroll').evaluate(z=>z.scrollTop)-place)<40,version+' : après Entrée, le tableau reste où il était');
+   }
 
    // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)&&OrlyOnglets.pagesDe(OrlyOnglets.partieDe(id).id).some(x=>x.id===id)));

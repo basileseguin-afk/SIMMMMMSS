@@ -23,7 +23,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const robot=()=>page.evaluate(()=>{const z=Sim.editor.state.zones.find(z=>/^robot$/i.test(z.nom));return Sim.ateliers.state.ateliers.find(a=>a.service===z.id);});
  const effectif=id=>page.evaluate(id=>(Sim.ateliers.resultat.effectifs||{})[id]||null,id);
  const duree=id=>page.evaluate(id=>Sim.ateliers.resultat.lots.filter(l=>l.atelier===id).reduce((n,l)=>n+(l.fin-l.debut),0),id);
- const fiche=async id=>{await nav.aller(page,'at-equipes');await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);await attendre();};
+ const fiche=async id=>{await nav.reglagesEquipe(page,id);await attendre();};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await nav.pret(page);
   // Une organisation décrite : le Robot remplace le Montage pour TX, CRL et FBU Économie (robot-browser).
@@ -53,14 +53,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const dureeSaisi=await duree(id);
   await fiche(id);
   assert.equal(await page.locator(`[data-at="${id}"] [data-at-champ=personnes]`).count()>0,true,'son effectif se saisit');
-  await nav.aller(page,'rg-recap');await nav.deplier(page);
-  assert.equal(await page.locator('.rg-recap-table tr[data-classe="TX/YC"] input[data-rg-champ=recap-debit]').count(),1,'le récap montre son débit');
+  // (Évolution 22 b : la vue d'ensemble des temps par vol a quitté l'écran ; le débit du robot se règle dans sa fiche.)
+  assert.equal(await page.locator(`#mu-services [data-at="${id}"] [data-at-champ=debit]`).count()>0,true,'sa fiche montre son débit');
 
   // 2. Ses heures par vol, dans Barème, comme pour un autre service : 1 h par vol en Économie.
-  await nav.vue(page,'reglages');await attendre();
-  await nav.aller(page,'rg-minutes');await attendre();
-  await page.locator(`.rg-service[data-service="${rid}"] > summary`).click();await attendre();
-  const yc=`[data-rg-champ=heures][data-service="${rid}"][data-cle="*/YC"]`;
+  //    (Dans la fiche de son service, section « Ses temps par vol et ses débits » — évolution 22 b.)
+  const temps=async()=>{await nav.service(page,rid);await nav.section(page,'temps');await attendre();};
+  await temps();
+  const yc=`#mu-services [data-rg-champ=heures][data-service="${rid}"][data-cle="*/YC"]`;
   await page.fill(yc,'1');await page.dispatchEvent(yc,'change');await attendre();
   assert.equal(await page.evaluate(rid=>Sim.reglages.etat.bareme[rid]['*/YC'],rid),60,'gardée en minutes');
   const e=await effectif(id);
@@ -73,10 +73,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await duree(id),dureeSaisi,'la ligne va toujours à son débit');
   await fiche(id);
   assert.match(await page.locator(`[data-at="${id}"] .at-pers-calc`).first().innerText(),/calculé/);
-  assert.equal(await page.locator(`[data-at="${id}"] [data-at-calcule="${id}"]`).first().innerText(),String(e.personnes));
-  await nav.aller(page,'rg-recap');await nav.deplier(page);
-  assert.equal(await page.locator('.rg-recap-table tr[data-classe="TX/YC"] input[data-rg-champ=recap-debit]').count(),0);
-  assert.equal(await page.locator(`.rg-recap-table tr[data-classe="TX/YC"] input[data-rg-champ=recap][data-service="${rid}"]`).inputValue(),'1','ses heures par vol au récap');
+  // « Services et équipes » ne montre aucun résultat (évolution 22 b) : « calculé », sans le nombre ; plus de champ à saisir.
+  assert.equal(await page.locator(`#mu-services [data-at="${id}"] [data-at-calcule]`).count(),0,'le nombre calculé se lit dans les résultats');
+  assert.equal(await page.locator(`#mu-services [data-at="${id}"] [data-at-champ=personnes]`).count(),0,'son effectif ne se saisit plus');
+  await temps();
+  assert.equal(await page.locator(yc).inputValue(),'1','ses heures par vol, dans la fiche de son service');
 
   // 3. « Constant (saisi) » : son effectif saisi revient ; « comme le service » : calculé à nouveau.
   await fiche(id);
@@ -97,9 +98,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await effectif(id)).personnes,e.personnes);
 
   // 6. Ses heures par vol retirées : son effectif saisi revient, et la journée affichée se joue déjà avec lui.
-  await nav.vue(page,'reglages');await attendre();
-  await nav.aller(page,'rg-minutes');await attendre();
-  await page.locator(`.rg-service[data-service="${rid}"] > summary`).click();await attendre();
+  await temps();
   await page.fill(yc,'');await page.dispatchEvent(yc,'change');await attendre();
   assert.equal(await effectif(id),null,'plus de calcul');
   a=await robot();

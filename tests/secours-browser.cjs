@@ -33,7 +33,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#cote-cases').click();await page.waitForURL(/index\.html\?continuer=1/);await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.some(a=>a.id==='x1')),false,'repartis sans les cases');
   assert.ok(await page.evaluate(()=>!!localStorage.getItem('ory-secours-copie')),'elles sont gardées de côté');
-  await page.locator('#menu [data-entree="groupe:services"]').click();await attendre();
+  await page.locator('#menu [data-entree="mu-services"]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation','on navigue');
   // 5. Les remettre.
   await page.goto(pathToFileURL(path.resolve(__dirname,'../secours.html')).href);await attendre();

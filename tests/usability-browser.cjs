@@ -9,13 +9,13 @@ const ratio=(a,b)=>{a=lum(a);b=lum(b);return(Math.max(a,b)+.05)/(Math.min(a,b)+.
 try{await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
 const theme='clair';{
  for(const view of ['plan','ateliers','flux','reglages','vols']){
-  await nav.vue(page,view);if(view==='ateliers'){await nav.aller(page,'at-equipes');await page.locator('#at-new').click();}await page.waitForTimeout(200);
+  await nav.vue(page,view);if(view==='ateliers')await nav.ajouterEquipe(page,'cuisine');await page.waitForTimeout(200);
   for(const selector of ['.view-tabs .active','.panel-tabs .active','#btn-play','#horloge','#wg-new-item','.wg-tools [aria-pressed=true]','.fc-families [aria-pressed=true]','.so-onglet.actif','.so-onglet:not(.actif) >> nth=0','.so-badge >> nth=0']){
    const el=page.locator(selector);if(!await el.count()||!await el.isVisible()||await el.isDisabled())continue;
    const c=await el.evaluate(e=>{let p=e,b;while(p){b=getComputedStyle(p).backgroundColor;if(b!=='rgba(0, 0, 0, 0)')break;p=p.parentElement}return[getComputedStyle(e).color,b]});assert.ok(ratio(...c)>=4.5,`${theme} ${view} ${selector}: ${ratio(...c)}`);
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  if(view==='ateliers'){assert.equal(await page.locator('.at-carte.ouverte').count(),1,'l’atelier créé s’ouvre pour être renseigné');}
+  if(view==='ateliers'){assert.equal(await page.locator('#mu-services .se-equipe > article[data-at]').count(),1,'l’équipe créée s’ouvre pour être renseignée');}
  }
 }
 await page.setViewportSize({width:1024,height:700});for(const view of ['plan','ateliers','flux','reglages','vols']){await nav.vue(page,view);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,view+' à 1024 px');}console.log('Usability passed: key text contrast ≥ 4.5:1 in the light theme, keyboard help, five views without horizontal overflow on desktop/mobile.');

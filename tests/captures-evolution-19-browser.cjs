@@ -6,9 +6,10 @@
  *   — une fiche de plonge par vol (ses durées par compagnie ; ni débit ni
  *     plafond), puis au débit (ses débits ; plus de durée par compagnie),
  *     chacune avec sa ligne « n réglages ne jouent pas ici » ;
- *   — les temps par vol : « Temps par vol par service » (un service qui
- *     travaille par compagnie montre ses minutes par compagnie ; les mises à
- *     disposition n'y sont pas) et « Temps par vol » ;
+ *   — les temps par vol, dans la fiche d'un service (évolution 22 b : « Temps
+ *     par vol par service » et « Temps par vol » ne sont plus des pages) : un
+ *     service qui travaille par compagnie montre ses minutes par compagnie ;
+ *     une mise à disposition n'a pas la section ;
  *   — le panneau des problèmes : un avis de chaque niveau, les informations
  *     repliées sous les autres.
  * Chaque capture est vérifiée (sa taille, ce qu'elle doit montrer, la page qui
@@ -81,8 +82,8 @@ const AVIS=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,repas=Sim.a
     await capturer('vols');
 
     /* ---- une fiche de plonge, par vol puis au débit ---------------------------------------------------- */
-    const ouvrir=async id=>{await nav.aller(page,'at-equipes');await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);
-      const sel=`#view-ateliers [data-sous~="at-equipes"] article.at-carte.ouverte[data-at="${id}"]`;
+    const ouvrir=async id=>{await nav.reglagesEquipe(page,id);
+      const sel=`#mu-services .se-equipe > article[data-at="${id}"]`;
       await page.waitForSelector(sel+' > .nj-hote details.nj');
       // On cadre sur « Comment se compte le lavage ? » : le choix, les tunnels, les durées, puis la ligne discrète.
       await page.locator(sel+' [data-at-champ="plonge-mode"]').first().evaluate(e=>{const z=e.closest('.view,#view-ateliers')||document.scrollingElement;
@@ -113,29 +114,23 @@ const AVIS=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,repas=Sim.a
     await page.waitForFunction(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='pl1').parVol===true);
 
     /* ---- les temps par vol ---------------------------------------------------------------------------- */
-    await nav.aller(page,'rg-minutes');
+    // Évolution 22 (b) : « Temps par vol par service » et « Temps par vol » ne sont plus des pages. Les temps d'un service
+    // sont une section de sa fiche, dans « Services et équipes » : ce qui joue pour lui, rien d'autre.
+    await nav.service(page,'quais');await nav.section(page,'temps');
     await poserTheme();
-    await page.waitForSelector('#rg-bareme details.rg-service[data-service="quais"] > .nj-par-cie',{state:'attached'});
-    // Le handling, déplié : ses minutes par compagnie, pas des temps par classe.
-    const quais=page.locator('#rg-bareme details.rg-service[data-service="quais"]');
-    if(!(await quais.evaluate(d=>d.open)))await quais.locator(':scope > summary').click();
-    await page.waitForSelector('#rg-bareme details.rg-service[data-service="quais"] > .nj-par-cie .nj-table');
-    await quais.evaluate(e=>e.scrollIntoView({block:'center'}));
-    assert.ok(await aLEcran('#rg-bareme details.rg-service[data-service="quais"] > .nj-par-cie .nj-table'),V+'les minutes par compagnie du handling sont à l’écran');
-    const tv=await page.evaluate(()=>{const cache=e=>!e||e.offsetParent===null;
-      const dispos=[...new Set(Sim.ateliers.state.ateliers.filter(a=>a.type==='dispo').map(a=>a.service))]
-        .filter(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s&&a.type!=='appui').every(a=>a.type==='dispo'));
-      return {parCie:document.querySelectorAll('#rg-bareme details.rg-service > .nj-par-cie').length,
-        dispos:dispos.length,disposCachees:dispos.every(s=>cache(document.querySelector('#rg-bareme details.rg-service[data-service="'+s+'"]'))),
-        note:(document.querySelector('#rg-bareme .nj-dispos')||{}).textContent||''};});
-    assert.ok(tv.parCie>=1,V+'un service qui travaille par compagnie montre ses minutes par compagnie');
-    assert.ok(tv.dispos>=1&&tv.disposCachees,V+'les mises à disposition n’ont pas de ligne : '+JSON.stringify(tv));
-    assert.match(tv.note,/mises? à disposition/,V+'la note le dit');
-    await capturer('temps-par-vol-par-service');
-    await nav.aller(page,'rg-recap');
-    await poserTheme();
-    await page.waitForSelector('#view-reglages [data-sous~="rg-recap"] table');
-    await capturer('temps-par-vol');
+    // Le handling : ses minutes par compagnie, pas des temps par classe.
+    const durees='#mu-services [data-mu-section="temps"] .se-durees';
+    await page.waitForSelector(durees);
+    await page.locator(durees).evaluate(e=>e.scrollIntoView({block:'center'}));
+    assert.ok(await aLEcran(durees),V+'les minutes par compagnie du handling sont à l’écran');
+    assert.equal(await page.locator('#mu-services [data-mu-section="temps"] [data-rg-champ="heures"]').count(),0,V+'pas de temps par classe pour un service qui travaille par compagnie');
+    await capturer('temps-par-vol-du-service');
+    // Une mise à disposition n'a pas de temps par vol : sa fiche n'en a pas la section.
+    const dispos=await page.evaluate(()=>[...new Set(Sim.ateliers.state.ateliers.filter(a=>a.type==='dispo').map(a=>a.service))]
+      .filter(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s&&a.type!=='appui').every(a=>a.type==='dispo')));
+    assert.ok(dispos.length>=1,V+'l’unité fictive a des mises à disposition');
+    for(const d of dispos){await nav.service(page,d);
+      assert.equal(await page.locator('#mu-services [data-mu-section="temps"]').count(),0,V+d+' : une mise à disposition n’a pas de section de temps');}
 
     /* ---- le panneau des problèmes ---------------------------------------------------------------------- */
     await page.evaluate(AVIS);
@@ -160,7 +155,7 @@ const AVIS=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,repas=Sim.a
     assert.deepEqual(errors,[],V+'aucune erreur de page');
    }finally{if(x&&x.effacer)x.effacer();await ctx.close();}
   }
-  assert.equal(faites.length,24);
+  assert.equal(faites.length,20);   // cinq captures par thème et par taille (six avant l'évolution 22 b)
   console.log('captures-evolution-19-browser : ok — '+faites.length+' captures (la page des vols ; une fiche de plonge par vol et au débit ; les temps par vol ; le panneau des problèmes), en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080, dans '+dossier);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

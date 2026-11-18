@@ -48,13 +48,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await page.evaluate(partages=>partages.map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>a.type)),partages),
     [['dispo'],['dispo'],['dispo']],'une case partagée par poste de mise à disposition');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a sa case');
-  await nav.aller(page,'at-equipes');await attendre();
-  assert.match(await page.locator('#at-liste').textContent(),/Montage TX BC/,'la case est dans « Les cases »');
-  await page.locator(`#at-liste [data-at="${kase.id}"] .at-carte-nom`).click();await attendre();
-  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
+  // (Évolution 22 b : l'équipe est dans le tableau de son service ; sa fiche dit ses commandes, et chacune mène à son chemin.)
+  await nav.service(page,'prepa');await attendre();
+  assert.match(await page.locator('#mu-services .se-equipes').textContent(),/Montage TX BC/,'l’équipe est dans le tableau de son service');
+  await nav.equipe(page,kase.id);
+  await page.locator(`#mu-services [data-at="${kase.id}"] [data-mu-chemin="TX/BC"]`).first().click();await attendre();
+  assert.equal(await page.locator('#onglets-internes [data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','sa commande mène à son chemin');
 
   // 2. La case s'ouvre dans une fenêtre à droite, fiche complète, en vue sans défiler.
-  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de « Les cases », la case est ouverte');
+  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de la fiche de l’équipe, elle est ouverte');
   // × ou Échap la referment ; cliquer le service la rouvre.
   const box=await page.locator('.pc-tiroir').boundingBox();
   const barre=await page.locator('#tete-page').boundingBox();
@@ -136,9 +138,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/BC');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true,'le service cliqué est choisi');
   assert.equal(await page.locator(fiche).isVisible(),true);
-  await nav.aller(page,'at-equipes');await attendre();
-  assert.equal(await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin]`).count(),2,'la case dit ses deux commandes');
-  await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin][data-classe="TX/YC"]`).click();await attendre();
+  await nav.equipe(page,kase.id);await attendre();
+  assert.equal(await page.locator(`#mu-services [data-at="${kase.id}"] .mu-ordre [data-mu-chemin]`).count(),2,'l’équipe dit ses deux commandes');
+  await page.locator(`#mu-services [data-at="${kase.id}"] .mu-ordre [data-mu-chemin="TX/YC"]`).click();await attendre();
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/YC');
 
   // 4. Déplacer un service : la disposition est retenue ; « Réorganiser » l'oublie.

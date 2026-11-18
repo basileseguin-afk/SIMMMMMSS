@@ -54,13 +54,13 @@ function sauvegarde(){
   // La journée de départ, une fois les effectifs calculés reportés dans les équipes (un calcul de plus, sans rien changer).
   await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(500);
   const depart=await resultat();
-  // La fiche d'une équipe, dans « Équipes une par une ».
-  const ouvrir=async id=>{await nav.aller(page,'at-equipes');await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);await attendre();
-    await page.waitForSelector(`#view-ateliers [data-sous~="at-equipes"] article.at-carte.ouverte[data-at="${id}"]`);
-    return page.locator(`#view-ateliers [data-sous~="at-equipes"] article.at-carte.ouverte[data-at="${id}"]`).first();};
+  // La fiche d'une équipe, dans « Services et équipes » (évolution 22 b), tous ses réglages dépliés.
+  const ouvrir=async id=>{await nav.reglagesEquipe(page,id);await attendre();
+    await page.waitForSelector(`#mu-services .se-equipe > article[data-at="${id}"]`);
+    return page.locator(`#mu-services .se-equipe > article[data-at="${id}"]`).first();};
   /** Ce que dit la ligne sous une fiche : { n (le compte annoncé), lignes: [[libellé, valeur, raison, grisé ?]] } ; null sans ligne. */
   const ligne=async fiche=>{
-    const d=fiche.locator(':scope > .nj-hote details.nj');
+    const d=fiche.locator(':scope > .nj-hote details.nj, :scope > .nj-hote > details.nj').first();
     if(!(await d.count()))return null;
     const titre=(await d.locator('summary').innerText()).trim();
     if(!(await d.evaluate(e=>e.open))){await d.locator('summary').click();await attendre(120);}
@@ -172,44 +172,44 @@ function sauvegarde(){
   assert.deepEqual((await equipe('h')).creneaux,creneaux,'les créneaux n’ont pas bougé');
   await changer('h',a=>{delete a.handling24h;const c={...a.chauffeurs};delete c.mode;a.chauffeurs=c;});await attendre(600);
 
-  // 5. « Temps par vol par service » : le handling, la plonge par vol et l'armement (une équipe par compagnie) montrent
-  // leurs minutes par compagnie ; un service qui prépare garde ses temps par classe.
-  await nav.aller(page,'rg-minutes');await attendre();
-  const bloc=id=>page.locator(`#rg-bareme details.rg-service[data-service="${id}"]`);
-  const lire=async id=>{const d=bloc(id);if(!(await d.evaluate(e=>e.open))){await d.locator(':scope > summary').click();await attendre(150);}await attendre(150);
-    return {champs:await d.locator('[data-rg-champ="heures"]').evaluateAll(es=>es.filter(e=>e.offsetParent!==null).length),
-      bloc:await d.locator(':scope > .nj-par-cie').count(),
-      table:await d.locator('.nj-table tbody tr').evaluateAll(trs=>trs.map(tr=>[tr.children[0].textContent.trim(),tr.children[1].textContent.trim()])),
-      entete:await d.locator('.nj-table thead th').evaluateAll(ths=>ths.map(t=>t.textContent.trim())),
-      digest:(await d.locator(':scope > summary .nj-digest').count())?(await d.locator(':scope > summary .nj-digest').innerText()).trim():null,
-      aRemplir:await d.locator(':scope > summary .rg-zero').evaluateAll(es=>es.filter(e=>e.offsetParent!==null).length)};};
+  // 5. Les temps d'un service, dans sa fiche (évolution 22 b : « Temps par vol par service » n'est plus une page) : le
+  // handling, la plonge par vol et l'armement (une équipe par compagnie) montrent leurs minutes par compagnie ; un service
+  // qui prépare garde ses temps par classe.
+  const TEMPS='#mu-services details[data-mu-section=temps]';
+  const lire=async id=>{await nav.service(page,id);await nav.section(page,'temps');await attendre(150);const d=page.locator(TEMPS);
+    return {titre:(await d.locator(':scope > summary h3').evaluate(h=>h.firstChild.textContent)).trim(),
+      champs:await d.locator('[data-rg-champ="heures"]').evaluateAll(es=>es.filter(e=>e.offsetParent!==null).length),
+      table:await d.locator('.se-durees tbody tr').evaluateAll(trs=>trs.map(tr=>[tr.children[0].textContent.trim(),tr.children[1].textContent.trim()])),
+      entete:await d.locator('.se-durees thead th').evaluateAll(ths=>ths.map(t=>t.textContent.trim())),
+      aRemplir:await d.locator('.rg-zero').evaluateAll(es=>es.filter(e=>e.offsetParent!==null).length)};};
   let s=await lire('quais');
   assert.equal(s.champs,0,'le handling : aucun temps par classe');
-  assert.deepEqual([s.bloc,s.entete,s.table],[1,['Compagnie','min par vol'],[['Toutes compagnies','25'],['NORD','40'],['OUEST','40']]]);
-  assert.equal(s.digest,'par compagnie · toutes compagnies 25 min · NORD 40 min · OUEST 40 min');
+  assert.deepEqual([s.titre,s.entete,s.table],['Son temps par vol',['Compagnie','min par vol'],[['Toutes compagnies','25'],['NORD','40'],['OUEST','40']]]);
   assert.equal(s.aRemplir,0,'pas de « à remplir » : rien n’est à remplir ici');
   // Ses temps par classe gardés : sous la ligne, grisés.
-  l=await ligne(bloc('quais').locator(':scope > .nj-par-cie'));
+  l=await ligne(page.locator(TEMPS));
   assert.equal(l.titre,'2 réglages ne jouent pas ici');
   assert.deepEqual(l.lignes.map(x=>[x[0],x[1],x[3]]),[['BC · toutes compagnies','0,1 h par vol',true],['YC · toutes compagnies','0,15 h par vol',true]]);
   for(const x of l.lignes)assert.equal(x[2],'Ce service travaille par compagnie : ses temps par classe ne sont pas lus.');
   s=await lire('plonge');
-  assert.deepEqual([s.champs,s.bloc,s.entete,s.table],[0,1,['Compagnie','min par vol et par tunnel'],[['Toutes compagnies','30'],['NORD','45']]]);
-  s=await lire('armement');
-  assert.deepEqual([s.champs,s.bloc,s.table],[0,1,[['Toutes compagnies','12'],['NORD','18']]]);
+  assert.deepEqual([s.titre,s.champs,s.entete,s.table],['Ses durées de lavage',0,['Compagnie','min par vol et par tunnel'],[['Toutes compagnies','30'],['NORD','45']]]);
+  // L'armement : ses minutes par compagnie se règlent ici même (le tableau de sa fiche).
+  await nav.service(page,'armement');await nav.section(page,'temps');await attendre(150);
+  assert.equal((await page.locator(`${TEMPS} > summary h3`).evaluate(h=>h.firstChild.textContent)).trim(),'Ses minutes par compagnie');
+  assert.equal(await page.locator(`${TEMPS} [data-rg-champ="heures"]`).count(),0,'l’armement : aucun temps par classe');
+  assert.ok(await page.locator(`${TEMPS} .mu-cat-table tbody tr`).count()>=2,'ses minutes, une ligne par compagnie');
   s=await lire('prepa');
   assert.ok(s.champs>=5,'un service qui prépare : ses temps par classe ('+s.champs+')');
-  assert.deepEqual([s.bloc,s.digest],[0,null]);
-  // « Régler dans la fiche » ouvre le service.
+  assert.deepEqual([s.titre,s.table],['Ses temps par vol et ses débits',[]]);
+  // « Ouvrir la fiche de… » mène à l'équipe qui porte les durées.
   await lire('quais');
-  await bloc('quais').locator('[data-nj-ouvrir="quais"]').click();await attendre(300);
+  await page.locator(`${TEMPS} .se-vers [data-se-equipe]`).first().click();await attendre(300);
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
-  assert.equal(await page.evaluate(()=>Sim.unite.choisi),'quais');
-  // Dans l'autre sens : la plonge passe au débit, ses temps par classe reviennent dans la page.
+  assert.deepEqual(await page.evaluate(()=>[Sim.unite.choisi,Sim.unite.equipeOuverte]),['quais','h']);
+  // Dans l'autre sens : la plonge passe au débit, ses temps par classe reviennent dans sa fiche.
   await changer('pl1',a=>{a.parVol=false;});await changer('pl2',a=>{a.parVol=false;});await attendre();
-  await nav.aller(page,'rg-minutes');await attendre();
   s=await lire('plonge');
-  assert.equal(s.bloc,0,'au débit : la plonge ne travaille plus par compagnie');
+  assert.deepEqual(s.table,[],'au débit : la plonge ne travaille plus par compagnie');
   assert.ok(s.champs>=5,'ses temps par classe sont de retour ('+s.champs+')');
   await changer('pl1',a=>{a.parVol=true;});await changer('pl2',a=>{a.parVol=true;});await attendre();
 
@@ -278,7 +278,7 @@ function sauvegarde(){
   // 9. Ni par Excel : « Équipes et chemins » exporté puis réimporté, la valeur masquée est toujours là, dans les deux sens.
   const plonge=async()=>{const a=await equipe('pl1');return {parVol:!!a.parVol,plafond:a.plafond,debits:a.tunnels.map(t=>t.debit),vitesses:a.tunnels.map(t=>t.vitesse||1),durees:a.durees};};
   const parExcel=async nom=>{
-    await nav.aller(page,'at-equipes');
+    await nav.aller(page,'mu-services');
     const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#at-export').click()]);
     const f=path.join(dossier,nom);await dl.saveAs(f);
     await page.evaluate(()=>{document.getElementById('at-status').textContent='';});

@@ -38,10 +38,15 @@ const CLES=()=>{const out={};for(let i=0;i<localStorage.length;i++){const k=loca
 
 /** Une équipe de plus, par la page, nommée `nom`. */
 async function nouvelleEquipe(page,nom){
+  // v1 (évolution 22 b) : elle naît dans la fiche de son service, « Ajouter une équipe » ; v2 : « + Équipe hors chemin ».
+  let at;
+  if(await nav.v1(page))at=await nav.ajouterEquipe(page,'cuisine');
+  else{
   await nav.vue(page,'ateliers');await nav.aller(page,'at-equipes');
   await page.locator('#at-new').click();await page.waitForTimeout(150);
-  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+  at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
+  }
   await page.fill(`[data-at="${at}"] [data-at-champ=nom]`,nom);
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=nom]`,'change');await page.waitForTimeout(150);
 }

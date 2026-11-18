@@ -37,33 +37,38 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Aucune vue n'impose un pavé de texte. Vingt-cinq mots, c'est déjà deux
   //    lignes pleines : au-delà, on ne lit plus, on saute.
+  //    (Évolution 22 b : les temps par vol d'un service, qui faisaient la première page des réglages, sont une section
+  //    de sa fiche, dans « Services et équipes » — c'est elle qu'on lit, dépliée.)
   for(const vue of ['ateliers','flux','reglages']){
-    await nav.vue(page,vue);await attendre();
-    const t=await texte(vue);
+    if(vue==='reglages'){await nav.service(page,'cuisine');await nav.section(page,'temps');}else await nav.vue(page,vue);
+    await attendre();
+    const t=await texte(vue==='reglages'?'ateliers':vue);
     assert.deepEqual(t.longs,[],`« ${vue} » ne doit imposer aucun pavé — trouvé : `+t.longs.join(' / '));
     assert.ok(t.mots<260,`« ${vue} » : ${t.mots} mots visibles, c'est trop`);
   }
 
   // 2. Rien n'est perdu : l'explication est derrière le « ? », à un clic.
-  await nav.vue(page,'reglages');await attendre();
-  const aide=page.locator('#rg-bareme-panneau .aide').first();
+  //    (L'aide du premier panneau des réglages de la simulation : le rythme de travail.)
+  await nav.aller(page,'rg-simulation');await attendre();
+  const AIDE='#rg-modele .panneau:has(#rg-rendement) .aide',REPERE='#rg-rendement';
+  const aide=page.locator(AIDE).first();
   const corps=aide.locator('.aide-corps');
   assert.equal(await corps.isVisible(),false,'repliée au départ');
   await aide.locator('summary').click();await attendre();
   assert.equal(await corps.isVisible(),true,'le « ? » l’ouvre');
-  assert.match(await corps.textContent(),/multiplie par le\s+nombre de vols/,'et le texte complet est là');
+  assert.match(await corps.textContent(),/Un seul chiffre pour tous les services/,'et le texte complet est là');
 
   // 3. Ouvrir une aide ne déplace RIEN. Dans le fil du texte, le corps
   //    grossissait la ligne qui le portait et faisait sauter tout le panneau.
   const bouger=async(fn)=>{
-    const avant=await page.locator('#rg-bareme').boundingBox();
+    const avant=await page.locator(REPERE).boundingBox();
     await fn();await attendre();
-    const apres=await page.locator('#rg-bareme').boundingBox();
+    const apres=await page.locator(REPERE).boundingBox();
     return Math.abs(avant.y-apres.y)+Math.abs(avant.x-apres.x);
   };
   await aide.locator('summary').click();await attendre();   // refermer
   assert.equal(await bouger(()=>aide.locator('summary').click()),0,
-    'ouvrir l’aide ne doit pas décaler le tableau du barème');
+    'ouvrir l’aide ne doit pas décaler le réglage qu’elle explique');
   await aide.locator('summary').click();await attendre();
 
   // 4. Un <details> ne peut pas vivre dans un <p> : le navigateur refermerait
@@ -80,7 +85,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Rien ne déborde, y compris avec une bulle ouverte sur le plus petit écran visé.
   await page.setViewportSize({width:1024,height:700});await attendre();
-  await page.locator('#rg-bareme-panneau .aide').first().locator('summary').click();await attendre();
+  await page.locator(AIDE).first().locator('summary').click();await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,
     'une bulle ouverte ne doit pas allonger la page');
 

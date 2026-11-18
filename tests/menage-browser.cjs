@@ -97,29 +97,24 @@ const ATTENTE=/\d+\s*min d’attente|\(attente\s*\d+\)|attend\s+\d+\s*min|Attend
   assert.deepEqual(dispos.sort(),['decontam','magasin']);
   const gardes=await page.evaluate(()=>JSON.stringify([Sim.reglages.etat.bareme.decontam,Sim.reglages.etat.bareme.magasin]));
   assert.ok(JSON.parse(gardes).every(x=>x&&Object.keys(x).length>0),'ils ont des temps par classe gardés : '+gardes);
-  await nav.aller(page,'rg-minutes');await attendre();
-  const lignes=()=>page.locator('#rg-bareme details.rg-service').evaluateAll(ds=>ds.filter(d=>d.offsetParent!==null).map(d=>d.dataset.service));
-  let visibles=await lignes();
-  assert.ok(visibles.length>=8,'les services qui ont des temps par vol ('+visibles.length+')');
-  for(const id of dispos)assert.ok(!visibles.includes(id),id+' n’a plus de ligne dans la page');
-  assert.equal((await page.locator('#rg-bareme .nj-dispos').innerText()).trim(),'2 services sont des mises à disposition : on vient s’y servir, pas de temps par vol (Magasin, Légumerie).');
-  // « Temps par vol » (le tableau) : pas de colonne pour eux non plus.
-  await nav.aller(page,'rg-recap');await attendre();
-  const colonnes=await page.locator('#view-reglages [data-sous~="rg-recap"] thead th').evaluateAll(ths=>ths.filter(t=>t.offsetParent!==null).map(t=>t.textContent.trim()));
-  assert.ok(colonnes.length>=5,'le tableau des temps par vol a ses colonnes ('+colonnes.length+')');
-  assert.ok(!colonnes.some(c=>/^(Légumerie|Magasin)\b/.test(c)),'ni la Légumerie ni le Magasin : '+colonnes.join(' | '));
+  // (Évolution 22 b : les temps par vol d'un service sont une section de sa fiche, dans « Services et équipes » ; les
+  //  pages « Temps par vol par service » et « Temps par vol » n'existent plus. Une mise à disposition n'a pas la section.)
+  const aSesTemps=async id=>{await nav.service(page,id);return await page.locator('#mu-services [data-mu-section=temps]').count()>0;};
+  await nav.aller(page,'mu-services');
+  const services=await page.locator('#mu-services .se-liste [data-mu-choisir]').evaluateAll(bs=>bs.map(b=>b.dataset.muChoisir));
+  const avecTemps=[];for(const id of services)if(await aSesTemps(id))avecTemps.push(id);
+  assert.ok(avecTemps.length>=8,'les services qui ont des temps par vol ('+avecTemps.length+')');
+  for(const id of dispos)assert.ok(!avecTemps.includes(id),id+' n’a pas de temps par vol dans sa fiche');
   // Les valeurs restent dans la sauvegarde.
   assert.equal(await page.evaluate(()=>JSON.stringify([Sim.reglages.etat.bareme.decontam,Sim.reglages.etat.bareme.magasin])),gardes,'ses temps gardés n’ont pas bougé');
   assert.deepEqual(JSON.parse(fs.readFileSync(suivante,'utf8')).contenu['ory-modele-v1'].bareme.magasin,JSON.parse(gardes)[1],'la sauvegarde les porte');
-  // Dans l'autre sens : une équipe prépare au Magasin, il retrouve sa ligne ; redevenu mise à disposition, il la quitte.
+  // Dans l'autre sens : une équipe prépare au Magasin, il retrouve ses temps par vol ; redevenu mise à disposition, il les quitte.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mag-prepare',nom:'Magasin prépare',service:'magasin',type:'manuel',debut:'05:00',jour:0,personnes:1,pauses:[],lots:[],regime:{actif:true}});},''));
-  await nav.aller(page,'rg-minutes');await attendre(400);
-  visibles=await lignes();
-  assert.ok(visibles.includes('magasin'),'une équipe y prépare : le Magasin a sa ligne');
-  assert.equal((await page.locator('#rg-bareme .nj-dispos').innerText()).trim(),'1 service est une mise à disposition : on vient s’y servir, pas de temps par vol (Légumerie).');
+  await attendre(400);
+  assert.equal(await aSesTemps('magasin'),true,'une équipe y prépare : le Magasin a ses temps par vol');
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=Sim.ateliers.state.ateliers.filter(a=>a.id!=='mag-prepare');},''));
-  await nav.aller(page,'rg-minutes');await attendre(400);
-  assert.ok(!(await lignes()).includes('magasin'),'de nouveau une mise à disposition : plus de ligne');
+  await attendre(400);
+  assert.equal(await aSesTemps('magasin'),false,'de nouveau une mise à disposition : plus de temps par vol');
 
   // 3. Le menu de la version 1 : plus de mention « Version 2, en construction ».
   assert.equal(await page.locator('#barre .btn-version').count(),0,'plus de lien « Version 2 » dans la barre');
@@ -128,36 +123,27 @@ const ATTENTE=/\d+\s*min d’attente|\(attente\s*\d+\)|attend\s+\d+\s*min|Attend
   assert.match(servie,/^version [0-9a-f]+$/,'la version servie se lit toujours sous la marque');
   assert.doesNotMatch((await page.locator('#barre').innerText()).replace(servie,''),/Version 2|en construction/i);
 
-  // 4. Plus aucune attente en minutes dans les pages de réglage des équipes ; l'heure de fin reste, avec un lien vers le planning.
+  // 4. Plus aucune attente en minutes dans la page de réglage des équipes. (Évolution 22 b : « Services et équipes » ne
+  //    montre plus aucun résultat — ni l'heure de fin, ni le lien vers le planning que portaient « Équipes une par une »
+  //    et « Horaires des équipes » ; « Voir ce service dans les résultats » les remplace.)
   const attentes=await page.evaluate(()=>(Sim.ateliers.resultat.ateliers||[]).filter(a=>a.attente>=1).map(a=>a.id));
   assert.ok(attentes.length>0,'la journée fictive a des équipes qui attendent (le calcul n’a pas changé) : '+attentes.length);
   const texte=sel=>page.locator(sel).evaluateAll(es=>es.filter(e=>e.offsetParent!==null).map(e=>e.innerText).join('\n'));
-  // « Équipes une par une » : chaque carte, puis la fiche ouverte d'une équipe qui attend.
-  await nav.aller(page,'at-equipes');await attendre();
-  let lu=await texte('#view-ateliers [data-sous~="at-equipes"]');
-  assert.ok(lu.length>500);assert.doesNotMatch(lu,ATTENTE,'aucune attente en minutes dans les cartes');
-  assert.match(lu,/→ fin \d\d:\d\d/,'l’heure de fin simulée reste');
-  const equipe=attentes[0];
-  await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},equipe);await attendre();
-  lu=await texte(`#view-ateliers [data-sous~="at-equipes"] article.at-carte.ouverte[data-at="${equipe}"]`);
-  assert.doesNotMatch(lu,ATTENTE,'ni dans la fiche ouverte d’une équipe qui attend');
-  assert.match(lu,/\d\d:\d\d → \d\d:\d\d/,'chaque lot garde son heure de début et de fin');
-  // Le lien vers le planning, à côté de l'heure de fin : il y mène.
-  const lien=page.locator(`#view-ateliers [data-sous~="at-equipes"] article.at-carte[data-at="${equipe}"] .at-vers-planning`).first();
-  assert.equal((await lien.innerText()).trim(),'planning →');
-  await lien.click();await attendre(300);
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-planning','le lien mène au planning des équipes');
-  // « Horaires des équipes » (le tableau) et « Services et équipes » (chaque service).
-  await nav.aller(page,'at-recap');await attendre();
-  lu=await texte('#view-ateliers [data-sous~="at-recap"]');
-  assert.ok(lu.length>500);assert.doesNotMatch(lu,ATTENTE,'aucune attente en minutes dans le tableau des horaires');
-  assert.match(lu,/\d\d:\d\d–\d\d:\d\d/,'les heures de chaque lot restent');
-  assert.equal(await page.locator('#view-ateliers [data-sous~="at-recap"] .rc-vers-planning').count(),1,'le lien vers le planning, sur la colonne « Fin »');
   await nav.aller(page,'mu-services');
   for(const id of await page.evaluate(()=>[...new Set(Sim.ateliers.state.ateliers.map(a=>a.service))])){
     await page.evaluate(id=>Sim.unite.ouvrir(id),id);await attendre(200);
-    assert.doesNotMatch(await texte('#mu-services'),ATTENTE,id+' : aucune attente en minutes dans la fiche du service');
+    const lu=await texte('#mu-services');
+    assert.doesNotMatch(lu,ATTENTE,id+' : aucune attente en minutes dans la fiche du service');
+    assert.doesNotMatch(lu,/→ fin \d\d:\d\d|finit à \d\d:\d\d/,id+' : ni heure de fin');
+    assert.equal(await page.locator('#mu-services [data-se-resultats]').count()>0,true,id+' : le lien vers les résultats');
   }
+  // La fiche ouverte d'une équipe qui attend : rien non plus.
+  const equipe=attentes[0];
+  await nav.reglagesEquipe(page,equipe);await attendre();
+  const lu=await texte('#mu-services .se-fiche');
+  assert.ok(lu.length>200);assert.doesNotMatch(lu,ATTENTE,'ni dans la fiche ouverte d’une équipe qui attend');
+  assert.doesNotMatch(lu,/→ fin \d\d:\d\d|\d\d:\d\d → \d\d:\d\d/,'ni heure de fin, ni heures de ses lots');
+  assert.equal(await page.locator('#mu-services .at-vers-planning').count(),0,'plus de lien vers le planning dans la fiche');
   assert.deepEqual(errors,[],errors.join(' | '));
   console.log('menage-browser : ok — les mises à disposition hors des temps par vol, les stockages vides retirés et dits, plus de mention « Version 2 », plus d’attente en minutes dans les pages de réglage');
  }catch(e){console.error(e);process.exitCode=1;}finally{fs.rmSync(dossier,{recursive:true,force:true});await browser.close();}

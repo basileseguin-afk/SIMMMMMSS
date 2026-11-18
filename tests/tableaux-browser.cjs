@@ -27,6 +27,43 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    await page.evaluate(()=>Sim.ateliers.changer(()=>{for(let i=0;i<30;i++)Sim.ateliers.state.ateliers.push(
      {id:'c'+i,nom:'Case '+String(i).padStart(2,'0'),service:i<15?'cuisine':'prepa',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[]});},''));
+   if(version==='v1'){
+    // Évolution 22 (b) : en version 1, les deux vues d'ensemble (« Horaires des équipes », « Temps par vol ») ont quitté
+    // l'écran ; leurs classeurs restent, dans « Fichiers ». Les heures se saisissent dans la fiche d'une équipe, les
+    // temps par vol dans la fiche d'un service (« Services et équipes ») : mêmes champs, mêmes valeurs enregistrées.
+    assert.equal(await page.locator('.rc-table, .rg-recap-table').count(),0,V+'plus de vue d’ensemble à l’écran');
+    // 2. L'heure d'une équipe : Entrée enregistre ; une heure impossible est refusée sous son champ.
+    await nav.equipe(page,'c3');
+    const heure=()=>page.locator('#mu-services .se-equipe [data-at-champ=debut]').first();
+    await heure().click();await page.keyboard.press('Control+A');await page.keyboard.type('0430');await page.keyboard.press('Enter');await attendre();
+    assert.equal(await debut('c3'),'04:30',V+'Entrée enregistre');
+    assert.equal(await page.locator('#mu-services .se-equipe > article[data-at="c3"]').count(),1,V+'et la fiche de l’équipe reste ouverte');
+    await heure().click();await page.keyboard.press('Control+A');await page.keyboard.type('2500');await page.keyboard.press('Tab');await attendre();
+    assert.equal(await debut('c3'),'04:30',V+'« 2500 » n’est pas enregistré');
+    assert.match(await page.locator('.champ-erreur').first().innerText(),/n’est pas une heure/,V+'la raison sous le champ quitté');
+    // 3. Les temps par vol d'un service : les nombres à droite, Entrée descend dans la colonne, la fiche ne saute pas.
+    await nav.service(page,'cuisine');await nav.section(page,'temps');
+    const table=page.locator('#mu-services .se-fiche table.rg-table[data-clavier]').first();
+    assert.equal(await table.count(),1,V+'un tableau qui se remplit au clavier');
+    const el=table.locator('input[data-rg-champ=heures]').first();
+    await el.scrollIntoViewIfNeeded();
+    assert.equal(await el.evaluate(e=>getComputedStyle(e).textAlign),'right',V+'les nombres à droite');
+    const x0=await el.evaluate(e=>{const r=e.closest('td').getBoundingClientRect();return r.left+r.width/2;});
+    const cle=await el.evaluate(e=>({service:e.dataset.service,cle:e.dataset.cle}));
+    const suivante=await table.locator('input[data-rg-champ=heures]').nth(1).getAttribute('data-cle');
+    const place=await page.locator('#mu-services .se-fiche').evaluate(z=>z.scrollTop);
+    await el.click();await page.keyboard.press('Control+A');await page.keyboard.type('0.3');await page.keyboard.press('Enter');await attendre(500);
+    assert.equal(await page.evaluate(({service,cle})=>(Sim.reglages.etat.bareme[service]||{})[cle],cle),18,V+'0,3 h par vol, gardées en minutes');
+    const ici=await page.evaluate(()=>{const e=document.activeElement,r=e.closest('td')&&e.closest('td').getBoundingClientRect();return e.tagName==='INPUT'&&r?{x:r.left+r.width/2,champ:e.dataset.rgChamp,cle:e.dataset.cle}:null;});
+    assert.ok(ici&&Math.abs(ici.x-x0)<3&&ici.cle===suivante,V+'Entrée descend dans la même colonne '+JSON.stringify({x0,ici,suivante}));
+    assert.ok(Math.abs(await page.locator('#mu-services .se-fiche').evaluate(z=>z.scrollTop)-place)<40,V+'la fiche ne saute pas');
+    // 4. Les autres tableaux d'heures se remplissent de même.
+    await nav.aller(page,'v-planche');await attendre();
+    await page.locator('#vols-planche [data-pl-action=ajouter]').click();await attendre();
+    assert.equal(await page.locator('#vols-planche .planche-table').getAttribute('data-clavier'),'',V+'la planche retour');
+    assert.deepEqual(errors,[],V+errors.join(' | '));
+    continue;
+   }
    await nav.aller(page,'at-recap');await attendre();
 
    // 1. Ce qui reste à l'écran quand le tableau défile.

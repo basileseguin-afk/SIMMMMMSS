@@ -67,10 +67,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await equipe('cu')).personnes,e2.personnes);
 
    // 3. Minutes de travail : l'effectif calculé se lit, il ne se saisit pas.
+   if(version==='v1'){
+    // v1 (évolution 22 b) : la vue d'ensemble des temps par vol a quitté l'écran ; son classeur porte l'effectif calculé
+    // de l'équipe, et sa fiche ne le fait pas saisir.
+    const dansLeClasseur=await page.evaluate(()=>{for(const l of OrlyEchanges.recapManMinutes(Sim.reglages.contexteRecap()).lignes)
+      for(const c of Object.values(l.cellules))if(c.equipe&&c.equipe.id==='cu')return c.equipe.personnes;return null;});
+    assert.equal(dansLeClasseur,e2.personnes,version+' : l’effectif calculé dans le classeur « Temps par vol »');
+    await nav.equipe(page,'cu');
+    assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).count(),0,version+' : pas de saisie dans sa fiche');
+   }else{
    await nav.aller(page,'rg-recap');await attendre();
    assert.ok(await page.locator('[data-rg-calcule="cu"]').count()>0,version+' : l’effectif calculé dans le tableau');
    assert.equal(await page.locator('[data-rg-calcule="cu"]').first().innerText(),String(e2.personnes));
    assert.equal(await page.locator('[data-rg-champ=recap-pers][data-atelier="cu"]').count(),0,version+' : pas de saisie dans le tableau');
+   }
 
    // 3 bis. Une équipe à part (06/10 : « le poste ne dépend pas forcément des vols ») :
    //        constante dans un service calculé, elle retrouve son effectif saisi.

@@ -117,6 +117,8 @@ const parFichier = {
     ['effectif de case', 'effectif d’équipe'],
     ['c’est le barème, modifiable ici', 'modifiable ici'],
     ['Enregistrement impossible : exportez le barème.', 'Enregistrement impossible : exportez les temps par vol.'],
+    // Évolution 22 (b) : le bouton quitte « Temps par vol par service » pour « Réglages de la simulation » — il dit ce qu'il remet.
+    ['>Remettre les chiffres d’exemple</button>', '>Remettre les temps par vol d’exemple</button>'],
     ['Barème de démonstration rétabli, à la place de vos valeurs.', 'Temps par vol de démonstration rétablis, à la place de vos valeurs.'],
     ['Barème converti en temps par vol.', 'Valeurs converties en temps par vol.'],
     ['importez des vols et le barème', 'importez des vols et les temps par vol'],

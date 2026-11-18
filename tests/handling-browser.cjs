@@ -54,8 +54,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(r.k.volsSuivis,r.vols.length);
 
   // 3. La fiche : type, vols en même temps, pas avant, durées par compagnie.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);await attendre();
+  await nav.reglagesEquipe(page,id);await attendre();
   const fiche=page.locator(`[data-at="${id}"]`);
   assert.equal(await fiche.locator('[data-at-champ=type]').inputValue(),'handling');
   assert.equal(await fiche.locator('[data-at-champ=jour]').count(),0,'pas de choix du jour : le handling travaille le jour J');
@@ -117,8 +116,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.type==='handling').length),1);
   // « Régler le handling » ouvre sa fiche.
   await page.locator('[data-vh-action=regler]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
-  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),id);
+  // (Évolution 22 b : dans « Services et équipes » — l'équipe ne se règle que là.)
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
+  assert.equal(await page.evaluate(()=>Sim.unite.equipeOuverte),id);
+  assert.equal(await page.locator(`#mu-services .se-equipe [data-at="${id}"]`).first().isVisible(),true);
   await nav.aller(page,'v-departs');
   // Évolution 15 (c) : les vols chargés à l'heure sont repliés en une ligne ; on la déplie.
   if(await page.locator('#flight-rows [data-vol-deplier][aria-expanded=false]').count()){await page.locator('#flight-rows [data-vol-deplier]').click();await attendre();}
@@ -128,8 +129,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#bilan-journee').textContent(),/Vols chargés à l’heure/);
 
   // 5. Revenir à une équipe qui prépare efface les réglages du handling.
-  await nav.aller(page,'at-equipes');
-  await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);await attendre();
+  await nav.reglagesEquipe(page,id);await attendre();
   await page.locator(`[data-at="${id}"] [data-at-champ=type]`).selectOption('manuel');await attendre();
   const a=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),id);
   assert.equal(a.durees,undefined);assert.equal(a.simultanes,undefined);

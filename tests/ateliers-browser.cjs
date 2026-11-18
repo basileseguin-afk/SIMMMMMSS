@@ -14,30 +14,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    anomalies:Sim.ateliers.resultat.anomalies.map(a=>a.code),
    lots:(Sim.ateliers.resultat.lots||[]).map(l=>({service:l.service,nom:l.nom,debut:l.debut,fin:l.fin,attente:l.attente,plateaux:l.plateaux})),
    parClasse:Sim.ateliers.resultat.parClasse}));
+ // (Évolution 22 b : une équipe se règle dans sa fiche, dans « Services et équipes » — « Équipes une par une » n'est plus
+ // une page. `nav.reglagesEquipe` l'ouvre, tous ses réglages dépliés.)
  const champ=async(id,nom,valeur)=>{
-   const s=`[data-at="${id}"] [data-at-champ=${nom}]`;
-   if(await page.evaluate(()=>document.body.dataset.sous!=='at-equipes'))await onglet('at-equipes');
+   const s=`#mu-services [data-at="${id}"] [data-at-champ=${nom}]`;
+   await nav.reglagesEquipe(page,id);
    if(nom==='service'||nom==='type'||nom==='jour')await page.selectOption(s,valeur);
    else{await page.fill(s,String(valeur));await page.dispatchEvent(s,'change');}
    await attendre();
  };
  // Chaque partie de la vue a son onglet : on y va comme on y irait à la main.
  const onglet=async id=>{await nav.aller(page,id);await attendre();};
+ // Une équipe naît dans la fiche de son service (« Ajouter une équipe ») : sa fiche s'ouvre.
  const creer=async(nom,service,debut,personnes,type)=>{
-   await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
-   const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-   await champ(id,'service',service);await champ(id,'nom',nom);
-   await champ(id,'debut',debut);await champ(id,'personnes',personnes);
+   const id=await nav.ajouterEquipe(page,service);
+   await champ(id,'nom',nom);
+   // Née dans son service, elle en a déjà la nature (une mise à disposition n'a pas d'heure) : on règle ce que sa fiche montre.
+   for(const [n,v] of [['debut',debut],['personnes',personnes]])if(await page.locator(`#mu-services [data-at="${id}"] [data-at-champ=${n}]`).count())await champ(id,n,v);
    if(type)await champ(id,'type',type);
    return id;
  };
- // Créer un atelier ouvre sa carte et referme la précédente : pour agir sur
- // une carte plus ancienne, il faut la rouvrir.
- const ouvrir=async(id)=>{
-   if(await page.evaluate(()=>document.body.dataset.sous!=='at-equipes'))await onglet('at-equipes');
-   if(await page.evaluate(id=>Sim.ateliers.ouvert===id,id))return;
-   await page.locator(`[data-at="${id}"] .at-carte-nom`).click();await attendre();
- };
+ // Créer une équipe ouvre sa fiche à la place de la précédente : pour agir sur une équipe plus ancienne, on rouvre la sienne.
+ const ouvrir=async(id)=>{await nav.reglagesEquipe(page,id);await attendre();};
  // Une fabrication s'ajoute d'un seul geste : la ligne na\u00eet avec sa classe.
  // Les suivantes de la m\u00eame ligne passent par « fabriquer en m\u00eame temps ».
  const lot=async(id,classes)=>{
@@ -56,8 +54,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#view-ateliers').isVisible(),true);
   assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne de droite s’efface');
   assert.equal(await page.locator('#view-plan').isVisible(),false,'le plan n’est plus la vue des ateliers');
-  await onglet('at-equipes');
-  assert.match(await page.locator('.at-vide').textContent(),/Aucune équipe/);
+  await nav.service(page,'cuisine');
+  assert.match(await page.locator('#mu-services .mu-vide').textContent(),/Aucune équipe/);
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   await onglet('at-repas');
@@ -80,12 +78,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(r.lots[0].debut,4*60+30,'il part à l’heure dite');
   assert.equal(r.lots[1].debut,r.lots[0].fin,'le second enchaîne sans trou');
 
-  // 3 bis. « Terminé » referme la fiche et confirme : sans ce geste, on cherche
-  //        un bouton de création qui n'existe pas et on doute que l'atelier soit là.
-  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),cui,'la fiche est ouverte');
-  await page.locator(`[data-at="${cui}"] [data-at-action=fermer]`).click();await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),null,'la fiche est refermée');
-  assert.match(await page.locator('#at-status').textContent(),/enregistré/,'et l’enregistrement est dit');
+  // 3 bis. Le retour au service referme la fiche de l'équipe : elle est dans le tableau « Ses équipes », il n'y avait
+  //        rien à valider. (Évolution 22 b : plus de bouton « Terminé » ; la fiche s'ouvre et se quitte comme une page.)
+  assert.equal(await page.evaluate(()=>Sim.unite.equipeOuverte),cui,'la fiche est ouverte');
+  await nav.retour(page);
+  assert.equal(await page.evaluate(()=>Sim.unite.equipeOuverte),null,'la fiche est refermée');
+  assert.deepEqual(await page.locator('#mu-services .se-equipes tbody tr').evaluateAll(ls=>ls.map(l=>l.dataset.seEquipe)),[cui],'l’équipe est dans le tableau de son service');
   assert.equal((await etat()).ateliers.length,1,'l’atelier reste, il n’y avait rien à valider');
 
   // 4. Un atelier aval attend son amont, et l'attente est chiffrée.
@@ -114,6 +112,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 6. Une pause repousse la fin sans changer le travail.
   const avant=(await resultat()).lots.find(l=>l.plateaux!==undefined);
   // L’arrêt programmé est replié tant qu’il n’y en a aucun : il faut l’ouvrir.
+  await ouvrir(rob);
   await page.locator(`[data-at="${rob}"] .at-arrets > summary`).click();
   await page.locator(`[data-at="${rob}"] [data-at-action=pause-ajouter]`).click();await attendre();
   await page.fill(`[data-at="${rob}"] [data-at-champ=pause-de][data-index="0"]`,'06:10');
@@ -149,8 +148,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
   const avantSuppr=(await etat()).ateliers.length;
-  await onglet('at-equipes');
-  await page.locator(`[data-at="${rob}"] [data-at-action=supprimer]`).click();await attendre();
+  await ouvrir(rob);
+  await page.locator(`#mu-services [data-at="${rob}"] [data-at-action=supprimer]`).click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr-1);
   await page.locator('#btn-annuler').click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr,'l’annulation rend l’atelier');
@@ -306,7 +305,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 19. La boucle du mat\u00e9riel : la plonge lave ce qui revient, la prod l'emporte.
   //     Elle se r\u00e8gle avec les autres r\u00e9glages de la simulation, plus parmi les cases.
-  assert.equal(await page.locator('.at-materiel-renvoi [data-page=rg-simulation]').isVisible(),true,'les cases renvoient vers le réglage');
+  //     (Évolution 22 b : le renvoi est dans la fiche de la plonge, le service qu'il concerne.)
+  await nav.service(page,'plonge');
+  assert.equal(await page.locator('#mu-services .at-materiel-renvoi [data-page=rg-simulation]').isVisible(),true,'la fiche de la plonge renvoie vers le réglage');
   await onglet('rg-simulation');
   assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),0,'rien à régler tant que le compte n’est pas tenu');
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();

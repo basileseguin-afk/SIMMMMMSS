@@ -9,8 +9,10 @@
  *
  * Plus de partie à ouvrir, plus de mention « Plus » : une entrée est une page,
  * ou un groupe de pages (`GROUPES`) qui se suivent en onglets internes, en tête
- * de page. Aucune page n'a disparu : leurs identifiants restent les mêmes, et
- * leurs anciens noms se cherchent toujours (« Aller à… »).
+ * de page. Les pages gardent leurs identifiants, et leurs anciens noms se
+ * cherchent toujours (« Aller à… »). Une page qu'une autre a reprise
+ * (`ANCIENNES`, évolution 22 b) n'existe plus : son nom, son identifiant et
+ * ses liens mènent à la page qui l'a reprise, au bon endroit dedans.
  *
  * Une page EST un sous-onglet d'une vue : les éléments d'une vue portent
  * `data-sous="<page>"` (ou plusieurs, séparés par des espaces), et une règle
@@ -43,15 +45,11 @@
       { id: 'mu-flux', nom: 'Chemins de production', ancien: 'Flux de production', ico: 'fleche' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-chemins', nom: 'Chemin d’une commande', ico: 'fleche' },
-      { id: 'at-equipes', nom: 'Équipes une par une', ancien: 'Les cases · Ateliers de travail', ico: 'service' },
       { id: 'at-grille', nom: 'Étapes de chaque commande', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
-      { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' },
-      { id: 'at-recap', nom: 'Horaires des équipes', ico: 'journee' }
+      { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' }
     ],
     reglages: [
-      { id: 'rg-minutes', nom: 'Temps par vol par service', ancien: 'Barème par service', ico: 'chrono' },
-      { id: 'rg-recap', nom: 'Temps par vol', ancien: 'Heures de travail', ico: 'chrono' },
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -71,7 +69,6 @@
     ],
     flux: [
       { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
-      { id: 'u-services', nom: 'Liste des services', ico: 'service' },
       { id: 'u-lecture', nom: 'Contrôles détaillés', ico: 'info' },
       { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
     ]
@@ -116,13 +113,8 @@
     { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, par où',
       pages: [
-        // « Services et équipes » : six pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 b).
-        { id: 'mu-services', groupe: 'services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
-        { id: 'at-recap', groupe: 'services', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
-        { id: 'rg-recap', groupe: 'services', intro: 'Tous les temps par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
-        { id: 'u-services', groupe: 'services', intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
-        { id: 'at-equipes', groupe: 'services', intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
-        { id: 'rg-minutes', groupe: 'services', intro: 'Les temps par vol, service par service, et leur classeur Excel (importer, exporter, chiffres d’exemple).' },
+        // « Services et équipes » : six pages en une (évolution 22 b) — une liste à gauche, une fiche à droite.
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses temps par vol.' },
         // « Chemins » : cinq pages d'aujourd'hui sous une entrée, en attendant leur fusion (évolution 22 c).
         { id: 'mu-carte', groupe: 'chemins', intro: 'Tous les chemins d’un coup d’œil : une colonne par chemin, une ligne par service, rangée par étape.' },
         { id: 'mu-flux', groupe: 'chemins', intro: 'Les chemins de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
@@ -150,12 +142,11 @@
   const CLE = 'ory-menu-pages';
   /**
    * Les groupes de pages (évolution 15 c) : une seule entrée au menu, ses pages en onglets internes, en tête de page.
-   * « Détails » : les commandes, les vols, les stocks et les heures sup, derrière la Synthèse. « Services et équipes »,
-   * « Chemins » et « Contrôles » (évolution 22 a) rassemblent les pages d'aujourd'hui que les parties suivantes fusionnent.
+   * « Détails » : les commandes, les vols, les stocks et les heures sup, derrière la Synthèse. « Chemins » et
+   * « Contrôles » (évolution 22 a) rassemblent les pages d'aujourd'hui que les parties suivantes fusionnent.
    */
   const GROUPES = {
     details: { nom: 'Détails', ico: 'info' },
-    services: { nom: 'Services et équipes', ico: 'service' },
     chemins: { nom: 'Chemins', ico: 'reseau' },
     controles: { nom: 'Contrôles', ico: 'alerte' }
   };
@@ -163,12 +154,30 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+  /**
+   * Les pages qu'une autre a reprises (évolution 22 b : « Services et équipes » en reprend cinq). Elles n'existent plus,
+   * mais rien ne casse : leur nom (`nom`, et `ancien`, le nom d'encore avant) se cherche toujours par « Aller à… », et
+   * leur identifiant — un lien `data-page`, un avis, un renvoi d'une autre page — mène à la page qui les a reprises
+   * (`vers`), au bon endroit dedans (`lieu`, que la page comprend : sa liste, la section de ses équipes, celle de ses temps).
+   */
+  const ANCIENNES = {
+    'at-recap': { vers: 'mu-services', lieu: 'equipes', nom: 'Horaires des équipes' },
+    'at-equipes': { vers: 'mu-services', lieu: 'equipes', nom: 'Équipes une par une', ancien: 'Les cases · Ateliers de travail' },
+    'rg-recap': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol', ancien: 'Heures de travail' },
+    'rg-minutes': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol par service', ancien: 'Barème par service' },
+    'u-services': { vers: 'mu-services', lieu: 'liste', nom: 'Liste des services' }
+  };
+  /** La page qui s'ouvre pour cet identifiant : elle-même, ou celle qui l'a reprise. */
+  const resoudre = id => (ANCIENNES[id] ? ANCIENNES[id].vers : id);
+
   function defaut(vue) { return ((ONGLETS[vue] || [])[0] || {}).id || null; }
-  function vueDe(id) { return Object.keys(ONGLETS).find(v => ONGLETS[v].some(o => o.id === id)) || null; }
+  /* L'identifiant d'une page d'avant (`ANCIENNES`) vaut celui de la page qui l'a reprise : sa vue, son espace, son nom. */
+  function vueDe(id) { id = resoudre(id); return Object.keys(ONGLETS).find(v => ONGLETS[v].some(o => o.id === id)) || null; }
   /** La partie qui contient une page. */
-  function partieDe(id) { return PARTIES.find(p => p.pages.some(x => x.id === id)) || null; }
+  function partieDe(id) { id = resoudre(id); return PARTIES.find(p => p.pages.some(x => x.id === id)) || null; }
   /** Une page, avec son nom, son pictogramme, sa vue et sa partie. */
   function page(id) {
+    id = resoudre(id);
     const vue = vueDe(id), o = vue && ONGLETS[vue].find(x => x.id === id), p = partieDe(id);
     if (!o || !p) return null;
     return { ...o, ...p.pages.find(x => x.id === id), vue, partie: p.id };
@@ -220,7 +229,7 @@
     return [...m.blocs.flatMap(b => b.espaces.flatMap(e => e.entrees)), ...m.bas];
   }
   /** L'entrée du menu qui mène à une page : elle-même, ou son groupe. */
-  const entreeDe = (id, choix = {}) => { const o = page(id); return o ? entrees(choix, id).find(x => o.groupe ? x.groupe === o.groupe : x.id === id) || null : null; };
+  const entreeDe = (id, choix = {}) => { id = resoudre(id); const o = page(id); return o ? entrees(choix, id).find(x => o.groupe ? x.groupe === o.groupe : x.id === id) || null : null; };
 
   /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
    * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
@@ -238,6 +247,8 @@
      *                   « groupe:<groupe> »), ou rien
      *   verrou()      — facultatif : vrai tant que le menu attend (le plan en modification) : ses entrées sont grisées
      *   change(vue,id)— facultatif : appelé quand la page change (la vue suit)
+     *   lieu(id,lieu) — facultatif : appelé une fois la page `id` ouverte, quand on y arrive pour un endroit précis
+     *                   (celui d'une page d'avant, `ANCIENNES`, ou celui qu'un lien demande)
      *   apres(id)     — facultatif : appelé une fois la page ouverte et dessinée
      * } */
     constructor(a) {
@@ -297,8 +308,12 @@
     ouvrir(partie) { const id = this.actifDe(partie); if (id) this.choisir(id); }
 
     /* Ouvre une page, de la vue affichée ou d'une autre (la vue suivra). `ouverture` : la page que l'application ouvre
-     * d'elle-même à son démarrage (la Synthèse, évolution 22 a) — ce n'est pas un choix, elle n'est pas retenue. */
-    choisir(id, focus, ouverture) {
+     * d'elle-même à son démarrage (la Synthèse, évolution 22 a) — ce n'est pas un choix, elle n'est pas retenue.
+     * `lieu` : un endroit de la page, que la page comprend (`a.lieu`). */
+    choisir(id, focus, ouverture, lieu) {
+      // Une page d'avant, reprise par une autre (évolution 22 b) : celle-ci s'ouvre, au bon endroit dedans.
+      const reprise = ANCIENNES[id];
+      if (reprise) return this.choisir(reprise.vers, focus, ouverture, lieu || reprise.lieu);
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
       this.page = id;
       this.ouverture = !!ouverture;
@@ -316,6 +331,8 @@
       if (this.a.change) this.a.change(vue, id);
       this.rendre();
       if (this.a.apres) this.a.apres(id);
+      // Un endroit de la page (`lieu`) : celui d'une page d'avant, ou celui qu'un lien demande.
+      if (lieu && this.a.lieu) this.a.lieu(id, lieu);
       // Le focus reste dans la barre d'où vient le geste : le menu, ou les onglets internes d'un groupe.
       if (focus) { const h = typeof focus === 'object' ? focus : this.a.hote(), b = h?.querySelector(`[data-sous-onglet="${id}"]`); if (b) b.focus(); }
     }
@@ -393,7 +410,7 @@
     }
   }
 
-  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
+  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, ANCIENNES, resoudre, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

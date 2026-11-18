@@ -24,7 +24,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    return page.evaluate(()=>[...document.querySelectorAll('#problemes .pb-groupe li')].filter(li=>/aucun handling ne charge cette compagnie/.test(li.textContent))
      .map(li=>({groupe:li.closest('.pb-groupe').className,titre:li.querySelector('.pb-corps b').textContent,boutons:[...li.querySelectorAll('[data-pb-voulu]')].map(b=>[b.dataset.pbVoulu,b.textContent])})));};
  try{
-  const ch=await F.charger(page,nav,site.url('index.html'),{pageId:'at-equipes'});
+  const ch=await F.charger(page,nav,site.url('index.html'),{pageId:'mu-services'});
   await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.problemes);
   // Le handling de l'unité fictive ne charge plus qu'une compagnie : les autres n'ont plus de chargement.
   const idHandling=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type==='handling').id),chargee='NORD';
@@ -55,8 +55,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   if(await page.locator('#problemes').evaluate(e=>e.matches(':popover-open')))await page.keyboard.press('Escape');
 
   // 3. La liste se voit dans la fiche du handling, et s'y défait : l'avis revient.
-  await nav.aller(page,'at-equipes');
-  await page.locator(`#at-liste [data-at="${idHandling}"] .at-carte-nom`).click();
+  //    (Sa fiche, dans « Services et équipes » — évolution 22 b.)
+  await nav.reglagesEquipe(page,idHandling);
   const bloc=page.locator(`[data-at="${idHandling}"] .at-sans-chargement:visible`);
   await bloc.waitFor();
   assert.match(await bloc.innerText(),new RegExp('Compagnies sans chargement\\s*'+voulue));
@@ -80,8 +80,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 5. Un handling charge ensuite la compagnie : elle sort de la liste d'elle-même.
   await page.evaluate(c=>Sim.ateliers.regleSansChargement(c,true),autre);
   await page.waitForFunction(c=>(Sim.ateliers.state.sansChargement||[]).includes(c),autre);
-  await nav.aller(page,'at-equipes');
-  if(!(await page.locator(`[data-at="${idHandling}"] [data-at-champ=compagnies]:visible`).count()))await page.locator(`#at-liste [data-at="${idHandling}"] .at-carte-nom`).click();
+  await nav.reglagesEquipe(page,idHandling);
   const champ=page.locator(`[data-at="${idHandling}"] [data-at-champ=compagnies]:visible`);
   await champ.waitFor();
   await champ.fill(chargee+', '+voulue);await champ.press('Tab');

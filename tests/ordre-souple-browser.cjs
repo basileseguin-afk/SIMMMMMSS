@@ -26,7 +26,7 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
  const cases=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('ory-ateliers-v1')||'null'));
  const ordre=()=>page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.atelier==='cu'&&!l.impossible).map(l=>l.nom));
  const panneau=()=>page.locator('#rg-sim-ordre');
- const fiche=async()=>{await nav.aller(page,'at-equipes');await page.evaluate(()=>{Sim.ateliers.ouvert='cu';Sim.ateliers.rendre();});await attendre();
+ const fiche=async()=>{await nav.reglagesEquipe(page,'cu');await attendre();
    return page.locator('[data-at="cu"] [data-at-champ=ordreSouple]');};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
