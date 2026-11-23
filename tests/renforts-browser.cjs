@@ -47,7 +47,8 @@ const UNITE=()=>{
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-rf.csv');
 
   // 1. Désactivés par défaut : la case n'est pas cochée, rien d'enregistré, rien dans la Synthèse.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-renforts [data-rf=efficacite]');
   const caseRF=panneau().locator('[data-rf-actif]');
   assert.equal(await caseRF.isVisible(),true,'le réglage est dans les réglages de la simulation, après les heures sup');
   assert.equal(await caseRF.isChecked(),false);
@@ -60,7 +61,7 @@ const UNITE=()=>{
   assert.equal(await page.evaluate(()=>!!document.getElementById('bilan-renforts')),false);
 
   // 2. Cochée : rangée avec le barème ; A aide B de 10:00 à 11:00.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-renforts [data-rf=efficacite]');
   await caseRF.check();await attendre();
   assert.deepEqual((await modele()).renforts,{actif:true,efficacite:0.8,efficaciteAutreService:0.6,delai:10,versHeuresSup:false});
   r=await resultat();
@@ -134,12 +135,12 @@ const UNITE=()=>{
   assert.match(await bilan.innerText(),/Temps prêté en tout : 1 h 00\./);
 
   // 7. Rechargée, la règle est la même ; dans « Tout sauvegarder » aussi, avec la matrice.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-renforts [data-rf=efficacite]');
   assert.equal(await panneau().locator('tr[data-rf-service=prepa] details').getAttribute('open'),'','toujours dépliée');
   await panneau().locator('tr[data-rf-service=prepa] [data-rf-defaut]').click();await attendre();
   await panneau().locator('tr[data-rf-service=prepa] [data-rf-cible=cuisine]').check();await attendre();
   await page.reload();await attendre(600);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-renforts [data-rf=efficacite]');
   assert.equal(await panneau().locator('[data-rf-actif]').isChecked(),true);
   assert.match(await panneau().locator('tr[data-rf-service=prepa] summary').innerText(),/, et : /);
   await nav.aller(page,'u-sauvegarde');
@@ -150,7 +151,7 @@ const UNITE=()=>{
   assert.deepEqual(lu(contenu['ory-ateliers-v1']).polyvalence,{prepa:['cuisine']});
 
   // 8. Décochée : plus de renfort, plus rien dans la Synthèse ; « Annuler » revient.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-renforts [data-rf=efficacite]');
   await panneau().locator('[data-rf-actif]').uncheck();await attendre();
   assert.deepEqual((await resultat()).renforts,null);
   assert.equal(await page.evaluate(()=>!!document.getElementById('bilan-renforts')),false);

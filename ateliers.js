@@ -2118,6 +2118,13 @@
       const boite = document.getElementById('rg-sim-materiel') || document.getElementById('at-materiel');
       if (!boite) return;
       const src = P.sourceRetours(m), n = (m.planche || []).length;
+      // « Réglages » en liste et fiche (évolution 23 e, reglages-page.js) : les réglages rares des retours sont repliés
+      // sous « Réglages avancés », et le bilan du matériel — un résultat — devient un lien vers « Détails ». Sans ce
+      // module, ou hors de cette page, le panneau d'avant.
+      const R = boite.id === 'rg-sim-materiel' ? root.OrlyReglagesPage || null : null;
+      const rares = `<label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
+    ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
+  ${this.champSaleVeille(m)}`;
       const retours = `<div class="at-retours">
   <h3>Retours des vols à la plonge</h3>
   <label class="at-mode-dispo">D’où viennent les retours ?<select data-at-champ="mat-retours">
@@ -2130,9 +2137,7 @@
     : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
   <p class="mini-note at-retours-comparer">Pour choisir en connaissance de cause :
     <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Retours)"'}>${pic('echanger')}Comparer J+1 et planche retour</button></p>
-  <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
-    ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
-  ${this.champSaleVeille(m)}
+  ${R ? R.avance('retours', rares) : rares}
 </div>`;
       // La case qui active le compte ne doit pas être enfermée dans le bloc
       // qu'elle ouvre : elle reste visible, le reste suit.
@@ -2159,7 +2164,7 @@
         data-cabine="${c}" data-part="parVol" aria-label="${c} : unités par vol"></td>
     </tr>`).join('')}
   </tbody></table>` : ''}
-  ${m.actif && bilan ? `<div class="at-mat-bilan">
+  ${m.actif && bilan && R ? R.versDetails() : m.actif && bilan ? `<div class="at-mat-bilan">
     ${chiffre('Revenu des vols', bilan.entrees + ' u')}
     ${chiffre('Lavé', bilan.lavees + ' u', bilan.resteSale ? bilan.resteSale + ' u sales non lavées' : '')}
     ${chiffre('Emporté', bilan.consommees + ' u')}

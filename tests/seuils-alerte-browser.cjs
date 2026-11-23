@@ -33,7 +33,8 @@ const K='ory-seuils-v1';
   assert.equal(dansLaPage,JSON.stringify(R.reponses(attendu.resultat,attendu.args)),'les réponses de la page = celles du module');
 
   // 1. Le réglage : cinq champs, avec leur unité et leur défaut ; « Attente d’un lot » à 30 min est gardé dans son enveloppe.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-seuils [data-seuil=occupation]');
   assert.equal(await page.locator('#rg-sim-seuils [data-seuil]').count(),5);
   assert.equal(await champ('dureeStockMax').inputValue(),'','la durée d’un stock : vide par défaut');
   assert.equal(await champ('occupation').inputValue(),'95');
@@ -42,7 +43,9 @@ const K='ory-seuils-v1';
   assert.match(await page.locator('#seuil-effet-ecartPersonnes').textContent(),/s’il lui manque au moins .*un surplus n’est pas une alerte.* Défaut : 3\u00a0personnes\./);
   // Correction 18 (a) : aucun champ de plus ; le seuil d'attente garde sa clé et son défaut, et s'applique à l'attente d'un arrivage.
   assert.match(await page.locator('#seuil-effet-attenteLot').textContent(),/^Un arrivage \(les lots livrés ensemble\) qui attend plus longtemps .*« Bouchon »\. Défaut : 360\u00a0min\.$/);
-  assert.deepEqual(await page.locator('#rg-sim-seuils [data-seuil]').evaluateAll(l=>l.map(x=>x.dataset.seuil)),['ecartPersonnes','attenteLot','occupation','dureeStockMax','retard']);
+  // (Évolution 23 e : les mêmes cinq seuils ; les deux rares — l'occupation, la durée d'un stock — à la suite, sous « Réglages avancés ».)
+  assert.deepEqual(await page.locator('#rg-sim-seuils [data-seuil]').evaluateAll(l=>l.map(x=>x.dataset.seuil)),['ecartPersonnes','attenteLot','retard','occupation','dureeStockMax']);
+  assert.deepEqual(await page.locator('#rg-sim-seuils .rs-avance [data-seuil]').evaluateAll(l=>l.map(x=>x.dataset.seuil)),['occupation','dureeStockMax']);
   assert.match(await page.locator('#rg-sim-seuils .seuil').nth(1).locator('label').textContent(),/^Attente d’un arrivage/);
   assert.equal(await page.locator('#rg-sim-seuils [data-seuils-defaut]').count(),0,'aux défauts : rien à remettre');
   await champ('attenteLot').fill('30');await champ('attenteLot').press('Tab');
@@ -89,19 +92,19 @@ const K='ory-seuils-v1';
   assert.equal(await garde(),avant,'la clé revient à l’identique');
 
   // 6. Revenir aux défauts ; une clé abîmée : lue comme les défauts, l'erreur dite dans le réglage.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-seuils [data-seuil=occupation]');
   await page.locator('#rg-sim-seuils [data-seuils-defaut]').click();
   await page.waitForFunction(k=>localStorage.getItem(k)===null,K);
   await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({schema:'ory-seuils',version:9,seuils:{}})),K);
   const abimee=await page.evaluate(()=>Sim.seuils.lire());
   assert.deepEqual(abimee.seuils,R.SEUILS_DEFAUT);assert.match(abimee.erreur,/version 9 inconnue/);
-  await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');
+  await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-seuils [data-seuil=occupation]');
   assert.match(await page.locator('#rg-sim-seuils [role="alert"]').textContent(),/illisibles .*version 9 inconnue.* les défauts s’appliquent/);
 
   // 7. Un réglage enregistré avant la correction 17 (c), aux défauts d'alors (écart 1, attente 60 min) : il ne change pas.
   const ancien={schema:'ory-seuils',version:1,seuils:{ecartPersonnes:1,attenteLot:60,occupation:95,dureeStockMax:null,retard:1}};
   await page.evaluate(([k,v])=>localStorage.setItem(k,JSON.stringify(v)),[K,ancien]);
-  await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');
+  await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-seuils [data-seuil=occupation]');
   assert.deepEqual(await page.evaluate(()=>Sim.seuils.lire()),{seuils:ancien.seuils,erreur:null});
   assert.deepEqual([await champ('ecartPersonnes').inputValue(),await champ('attenteLot').inputValue()],['1','60']);
   assert.deepEqual(JSON.parse(await garde()),ancien,'rien n’est réécrit');

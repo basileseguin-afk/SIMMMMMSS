@@ -49,7 +49,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Rien n'est perdu : l'explication est derrière le « ? », à un clic.
   //    (L'aide du premier panneau des réglages de la simulation : le rythme de travail.)
-  await nav.aller(page,'rg-simulation');await attendre();
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-rendement');await attendre();
   const AIDE='#rg-modele .panneau:has(#rg-rendement) .aide',REPERE='#rg-rendement';
   const aide=page.locator(AIDE).first();
   const corps=aide.locator('.aide-corps');

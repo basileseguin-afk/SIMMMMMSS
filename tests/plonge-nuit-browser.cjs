@@ -82,7 +82,8 @@ const UNITE=()=>{
   assert.equal('a' in (await equipe()).condition,false,'son début : rien d’enregistré');
 
   // 5. Le sale de la veille, dans « Réglages de la simulation » : lavé en premier par le soir.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-materiel [data-at-champ=mat-sale]');
   const veille=page.locator('#rg-sim-materiel [data-at-champ=mat-sale]');
   assert.equal(await veille.inputValue(),'');
   await veille.fill('300');await veille.press('Tab');await attendre();

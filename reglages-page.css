@@ -1,0 +1,50 @@
+/* « Réglages » (version 1, évolution 23 e) : une liste à gauche, une fiche à droite.
+ * La page ne défile pas : la liste et la fiche défilent seules, chacune dans sa colonne. La section choisie se montre
+ * seule (une règle par section, posée par reglages-page.js), sur toute la largeur. Les panneaux sont ceux d'avant ; les
+ * feuilles communes avec la version 2 (reglages.css, interface.css, histoire.css, ds.css) ne sont pas modifiées. */
+
+/* Deux colonnes, à la hauteur de la page : rien ne dépasse, chaque colonne défile seule. */
+#view-reglages.rs:not([hidden]){display:grid;grid-template-columns:minmax(220px,264px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:16px;
+  padding:16px 24px 12px;overflow:hidden;flex:1 1 auto;min-height:0}
+
+/* À gauche : la liste des sections ; sous elle, ce qui vaut pour toute la page. */
+#view-reglages.rs>.rs-colonne{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:2px 4px 2px 2px}
+.rs-liste{display:flex;flex-direction:column;gap:4px}
+.rs-entree{flex:none;padding:6px 10px;gap:8px}
+.rs-entree.actif{padding:5px 9px}
+.rs-entree .mu-svc-ico,.rs-entree .mu-svc-ico svg{width:18px;height:18px}
+.rs-entree .mu-svc-txt b{white-space:normal;font-size:var(--ds-t-14);font-weight:var(--ds-g-moyen)}
+.rs-entree.actif .mu-svc-txt b{font-weight:var(--ds-g-fort)}
+.rs-entree:focus-visible{box-shadow:var(--ds-focus)}
+.rs-pied{margin-top:auto;padding-top:10px;border-top:1px solid var(--ds-bordure);display:flex;flex-direction:column;gap:8px}
+.rs-pied .rg-ailleurs{display:block;max-width:none;margin:0;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.rs-pied .rg-reset-ligne{display:block;margin:0;text-align:left;font-size:var(--ds-t-13)}
+
+/* À droite : la fiche. Le panneau de la section en est le contenu ; il n'a plus son propre cadre. */
+#view-reglages.rs>#rg-modele{display:block;min-height:0;min-width:0;overflow:auto;padding:16px 20px;border:1px solid var(--ds-bordure);
+  border-radius:var(--ds-r-3);background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
+#view-reglages.rs #rg-modele>.panneau,#view-reglages.rs #rg-sim-horaires>.panneau{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;max-width:none}
+#view-reglages.rs #rg-modele h3{margin-top:0;font-size:var(--ds-t-16,16px)}
+#view-reglages.rs #rg-modele .mini-note{font-size:var(--ds-t-13)}
+/* Le matériel n'est plus un encadré dans le panneau des retours : c'est une section. */
+#view-reglages.rs #rg-sim-materiel>.at-mat{margin:0;padding:0;border:0;background:none}
+#view-reglages.rs .at-mat-tete strong{font-size:var(--ds-t-16,16px)}
+
+/* Un champ garde une largeur de champ : la fiche est large, pas ses nombres. */
+#view-reglages.rs .at-mat-champs input,#view-reglages.rs #panneau-horaires input[type=number],#view-reglages.rs #rg-sim-pauses .champ input{max-width:220px}
+#view-reglages.rs .at-mat-table{max-width:520px}
+
+/* « Réglages avancés » : les réglages rares d'une section, repliés à sa suite. */
+.rs-avance{margin-top:14px;padding-top:10px;border-top:1px solid var(--ds-bordure)}
+.rs-avance>summary{cursor:pointer;font-size:var(--ds-t-14);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.rs-avance[open]>summary{margin-bottom:10px;color:var(--ds-texte-1)}
+.rs-avance-corps{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px}
+.rs-avance-corps>.mini-note{flex-basis:100%;margin:0}
+.rs-vers-details{margin:14px 0 0}
+
+/* Un écran étroit : la liste au-dessus, la fiche dessous ; la page défile. */
+@media (max-width:860px){
+  #view-reglages.rs:not([hidden]){display:block;overflow:auto}
+  #view-reglages.rs>.rs-colonne{overflow:visible;margin-bottom:12px}
+  #view-reglages.rs>#rg-modele{overflow:visible}
+}

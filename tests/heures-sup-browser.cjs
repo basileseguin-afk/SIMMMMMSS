@@ -34,7 +34,8 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-hs.csv');
 
   // 1. Désactivées par défaut : la case n'est pas cochée, rien dans la Synthèse.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-heures-sup');
   const caseHS=page.locator('#rg-sim-heures-sup [data-hs-actif]'),plafond=page.locator('#rg-sim-heures-sup [data-hs-plafond]');
   assert.equal(await caseHS.isVisible(),true,'le réglage est dans les réglages de la simulation');
   assert.equal(await caseHS.isChecked(),false);
@@ -72,7 +73,7 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
 
   // 5. Rechargée, la règle est la même ; dans « Tout sauvegarder » aussi.
   await page.reload();await attendre(600);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-heures-sup');
   assert.equal(await page.locator('#rg-sim-heures-sup [data-hs-actif]').isChecked(),true);
   await nav.aller(page,'u-sauvegarde');
   const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#sauvegarde-export').click()]);
@@ -80,7 +81,7 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.deepEqual(JSON.parse(fs.readFileSync(fichier,'utf8')).contenu['ory-modele-v1'].heuresSup,{actif:true,plafond:180});
 
   // 6. Décochée : plus d'heures sup, plus rien dans la Synthèse ; « Annuler » revient.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-heures-sup');
   await page.locator('#rg-sim-heures-sup [data-hs-actif]').uncheck();await attendre();
   assert.deepEqual(await sup(),{mo:0});
   assert.equal(await page.evaluate(()=>!!document.getElementById('bilan-heures-sup')),false);

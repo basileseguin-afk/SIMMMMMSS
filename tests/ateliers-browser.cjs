@@ -315,7 +315,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //     (Évolution 22 b : le renvoi est dans la fiche de la plonge, le service qu'il concerne.)
   await nav.service(page,'plonge');
   assert.equal(await page.locator('#mu-services .at-materiel-renvoi [data-page=rg-simulation]').isVisible(),true,'la fiche de la plonge renvoie vers le réglage');
-  await onglet('rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await onglet('rg-simulation');await nav.reglage(page,'[data-at-champ=mat-actif]');
   assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),0,'rien à régler tant que le compte n’est pas tenu');
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
   // Le matériel se compte PAR CLASSE et PAR VOL : un trolley part avec le vol et
@@ -393,9 +394,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const rm=await page.evaluate(()=>Sim.ateliers.resultat.materiel);
   assert.ok(rm.entrees>0,'les retours du programme ram\u00e8nent du mat\u00e9riel');
   assert.ok(rm.lavees>0,'la plonge en lave une partie');
-  assert.match(await page.locator('.at-mat-bilan').textContent(),/Revenu des vols/);
+  // (Évolution 23 e : plus de résultat sur « Réglages » — le bilan du matériel se lit dans « Détails › Stocks et retours », où la page mène.)
+  assert.equal(await page.locator('.at-mat-bilan').count(),0);
+  assert.match(await page.locator('#rg-sim-materiel .rs-vers-details').textContent(),/revenu des vols[^]*Détails › Stocks et retours/);
+  assert.match(await page.locator('#journee-stocks [data-tp-materiel]').textContent(),/Revenu des vols/);
   // Les retours peuvent aussi venir des départs : chaque vol revient le lendemain.
-  await onglet('rg-simulation');
+  await onglet('rg-simulation');await nav.reglage(page,'[data-at-champ=mat-retours]');
   assert.equal(await page.locator('[data-at-champ=mat-retours]').inputValue(),'programme','par défaut, les arrivées du programme');
   await page.locator('[data-at-champ=mat-retours]').selectOption('j1');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.materiel.retours),'j1');

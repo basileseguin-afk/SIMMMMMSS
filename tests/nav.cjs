@@ -312,6 +312,15 @@ async function pret(page) {
     catch (e) { return false; }
   }, null, { timeout: 120000 });
 }
+/**
+ * « Réglages » (évolution 23 e) : la page montre une section à la fois. Montre celle qui porte l'élément `sel` — et ses
+ * « Réglages avancés », s'il y est rangé —, comme le ferait un clic dans la liste. Sans ce rangement (la version 2, la
+ * page d'avant), tout est déjà à l'écran : rien à faire.
+ */
+async function reglage(page, sel) {
+  await page.evaluate(s => { const e = document.querySelector(s); if (e && window.Sim && Sim.reglagesPage) Sim.reglagesPage.montrer(e); }, sel);
+  await page.waitForTimeout(80);
+}
 /** Recharger la page, puis attendre qu'elle ait redémarré. */
 async function recharger(page) { await page.reload(); await pret(page); }
 /**
@@ -324,4 +333,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, parNom, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, versFichiers, exporterJournee, exporterPeriode, exporterCharge, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, parNom, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, versFichiers, exporterJournee, exporterPeriode, exporterCharge, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, reglage, enregistre, PREMIERE };

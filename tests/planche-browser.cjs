@@ -75,10 +75,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(retours,[['AF1080',-1440+570],['TX305',660]],'AF1080 la veille à 09:30, TX305 à 11:00');
 
   // 5. La page des réglages : horaires des vols, retours à la plonge, rythme.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#panneau-horaires');
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'reglages');
   assert.match(await page.locator('#panneau-horaires h3').textContent(),/Horaires des vols/);
   assert.equal(await page.locator('#panneau-horaires').isVisible(),true);
+  await nav.reglage(page,'[data-at-champ=mat-retours]');
   assert.equal(await page.locator('[data-at-champ=mat-retours]').inputValue(),'planche');
   assert.match(await page.locator('#rg-sim-materiel').textContent(),/2 lignes/);
   assert.equal(await page.locator('[data-at-champ=mat-delai]').isDisabled(),true,'pas de délai : la planche donne l’arrivée à l’unité');
@@ -109,7 +111,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await etat()).retours,'planche','le réglage choisi n’a pas bougé');
   assert.equal(await page.locator('#snap-clear').isVisible(),true);
   // Le même bouton, depuis les réglages de la simulation ; la comparaison est aussi sur sa page.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-materiel [data-comparer-retours]');
   assert.equal(await page.locator('#rg-sim-materiel [data-comparer-retours]').isEnabled(),true);
   await nav.aller(page,'j-comparer');
   assert.equal(await page.locator('.panneau-compare [data-comparer-retours]').isVisible(),true);

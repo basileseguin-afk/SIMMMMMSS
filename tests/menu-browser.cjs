@@ -102,12 +102,15 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.locator('#imp-vols').isVisible(),true,'les vols s’importent dans Données');
   assert.equal(await page.locator('#shift').isVisible(),false,'le décalage des vols n’y est plus');
   assert.match(await page.locator('.vols-source').textContent(),/Jeu de démonstration/,'d’où viennent les vols, dit là où on les change');
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#shift');
   assert.equal(await page.locator('#shift').isVisible(),true,'c’est un réglage');
   assert.equal(await page.locator('#loadDelay').isVisible(),true);
   assert.equal(await page.locator('#imp-vols').isVisible(),false);
-  // Tous les réglages de la simulation sur une seule page : horaires, retours, rythme.
+  // Tous les réglages de la simulation sur une seule page : horaires, retours, rythme — une section à la fois (évolution 23 e).
+  await nav.reglage(page,'[data-at-champ=mat-retours]');
   assert.equal(await page.locator('[data-at-champ=mat-retours]').isVisible(),true,'les retours à la plonge se règlent ici');
+  await nav.reglage(page,'#rg-rendement');
   assert.equal(await page.locator('#rg-rendement').isVisible(),true,'le rythme aussi');
   assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'mais pas le barème, qui est une donnée');
   await nav.aller(page,'v-departs');

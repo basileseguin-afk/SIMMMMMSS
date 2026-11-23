@@ -222,7 +222,8 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   await page.locator('#periode-bandeau [data-pv=lancer]').click();await finir();
   assert.deepEqual(JSON.parse(await page.evaluate(()=>JSON.stringify(Sim.periode.resultat.bilan))),json(periode.bilan),'relancée : la même période');
   // Le délai de chargement, puis le décalage (Horaires de vols).
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#loadDelay');
   await page.locator('#loadDelay').fill('50');await page.locator('#loadDelay').dispatchEvent('change');await attendre(200);
   assert.equal(await etat(),'a-relancer');
   await page.locator('#loadDelay').fill('45');await page.locator('#loadDelay').dispatchEvent('change');await attendre(200);

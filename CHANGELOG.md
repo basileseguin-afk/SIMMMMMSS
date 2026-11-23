@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (e) : « Réglages », une liste à gauche, une fiche à droite
+
+Cinquième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. Aucun réglage n’est perdu : chaque champ d’avant se règle
+encore, à un seul endroit. La version 2 n’est pas touchée, ni aucun fichier
+commun (`reglages.js`, `reglages.css`).
+
+- **À gauche, la liste des sections**, par leur titre d’aujourd’hui ; **à
+  droite, la section choisie**, seule, sur toute la largeur. La page tient en
+  un écran pour chaque section.
+- **« Réglages avancés »** : les réglages rares d’une section sont repliés à
+  sa suite (retours, renforts, seuils d’alerte).
+- **Aucun résultat sur la page** : le bilan du matériel devient un lien vers
+  « Détails › Stocks et retours », où il se lit maintenant (« Le matériel en
+  boucle », les six mêmes chiffres).
+- La section choisie se retient dans ce navigateur, hors de la sauvegarde.
+- La phrase de la page est plus courte.
+
 ## 2026-11-23 — Évolution 23 (d) : « Contrôles » lisible en lecture seule
 
 Quatrième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format

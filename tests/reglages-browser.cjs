@@ -82,7 +82,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Le rendement allonge la journée sans toucher au barème. Il a son onglet,
   //    avec les pauses : les heures par vol restent seules sur le leur.
-  await nav.aller(page,'rg-simulation');await attendre();
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-rendement');await attendre();
   assert.equal(await page.locator('#view-reglages [data-rg-champ=heures]').count(),0,'les temps par vol ne sont pas ici : ils se règlent dans la fiche de chaque service');
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
@@ -90,6 +91,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 5. Le régime de poste est celui de la maison : il déplace tous les ateliers
   //    qui n'ont pas fixé le leur.
+  await nav.reglage(page,'#rg-presence');
   await ecrire('#rg-presence','300');
   assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.ateliers[0].finPoste-Sim.ateliers.resultat.ateliers[0].debut),300);
   assert.match(await page.locator('#rg-presence-note').textContent(),/h de travail effectif/);
@@ -168,7 +170,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 10. Le délai de chargement n'est pas recopié : un seul champ, avec les autres
   //     réglages de la simulation (les horaires des vols).
-  await nav.aller(page,'rg-simulation');await attendre();
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#loadDelay');await attendre();
   assert.equal(await page.locator('#loadDelay').count(),1,'un seul champ');
   assert.equal(await page.evaluate(()=>document.getElementById('rg-sim-horaires').contains(document.getElementById('loadDelay'))),true,
     'et il vit dans Simulation › Réglages de la simulation');

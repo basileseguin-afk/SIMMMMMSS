@@ -36,8 +36,12 @@
     return Number.isFinite(n) ? n : t;
   }
 
-  /** Les seuils réglés, un champ par seuil ; `erreur` : la sauvegarde illisible, dite au-dessus (les défauts s'appliquent). */
-  function html(seuils, erreur) {
+  /**
+   * Les seuils réglés, un champ par seuil ; `erreur` : la sauvegarde illisible, dite au-dessus (les défauts s'appliquent).
+   * `o` (évolution 23 e), facultatif : dans « Réglages », rangés en liste et fiche, les seuils rares (`o.rares`, leurs
+   * clés) viennent à la suite des autres, repliés par `o.plier(html)`. Sans `o`, le panneau d'avant.
+   */
+  function html(seuils, erreur, o) {
     const S = REP().SEUILS, D = REP().SEUILS_DEFAUT;
     // « 1 personne », « 2 personnes » : l'unité s'accorde au défaut.
     const defaut = s => (D[s.cle] === null ? 'vide' : fr(D[s.cle]) + '\u00a0' + (s.unite === 'personnes' && D[s.cle] <= 1 ? 'personne' : s.unite));
@@ -47,13 +51,15 @@
       + ' aria-describedby="seuil-effet-' + esc(s.cle) + '"><span class="unite">' + esc(s.unite) + '</span></span></label>'
       + '<p class="mini-note" id="seuil-effet-' + esc(s.cle) + '">' + esc(EFFET[s.cle]) + ' Défaut : ' + esc(defaut(s)) + '.</p></div>';
     const change = S.some(s => seuils[s.cle] !== D[s.cle]);
+    const rares = new Set(o && typeof o.plier === 'function' ? (o.rares || []) : []);
     return '<div class="titre-aide"><h3>Seuils d’alerte</h3><details class="aide">'
       + '<summary aria-label="À quoi servent les seuils d’alerte">?</summary>'
       + '<span class="aide-corps">Les résultats répondent à cinq questions : combien de personnes il faut, où ça coince, à quelle heure chaque service '
       + 'finit, ce qui part en retard, ce que change un essai. Une couleur ou une alerte ne s’affiche que si l’un de ces seuils est dépassé. '
       + 'Ils sont gardés avec la sauvegarde complète.</span></details></div>'
       + (erreur ? '<p class="mini-note erreur" role="alert">Seuils enregistrés illisibles (' + esc(erreur) + ') : les défauts s’appliquent.</p>' : '')
-      + '<div class="seuils-champs">' + S.map(champ).join('') + '</div>'
+      + '<div class="seuils-champs">' + S.filter(s => !rares.has(s.cle)).map(champ).join('') + '</div>'
+      + (rares.size ? o.plier('<div class="seuils-champs">' + S.filter(s => rares.has(s.cle)).map(champ).join('') + '</div>') : '')
       + (change ? '<button type="button" class="btn btn-sm" data-seuils-defaut>Revenir aux défauts</button>' : '');
   }
 

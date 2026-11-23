@@ -204,9 +204,47 @@
    * (l'attente d'un arrivage), si on l'a.
    */
   const triStocks = { cle: 'stock' };
+
+  /**
+   * Le bilan du matériel en boucle (évolution 23 e) : six chiffres, tels que « Réglages » les écrivait — ce qui est revenu
+   * des vols, lavé, emporté, ce qui reste propre, le plus bas niveau, l'attente de matériel. `bilan` : `resultat.materiel`.
+   * @returns {{nom:string, valeur:string, note:string}[]}
+   */
+  function bilanMateriel(bilan) {
+    if (!bilan) return [];
+    const c = (nom, valeur, note) => ({ nom, valeur, note: note || '' });
+    return [
+      c('Revenu des vols', bilan.entrees + ' u'),
+      c('Lavé', bilan.lavees + ' u', bilan.resteSale ? bilan.resteSale + ' u sales non lavées' : ''),
+      c('Emporté', bilan.consommees + ' u'),
+      c('Reste propre', bilan.restePropre + ' u', bilan.restePropre ? 'disponible demain' : 'aucun amortisseur'),
+      c('Plus bas niveau', bilan.minPropre + ' u', bilan.minPropre === 0 ? 'passé par zéro' : ''),
+      c('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + (bilan.enAttente > 1 ? ' préparations jamais servies' : ' préparation jamais servie') : '')
+    ];
+  }
+  /** Ce bilan, pour « Détails › Stocks et retours » : un titre, six tuiles. Sans boucle du matériel : rien. */
+  function blocMateriel(bilan) {
+    const chiffres = bilanMateriel(bilan);
+    if (!chiffres.length) return '';
+    return '<section class="tp-sec tp-materiel" data-tp-materiel><h3 class="tp-titre">Le matériel en boucle</h3><div class="tp-tuiles">'
+      + chiffres.map(c => '<div class="tp-tuile"><span>' + esc(c.nom) + '</span><b>' + esc(c.valeur) + '</b>' + (c.note ? '<em>' + esc(c.note) + '</em>' : '') + '</div>').join('')
+      + '</div></section>';
+  }
+  /** Pose le bilan du matériel dans la page, après les retours et la plonge ; il suit le calcul (redessiné s'il change). */
+  function poserMateriel(box, r) {
+    if (!box) return;
+    const html = blocMateriel(r && r.materiel), deja = box.querySelector('[data-tp-materiel]');
+    if (deja && deja.outerHTML === html) return;
+    if (deja) deja.remove();
+    if (!html) return;
+    const apres = box.querySelector('.tp-sec');
+    if (apres) apres.insertAdjacentHTML('afterend', html); else box.insertAdjacentHTML('beforeend', html);
+  }
+
   function completerStocks(box, r, seuils, plonge) {
     const S = seuils || REP().SEUILS_DEFAUT;
     corrigerBouchon(box, r && r.plonge, S, plonge);
+    poserMateriel(box, r);
     const table = box && box.querySelector('.tp-table'), liens = (r && r.stocks && r.stocks.parLien) || [];
     if (!table || !liens.length) return;
     const corps = table.tBodies[0], lignes = [...corps.rows], ths = table.tHead.rows[0].cells;
@@ -244,7 +282,7 @@
     ranger();
   }
 
-  const api = { synthese, resume, rendreSynthese, marge, ecrireMarge, barreMarge, trier, EN_RETARD, RAYON, couloirs, ordreStocks, echelleStocks, plusDe24h, bouchon, completerStocks };
+  const api = { synthese, resume, rendreSynthese, marge, ecrireMarge, barreMarge, trier, EN_RETARD, RAYON, couloirs, ordreStocks, echelleStocks, plusDe24h, bouchon, completerStocks, bilanMateriel, blocMateriel };
   if (enNode) module.exports = api;
   else root.OrlyResultatsVue = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

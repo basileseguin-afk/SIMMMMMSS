@@ -41,7 +41,8 @@ const UNITE=()=>{
     [['SU1',3,{BC:0,PC:0,YC:3}],['SU2',3,{BC:1,PC:0,YC:2}],['SU3',4,null]],'l’import de la page lit le détail ; nb_SPML vide vaut la somme');
 
   // 1. Par défaut, toutes les cabines : rien d'enregistré, trois vols par service.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-spml');
   assert.equal(await ligne().isVisible(),true,'la cuisine prépare une commande SPML');
   assert.match(await page.locator('#rg-sim-spml').innerText(),/2 vols du programme détaillent leurs repas spéciaux par cabine/);
   for(const c of ['BC','PC','YC'])assert.equal(await ligne().locator('[data-spml-cabine='+c+']').isChecked(),true);
@@ -55,7 +56,7 @@ const UNITE=()=>{
 
   // 3. Rechargée, le réglage est le même ; dans « Tout sauvegarder » aussi.
   await page.reload();await attendre(600);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-spml');
   assert.equal(await ligne().locator('[data-spml-cabine=YC]').isChecked(),false);
   await nav.aller(page,'u-sauvegarde');
   const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#sauvegarde-export').click()]);
@@ -69,7 +70,7 @@ const UNITE=()=>{
   await page.locator('#imp-vols').setInputFiles(csv);
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-spml.csv');
   assert.deepEqual(await minutes(),{cu:120,pr:180});
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-spml');
   await ligne().locator('[data-spml-cabine=YC]').check();await attendre();
   assert.equal('spmlCabines' in (await cases()),false);
   assert.deepEqual(await minutes(),{cu:180,pr:180});

@@ -34,7 +34,8 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await page.evaluate(UNITE);await attendre();
 
   // 1. Par défaut : l'ordre strict ; la case n'est pas cochée, rien d'enregistré. AF/BC attend le magasin, TX/BC l'attend aussi.
-  await nav.aller(page,'rg-simulation');
+  // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-ordre');
   assert.equal(await panneau().locator('[data-os-actif]').isChecked(),false);
   assert.equal('ordreSouple' in ((await modele())||{}),false);
   assert.deepEqual(await ordre(),['AF/BC','TX/BC']);
@@ -43,7 +44,7 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.match(await choix.locator('option:checked').innerText(),/le réglage général \(strict\)/);
 
   // 2. Cochée : TX/BC, prêt, passe d'abord ; AF/BC à l'ouverture du magasin.
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-ordre');
   await panneau().locator('[data-os-actif]').check();await attendre();
   assert.deepEqual((await modele()).ordreSouple,{actif:true});
   assert.deepEqual(await ordre(),['TX/BC','AF/BC']);
@@ -53,12 +54,12 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await choix.selectOption('strict');await attendre();
   assert.equal((await cases()).ateliers.find(a=>a.id==='cu').ordreSouple,false);
   assert.deepEqual(await ordre(),['AF/BC','TX/BC']);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-ordre');
   assert.match(await panneau().innerText(),/Réglée autrement : Cuisine AF TX\./);
 
   // 4. Rechargée, tout est là ; dans « Tout sauvegarder » aussi.
   await page.reload();await attendre(600);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-ordre');
   assert.equal(await panneau().locator('[data-os-actif]').isChecked(),true);
   assert.equal(await (await fiche()).inputValue(),'strict');
   await nav.aller(page,'u-sauvegarde');
@@ -73,7 +74,7 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await choix.selectOption('');await attendre();
   assert.equal('ordreSouple' in (await cases()).ateliers.find(a=>a.id==='cu'),false);
   assert.deepEqual(await ordre(),['TX/BC','AF/BC']);
-  await nav.aller(page,'rg-simulation');
+  await nav.aller(page,'rg-simulation');await nav.reglage(page,'#rg-sim-ordre');
   await panneau().locator('[data-os-actif]').uncheck();await attendre();
   assert.deepEqual((await modele()).ordreSouple,{actif:false});
   assert.deepEqual(await ordre(),['AF/BC','TX/BC']);

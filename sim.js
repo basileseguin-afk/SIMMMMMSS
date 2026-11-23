@@ -1080,6 +1080,7 @@ function initOnglets(){
       if(id==='v-departs')renderFlights();
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
+      if(id==='rg-simulation'&&Sim.reglagesPage)Sim.reglagesPage.rendre();
       if(id==='u-liens'&&Sim.flows){Sim.flows.refresh();renderLectureLiens();}
       if(id==='u-sauvegarde')majFichiers();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
@@ -1136,6 +1137,13 @@ function majFichiers(){
   if(window.OrlyFichiers&&OrlyFichiers.verrouiller)OrlyFichiers.verrouiller(document,hote,lectureSeule,window.OrlyLectureSeule?OrlyLectureSeule.RAISON:'',window.OrlyLectureSeule?OrlyLectureSeule.MOT:'');
   const d=document.getElementById('sauvegarde-date');
   if(d&&window.OrlyFichiers){let iso=null;try{iso=localStorage.getItem(CLE_DERNIERE_SAUVEGARDE);}catch(e){iso=null;}d.textContent=OrlyFichiers.direSauvegarde(iso);}
+}
+/* « Réglages » (évolution 23 e, reglages-page.js) : une liste de sections à gauche, la section choisie à droite. Les
+ * panneaux restent ceux d'avant ; le module pose la liste à côté d'eux. */
+function initReglagesPage(){
+  const hote=document.getElementById('view-reglages');
+  if(!window.OrlyReglagesPage||!hote||!hote.querySelector('#rg-modele'))return;
+  Sim.reglagesPage=new OrlyReglagesPage.PageReglages({hote:()=>hote,stockage:()=>window.localStorage});
 }
 function initFichiers(){
   const hote=document.getElementById('fi-classeurs');
@@ -2932,6 +2940,12 @@ function renderReglageRenforts(force){
       +'<div class="rf-cibles">'+cibles.map(cases).join('')+'</div>'
       +(saisie.length?'<button type="button" class="btn btn-sm" data-rf-defaut>Revenir au défaut</button>':'')+'</details></td></tr>';
   };
+  // Les efficacités, le délai et les heures supplémentaires d'un renfort sont des réglages rares : dans « Réglages » en
+  // liste et fiche (évolution 23 e), ils viennent à la fin, repliés sous « Réglages avancés » ; sinon à leur place d'avant.
+  const range=window.OrlyReglagesPage||null;
+  const rares='<div class="rf-champs">'+champ('efficacite')+champ('efficaciteAutreService')+champ('delai')
+    +'<label class="chk chk-mini"><input type="checkbox" data-rf-sup'+(rf.versHeuresSup?' checked':'')+(rf.actif?'':' disabled')+'><span>Un renfort peut rester en heures supplémentaires'
+    +(heuresSup().actif?'':' (quand elles sont permises)')+'</span></label></div>';
   box.innerHTML='<div class="titre-aide"><h3>Renforts</h3><details class="aide">'
     +'<summary aria-label="Comment les renforts sont comptés">?</summary>'
     +'<span class="aide-corps">Une équipe qui a fini tous ses lots avant la fin de sa présence ne reste pas inactive : ses personnes vont aider l’équipe '
@@ -2940,14 +2954,13 @@ function renderReglageRenforts(force){
     +'il compte pour le minimum qui le fait tourner ; vers le handling 24 h/24, c’est un chauffeur de plus. Une équipe ne reçoit pas plus de renforts '
     +'que ses postes de travail (dans sa fiche). Jamais vers une mise à disposition.</span></details></div>'
     +'<label class="chk chk-mini"><input type="checkbox" data-rf-actif'+(rf.actif?' checked':'')+'><span>Une équipe qui a fini va aider une équipe qui n’a pas fini</span></label>'
-    +'<div class="rf-champs">'+champ('efficacite')+champ('efficaciteAutreService')+champ('delai')
-    +'<label class="chk chk-mini"><input type="checkbox" data-rf-sup'+(rf.versHeuresSup?' checked':'')+(rf.actif?'':' disabled')+'><span>Un renfort peut rester en heures supplémentaires'
-    +(heuresSup().actif?'':' (quand elles sont permises)')+'</span></label></div>'
+    +(range?'':rares)
     +(rf.actif?'<h4>Qui peut aider qui</h4><p class="mini-note">Un service aide toujours le sien et ses annexes, pour leurs équipes à la main (cochés et grisés). '
       +'Cochez pour ajouter un autre service, un robot — le sien compris —, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
       +(preteurs.length?'<div class="table-scroll"><table class="svc-table rf-table"><thead><tr><th scope="col">Service</th><th scope="col">Peut aider</th></tr></thead><tbody>'
         +preteurs.map(ligne).join('')+'</tbody></table></div>':'<p class="mini-note">Aucune équipe qui prépare : personne à prêter.</p>')
-      :'<p class="mini-note">Désactivés : une équipe qui a fini reste à son poste jusqu’à la fin de sa présence.</p>');
+      :'<p class="mini-note">Désactivés : une équipe qui a fini reste à son poste jusqu’à la fin de sa présence.</p>')
+    +(range?range.avance('renforts',rares):'');
 }
 /* Dans la Synthèse : qui a aidé qui, et combien de temps (minutes-personne, délai d'arrivée compris). */
 function renderRenforts(r){
@@ -3320,7 +3333,9 @@ function renderReglageSeuils(force){
   // On ne redessine pas sous les doigts de quelqu'un qui tape une valeur.
   if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
   const {seuils,erreur}=seuilsAlerte();
-  box.innerHTML=OrlySeuilsVue.html(seuils,erreur);
+  // Dans « Réglages » en liste et fiche (évolution 23 e), les seuils rares sont repliés sous « Réglages avancés ».
+  const R=window.OrlyReglagesPage;
+  box.innerHTML=OrlySeuilsVue.html(seuils,erreur,R?{rares:R.RARES.seuils,plier:h=>R.avance('seuils',h)}:undefined);
 }
 
 /* Le programme de vols s'importe en Excel (feuilles « Départs » et
@@ -4113,7 +4128,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
 etape('période',initPeriode); etape('réglages qui jouent',initJouent);
-etape('menu',initOnglets); etape('fichiers',initFichiers); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
+etape('menu',initOnglets); etape('fichiers',initFichiers); etape('réglages en liste',initReglagesPage); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);

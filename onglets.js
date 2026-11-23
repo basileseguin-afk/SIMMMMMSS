@@ -129,7 +129,8 @@
     { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Régler, vérifier',
       pages: [
-        { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
+        // « Réglages » : une liste de sections à gauche, la section choisie à droite (évolution 23 e, reglages-page.js).
+        { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Les réglages de la simulation, une section à la fois : choisissez-la à gauche.' },
         // « Contrôles » : deux pages et un panneau en un (évolution 22 d) — l'état du calcul, puis les avis par niveau.
         // `lisible` (évolution 23 d) : la page se lit ; la lecture seule, qui ferme les autres pages de « Régler », la
         // laisse ouverte, et son entrée passe sous « Lire ».
