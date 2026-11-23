@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (f) : « Programme » et « Retours », l’essentiel en un écran
+
+Sixième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun ;
+`moteur/periode.js` n’est pas modifié.
+
+- **Le compte rendu d’un import tient en deux lignes** : le fichier et son
+  format ; la période, le nombre de jours et de vols, la fourchette par jour.
+  Un jour sans vol s’y lit, sans rien déplier.
+- **Le détail jour par jour est replié** ; déplié, il porte les phrases
+  d’avant.
+- **Le tableau des vols du jour occupe le reste de l’écran** et défile dans
+  son cadre, en-tête figé : à 1 366 × 768, après un import daté de trente
+  jours, les six premiers vols du jour se voient sans défiler.
+- **« Retours » suit la même forme** : la planche défile dans son cadre,
+  en-tête figé.
+
 ## 2026-11-23 — Évolution 23 (e) : « Réglages », une liste à gauche, une fiche à droite
 
 Cinquième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format

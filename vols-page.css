@@ -28,3 +28,53 @@
 .vp-table th:nth-child(3),.vp-table td:nth-child(3){width:100%}
 .vp-vide{margin:0;padding:18px 16px;border:1px dashed var(--ds-bordure);border-radius:var(--ds-r-3);color:var(--ds-texte-2);background:var(--ds-surface-2)}
 @media (max-width:700px){.vp-chercher{margin-left:0;width:100%}.vp-chercher input{flex:1;width:auto;max-width:none}}
+
+/* ==== Évolution 23 (f) : « Programme » et « Retours », l'essentiel en un écran ====
+ * La page ne défile plus : l'import en haut, à sa hauteur ; le tableau prend le reste de l'écran et défile dans son
+ * cadre, en-tête figé. Les feuilles communes avec la version 2 (interface.css, ds.css) ne sont pas modifiées. */
+
+/* ---- le compte rendu d'un import : deux lignes, le détail jour par jour replié ---- */
+#import-report .vp-cr-ligne{margin:0;overflow-wrap:anywhere}
+#import-report .vp-cr-alerte{font-weight:var(--ds-g-moyen);color:var(--warn-stroke,var(--orange))}
+.vp-cr-detail{margin-top:4px}
+.vp-cr-detail>summary{cursor:pointer;width:max-content;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.vp-cr-detail>p{margin:4px 0 0;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+
+/* ---- « Programme » ---- */
+body[data-sous="v-programme"] #view-vols:not([hidden]){display:flex;flex-direction:column;overflow:hidden;padding-bottom:12px}
+body[data-sous="v-programme"] #view-vols>*{flex:none}
+/* L'import garde sa hauteur ; une aide dépliée plus haute que la place y défile, sans pousser le tableau hors de l'écran. */
+body[data-sous="v-programme"] #view-vols>#vols-donnees{flex:0 1 auto;min-height:0;overflow:auto}
+body[data-sous="v-programme"] #view-vols>#vols-jour{flex:1 1 0;min-height:266px;display:flex;flex-direction:column;margin-top:12px}
+body[data-sous="v-programme"] #vols-jour>.vp-tete{flex:none;margin-bottom:8px}
+body[data-sous="v-programme"] #vp-tableau{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="v-programme"] #vp-tableau>.vp-cadre{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+body[data-sous="v-programme"] .vp-table th,body[data-sous="v-programme"] .vp-table td{padding:5px 14px}
+.vp-table thead th{position:sticky;top:0;z-index:1;background:var(--ds-surface-2);box-shadow:inset 0 -1px 0 var(--ds-bordure)}
+/* L'import, resserré : « Formats reconnus » à la suite des boutons (dépliée, l'aide prend sa ligne) ; le compte rendu en
+   deux lignes et son repli ; les règles d'import de l'export. */
+body[data-sous="v-programme"] #vols-donnees>.panneau{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-top:10px;padding-bottom:10px}
+body[data-sous="v-programme"] #vols-donnees>.panneau>*{flex:0 0 100%;min-width:0;margin:0}
+body[data-sous="v-programme"] #vols-donnees>.panneau>.vp-gestes,
+body[data-sous="v-programme"] #vols-donnees>.panneau>details.aide.bloc:not([open]){flex:0 1 auto}
+body[data-sous="v-programme"] #vols-donnees>.panneau>[hidden]{display:none}
+body[data-sous="v-programme"] #vols-donnees .import-report{padding:6px 12px;font-size:var(--ds-t-13)}
+
+/* ---- « Retours » : la même forme ---- */
+body[data-sous="v-planche"] #view-vols:not([hidden]){display:flex;flex-direction:column;overflow:hidden;padding-bottom:12px}
+body[data-sous="v-planche"] #view-vols>*{flex:none}
+body[data-sous="v-planche"] #view-vols>#vols-planche{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="v-planche"] #vols-planche>.planche{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+body[data-sous="v-planche"] #vols-planche>.planche>*{flex:none}
+body[data-sous="v-planche"] #vols-planche>.planche>.table-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+.planche-table thead th{position:sticky;top:0;z-index:1;background:var(--ds-surface-2);box-shadow:inset 0 -1px 0 var(--ds-bordure)}
+/* Au-dessus du tableau : le titre et ses gestes, puis deux lignes au plus, resserrées. */
+body[data-sous="v-planche"] #vols-planche>.planche{padding-top:10px;padding-bottom:10px}
+body[data-sous="v-planche"] #vols-planche>.planche>p.mini-note{margin:6px 0 0;font-size:var(--ds-t-13)}
+body[data-sous="v-planche"] #vols-planche>.planche>.table-scroll{margin-top:8px}
+
+/* Un écran étroit ou très bas : la page défile, comme avant. */
+@media (max-width:860px),(max-height:560px){
+  body[data-sous="v-programme"] #view-vols:not([hidden]),body[data-sous="v-planche"] #view-vols:not([hidden]){display:block;overflow:auto}
+  body[data-sous="v-programme"] #vp-tableau>.vp-cadre,body[data-sous="v-planche"] #vols-planche>.planche>.table-scroll{overflow-x:auto;overflow-y:visible}
+}

@@ -49,8 +49,9 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
    if(await page.locator('dialog.question[open]').count())await nav.repondre(page);
    await page.waitForFunction(change,null,{timeout:15000});
    await attendre();
-   const r=await page.locator('#import-report').evaluate(e=>({texte:e.textContent,erreur:e.classList.contains('error')}));
-   await page.evaluate(t=>{window.__rapportAvant=t;},r.texte);
+   // (Évolution 23 f : un import réussi se dit en deux lignes — le fichier et son format ; ce qu'il porte. Un refus : sa phrase.)
+   const r=await page.locator('#import-report').evaluate(e=>({texte:[...e.querySelectorAll('.vp-cr-ligne')].map(p=>p.textContent).join('\n')||e.textContent,brut:e.textContent,erreur:e.classList.contains('error')}));
+   await page.evaluate(t=>{window.__rapportAvant=t;},r.brut);
    return r;
  };
  const lignes=()=>page.locator('#vp-tableau tbody tr').evaluateAll(l=>l.map(tr=>[...tr.children].map(c=>c.textContent)));
@@ -92,7 +93,7 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
   //    Après un import : le format reconnu, puis le tableau — vol, compagnie, heure de départ, passagers par classe.
   let r=await importer('vols-fictifs.csv',MODELE);
   assert.equal(r.erreur,false,r.texte);
-  assert.match(r.texte,/^Format reconnu : le modèle CSV \(les vols d’une journée\)\.\n5 lignes importées\. 4 départs et 1 retours\./);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : le modèle CSV \(les vols d’une journée\)\.\n5 lignes importées\. 4 départs et 1 retours\./);
   assert.equal(await source(),'vols-fictifs.csv');
   assert.deepEqual(await page.locator('#vp-tableau thead th').evaluateAll(t=>t.map(x=>x.textContent)),['Départ','Vol','Compagnie','Business','Premium','Économie','Équipage']);
   assert.deepEqual(await lignes(),[
@@ -126,7 +127,7 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
   // 4. Le CSV daté : reconnu ; le tableau montre le jour simulé, et suit le jour choisi.
   r=await importer('programme-fictif.csv',DATE);
   assert.equal(r.erreur,false,r.texte);
-  assert.match(r.texte,/^Format reconnu : le CSV daté \(un programme sur plusieurs jours\)\.\n3 lignes importées\./);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : le CSV daté \(un programme sur plusieurs jours\)\.\n(Du|Le) [^:]+ : \d+ jours?, 3 vols \(/);
   assert.deepEqual((await lignes()).map(l=>[l[0],l[1]]),[['05:40','SU2'],['06:15','NO1']],'le premier jour, par heure');
   assert.equal(await compte(),'2 départs · journée du 03/03/2031');
   await nav.aller(page,'j-chiffres');
@@ -138,20 +139,20 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
   //    L'export de l'ERP, en classeur : reconnu à son onglet « Flights » ; son rapport sous l'import ; ses vols au tableau.
   r=await importer('export-fictif.xlsx',await classeur([{nom:'Summary',lignes:[['Export fictif']]},{nom:'Flights',lignes:ERP}]),XLSX);
   assert.equal(r.erreur,false,r.texte);
-  assert.match(r.texte,/^Format reconnu : l’export de l’ERP \(Winrest, onglet « Flights »\)\.\n2 lignes importées\./);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : l’export de l’ERP \(Winrest, onglet « Flights »\)\.\n(Du|Le) [^:]+ : \d+ jours?, 2 vols \(/);
   assert.equal(await page.locator('#winrest-rapport').isVisible(),true,'le rapport de l’export, sous l’import');
   assert.deepEqual((await lignes()).map(l=>[l[0],l[1],l[2],l[5]]),[['06:10','SU 200','SDX','80'],['07:30','NR 101','NRD','120']]);
   //    … et en CSV, aux mêmes colonnes.
   r=await importer('export-fictif.csv',ERP_CSV);
   assert.equal(r.erreur,false,r.texte);
-  assert.match(r.texte,/^Format reconnu : l’export de l’ERP \(Winrest\), en CSV\.\n2 lignes importées\./);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : l’export de l’ERP \(Winrest\), en CSV\.\n(Du|Le) [^:]+ : \d+ jours?, 2 vols \(/);
   assert.equal(await source(),'export-fictif.csv');
   assert.deepEqual((await lignes()).map(l=>l[1]),['SU 200','NR 101']);
   //    Le classeur des vols, que la page exporte, se relit aussi.
   r=await importer('vols.xlsx',await classeur([{nom:'Départs',lignes:[['vol_id','compagnie','type_avion','heure_std','nb_BC','nb_PC','nb_YC','nb_CREW','nb_SPML'],['ES9','EST','MOYEN','10:20',0,0,60,3,0]]},
     {nom:'Retours',lignes:[['vol_id','compagnie','type_avion','heure_sta','nb_BC','nb_PC','nb_YC','nb_CREW','nb_SPML']]}]),XLSX);
   assert.equal(r.erreur,false,r.texte);
-  assert.match(r.texte,/^Format reconnu : le classeur des vols \(feuilles « Départs » et « Retours »\)\.\n1 lignes importées\./);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : le classeur des vols \(feuilles « Départs » et « Retours »\)\.\n1 lignes importées\./);
   assert.deepEqual(await lignes(),[['10:20','ES9','EST','0','0','60','3']]);
 
   // 5. Un format inconnu : refusé en le disant, et rien ne change.
@@ -176,10 +177,10 @@ const classeur=async feuilles=>Buffer.from(await Z.compresser(T.ecrireClasseur(f
 
   // 6. Les modèles téléchargés se réimportent : chacun est reconnu.
   r=await importer('modele-vols-demo.csv',fs.readFileSync(fModele));
-  assert.match(r.texte,/^Format reconnu : le modèle CSV/);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : le modèle CSV/);
   assert.equal(r.erreur,false,r.texte);
   r=await importer('modele-vols-dates.csv',fs.readFileSync(fDate));
-  assert.match(r.texte,/^Format reconnu : le CSV daté/);
+  assert.match(r.texte,/^« [^»]+ »\. Format reconnu : le CSV daté/);
   assert.equal(r.erreur,false,r.texte);
 
   assert.deepEqual(errors,[],errors.join(' | '));

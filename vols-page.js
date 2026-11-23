@@ -94,6 +94,45 @@
       + '. ' + lu + ' Aucune donnée remplacée.';
   }
 
+  /* ---- le compte rendu d'un import (évolution 23 f) --------------------------- */
+
+  const dateCourte = d => String(d).slice(8, 10) + '/' + String(d).slice(5, 7);
+  const dateLongue = d => dateCourte(d) + '/' + String(d).slice(0, 4);
+  const pl = (n, un, plusieurs) => n + ' ' + (n > 1 ? (plusieurs || un + 's') : un);
+  /** Au-delà, les jours sans vol sont comptés, plus nommés. */
+  const MAX_JOURS_CITES = 3;
+
+  /**
+   * Le compte rendu d'un import, en deux lignes : le fichier et son format ; puis ce qu'il porte. Pour un programme daté :
+   * la période, le nombre de jours et de vols, la fourchette par jour — une ligne qui ne grandit pas avec la période. Le
+   * jour par jour (`detail` : les phrases du compte rendu d'avant) est à part : la page le replie.
+   * @param {{fichier:string, reconnu?:string, lignes:number, departs:number, retours:number, periode:?object, detail?:string[]}} o
+   *   periode — ce que `OrlyPeriode.decrire` rend d'un programme daté ({debut, fin, jours, parJour, sansVol}), ou rien.
+   * @returns {{lignes:string[], alerte:string, detail:string[]}}  `alerte` : les jours sans vol, dits sans rien déplier.
+   */
+  function compteRendu(o) {
+    const d = o.periode, premiere = '« ' + o.fichier + ' ».' + (o.reconnu ? ' ' + o.reconnu : '');
+    if (!d) return { lignes: [premiere, o.lignes + ' lignes importées. ' + o.departs + ' départs et ' + o.retours + ' retours.'], alerte: '', detail: [] };
+    const n = j => j.departs + j.retours, avec = d.parJour.filter(j => n(j) > 0);
+    const min = Math.min(...avec.map(n)), max = Math.max(...avec.map(n));
+    const quand = d.debut === d.fin ? 'Le ' + dateLongue(d.debut) : 'Du ' + dateLongue(d.debut) + ' au ' + dateLongue(d.fin);
+    const sans = d.sansVol || [], cites = sans.slice(0, MAX_JOURS_CITES).map(dateCourte).join(', ');
+    return {
+      lignes: [premiere, quand + ' : ' + pl(d.jours, 'jour') + ', ' + pl(o.departs + o.retours, 'vol') + ' (' + pl(o.departs, 'départ') + ', ' + pl(o.retours, 'retour') + '), '
+        + (min === max ? min : 'de ' + min + ' à ' + max) + ' par jour.'],
+      alerte: sans.length ? pl(sans.length, 'jour') + ' sans vol : ' + cites + (sans.length > MAX_JOURS_CITES ? ' et ' + pl(sans.length - MAX_JOURS_CITES, 'autre') : '') + '.' : '',
+      detail: (o.detail || []).slice()
+    };
+  }
+
+  /** Ce compte rendu, pour la page : deux lignes, puis le détail jour par jour, replié. Tout texte est échappé. */
+  function compteRenduHTML(cr) {
+    const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const [une, deux] = cr.lignes;
+    return '<p class="vp-cr-ligne">' + e(une) + '</p><p class="vp-cr-ligne">' + e(deux) + (cr.alerte ? ' <span class="vp-cr-alerte">' + e(cr.alerte) + '</span>' : '') + '</p>'
+      + (cr.detail && cr.detail.length ? '<details class="vp-cr-detail"><summary>Le détail jour par jour</summary>' + cr.detail.map(l => '<p>' + e(l) + '</p>').join('') + '</details>' : '');
+  }
+
   /* ---- le tableau des vols du jour ------------------------------------------- */
 
   const chercher = v => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -117,9 +156,9 @@
 
   /** Le compte, au-dessus du tableau : « 12 départs », « 3 départs sur 12 » quand on cherche. */
   function compte(r) {
-    const pl = n => n + (n > 1 ? ' départs' : ' départ');
+    const departs = n => n + (n > 1 ? ' départs' : ' départ');
     if (!r.total) return 'aucun départ';
-    return r.recherche ? pl(r.lignes.length) + ' sur ' + r.total : pl(r.total);
+    return r.recherche ? departs(r.lignes.length) + ' sur ' + r.total : departs(r.total);
   }
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -137,7 +176,7 @@
       + '</tbody></table></div>';
   }
 
-  const api = { FORMATS, reconnaitre, phrase, refus, lignes, compte, tableau };
+  const api = { FORMATS, reconnaitre, phrase, refus, compteRendu, compteRenduHTML, lignes, compte, tableau };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyVolsPage = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -3362,11 +3362,23 @@ async function importVols(e) {
     if(vu.format==='erp'){await importWinrest(file,lu.feuilles||await OrlyTableur.lireFichier(file,MAX_WINREST),reconnu);return;}
     // CSV ou classeur Excel (4 Mo au plus), lus comme le banc d'essai les lit (moteur/journee.js).
     const data=await OrlyJournee.volsDuFichier(file,lireTexteDuFichier);
-    report.classList.remove('error');report.textContent=reconnu+'\n'+remplacerProgramme(data,file.name);
+    direImport(report,reconnu,data,file.name);
   } catch(err){fail(err.message);}
   // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
   // le même fichier ne déclenche plus `change`.
   finally{e.target.value='';}
+}
+/**
+ * Le compte rendu d'un import de vols réussi (évolution 23 f, vols-page.js) : deux lignes — le fichier et son format ; la
+ * période, les jours, les vols, la fourchette par jour — puis le détail jour par jour, replié : le tableau des vols reste
+ * à l'écran. Le détail porte les phrases d'avant, mot pour mot.
+ */
+function direImport(report,reconnu,data,nom){
+  const texte=remplacerProgramme(data,nom);
+  report.classList.remove('error');
+  if(!window.OrlyVolsPage||!OrlyVolsPage.compteRendu){report.textContent=reconnu+'\n'+texte;return;}
+  report.innerHTML=OrlyVolsPage.compteRenduHTML(OrlyVolsPage.compteRendu({fichier:nom,reconnu,lignes:data.length,departs:data.filter(f=>f.sens==='DEP').length,
+    retours:data.filter(f=>f.sens==='RET').length,periode:OrlyPeriode.decrire(data),detail:texte.split('\n')}));
 }
 /** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
 function remplacerProgramme(data,nom){
@@ -3417,7 +3429,7 @@ async function importWinrest(file,feuilles,reconnu){
       +r.vols.length+' vols).',{titre:'Remplacer le programme de vols ?',oui:'Remplacer le programme',danger:true})){
       report.classList.remove('error');report.textContent='Import annulé : le programme de vols n’a pas changé.';return;
     }
-    report.classList.remove('error');report.textContent=reconnu+'\n'+remplacerProgramme(data,file.name);
+    direImport(report,reconnu,data,file.name);
   }catch(err){fail(reconnu+'\nExport Winrest non importé : '+err.message);}
 }
 async function telechargerRapportWinrest(){

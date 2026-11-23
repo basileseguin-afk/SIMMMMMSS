@@ -133,3 +133,80 @@ test('le tableau dit quand il n’a rien à montrer', () => {
   assert.equal(V.compte(V.lignes(vols().slice(0, 1))), '1 départ');
   assert.equal(V.compte(V.lignes([])), 'aucun départ');
 });
+
+/* ---- évolution 23 (f) : le compte rendu d'un import, en deux lignes ---------------------------------------------------- */
+const PER = require('../moteur/periode.js');
+/** Un programme daté fictif : `n` jours à partir du 3 mars 2031, `parJour` vols chaque jour (sauf les jours de `sans`). */
+const programme = (n, parJour = [3, 2], sans = []) => {
+  const vols = [];
+  for (let j = 0; j < n; j++) {
+    const date = PER.jourDecale('2031-03-03', j);
+    if (sans.includes(date)) continue;
+    for (let k = 0; k < parJour[0]; k++) vols.push({ date, sens: 'DEP', id: 'NO' + j + k });
+    for (let k = 0; k < parJour[1]; k++) vols.push({ date, sens: 'RET', id: 'RE' + j + k });
+  }
+  return vols;
+};
+const rendu = (vols, fichier = 'vols-dates.csv') => {
+  const periode = PER.decrire(vols), departs = vols.filter(v => v.sens === 'DEP').length, retours = vols.length - departs;
+  const avant = [vols.length + ' lignes importées. ' + departs + ' départs et ' + retours + ' retours.', ...PER.texteDuProgramme(periode)];
+  return V.compteRendu({ fichier, reconnu: 'Format reconnu : le CSV daté (un programme sur plusieurs jours).', lignes: vols.length, departs, retours, periode, detail: avant });
+};
+
+test('le compte rendu d’un import daté tient en deux lignes : le fichier, puis la période, les jours, les vols, la fourchette par jour', () => {
+  const cr = rendu(programme(30));
+  assert.deepEqual(cr.lignes, [
+    '« vols-dates.csv ». Format reconnu : le CSV daté (un programme sur plusieurs jours).',
+    'Du 03/03/2031 au 01/04/2031 : 30 jours, 150 vols (90 départs, 60 retours), 5 par jour.'
+  ]);
+  assert.equal(cr.alerte, '');
+  // Le détail jour par jour — le compte rendu d'avant, mot pour mot — est à part : la page le replie.
+  assert.equal(cr.detail.length, 3);
+  assert.equal(cr.detail[0], '150 lignes importées. 90 départs et 60 retours.');
+  assert.match(cr.detail[1], /^Programme daté : du 03\/03\/2031 au 01\/04\/2031, 30 jours\.$/);
+  assert.match(cr.detail[2], /^Vols par jour : 5 \(5 en moyenne\) — 03\/03 : 5 · 04\/03 : 5 · /);
+  assert.equal((cr.detail[2].match(/\d\d\/\d\d : 5/g) || []).length, 30, 'un nombre par jour');
+  // La deuxième ligne ne grandit pas avec la période : la même longueur pour trente jours que pour trois.
+  assert.equal(rendu(programme(3)).lignes[1], 'Du 03/03/2031 au 05/03/2031 : 3 jours, 15 vols (9 départs, 6 retours), 5 par jour.');
+  assert.ok(cr.lignes[1].length < 100);
+});
+
+test('le compte rendu : une fourchette quand les jours diffèrent ; les singuliers ; un jour sans vol signalé', () => {
+  // Des jours inégaux : « de 2 à 5 par jour ».
+  const inegal = [...programme(2), { date: '2031-03-05', sens: 'DEP', id: 'X1' }, { date: '2031-03-05', sens: 'RET', id: 'X2' }];
+  assert.equal(rendu(inegal).lignes[1], 'Du 03/03/2031 au 05/03/2031 : 3 jours, 12 vols (7 départs, 5 retours), de 2 à 5 par jour.');
+  // Un seul jour, un seul vol.
+  assert.equal(rendu([{ date: '2031-03-03', sens: 'DEP', id: 'A' }]).lignes[1], 'Le 03/03/2031 : 1 jour, 1 vol (1 départ, 0 retour), 1 par jour.');
+  // Un jour sans vol : dit sur la deuxième ligne (un oubli se voit sans rien déplier), et détaillé dans le repli.
+  const troue = rendu(programme(5, [3, 2], ['2031-03-05']));
+  assert.equal(troue.lignes[1], 'Du 03/03/2031 au 07/03/2031 : 5 jours, 20 vols (12 départs, 8 retours), 5 par jour.');
+  assert.equal(troue.alerte, '1 jour sans vol : 05/03.');
+  assert.ok(troue.detail.includes('Aucun vol le 05/03 : jour sans vol ou oubli ?'));
+  // Plusieurs : les trois premiers sont nommés, les autres comptés.
+  const troues = rendu(programme(9, [1, 0], ['2031-03-04', '2031-03-05', '2031-03-06', '2031-03-07', '2031-03-08']));
+  assert.equal(troues.alerte, '5 jours sans vol : 04/03, 05/03, 06/03 et 2 autres.');
+});
+
+test('le compte rendu d’un programme sans date : le fichier, puis la phrase d’avant ; rien à replier', () => {
+  const cr = V.compteRendu({ fichier: 'vols.csv', reconnu: 'Format reconnu : le modèle CSV (une table, colonne « sens »).', lignes: 12, departs: 7, retours: 5, periode: null,
+    detail: ['12 lignes importées. 7 départs et 5 retours.'] });
+  assert.deepEqual(cr.lignes, ['« vols.csv ». Format reconnu : le modèle CSV (une table, colonne « sens »).', '12 lignes importées. 7 départs et 5 retours.']);
+  assert.deepEqual([cr.alerte, cr.detail], ['', []]);
+  // Sans format dit (un appel d'avant) : le fichier seul.
+  assert.equal(V.compteRendu({ fichier: 'vols.csv', lignes: 1, departs: 1, retours: 0, periode: null }).lignes[0], '« vols.csv ».');
+});
+
+test('le compte rendu dans la page : deux lignes, le détail replié ; le texte venu du fichier est échappé', () => {
+  const html = V.compteRenduHTML(rendu(programme(5, [3, 2], ['2031-03-05'])));
+  assert.equal((html.match(/<p class="vp-cr-ligne">/g) || []).length, 2);
+  assert.match(html, /^<p class="vp-cr-ligne">« vols-dates\.csv »\. Format reconnu : [^<]*<\/p><p class="vp-cr-ligne">Du 03\/03\/2031 au 07\/03\/2031 : [^<]*par jour\. <span class="vp-cr-alerte">1 jour sans vol : 05\/03\.<\/span><\/p>/);
+  // Le détail jour par jour, replié (pas d'attribut open), avec les phrases d'avant.
+  assert.match(html, /<details class="vp-cr-detail"><summary>Le détail jour par jour<\/summary><p>20 lignes importées\. 12 départs et 8 retours\.<\/p><p>Programme daté : [^<]*<\/p><p>Vols par jour : [^<]*<\/p><p>Aucun vol le 05\/03 : jour sans vol ou oubli \?<\/p><\/details>$/);
+  assert.doesNotMatch(html, /<details[^>]* open/);
+  // Sans détail : pas de repli.
+  assert.doesNotMatch(V.compteRenduHTML({ lignes: ['« a.csv ».', '1 lignes importées. 1 départs et 0 retours.'], alerte: '', detail: [] }), /<details/);
+  // Un nom de fichier malveillant, des phrases venues d'ailleurs : échappés.
+  const mal = V.compteRenduHTML(V.compteRendu({ fichier: '<img src=x onerror=alert(1)>.csv', reconnu: 'Format <b>x</b>.', lignes: 1, departs: 1, retours: 0, periode: null, detail: ['<script>alert(2)</script>'] }));
+  assert.doesNotMatch(mal, /<img|<b>|<script/);
+  assert.match(mal, /&lt;img src=x onerror=alert\(1\)&gt;\.csv/);
+});

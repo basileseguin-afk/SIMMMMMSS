@@ -36,6 +36,11 @@ const CSV='date,vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC
   const csv=path.join(dossier,'vols-dates.csv');fs.writeFileSync(csv,CSV);
   await page.locator('#imp-vols').setInputFiles(csv);
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-dates.csv');
+  // (Évolution 23 f : le compte rendu tient en deux lignes ; le détail jour par jour — les phrases d'avant — est replié.)
+  assert.deepEqual(await page.locator('#import-report .vp-cr-ligne').allTextContents(),['« vols-dates.csv ». Format reconnu : le CSV daté (un programme sur plusieurs jours).',
+    'Du 02/11/2026 au 04/11/2026 : 3 jours, 3 vols (2 départs, 1 retour), de 1 à 2 par jour. 1 jour sans vol : 03/11.']);
+  assert.equal(await page.locator('#import-report .vp-cr-detail').evaluate(d=>d.open),false);
+  await page.locator('#import-report .vp-cr-detail>summary').click();
   const rapport=await page.locator('#import-report').innerText();
   assert.match(rapport,/3 lignes importées\. 2 départs et 1 retours\./);
   assert.match(rapport,/Programme daté : du 02\/11\/2026 au 04\/11\/2026, 3 jours\./);
