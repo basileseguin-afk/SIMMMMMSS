@@ -101,18 +101,28 @@
     return AV.NIVEAUX.map(nv => ({ niveau: nv, avis: (liste || []).map((p, i) => ({ p, i })).filter(x => x.p.niveau === nv.id) }));
   }
 
+  /** La raison d'un bouton grisé, en lecture seule, quand la page n'en donne pas. */
+  const MOT_FERME = 'Paramétrage verrouillé';
+
   /**
    * La page.
    * @param {Array} liste  le registre (`OrlyAvis.lister`)
-   * @param {{etat:string, dernier:object|null, maintenant:number, nomPage:Function}} o
+   * @param {{etat:string, dernier:object|null, maintenant:number, nomPage:Function, verrou?:boolean, ferme?:Function, motFerme?:string}} o
+   *   verrou   — la lecture seule (évolution 23 d) : la page se lit en entier, mais rien ne s'y règle. Un bouton qui mène
+   *              à une page fermée (`ferme(page)`) et « C'est voulu » sont grisés ; leur raison (`motFerme`) les suit,
+   *              une fois par point. Un bouton qui mène à un résultat marche. Sans `verrou`, la page d'avant.
    */
   function html(liste, o = {}) {
     const etat = ETATS[o.etat] ? o.etat : 'vide';
+    const verrou = !!o.verrou, ferme = pg => verrou && typeof o.ferme === 'function' && !!o.ferme(pg);
     const point = ({ p, i }) => {
       const b = bouton(p, o.nomPage);
+      const allerGris = !!b && ferme(b.page), vouluGris = verrou && !!p.voulu;
+      const gris = ` disabled aria-describedby="ct-raison-${i}"`;
       return `<li class="ct-point" data-ct-point="${i}"><div class="ct-corps"><b>${esc(p.titre)}</b>${p.detail ? `<span>${esc(p.detail)}</span>` : ''}</div>
-        <div class="ct-gestes">${b ? `<button type="button" class="btn btn-sm${AV.estProbleme(p) ? ' btn-play' : ''}" data-ct-aller="${i}" data-ct-page="${esc(b.page)}">${esc(b.texte)} →</button>` : ''}${
-          p.voulu ? `<button type="button" class="btn btn-sm" data-ct-voulu="${esc(p.voulu)}" aria-label="${esc(AV.VOULU + ' (' + p.voulu + ')')}" title="${esc(AV.VOULU)}">C’est voulu</button>` : ''}</div></li>`;
+        <div class="ct-gestes">${b ? `<button type="button" class="btn btn-sm${AV.estProbleme(p) ? ' btn-play' : ''}" data-ct-aller="${i}" data-ct-page="${esc(b.page)}"${allerGris ? gris : ''}>${esc(b.texte)} →</button>` : ''}${
+          p.voulu ? `<button type="button" class="btn btn-sm" data-ct-voulu="${esc(p.voulu)}"${vouluGris ? gris : ''} aria-label="${esc(AV.VOULU + ' (' + p.voulu + ')')}" title="${esc(AV.VOULU)}">C’est voulu</button>` : ''}${
+          allerGris || vouluGris ? `<small class="ct-raison" id="ct-raison-${i}">${esc(o.motFerme || MOT_FERME)}</small>` : ''}</div></li>`;
     };
     const colonne = c => {
       const nv = c.niveau, replier = nv.id === 'information' && c.avis.length > INFOS_VISIBLES;
@@ -142,7 +152,9 @@
    *   dernierReglage()  — le dernier réglage changé ({a, texte, domaine}), ou rien ;
    *   voulu(compagnie)  — retenir qu'une compagnie n'a pas de chargement, et que c'est voulu ;
    *   nomPage(id)       — le nom d'une page ;
-   *   aller(page, lieu) — ouvrir une page, à un endroit.
+   *   aller(page, lieu) — ouvrir une page, à un endroit ;
+   *   verrou()          — facultatif : vrai en lecture seule (évolution 23 d) — la page se lit, ses gestes sont grisés ;
+   *   ferme(page)       — facultatif : la page ne s'ouvre pas ; motFerme : la raison dite sous un bouton grisé.
    */
   class PageControles extends Base {
     constructor(a) {
@@ -157,13 +169,17 @@
       this.avisMontres = liste;
       const ouvert = box.querySelector('.ct-plus'), deplie = ouvert ? ouvert.open : !!this.infosDepliees;
       this.poser(box, html(liste, { etat: etatDuCalcul(this.at.resultat), dernier: this.a.dernierReglage ? this.a.dernierReglage() : null,
-        maintenant: Date.now(), nomPage: this.a.nomPage }));
+        maintenant: Date.now(), nomPage: this.a.nomPage, verrou: this.verrouille(), ferme: this.a.ferme, motFerme: this.a.motFerme }));
       const plus = box.querySelector('.ct-plus'); if (plus && deplie) plus.open = true;
     }
 
-    /** Mène là où l'avis se règle : la page, puis l'endroit dedans. */
+    /** La lecture seule est-elle en marche ? C'est la page qui le sait. */
+    verrouille() { return !!(this.a.verrou && this.a.verrou()); }
+
+    /** Mène là où l'avis se règle : la page, puis l'endroit dedans. En lecture seule, une page fermée ne s'ouvre pas. */
     allerAvis(p) {
       const d = destination(p); if (!d) return;
+      if (this.verrouille() && this.a.ferme && this.a.ferme(d.page)) return;
       if (d.page === 'mu-flux' && d.service) return this.commandeOuService(d);
       if (d.page === 'mu-services' && d.equipe && this.ouvrirEquipe && this.etat.ateliers.some(a => a.id === d.equipe)) return void this.ouvrirEquipe(d.equipe);
       if (d.page === 'mu-services' && d.service) { this.ouvrir(d.service); if (d.lieu && this.allerA) this.allerA(d.lieu); return; }
@@ -184,6 +200,8 @@
         const box = e.target.closest && e.target.closest('#mu-pas'); if (!box) return;
         const v = e.target.closest('[data-ct-voulu]');
         if (v) {
+          // En lecture seule, le bouton est grisé ; appelé quand même, il ne retient rien.
+          if (this.verrouille()) return;
           // « C'est voulu » : le choix se retient, l'avis part ; le clavier reste dans la page.
           if (this.a.voulu && this.a.voulu(v.dataset.ctVoulu) === true) setTimeout(() => { const b = box.querySelector('.ct-point button, .ct-synthese'); if (b) b.focus(); }, 0);
           return;

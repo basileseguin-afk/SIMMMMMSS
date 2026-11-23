@@ -9,7 +9,12 @@
  *     réglages sont essayées une à une ; les données du navigateur sont les mêmes, à l'octet près ;
  *   - la sauvegarde (« Tout sauvegarder ») est identique avant et après ;
  *   - l'état survit au rechargement ; c'est une préférence d'affichage (`ory-ui-…`), hors de la sauvegarde ;
- *   - à l'arrêt, tout revient. */
+ *   - à l'arrêt, tout revient.
+ *
+ * Évolution 23 (d) : « Contrôles » se lit en lecture seule. Ce qui change ici, et rien d'autre : la page n'est plus
+ * parmi celles qui se ferment (sept, plus huit) mais parmi celles qui s'ouvrent — et dont tout ce qui se clique est
+ * cliqué ; le menu a six entrées sous « Lire » (« Contrôles » à leur suite) ; le nom « Contrôles détaillés » l'ouvre.
+ * Le détail de la page en lecture seule : tests/controles-lecture-seule-browser.cjs. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
 const F=require('./plan-rejoue-fictif.cjs');
@@ -17,8 +22,8 @@ const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL_V1=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
 const MOT='Paramétrage verrouillé';
-const REGLER=['v-programme','v-planche','mu-services','mu-flux','u-liens','u-plan','rg-simulation','mu-pas'];
-const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-details','j-comparer','u-sauvegarde'];
+const REGLER=['v-programme','v-planche','mu-services','mu-flux','u-liens','u-plan','rg-simulation'];
+const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-details','j-comparer','mu-pas','u-sauvegarde'];
 
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
@@ -75,10 +80,12 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
 
   /* ---- 2. le bloc « Régler » replié en « Paramétrage verrouillé » ; « Lire » et « Fichiers » intacts ---------------- */
   assert.deepEqual(await page.locator('#menu .menu-bloc').evaluateAll(bs=>bs.map(b=>[b.dataset.bloc,b.hasAttribute('data-ferme'),b.querySelectorAll('[data-sous-onglet]').length])),
-    [['lire',false,5],['regler',true,0]]);
+    [['lire',false,6],['regler',true,0]]);
   assert.equal((await page.locator('#menu [data-bloc=regler] .menu-ferme').innerText()).trim(),MOT);
   assert.equal(await page.locator('#menu [data-bloc=regler] .menu-ferme svg').count(),1,'un cadenas');
-  assert.deepEqual(await page.locator('#menu [data-bloc=lire] [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.textContent.trim())),['Synthèse','En direct','Planning','Détails','Comparer']);
+  // (Le nom de l'entrée, sans sa pastille : « Contrôles » porte la sienne, évolution 23 d.)
+  assert.deepEqual(await page.locator('#menu [data-bloc=lire] [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.querySelector('span').textContent.trim())),['Synthèse','En direct','Planning','Détails','Comparer','Contrôles']);
+  assert.ok(+(await page.locator('#menu [data-bloc=lire] [data-entree="mu-pas"] .so-badge').innerText())>=1,'« Contrôles », avec sa pastille');
   assert.equal(await page.locator('#btn-sauvegarde').isEnabled(),true);
   assert.equal(await page.evaluate(()=>{const b=document.getElementById('btn-lecture-seule').getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight;}),true,'l’interrupteur tient dans l’écran d’un portable');
   for(const sel of ['#menu .menu-ferme','#btn-lecture-seule'])assert.ok(parseFloat(await page.locator(sel).evaluate(e=>getComputedStyle(e).fontSize))>=13,sel+' : 13 px au moins');
@@ -95,7 +102,7 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
     await page.evaluate(()=>document.getElementById('ls-lien').remove());
   }
   // Par « Aller à… » : la page se trouve toujours, dit « Paramétrage verrouillé », et ne s'ouvre pas. De même le nom d'une page d'avant.
-  for(const [nom,page0] of [['Services et équipes','Services et équipes'],['Horaires des équipes','Services et équipes'],['Chemin d’une commande','Chemins'],['Contrôles détaillés','Contrôles']]){
+  for(const [nom,page0] of [['Services et équipes','Services et équipes'],['Horaires des équipes','Services et équipes'],['Chemin d’une commande','Chemins']]){
     await fermerAvis();
     await page.keyboard.press('Control+k');await page.waitForSelector('dialog.palette [role=option]');
     await page.keyboard.type(nom);await attendre(200);
@@ -105,6 +112,16 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
     assert.equal(await sous(),'j-chiffres',nom+' ne s’ouvre pas par « Aller à… »');
     assert.equal(await dernierAvis(),MOT+' : « '+page0+' » ne s’ouvre pas en lecture seule.');
   }
+  // « Contrôles » se lit (évolution 23 d) : le nom d'une page d'avant qu'elle a reprise l'ouvre, sans « Paramétrage verrouillé ».
+  await fermerAvis();
+  await page.keyboard.press('Control+k');await page.waitForSelector('dialog.palette [role=option]');
+  await page.keyboard.type('Contrôles détaillés');await attendre(200);
+  const detailles=page.locator('dialog.palette [role=option]').filter({has:page.locator('.pal-nom',{hasText:/^Contrôles détaillés$/})}).first();
+  assert.doesNotMatch(await detailles.innerText(),new RegExp(MOT));
+  await detailles.click();await attendre(200);
+  assert.equal(await sous(),'mu-pas','« Contrôles détaillés » ouvre « Contrôles »');
+  assert.equal(await dernierAvis(),'','aucun refus');
+  await nav.aller(page,'j-chiffres');await attendre(200);
   // Depuis l'accueil : le bloc « Régler » y est replié aussi ; « À faire ensuite » le dit.
   await page.locator('#btn-accueil').click();await attendre(300);
   assert.deepEqual(await page.locator('#view-accueil .acc-bloc').evaluateAll(bs=>bs.map(b=>[b.dataset.bloc,b.hasAttribute('data-ferme'),b.querySelectorAll('.acc-tuile').length])),[['lire',false,1],['regler',true,0]]);
@@ -213,7 +230,7 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   /* ---- 7. l'état survit au rechargement ----------------------------------------------------------------------------- */
   await page.reload();
   await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.onglets);await attendre(500);
-  assert.deepEqual([await page.evaluate(()=>document.body.dataset.lecture),await bascule.getAttribute('aria-checked'),await page.locator('#menu [data-ferme]').count(),await page.locator('#menu [data-sous-onglet]').count()],['seule','true',1,5]);
+  assert.deepEqual([await page.evaluate(()=>document.body.dataset.lecture),await bascule.getAttribute('aria-checked'),await page.locator('#menu [data-ferme]').count(),await page.locator('#menu [data-sous-onglet]').count()],['seule','true',1,6]);
   assert.equal(REGLER.includes(await sous()),false,'la page qui s’ouvre n’est pas une page de « Régler »');
   await page.evaluate(()=>Sim.onglets.choisir('mu-services'));await attendre(150);
   assert.equal(REGLER.includes(await sous()),false);
@@ -252,6 +269,6 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
 
   assert.deepEqual(erreurs,[],'aucune erreur de page');
   await site.effacer();
-  console.log('lecture-seule-browser : ok — l’interrupteur en bas du menu (une préférence « ory-ui-… », hors des données) ; « Régler » replié en « Paramétrage verrouillé », au menu et sur l’accueil ; ses huit pages ne s’ouvrent par aucun chemin (lien, « Aller à… », nom d’une page d’avant, « Modifier le plan ») et la page le dit ; un lien d’un résultat vers un réglage le dit ; « Fichiers » : « Restaurer » et les « Importer » grisés avec la raison, les exports marchent ; '+clics+' boutons cliqués sur les pages ouvertes, les portes des réglages essayées : les mêmes données à l’octet près, la même sauvegarde ; l’état survit au rechargement ; à l’arrêt, tout revient.');
+  console.log('lecture-seule-browser : ok — l’interrupteur en bas du menu (une préférence « ory-ui-… », hors des données) ; « Régler » replié en « Paramétrage verrouillé », au menu et sur l’accueil ; ses sept pages ne s’ouvrent par aucun chemin (lien, « Aller à… », nom d’une page d’avant, « Modifier le plan ») et la page le dit ; « Contrôles » se lit, sous « Lire » ; un lien d’un résultat vers un réglage le dit ; « Fichiers » : « Restaurer » et les « Importer » grisés avec la raison, les exports marchent ; '+clics+' boutons cliqués sur les pages ouvertes, les portes des réglages essayées : les mêmes données à l’octet près, la même sauvegarde ; l’état survit au rechargement ; à l’arrêt, tout revient.');
  }finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1);});

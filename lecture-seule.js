@@ -3,6 +3,8 @@
  * Un interrupteur, en bas du menu. En marche :
  *   - le bloc « Régler » du menu se replie en « Paramétrage verrouillé », et ses pages ne s'ouvrent pas (onglets.js
  *     demande à la page si une page est fermée : `fermee`) ;
+ *   - « Contrôles » se lit (évolution 23 d) : la page reste au menu, sous « Lire », avec sa pastille ; ses boutons
+ *     « Régler dans… » et « C'est voulu » sont grisés, avec leur raison (controles-page.js) ;
  *   - un lien d'un résultat vers un réglage dit « Paramétrage verrouillé » (`regles`) ;
  *   - dans « Fichiers », « Restaurer » et « Importer » sont grisés, avec la raison ; les exports marchent ;
  *   - les gestes qui changent un réglage depuis une page de résultats ne se montrent plus, et, s'ils étaient appelés
@@ -33,11 +35,12 @@
 
   /**
    * La page est-elle de celles que la lecture seule ferme ? Celles du bloc « Régler », et les pages d'avant qu'elles ont
-   * reprises (`O` : OrlyOnglets).
+   * reprises (`O` : OrlyOnglets). Sauf une page de ce bloc qui se lit (`lisible`, évolution 23 d) : « Contrôles » — celui
+   * qui lit les résultats doit savoir s'il reste des points à corriger. Elle s'ouvre ; ses gestes sont grisés.
    */
   function fermee(O, id) {
     const o = O && O.page(id), p = o && O.PARTIES.find(x => x.id === o.partie);
-    return !!p && p.bloc === BLOC;
+    return !!p && p.bloc === BLOC && !o.lisible;
   }
   /** Tous les identifiants qui mènent à une page fermée : les pages, et les pages d'avant (un lien les porte encore). */
   function identifiants(O) {

@@ -145,3 +145,50 @@ test('le texte venu d’un fichier est échappé avant d’entrer dans la page',
   assert.match(html, /data-ct-voulu="&quot;&gt;&lt;b&gt;X"/);
   assert.match(html, /&lt;script&gt;alert\(2\)&lt;\/script&gt;/);
 });
+
+test('en lecture seule (évolution 23 d) : la page se lit en entier ; « Régler dans… » et « C’est voulu » sont grisés, avec leur raison', () => {
+  const l = A.lister(sources());
+  const base = { etat: 'ok', dernier: null, maintenant: 0, nomPage };
+  const avant = C.html(l, base);
+  // Hors lecture seule, rien ne change : la page d'avant, au caractère près, même si l'on dit quelles pages se ferment.
+  assert.equal(C.html(l, { ...base, verrou: false, ferme: () => true, motFerme: 'Paramétrage verrouillé' }), avant);
+  assert.doesNotMatch(avant, /disabled|ct-raison/);
+
+  const FERMEES = new Set(['mu-services', 'mu-flux', 'u-liens', 'v-programme']);
+  const html = C.html(l, { ...base, verrou: true, ferme: id => FERMEES.has(id), motFerme: 'Paramétrage verrouillé' });
+  // La page se lit en entier : la ligne d'état, les trois colonnes, chaque point avec son titre et son détail.
+  assert.match(html, /data-ct-etat="ok"[^]*?Le calcul est à jour[^]*?data-page="j-chiffres">Voir la Synthèse →<\/button>/);
+  assert.equal((html.match(/class="ct-point"/g) || []).length, l.length);
+  const sansGestes = h => h.replace(/<div class="ct-gestes">[^]*?<\/div>/g, '');
+  assert.equal(sansGestes(html), sansGestes(avant), 'hors de ses boutons, la page est celle d’avant');
+  // Chaque bouton qui mène à un réglage est grisé ; ceux qui mènent à un résultat marchent.
+  const boutons = [...html.matchAll(/<button type="button" class="btn btn-sm[^"]*" data-ct-aller="(\d+)" data-ct-page="([^"]+)"([^>]*)>([^<]*)<\/button>/g)]
+    .map(m => ({ i: +m[1], page: m[2], attrs: m[3], texte: m[4] }));
+  assert.equal(boutons.length, l.length);
+  assert.ok(boutons.some(b => FERMEES.has(b.page)) && boutons.some(b => !FERMEES.has(b.page)), 'des deux sortes');
+  for (const b of boutons) {
+    if (FERMEES.has(b.page)) assert.equal(b.attrs, ` disabled aria-describedby="ct-raison-${b.i}"`, b.texte);
+    else assert.equal(b.attrs, '', b.texte + ' : un résultat, le bouton marche');
+  }
+  assert.match(html, /data-ct-page="mu-flux" disabled aria-describedby="ct-raison-\d+">Régler dans Chemins →<\/button>/);
+  assert.match(html, /data-ct-page="j-chiffres">Voir dans Synthèse →<\/button>/);
+  // « C'est voulu » change un réglage : grisé, toujours.
+  assert.match(html, /data-ct-voulu="EST" disabled aria-describedby="ct-raison-(\d+)" aria-label=/);
+  assert.equal((html.match(/data-ct-voulu=/g) || []).length, 1);
+  // La raison, une fois par point qui a un bouton grisé, à la suite de ses boutons ; aucun point sans bouton grisé n'en a.
+  const grises = new Set(boutons.filter(b => FERMEES.has(b.page)).map(b => b.i));
+  const raisons = [...html.matchAll(/<small class="ct-raison" id="ct-raison-(\d+)">([^<]*)<\/small><\/div>/g)];
+  assert.deepEqual(raisons.map(m => +m[1]).sort((a, b) => a - b), [...grises].sort((a, b) => a - b));
+  for (const m of raisons) assert.equal(m[2], 'Paramétrage verrouillé');
+  assert.equal(new Set(raisons.map(m => m[1])).size, raisons.length, 'un identifiant par raison');
+  // Sans mot donné : celui de la lecture seule, par défaut.
+  assert.match(C.html(l, { ...base, verrou: true, ferme: () => true }), /<small class="ct-raison" id="ct-raison-\d+">Paramétrage verrouillé<\/small>/);
+  // Un avis dont le seul geste est « C'est voulu », sans destination fermée : sa raison est dite quand même.
+  const un = A.lister({ anomalies: [{ code: 'handling-sans', message: '2 vols EST : aucun handling ne charge cette compagnie.', compagnie: 'EST', service: 'quais', atelier: 'h1' }] });
+  const seul = C.html(un, { ...base, verrou: true, ferme: () => false });
+  assert.match(seul, /data-ct-voulu="EST" disabled aria-describedby="ct-raison-0"/);
+  assert.match(seul, /<small class="ct-raison" id="ct-raison-0">Paramétrage verrouillé<\/small>/);
+  // Le texte venu d'un fichier reste échappé.
+  const mal = A.lister({ anomalies: [{ code: 'handling-sans', message: '2 vols : aucun handling', compagnie: '"><b>X' }] });
+  assert.doesNotMatch(C.html(mal, { ...base, verrou: true, ferme: () => true, motFerme: '<i>mot</i>' }), /"><b>X|<i>mot/);
+});

@@ -900,6 +900,8 @@ function initUnite(){
     voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true)),
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,lieu)=>allerPage(page,lieu),
+    // En lecture seule (évolution 23 d), « Contrôles » se lit : ses boutons vers un réglage sont grisés, avec leur raison.
+    verrou:()=>lectureSeule, ferme:id=>pageFermee(id), motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
     notify:toast
   });
   // Le temps de travail d'un service se règle aussi dans sa fiche.
@@ -951,8 +953,14 @@ function initTheme(){
  * ==========================================================================*/
 let lectureSeule=!!(window.OrlyLectureSeule&&OrlyLectureSeule.lire(window.localStorage));
 if(lectureSeule)document.body.dataset.lecture='seule';
-/** La page ne s'ouvre pas : en lecture seule, celles du bloc « Régler ». */
+/** La page ne s'ouvre pas : en lecture seule, celles du bloc « Régler » — sauf « Contrôles », qui se lit (évolution 23 d). */
 const pageFermee=id=>lectureSeule&&!!window.OrlyLectureSeule&&OrlyLectureSeule.fermee(window.OrlyOnglets,id);
+/** La partie sous laquelle une page se range à l'écran : la sienne ; en lecture seule, « Lire » pour une page de « Régler »
+ *  qui se lit (« Contrôles ») — le fil d'Ariane, le surtitre et « Aller à… » suivent le menu. */
+function partieAffichee(pg){
+  const O=window.OrlyOnglets;if(!pg||!O)return null;
+  return (lectureSeule&&pg.lisible&&O.PARTIES.find(p=>p.bloc==='lire'))||O.PARTIES.find(p=>p.id===pg.partie)||null;
+}
 /** On demande une page fermée, ou un geste verrouillé : la page le dit. */
 function direVerrou(id){
   const pg=id&&window.OrlyOnglets?OrlyOnglets.page(id):null;
@@ -978,6 +986,9 @@ function appliquerLectureSeule(oui){
   majFichiers();
   if(Sim.onglets)Sim.onglets.rendre();
   if(Sim.demarrage)Sim.demarrage.rendre();
+  // « Contrôles » se lit (évolution 23 d) : ses boutons se grisent ou reviennent, et son titre suit le menu.
+  if(Sim.unite&&Sim.unite.rendrePas)Sim.unite.rendrePas();
+  afficherTitre();
   majAnnuler();
 }
 function initLectureSeule(){
@@ -1176,7 +1187,7 @@ function allerPartie(p){
  * une phrase qui dit ce qu'on voit. Sur l'accueil, le titre suffit. */
 function afficherTitre(){
   const O=window.OrlyOnglets, accueil=activeView==='accueil', id=document.body.dataset.sous;
-  const pg=!accueil&&O&&id?O.page(id):null, partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
+  const pg=!accueil&&O&&id?O.page(id):null, partie=partieAffichee(pg);
   // Une page d'un groupe (« Détails », évolution 15 c) : le groupe en titre ; ses onglets internes disent laquelle.
   // « En direct », ouverte à plat par son nom (évolution 23 a) : le titre le dit.
   const aPlat=!!pg&&pg.id==='j-plan'&&document.body.dataset.direct==='plat'&&O.PAR_NOM&&O.PAR_NOM['j-plan:plat'];
@@ -1333,7 +1344,7 @@ function elementsPalette(){
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
   // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
-    indice:pageFermee(pg.id)?OrlyLectureSeule.MOT:p.nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
+    indice:pageFermee(pg.id)?OrlyLectureSeule.MOT:(partieAffichee(pg)||p).nom,ico:pg.ico,mots:[pg.court,pg.ancien,p.ancien].filter(Boolean).join(' '),faire:()=>vers(pg.id)});
   // Une page qu'une autre a reprise (évolution 22 b) se cherche toujours par son nom, et par celui d'encore avant : elle
   // mène à la page qui l'a reprise, au bon endroit dedans.
   if(O&&O.ANCIENNES)for(const [id,a] of Object.entries(O.ANCIENNES)){const pg=O.page(a.vers);if(!pg)continue;

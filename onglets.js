@@ -131,7 +131,9 @@
       pages: [
         { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
         // « Contrôles » : deux pages et un panneau en un (évolution 22 d) — l'état du calcul, puis les avis par niveau.
-        { id: 'mu-pas', jour: true, intro: 'Ce qui bloque le calcul, ce qui est à corriger et ce qui se lit : chaque point mène là où il se règle.' }
+        // `lisible` (évolution 23 d) : la page se lit ; la lecture seule, qui ferme les autres pages de « Régler », la
+        // laisse ouverte, et son entrée passe sous « Lire ».
+        { id: 'mu-pas', jour: true, lisible: true, intro: 'Ce qui bloque le calcul, ce qui est à corriger et ce qui se lit : chaque point mène là où il se règle.' }
       ] },
     { id: 'fichier', nom: 'Fichiers', ancien: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true, bas: true,
       resume: 'Votre travail dans un fichier',
@@ -240,12 +242,32 @@
   /**
    * Le menu entier (évolution 22 a) : ses deux blocs, leurs espaces et leurs entrées, puis les entrées du bas.
    * Un espace qui porte le nom de son bloc (« Lire ») n'a pas de titre à lui (`titre: false`).
+   * `ferme` (évolution 23 d), facultatif : dit les pages qui ne s'ouvrent pas (la lecture seule). Sans lui, ou s'il ne
+   * ferme rien, le menu est celui d'avant.
    * @returns {{blocs: {id, nom, espaces: {id, nom, titre, entrees: object[]}[]}[], bas: object[]}}
    */
-  function menu(choix = {}, ouverte) {
+  function menu(choix = {}, ouverte, ferme) {
     const blocs = BLOCS.map(b => ({ ...b, espaces: PARTIES.filter(p => p.bloc === b.id)
       .map(p => ({ id: p.id, nom: p.nom, titre: p.nom !== b.nom, entrees: menuDe(p.id, choix, ouverte) })) }));
-    return { blocs, bas: PARTIES.filter(p => p.bas).flatMap(p => menuDe(p.id, choix, ouverte)) };
+    return { blocs: typeof ferme === 'function' ? sousLire(blocs, ferme) : blocs, bas: PARTIES.filter(p => p.bas).flatMap(p => menuDe(p.id, choix, ouverte)) };
+  }
+  /**
+   * Quand des pages sont fermées (évolution 23 d) : dans un bloc qui en compte, une entrée qui s'ouvre encore
+   * (« Contrôles », qui se lit) passe à la suite du premier bloc (« Lire ») ; son bloc ne garde que ses entrées fermées,
+   * et se replie. Un bloc ouvert en entier, ou fermé en entier, ne change pas ; le premier bloc ne donne rien.
+   * Rien n'est modifié en place.
+   */
+  function sousLire(blocs, ferme) {
+    const lues = [];
+    const suite = blocs.slice(1).map(b => {
+      const toutes = b.espaces.flatMap(e => e.entrees), fermees = toutes.filter(o => ferme(o.id));
+      if (!fermees.length || fermees.length === toutes.length) return b;
+      lues.push(...toutes.filter(o => !fermees.includes(o)));
+      return { ...b, espaces: b.espaces.map(e => ({ ...e, entrees: e.entrees.filter(o => fermees.includes(o)) })) };
+    });
+    if (!lues.length) return blocs;
+    const premier = blocs[0], dernier = premier.espaces.length - 1;
+    return [{ ...premier, espaces: premier.espaces.map((e, i) => (i === dernier ? { ...e, entrees: [...e.entrees, ...lues] } : e)) }, ...suite];
   }
   /** Les entrées du menu à la suite, dans son ordre : celles des blocs, puis celles du bas. */
   function entrees(choix = {}, ouverte) {
@@ -391,7 +413,8 @@
       const h = this.a.hote(); if (!h) return;
       // Le menu entier, toujours : deux blocs, leurs espaces, leurs entrées (évolution 22 a). L'entrée « Fichiers », en
       // bas de la barre, est un bouton de la page : elle ne se dessine pas ici.
-      const m = menu(this.choix, actif), dans = actif ? (page(actif) || {}).groupe : null;
+      // En lecture seule, une entrée de « Régler » qui se lit encore (« Contrôles ») passe sous « Lire » (évolution 23 d).
+      const m = menu(this.choix, actif, this.a.ferme ? id => this.fermee(id) : null), dans = actif ? (page(actif) || {}).groupe : null;
       // Un bloc dont aucune entrée ne s'ouvre (« Régler », en lecture seule) se replie en une ligne.
       const plie = b => !!this.a.ferme && b.espaces.some(e => e.entrees.length) && b.espaces.every(e => e.entrees.every(o => this.fermee(o.id)));
       const toutes = m.blocs.filter(b => !plie(b)).flatMap(b => b.espaces.flatMap(e => e.entrees));

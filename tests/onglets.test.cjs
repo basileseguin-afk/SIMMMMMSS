@@ -364,3 +364,27 @@ test('la barre du jour : sur les pages où le jour compte, et elles seules (évo
   const lire = O.PARTIES.filter(p => p.bloc === 'lire').flatMap(p => p.pages.map(x => x.id));
   assert.deepEqual(lire.filter(id => !O.avecJour(id)), []);
 });
+
+test('le menu, quand des pages sont fermées : une entrée qui se lit encore passe sous « Lire » (évolution 23 d)', () => {
+  const noms = m => m.blocs.map(b => [b.nom, b.espaces.map(e => [e.nom, e.entrees.map(O.libelle)])]);
+  const avant = O.menu();
+  // Sans page fermée — pas de fonction, ou une fonction qui ne ferme rien : le menu d'avant, champ par champ.
+  assert.deepEqual(O.menu({}, undefined, null), avant);
+  assert.deepEqual(O.menu({}, undefined, () => false), avant);
+  // Le bloc « Régler » fermé, sauf « Contrôles » : elle passe à la suite de « Lire » ; son bloc ne garde que ses entrées fermées.
+  const regler = new Set(O.PARTIES.filter(p => p.bloc === 'regler').flatMap(p => p.pages.map(x => x.id)));
+  const m = O.menu({}, undefined, id => regler.has(id) && id !== 'mu-pas');
+  assert.deepEqual(noms(m), [
+    ['Lire', [['Lire', ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer', 'Contrôles']]]],
+    ['Régler', [['Vols', ['Programme', 'Retours']], ['L’unité', ['Services et équipes', 'Chemins']], ['Simulation', ['Réglages']]]]
+  ]);
+  assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
+  // L'entrée est la même : son identifiant, son pictogramme, son nom.
+  assert.deepEqual(m.blocs[0].espaces[0].entrees.at(-1), avant.blocs[1].espaces[2].entrees[1]);
+  // Rien n'est modifié en place : le menu d'après est celui d'avant.
+  assert.deepEqual(O.menu(), avant);
+  // Un bloc fermé en entier, ou ouvert en entier, ne perd ni ne donne rien.
+  assert.deepEqual(noms(O.menu({}, undefined, id => regler.has(id))), noms(avant));
+  // Le premier bloc ne donne jamais ses entrées : une page fermée y reste (c'est à la page de dire qu'elle l'est).
+  assert.deepEqual(noms(O.menu({}, undefined, id => id === 'j-plan')), noms(avant));
+});

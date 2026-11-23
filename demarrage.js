@@ -212,10 +212,15 @@
         ? `<p class="acc-suite">${icone('ampoule')}<span>À faire ensuite :</span>
             <button type="button" class="lien-fort" data-page="${PAGE_DE_VUE[s.etape.onglet]}">${esc(s.texte)} →</button></p>`
         : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
+      const ferme = id => !!(this.a.ferme && this.a.ferme(id));
+      // En lecture seule, les entrées se rangent comme au menu (évolution 23 d) : « Contrôles », qui se lit, passe à la
+      // suite de « Lire ». Sans lecture seule, celles de chaque espace, comme avant.
+      const range = this.a.ferme ? O().menu({}, undefined, ferme).blocs.flatMap(b => b.espaces) : null;
+      const entreesDe = p => (range ? (range.find(x => x.id === p.id) || { entrees: [] }).entrees : O().menuDe(p.id));
       const tuile = p => {
         const t = etat[p.id];
         // Les entrées du menu de cet espace : une page, ou un groupe (qui rouvre sa première page).
-        const pages = O().menuDe(p.id).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(O().libelle(x))}</button>`).join('');
+        const pages = entreesDe(p).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(O().libelle(x))}</button>`).join('');
         return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
           <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
             <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>
@@ -226,11 +231,10 @@
           <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
         </article>`;
       };
-      const ferme = id => !!(this.a.ferme && this.a.ferme(id));
       const bloc = b => {
         const espaces = O().PARTIES.filter(p => p.bloc === b.id && !p.cache);
         // En lecture seule, le bloc « Régler » se replie, comme au menu : ses pages ne s'ouvrent pas.
-        if (this.a.ferme && espaces.some(p => O().menuDe(p.id).length) && espaces.every(p => O().menuDe(p.id).every(x => ferme(x.id)))) {
+        if (this.a.ferme && espaces.some(p => entreesDe(p).length) && espaces.every(p => entreesDe(p).every(x => ferme(x.id)))) {
           return `<section class="acc-bloc acc-bloc-ferme" data-bloc="${b.id}" data-ferme aria-label="${esc(b.nom)}">
             <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
             <p class="acc-ferme">${icone('cadenas')}<span>${esc(this.a.motFerme || 'Paramétrage verrouillé')}</span></p>

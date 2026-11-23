@@ -38,6 +38,9 @@ body[data-sous="mu-pas"] #view-ateliers>#mu-pas{flex:1 1 0;min-height:320px;disp
 .ct-corps>span{color:var(--ds-texte-2)}
 .ct-gestes{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px}
 .ct-gestes .btn{font-size:var(--ds-t-13)}
+/* En lecture seule (évolution 23 d) : la page se lit, ses boutons vers un réglage sont grisés ; leur raison les suit. */
+.ct-gestes .btn:disabled{opacity:.55;cursor:not-allowed}
+.ct-raison{align-self:center;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
 .ct-vide{display:flex;align-items:flex-start;gap:6px;margin:12px 0 0;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
 .ct-plus{margin-top:6px;padding-top:8px;border-top:1px solid var(--ds-bordure)}
 .ct-plus>summary{cursor:pointer;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen,600)}

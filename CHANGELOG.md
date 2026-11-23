@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (d) : « Contrôles » lisible en lecture seule
+
+Quatrième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+Hors lecture seule, rien ne change.
+
+- **En lecture seule, « Contrôles » reste au menu**, à la suite des entrées
+  de « Lire », avec sa pastille. Le bloc « Régler » reste replié en
+  « Paramétrage verrouillé ». L’accueil, le fil d’Ariane et « Aller à… »
+  rangent la page de même.
+- **La page s’ouvre et se lit en entier** : la ligne d’état, les trois
+  colonnes, chaque point.
+- **Ses boutons « Régler dans… » et « C’est voulu » sont grisés**, avec leur
+  raison à leur suite : « Paramétrage verrouillé ». « Voir dans Synthèse »,
+  qui mène à un résultat, marche.
+- Aucun bouton de la page ne change un réglage : la sauvegarde est identique
+  avant et après.
+- Le test de la lecture seule de l’évolution 22 passe toujours ; ce qu’il
+  attendait de « Contrôles » (verrouillée) a changé avec la demande.
+
 ## 2026-11-23 — Évolution 23 (c) : « Chemins », un schéma lisible
 
 Troisième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format

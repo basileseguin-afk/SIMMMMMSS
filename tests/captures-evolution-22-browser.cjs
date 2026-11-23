@@ -141,7 +141,8 @@ const MESURER=([racine,vue])=>{
     await page.locator('#btn-lecture-seule').click();
     await page.waitForFunction(()=>document.body.dataset.lecture==='seule'&&!!document.querySelector('#menu [data-bloc=regler][data-ferme]'));
     assert.equal((await page.locator('#menu [data-bloc=regler] .menu-ferme').innerText()).trim(),'Paramétrage verrouillé',V+'le bloc « Régler » replié');
-    assert.equal(await page.locator('#menu [data-sous-onglet]').count(),5,V+'les cinq entrées de « Lire »');
+    // (Évolution 23 d : « Contrôles », qui se lit, reste au menu à la suite des cinq entrées de « Lire ».)
+    assert.equal(await page.locator('#menu [data-sous-onglet]').count(),6,V+'les cinq entrées de « Lire », puis « Contrôles »');
     assert.equal(await page.locator('#btn-lecture-seule').getAttribute('aria-checked'),'true');
     assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-chiffres');
     assert.ok(await page.locator('#journee-chiffres .sy-service').count()>=5,V+'la Synthèse est intacte');
