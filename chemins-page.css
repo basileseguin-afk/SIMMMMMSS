@@ -75,3 +75,16 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 
 /* Évolution 22 (g), retouche de contrôle : le titre d'un groupe d'avis (avis.css l'écrit en 12 px) fait 13 px sur la page. */
 #mu-flux .avis-niveau>:is(h4,summary),#mu-flux .avis-niveau .avis-nom{font-size:var(--ds-t-13)}
+
+/* Évolution 23 (c) : un schéma lisible. graphe.css et ds.css, communs avec la version 2, ne sont pas modifiés.
+   - La barre d'outils du schéma est au-dessus de son cadre, pas sur le dessin (elle flottait en haut à droite, sur les
+     premières étapes).
+   - Le schéma ne se réduit plus pour tenir dans la largeur : chemins-page.js lui donne la taille où ses textes font
+     12 px au moins, et il défile dans son cadre. « Tout voir » le réduit à la demande. */
+#mu-flux .gr-boite{display:flex;flex-direction:column;gap:6px}
+#mu-flux .gr-boite>.gr-barre{position:static;align-self:flex-end;max-width:100%}
+#mu-flux .gr-cadre{max-width:100%;overflow:auto}
+#mu-flux .gr-cadre.bas{overflow-x:auto;overflow-y:hidden}
+#mu-flux .gr-cadre .gr-svg,#mu-flux .gr-cadre.bas .gr-svg{max-width:none}
+#mu-flux .ch-graphe{padding:8px;min-height:0}
+#mu-flux .gr-barre :is(.btn,.gr-sens,.gr-outil-choix,select){font-size:var(--ds-t-13)}

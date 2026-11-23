@@ -73,7 +73,29 @@
     return { genre: 'aucune', equipe: null, choix };
   }
 
-  const api = { chemins, compte, sansChemin, ligneEtape };
+  /** Le plus petit texte du schéma d'un chemin, en pixels d'écran (évolution 23 c). */
+  const TEXTE_MIN = 12;
+  /**
+   * L'échelle du schéma d'un chemin (évolution 23 c). Il ne se réduit jamais sous la taille où son plus petit texte fait
+   * `TEXTE_MIN` pixels à l'écran : plus grand que son cadre, il y défile. « Tout voir » (`toutVoir`) le réduit, à la
+   * demande, pour qu'il tienne entier dans le cadre — jamais plus gros que sa taille lisible.
+   * @param {{w: number, h: number}} dessin  la taille du dessin, dans ses unités (sa `viewBox`)
+   * @param {{largeur: number, hauteur: number}} cadre  la place visible, en pixels
+   * @param {number} plusPetit  la taille de son plus petit texte, dans les unités du dessin
+   * @returns {{k: number, lisible: number, deborde: boolean}} `k` : pixels d'écran par unité du dessin ; `lisible` : la
+   *   taille lisible ; `deborde` : à sa taille lisible, il ne tient pas dans le cadre (« Tout voir » sert à quelque chose)
+   */
+  function echelleSchema(dessin, cadre, plusPetit, toutVoir) {
+    const w = dessin && dessin.w > 0 ? dessin.w : 0, h = dessin && dessin.h > 0 ? dessin.h : 0;
+    const largeur = cadre && cadre.largeur > 0 ? cadre.largeur : 0, hauteur = cadre && cadre.hauteur > 0 ? cadre.hauteur : 0;
+    const lisible = plusPetit > 0 ? Math.max(1, TEXTE_MIN / plusPetit) : 1;
+    const mesure = w > 0 && h > 0 && largeur > 0 && hauteur > 0;
+    const deborde = mesure && (w * lisible > largeur + 0.5 || h * lisible > hauteur + 0.5);
+    const k = toutVoir && mesure ? Math.min(lisible, largeur / w, hauteur / h) : lisible;
+    return { k, lisible, deborde };
+  }
+
+  const api = { chemins, compte, sansChemin, ligneEtape, TEXTE_MIN, echelleSchema };
   if (NODE) { module.exports = api; return; }
   const S = root.OrlyServicesPage;
   if (!S || !S.PageServices) { root.OrlyCheminsPage = api; return; }
@@ -188,6 +210,36 @@
       this.poserChemins(box, `<div class="mu-cadre ch-cadre">${liste}<div class="mu-fiche ch-fiche" data-mu-flux-fiche="${esc(x ? x.p.id : '')}" data-ch-vue="${vue}"
         data-ch-cle="${esc([this.fluxChoisi || '', vue].join('|'))}">${corps}</div></div>`);
       const g = this.grapheFlux(); if (g && x && vue === 'chemin') g.rendre();
+      this.ajusterSchema();
+    }
+
+    /**
+     * Le schéma à sa taille lisible (évolution 23 c) : son plus petit texte fait 12 px au moins à l'écran ; plus grand que
+     * son cadre, il y défile. « Tout voir » le réduit à la demande, le temps qu'on regarde ; « Taille lisible » y revient.
+     * graphe.js (commun avec la version 2) n'est pas modifié : il pose le dessin à sa taille, la page règle son échelle.
+     */
+    ajusterSchema() {
+      const d = root.document, hote = d.querySelector('#mu-flux [data-mu-graphe]'), svg = hote && hote.querySelector('.gr-svg');
+      if (!svg || !svg.viewBox || !svg.viewBox.baseVal) return;
+      const vb = svg.viewBox.baseVal, cadre = hote.querySelector('.gr-cadre'), fiche = hote.closest('.ch-fiche'), barre = hote.querySelector('.gr-barre');
+      // Un autre chemin s'ouvre à sa taille lisible.
+      if (this.schemaDe !== this.fluxChoisi) { this.schemaDe = this.fluxChoisi; this.schemaTout = false; }
+      const tailles = [...svg.querySelectorAll('text')].map(t => parseFloat(root.getComputedStyle(t).fontSize)).filter(n => n > 0);
+      const place = { largeur: cadre ? cadre.clientWidth - 12 : 0, hauteur: fiche ? fiche.clientHeight - (barre ? barre.offsetHeight : 0) - 44 : 0 };
+      const e = echelleSchema({ w: vb.width, h: vb.height }, place, tailles.length ? Math.min(...tailles) : 0, !!this.schemaTout);
+      const l = Math.round(vb.width * e.k * 100) / 100 + 'px', h = Math.round(vb.height * e.k * 100) / 100 + 'px';
+      if (svg.style.width !== l) svg.style.width = l;
+      if (svg.style.height !== h) svg.style.height = h;
+      if (hote.dataset.chEchelle !== (this.schemaTout ? 'tout' : 'lisible')) hote.dataset.chEchelle = this.schemaTout ? 'tout' : 'lisible';
+      const b = hote.querySelector('[data-ch-schema]');
+      if (b) {
+        // Rien à réduire : le bouton ne se montre pas (un réglage qui ne joue pas reste caché).
+        const cache = !e.deborde && !this.schemaTout, mot = this.schemaTout ? 'Taille lisible' : 'Tout voir';
+        if (b.hidden !== cache) b.hidden = cache;
+        if (b.textContent !== mot) b.textContent = mot;
+        b.setAttribute('aria-pressed', String(!!this.schemaTout));
+        b.title = this.schemaTout ? 'Revenir à la taille où le schéma se lit (textes de 12 px au moins)' : 'Réduire le schéma pour le voir en entier';
+      }
     }
 
     /** Une étape vient d'être choisie : l'en-tête de son tableau vient au milieu de la colonne, sous le diagramme. */
@@ -224,7 +276,8 @@
       </div>`;
       // Ajouter un service et Réorganiser flottent sur le diagramme, comme avant.
       this.outilsFlux = `<label class="gr-outil-choix">Ajouter une étape <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
-          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les étapes d’elles-mêmes, de l’amont vers l’aval">Réorganiser</button>`;
+          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les étapes d’elles-mêmes, de l’amont vers l’aval">Réorganiser</button>
+          <button class="btn btn-sm" type="button" data-ch-schema aria-pressed="false" hidden title="Réduire le schéma pour le voir en entier">Tout voir</button>`;
       const choisi = !sel ? `<p class="mini-note ch-geste">Cliquez une étape : le tableau dit, dessous, quelle équipe y prépare chaque commande. Tirez le rond d’une étape jusqu’à une autre pour dire qu’elle la livre.</p>`
         : sel.type === 'lien' ? `<p class="ch-lien"><b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b>
           <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-lien" data-lien="${esc(sel.id)}">Retirer ce lien</button></p>`
@@ -440,6 +493,15 @@
 
     lierChemins() {
       const d = root.document, dans = el => el && el.closest && el.closest('#mu-flux');
+      // Le schéma se redessine aussi de lui-même (une étape déplacée, « En ligne / En étapes ») : à chaque dessin, il
+      // reprend sa taille lisible. Et quand la fenêtre change de taille : « Tout voir » se propose ou non.
+      const page = d.getElementById('mu-flux');
+      if (page && typeof root.MutationObserver === 'function') {
+        let prevu = 0;
+        new root.MutationObserver(() => { if (!prevu) prevu = root.requestAnimationFrame(() => { prevu = 0; this.ajusterSchema(); }); })
+          .observe(page, { subtree: true, attributes: true, attributeFilter: ['viewBox'] });
+      }
+      root.addEventListener('resize', () => this.ajusterSchema());
       d.addEventListener('click', e => {
         if (!dans(e.target)) return;
         const p = this.cheminChoisi();
@@ -448,6 +510,9 @@
         if (c) { this.cheminPanneau = null; this.cheminCmd = null; if (this.graphe) this.graphe.selection = null; return this.rendreFlux(); }
         const pan = e.target.closest('[data-ch-panneau]');
         if (pan) { this.cheminPanneau = pan.dataset.chPanneau; return this.rendreFlux(); }
+        // « Tout voir » / « Taille lisible » : l'échelle du schéma (évolution 23 c).
+        const sc = e.target.closest('[data-ch-schema]');
+        if (sc) { this.schemaTout = !this.schemaTout; this.ajusterSchema(); if (this.schemaTout) { const c = sc.closest('.gr-boite'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'nearest' }); } return; }
         const f = e.target.closest('[data-ch-fiche]');
         if (f) return void this.ouvrirEquipe(f.dataset.chFiche);
         const t = e.target.closest('[data-ch-temps]');

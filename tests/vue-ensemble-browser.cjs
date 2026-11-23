@@ -90,7 +90,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(await y('appros')<await y('decontam')&&await y('decontam')<await y('cuisine'),'de haut en bas');
    assert.ok(await page.locator(`${G} .gr-etape`).count()>=4,'une bande par étape');
    assert.match(await page.locator(`${G} .gr-etape text`).first().textContent(),/Étape 1/);
-   assert.equal(await page.locator(`${G} .gr-cadre`).evaluate(c=>c.scrollWidth<=c.clientWidth+1),true,'pas de défilement de côté');
+   // En version 2, le diagramme se réduit pour tenir dans la largeur. En version 1 (évolution 23 c), il garde la taille où
+   // ses textes font 12 px au moins : plus large que son cadre, il y défile.
+   if(version==='v1'){
+    const s1=await page.locator(`${G} .gr-svg`).evaluate(s=>{const k=s.getBoundingClientRect().width/s.viewBox.baseVal.width;
+      return {k,petit:Math.min(...[...s.querySelectorAll('text')].filter(t=>t.textContent.trim()).map(t=>parseFloat(getComputedStyle(t).fontSize)*k)),x:getComputedStyle(s.closest('.gr-cadre')).overflowX};});
+    assert.ok(s1.k>=1&&s1.petit>=12-0.01,'v1 : le schéma n’est pas réduit, son plus petit texte fait 12 px au moins ('+Math.round(s1.petit*100)/100+' px)');
+    assert.equal(s1.x,'auto','v1 : plus large que son cadre, il y défile');
+   }else assert.equal(await page.locator(`${G} .gr-cadre`).evaluate(c=>c.scrollWidth<=c.clientWidth+1),true,'pas de défilement de côté');
    // La chaîne principale descend tout droit ; les traits vont à angle droit.
    const xg=id=>page.locator(`${G} [data-noeud=${id}]`).evaluate(n=>n.transform.baseVal.consolidate().matrix.e);
    assert.equal(new Set([await xg('appros'),await xg('decontam'),await xg('cuisine')]).size,1,version+' : Réception, Légumerie, Cuisine dans une même colonne');

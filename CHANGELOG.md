@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (c) : « Chemins », un schéma lisible
+
+Troisième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun
+(`graphe.js`, `graphe.css`, `ds.css`).
+
+- **Le schéma ne se réduit plus pour tenir dans son cadre** : il s’affiche à
+  la taille où son plus petit texte fait 12 px à l’écran. Plus grand que son
+  cadre, il y défile.
+- **« Tout voir »** le réduit à la demande, pour qu’il tienne entier ;
+  « Taille lisible » y revient. Un chemin qui tient déjà n’a pas ce bouton.
+- **La barre d’outils du schéma est au-dessus du cadre**, plus sur le dessin :
+  elle ne recoupe aucune case.
+- Les gestes du schéma (choisir une étape, tirer un lien, déplacer une case)
+  suivent l’échelle.
+
+Fichiers : `chemins-page.js` (`echelleSchema`, `ajusterSchema`),
+`chemins-page.css`, `index.html` (empreintes) ;
+`tests/chemins-schema-browser.cjs` (nouveau), `tests/chemins-page.test.cjs` ;
+`README.md`.
+
+---
+
 ## 2026-11-19 — Évolution 23 (b) : la barre « Journée de vols » seulement là où le jour compte
 
 Deuxième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format

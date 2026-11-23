@@ -69,3 +69,29 @@ test('une étape faite à la chaîne par l’équipe du service d’avant : elle
   // La commande que l'équipe du service prépare elle-même garde son équipe.
   assert.equal(C.ligneEtape(e, 'montage', 'NO/BC').genre, 'equipe');
 });
+
+/* Évolution 23 (c) : le schéma d'un chemin ne se réduit jamais sous la taille où ses textes font 12 px à l'écran ; au-delà,
+ * il défile dans son cadre. « Tout voir » le réduit à la demande, pour qu'il tienne entier ; « Taille lisible » y revient. */
+test('le schéma : jamais sous la taille où son plus petit texte fait 12 px ; « Tout voir » le fait tenir dans son cadre', () => {
+  assert.equal(C.TEXTE_MIN, 12);
+  const cadre = { largeur: 760, hauteur: 480 };
+  // Un texte de 11 unités : il faut grossir le dessin de 12/11 pour qu'il fasse 12 px.
+  const petit = C.echelleSchema({ w: 400, h: 300 }, cadre, 11, false);
+  assert.ok(Math.abs(petit.k - 12 / 11) < 1e-9 && 11 * petit.k >= 12 - 1e-9, 'un petit schéma : grossi à la taille lisible');
+  assert.equal(petit.deborde, false, 'il tient dans son cadre : rien à réduire');
+  // Un grand schéma, plus large et plus haut que son cadre : la même taille lisible — il défile, il ne rétrécit pas.
+  const grand = C.echelleSchema({ w: 843, h: 1452 }, cadre, 11, false);
+  assert.ok(Math.abs(grand.k - 12 / 11) < 1e-9, 'un grand schéma : jamais réduit');
+  assert.equal(grand.deborde, true, 'il déborde de son cadre : « Tout voir » se propose');
+  // « Tout voir » : il tient entier, en largeur et en hauteur ; jamais plus gros que la taille lisible.
+  const tout = C.echelleSchema({ w: 843, h: 1452 }, cadre, 11, true);
+  assert.ok(843 * tout.k <= 760 + 1e-6 && 1452 * tout.k <= 480 + 1e-6, 'tout tient dans le cadre');
+  assert.ok(Math.abs(tout.k - 480 / 1452) < 1e-9, 'au plus grand qui tient : ici, la hauteur commande');
+  assert.equal(C.echelleSchema({ w: 400, h: 300 }, cadre, 11, true).k, petit.k, '« Tout voir » ne grossit pas un schéma qui tient déjà');
+  // Des textes déjà à 12 unités ou plus : la taille du dessin, sans le réduire ni le grossir.
+  assert.equal(C.echelleSchema({ w: 400, h: 300 }, cadre, 13, false).k, 1);
+  assert.equal(C.echelleSchema({ w: 2000, h: 300 }, cadre, 12, false).k, 1);
+  // Sans mesure (un schéma vide, un cadre pas encore à l'écran) : la taille du dessin, sans erreur.
+  assert.equal(C.echelleSchema({ w: 0, h: 0 }, { largeur: 0, hauteur: 0 }, NaN, false).k, 1);
+  assert.equal(C.echelleSchema({ w: 843, h: 1452 }, { largeur: 0, hauteur: 0 }, 11, true).k, 12 / 11);
+});
