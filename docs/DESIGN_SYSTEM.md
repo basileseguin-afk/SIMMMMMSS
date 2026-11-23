@@ -63,7 +63,7 @@ couleur, une taille, un rayon ou une durée en dur.
 | Famille | Jetons | Valeurs |
 |---|---|---|
 | Police | `--ds-police`, `--ds-mono` | Inter (embarquée, licence OFL), puis la police du système |
-| Tailles de texte | `--ds-t-11` à `--ds-t-32` | 11, 12, 13, 14, 16, 20, 24, 32 px — huit, pas une de plus |
+| Tailles de texte | `--ds-t-11` à `--ds-t-32` | 11, 12, 13, 14, 16, 20, 24, 32 px — huit, pas une de plus. En version 1 (évolution 23), les deux premières valent 13 px : aucun texte sous 13 px |
 | Graisses | `--ds-g-normal`, `-moyen`, `-fort` | 400, 500, 600 |
 | Espacements | `--ds-e-1` à `--ds-e-7` | 4, 8, 12, 16, 24, 32, 48 px |
 | Rayons | `--ds-r-1` à `--ds-r-4` | 4 (touche, kbd), 6 (bouton, champ), 8 (carte), 12 (fenêtre) |
@@ -317,6 +317,49 @@ Les feuilles de ces pages (`services-page.css`, `chemins-page.css`,
 pas modifiés. Contrôlé par le test de chaque page et par
 `tests/captures-evolution-22-browser.cjs`.
 
+### Les trois règles d'une page (version 1, évolution 23)
+
+Toute page du menu les tient, aux deux tailles de référence (1 366 × 768 et
+1 920 × 1 080). `tests/pages-menu-browser.cjs` parcourt les pages du menu —
+chaque entrée, chaque onglet de « Détails », chaque section de « Réglages »,
+la fiche d'un service, celle d'une équipe, un chemin — et échoue si l'une
+manque.
+
+1. **Un texte lisible.** Aucun texte sous 13 px, résultats compris. Dans un
+   dessin (un schéma, un graphique, la scène en direct : un `<svg>`), 12 px
+   au moins **à l'écran** : la taille dessinée, une fois l'échelle du dessin
+   appliquée. En version 1, les deux plus petites tailles du système
+   (`--ds-t-11`, `--ds-t-12`) valent 13 px (`lisible.css`) : une règle qui les
+   nomme suit sans retouche. Un schéma plus grand que son cadre y défile
+   plutôt que de se réduire (« Chemins », évolution 23 c).
+2. **Un écran par page.** La fenêtre ne défile pas, ni la page : seules
+   défilent ses zones — une liste, une fiche, un tableau —, **une par
+   colonne, jamais l'une dans l'autre**. Ce qui reste en tête de la page (son
+   titre, sa phrase, la barre du jour, un compte, un avis) ne défile pas. Une
+   zone porte la classe `page-zone` ; un tableau qui défile dans son cadre a
+   son en-tête figé. Rien n'est coupé non plus : ce qui dépasse d'un bloc
+   défile, ou se replie. Sur un écran étroit (860 px) ou très bas (560 px), la
+   page défile comme avant.
+3. **Les colonnes prennent la largeur.** Une page ne tient pas dans une
+   demi-largeur en laissant l'autre vide : le contenu va d'un bord à l'autre.
+   Un champ, lui, garde une largeur de champ.
+
+Avec elles :
+
+- **Moins de mots.** Une phrase d'introduction au plus par page (`intro`,
+  dans `onglets.js` ; `tests/onglets.test.cjs` le vérifie). Une explication
+  longue passe derrière son bouton d'aide (`details.aide`) : la légende du
+  tableau de la Synthèse, « Comment lire ce tableau ».
+- **Un compte rendu tient en deux lignes** ; son détail est replié
+  (« Programme », évolution 23 f).
+- **Un champ ne coupe ni sa valeur ni son texte d'attente** : « Postes de
+  travail », vide, dit « sans limite » en entier.
+- **Aucun résultat sur une page de réglage** : un résultat se lit dans le
+  bloc « Lire » ; la page de réglage y mène par un lien.
+
+`lisible.css`, chargée la dernière par la version 1 seule, porte ces règles ;
+les feuilles communes avec la version 2 ne sont pas modifiées.
+
 ### La palette et la fiche des raccourcis (`palette.js`)
 
 - **Ctrl K** (⌘ K) ou « Aller à… » ouvre la palette : une page, un service,
@@ -415,6 +458,10 @@ ce budget, et `latence-browser` les vérifie sans chronomètre :
 8. `node outils/empreinte.cjs` avant de livrer.
 9. **Jamais le plan de l'unité dans une capture** : il est confidentiel. Le
    dessin est masqué dans toute capture, et les tests n'en écrivent aucune.
+0. En version 1, les trois règles d'une page : un texte de 13 px au moins,
+   un écran par page (seules défilent ses zones, une par colonne), les
+   colonnes prennent la largeur. `tests/pages-menu-browser.cjs` les vérifie
+   sur chaque page du menu : une nouvelle page y entre.
 10. Une page de réglage (version 1) suit le gabarit « la liste à gauche, la
     fiche à droite » : elle tient sur l'écran d'un portable, chaque colonne
     défile seule, texte de 13 px au moins. En lecture seule, elle ne s'ouvre

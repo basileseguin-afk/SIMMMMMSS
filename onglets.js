@@ -110,7 +110,7 @@
         // `jour` (évolution 23 b) : hors du bloc « Lire », une page où le jour d'un programme daté compte — elle porte
         // la barre « Journée de vols ».
         { id: 'v-programme', jour: true, court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
-        { id: 'v-planche', jour: true, court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
+        { id: 'v-planche', jour: true, court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge.' }
       ] },
     { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, par où',
@@ -124,7 +124,7 @@
         { id: 'u-liens', sous: 'mu-flux', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
         // Évolution 23 (a) : le plan de l'unité ne sert pas au calcul. Sa page n'est plus au menu (`sous`) : elle s'ouvre
         // par « Aller à… » et par le lien « Placer ce service sur le plan » de la fiche d'un service, qui reste marquée.
-        { id: 'u-plan', sous: 'mu-services', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' }
+        { id: 'u-plan', sous: 'mu-services', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la ; « Terminer » ramène où vous étiez.' }
       ] },
     { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Régler, vérifier',

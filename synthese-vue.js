@@ -266,6 +266,8 @@
       + '<th scope="col" class="num" title="Les heures (personnes × heures) sans travail, et leur part de la présence">Personnes sans travail</th>'
       + '<th scope="col" title="Un arrivage : les lots livrés ensemble. Son attente va de sa livraison au début de son premier lot">Attente d’un arrivage</th><th scope="col" title="La fin du dernier lot ; dessous, l’horaire des équipes qui travaillent ce jour-là (ou l’équipe qui le dépasse), puis les heures sup, en personnes × heures">Fin et heures sup</th>'
       + '</tr></thead><tbody>' + ls.map(ligne).join('') + '</tbody></table></div>'
+      // Évolution 23 (g) : l'explication longue passe derrière son bouton d'aide ; ses phrases ne changent pas.
+      + '<details class="aide bloc sy-aide"><summary>Comment lire ce tableau</summary><span class="aide-corps">'
       + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; « fixe » : une mise à disposition, un service d’appui ou un handling, '
       + 'sans besoin calculé (il ne compte pas dans « Il faut »). Présents en équivalents temps plein. Matin et après-midi : au travail au plus / présents. '
       + 'Personnes sans travail : les heures (personnes × heures) et leur part de la présence ; au survol, avant le premier lot, entre deux lots, après le dernier. '
@@ -276,6 +278,7 @@
       + (ls.some(l => l.coince && l.coince.lendemain) ? ' Reste à laver le lendemain : personne ne reste en heures sup, les vols du soir sont lavés le lendemain, d’abord — le fonctionnement ordinaire, sans couleur ; signalé seulement s’il y en a '
         + PLUS_QUE_LE_MATIN + '.' : '') + '</p>'
       + '<p class="mini-note sy-explique-occ">Occupation : la part du temps de présence couverte par le travail compté aux temps par vol. Elle dépend des temps par vol et des effectifs réglés.</p>'
+      + '</span></details>'
       + horsCompte(ls).map(n => '<p class="mini-note sy-note">' + esc(n) + '</p>').join('');
   }
 
@@ -484,11 +487,12 @@
     if (!rep) { box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>'; return; }
     const k = o.resultat && o.resultat.indicateurs, cartes = [carteCoince(rep), carteRetard(rep), carteEssai(o.essais)].filter(Boolean);
     box.innerHTML = '<div class="sy-tete">' + phrases(rep, o.prevuCale).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k)
-      + '<div class="sy-cartes" data-n="' + cartes.length + '">' + cartes.map(carte).join('') + '</div>'
+      // Évolution 23 (g) : les phrases de la journée restent en tête ; les cartes, les services et la courbe défilent dans leur zone.
+      + '<div class="sy-zone page-zone"><div class="sy-cartes" data-n="' + cartes.length + '">' + cartes.map(carte).join('') + '</div>'
       + '<section class="sy-bloc" aria-label="Les services"><h4>Les services</h4>' + tableau(rep, o.ordre) + '</section>'
       + '<section class="sy-bloc sy-courbe" aria-label="La journée"><h4>La journée</h4><div class="sy-legende-courbe" aria-hidden="true"><span class="sy-l-presents">présents</span>'
       + '<span class="sy-l-travail">au travail</span><span class="sy-l-file" title="Prêts, pas encore commencés : dans l’ordre de travail">lots à faire</span><span class="sy-l-depart">départ d’un vol</span></div>'
-      + '<div class="sy-trace" tabindex="0" aria-describedby="sy-bulle"></div><p class="mini-note sy-bulle" id="sy-bulle" role="status"></p></section>';
+      + '<div class="sy-trace" tabindex="0" aria-describedby="sy-bulle"></div><p class="mini-note sy-bulle" id="sy-bulle" role="status"></p></section></div>';
     dessinerCourbe(box, o);
   }
 

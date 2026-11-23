@@ -49,7 +49,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#journee-stocks .tp-table').textContent(),/Chargement \(avion\)/);
   assert.equal(await page.locator('#journee-stocks .tp-svg').count(),2,'les retours heure par heure, puis le sale pas encore lavé');
   // Le panneau défile : sans cela le graphique de la plonge, en bas, était coupé et hors d'atteinte.
-  const defile=await page.locator('#journee-stocks').evaluate(s=>{s.scrollTop=1e5;const r=s.getBoundingClientRect(),g=s.querySelectorAll('.tp-svg')[1].getBoundingClientRect();return {bas:g.bottom<=r.bottom+1&&g.bottom<=innerHeight+1,pleine:r.right>innerWidth-40};});
+  // (Évolution 23 g : la page ne défile plus, c'est sa zone qui défile.)
+  const defile=await page.locator('#journee-stocks').evaluate(s=>{(s.querySelector(':scope>.page-zone')||s).scrollTop=1e5;const r=s.getBoundingClientRect(),g=s.querySelectorAll('.tp-svg')[1].getBoundingClientRect();return {bas:g.bottom<=r.bottom+1&&g.bottom<=innerHeight+1,pleine:r.right>innerWidth-40};});
   assert.deepEqual(defile,{bas:true,pleine:true},'le bas des stocks s’atteint, sur toute la largeur');
   // « Bouchon » suit le seuil d'attente d'un lot (évolution 15 c) : au défaut de 6 h (correction 17 c), la plonge du jeu d'essai,
   // qui attend plus d'une heure sans rien laisser de sale le soir, n'en est pas un — la phrase reste, sans l'étiquette ; au

@@ -1,0 +1,100 @@
+/* Les trois règles d'une page (version 1, évolution 23 g) — docs/DESIGN_SYSTEM.md.
+ *   1. Aucun texte sous 13 px (dans un dessin : 12 px au moins, à l'écran).
+ *   2. La fenêtre ne défile pas, ni la page : seules défilent ses zones (une liste, une fiche, un tableau), une par
+ *      colonne, jamais l'une dans l'autre.
+ *   3. Les colonnes prennent la largeur.
+ * Et : un champ ne coupe ni sa valeur ni son texte d'attente.
+ * Cette feuille est chargée la dernière, par la version 1 seule : les feuilles communes avec la version 2 (ds.css,
+ * interface.css, unite.css, ateliers.css, temps.css, graphe.css…) ne sont pas modifiées. tests/pages-menu-browser.cjs
+ * parcourt les pages du menu et échoue si l'une des règles manque. */
+
+/* ---- 1. la taille des textes ------------------------------------------------------------------------------------ */
+/* Les deux plus petites tailles du système (11 et 12 px) valent 13 px : toute règle qui les nomme suit. */
+:root{--ds-t-11:13px;--ds-t-12:13px}
+/* La page du plan n'est pas une page du menu (évolution 23 a), et ses barres d'outils flottent sur le dessin : pendant
+   qu'on modifie le plan, les tailles d'avant — rien n'y bouge. */
+body.plan-editing{--ds-t-11:11px;--ds-t-12:12px}
+body.plan-editing small{font-size:smaller}
+/* Un <small> ne descend pas sous 13 px (par défaut, il vaut cinq sixièmes de son texte). */
+small{font-size:max(.85em,var(--ds-t-13))}
+/* La barre du temps de « En direct » est un dessin à l'échelle de l'écran : ses textes en 12 px. */
+.dt-svg text{font-size:12px}
+
+/* ---- 2. le défilement ------------------------------------------------------------------------------------------- */
+/* La page ne défile pas : ce qui dépasse défile dans une zone — une liste, une fiche, un tableau —, une par colonne. */
+.page-zone{min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain}
+
+/* Synthèse : les phrases de la journée et l'avis restent en tête ; les cartes, les services et la courbe dans la zone. */
+body[data-sous="j-chiffres"] #journee-chiffres{display:flex;flex-direction:column;overflow:hidden}
+body[data-sous="j-chiffres"] #journee-chiffres>.panneau-bilan{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="j-chiffres"] #journee-chiffres>.panneau-bilan>*,body[data-sous="j-chiffres"] #bilan-journee>*{flex:none}
+body[data-sous="j-chiffres"] #journee-chiffres>.panneau-bilan>#bilan-journee{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="j-chiffres"] #bilan-journee>.sy-zone{flex:1 1 0;padding-right:4px}
+/* Le tableau des services, en-têtes de 13 px : ses cases se resserrent d'autant, pour qu'il garde de la marge dans son cadre. */
+.sy-table td,.sy-table th{padding-left:4px;padding-right:4px}
+.sy-aide{margin-top:var(--ds-e-2)}
+.sy-aide[open] .aide-corps{max-width:none}
+
+/* Planning : son cadre prend la hauteur qui reste ; la charge de l'unité, repliée, reste dessous. */
+body[data-sous="at-planning"] #view-ateliers:not([hidden]){display:flex;flex-direction:column;overflow:hidden}
+body[data-sous="at-planning"] #view-ateliers>*{flex:none}
+body[data-sous="at-planning"] #view-ateliers>#at-planning{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="at-planning"] #at-planning>*{flex:none}
+body[data-sous="at-planning"] #at-planning>.pg-cadre{flex:1 1 0;min-height:0;max-height:none}
+/* La charge de l'unité, repliée, tient en une ligne sous le planning : son titre, son lien, « Le tableau » à la suite.
+   Dépliée, elle défile dans son cadre. */
+body[data-sous="at-planning"] #view-ateliers>#at-charge{flex:0 1 auto;min-height:0;max-height:50%;overflow:auto;margin-top:var(--ds-e-2);
+  display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--ds-e-4)}
+body[data-sous="at-planning"] #at-charge>*{flex:0 0 100%;min-width:0}
+body[data-sous="at-planning"] #at-charge>.ch-tete{flex:1 1 auto}
+body[data-sous="at-planning"] #at-charge>.ch-tableau:not([open]){flex:0 0 auto;margin:0}
+body[data-sous="at-planning"] #view-ateliers:not([hidden]){padding-bottom:8px}
+
+/* Détails › Commandes : la barre et les comptes en tête ; le tableau dans son cadre, en-tête figé. */
+body[data-sous="at-repas"] #view-ateliers:not([hidden]){display:flex;flex-direction:column;overflow:hidden}
+body[data-sous="at-repas"] #view-ateliers>*{flex:none}
+body[data-sous="at-repas"] #view-ateliers>#at-classes{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+body[data-sous="at-repas"] #at-classes>*{flex:none}
+body[data-sous="at-repas"] #at-classes>.at-cadre{flex:0 1 auto}
+.at-cadre>.at-commandes{width:100%}
+.at-cadre>.at-commandes thead th{position:sticky;top:0;z-index:1;background:var(--ds-surface-2);box-shadow:inset 0 -1px 0 var(--ds-bordure)}
+/* « Étapes de chaque commande », dépliée, défile dans son cadre. */
+body[data-sous="at-repas"] #view-ateliers>#at-etapes[open]{flex:0 1 auto;min-height:0;max-height:60%;overflow:auto}
+
+/* Détails › Vols : le handling et les comptes en tête ; la frise, les filtres et le tableau dans la zone. */
+body[data-sous="v-departs"] #view-vols:not([hidden]){display:flex;flex-direction:column;overflow:hidden}
+body[data-sous="v-departs"] #view-vols>*{flex:none}
+body[data-sous="v-departs"] #view-vols>#vols-zone{flex:1 1 0}
+
+/* Détails › Stocks et retours, › Heures sup et renforts ; Période : la page est une fiche, qui défile dans sa zone. */
+body[data-sous="j-stocks"] #journee-stocks,body[data-sous="j-details"] #journee-details,body[data-sous="j-periode"] #journee-periode{display:flex;flex-direction:column;overflow:hidden}
+/* (« Heures sup et renforts » n'avait ni marge ni hauteur à elle : celles de ses voisines.) */
+#journee-details{flex:1 1 auto;min-height:0;padding:18px 20px}
+#journee-details>.page-zone{display:flex;flex-direction:column;gap:var(--ds-e-4)}
+#journee-stocks>.page-zone,#journee-details>.page-zone,#journee-periode>.page-zone{flex:1 1 0}
+#journee-periode>.page-zone{display:flex;flex-direction:column;gap:var(--ds-e-4)}
+#journee-periode>.page-zone>*{flex:none}
+/* Le tableau de la période défile avec sa page, pas dans un second cadre : une zone, pas deux l'une dans l'autre. */
+#journee-periode .pv-tableau .table-scroll{max-height:none}
+
+/* ---- 3. la largeur ---------------------------------------------------------------------------------------------- */
+/* Une page ne tient pas dans une demi-largeur : « Comparer » et « Période » vont d'un bord à l'autre. */
+body[data-sous="j-comparer"] #panel-reglages.reglages-grille,.journee-comparer .panneau-compare{max-width:none}
+.journee-periode .panneau{max-width:none}
+/* Hors de « En direct », aucune page ne garde la colonne de « En ce moment » : elle resterait vide (« Détails › Heures
+   sup et renforts » tenait dans le reste). */
+body[data-vue="plan"]:not(.editing):not([data-sous="j-plan"]):not([data-sous="u-plan"]) .app{grid-template-columns:minmax(0,1fr)}
+
+/* ---- un champ ne coupe ni sa valeur ni son texte d'attente ------------------------------------------------------ */
+/* « Postes de travail », vide, dit « sans limite » : le champ a la place de le dire, à côté de son unité. */
+#workspace .champ-unite>input[data-at-champ="personnesMax"]{width:136px}
+
+/* Un écran étroit : la page défile, comme avant. */
+@media (max-width:860px){
+  body[data-sous="j-chiffres"] #journee-chiffres,body[data-sous="j-stocks"] #journee-stocks,body[data-sous="j-details"] #journee-details,body[data-sous="j-periode"] #journee-periode{display:block;overflow:auto}
+  body[data-sous="at-planning"] #view-ateliers:not([hidden]),body[data-sous="at-repas"] #view-ateliers:not([hidden]),body[data-sous="v-departs"] #view-vols:not([hidden]){display:block;overflow:auto}
+  .page-zone{overflow:visible}
+  body[data-sous="at-planning"] #view-ateliers>#at-planning{display:block}
+  body[data-sous="at-planning"] #at-planning>.pg-cadre{max-height:max(260px,calc(100vh - 160px))}
+  body[data-sous="at-planning"] #view-ateliers>#at-charge{max-height:none;overflow:visible}
+}

@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (g) : partout, un texte lisible, un écran, moins de mots
+
+Septième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun :
+une feuille de la version 1, `lisible.css`, porte les règles.
+
+- **Aucun texte sous 13 px** sur les pages du menu, résultats compris (12 px
+  à l’écran dans un dessin) : les textes de 11 et 12 px passent à 13 px.
+- **Aucune page du menu ne défile** à 1 366 × 768 : seules défilent ses
+  zones, une par colonne, jamais l’une dans l’autre. La Synthèse garde ses
+  phrases en tête ; « Détails › Commandes » a son tableau dans un cadre,
+  en-tête figé ; le planning prend la hauteur qui reste.
+- **Les colonnes prennent la largeur** : « Comparer », « Période » et
+  « Détails › Heures sup et renforts » vont d’un bord à l’autre.
+- **Une phrase d’introduction au plus** par page ; la légende du tableau de la
+  Synthèse passe derrière « Comment lire ce tableau ».
+- **Un champ ne coupe plus son texte d’attente** : « Postes de travail », vide,
+  dit « sans limite ».
+- Un test parcourt les pages du menu aux deux tailles et vérifie ces trois
+  règles : `tests/pages-menu-browser.cjs`.
+
 ## 2026-11-23 — Évolution 23 (f) : « Programme » et « Retours », l’essentiel en un écran
 
 Sixième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format

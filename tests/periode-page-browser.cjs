@@ -130,8 +130,9 @@ const tropDeMinutes=t=>[...String(t).matchAll(/(\d[\d   ]*) ?min\b/g)].map(m=>+m
   assert.ok(c1<c0-20,'les autres défilent : '+c0+' → '+c1);
   assert.equal(await page.locator('#journee-periode .pv-tableau').getAttribute('data-defile'),'gauche');
   assert.notEqual(await premiere.evaluate(e=>getComputedStyle(e).boxShadow),'none','une ombre borde la colonne des jours');
-  await page.setViewportSize({width:1440,height:1000});await attendre(400);
-  assert.equal(await page.locator('#journee-periode .pv-tableau').getAttribute('data-defile'),'','à 1 440 px, il tient à quelques pixels près : rien ne le dit');
+  // (Évolution 23 g : les en-têtes du tableau font 13 px, plus 11 — il lui faut plus de largeur pour tenir en entier.)
+  await page.setViewportSize({width:1920,height:1000});await attendre(400);
+  assert.equal(await page.locator('#journee-periode .pv-tableau').getAttribute('data-defile'),'','à 1 920 px, il tient à quelques pixels près : rien ne le dit');
   assert.equal(await page.locator('#journee-periode .pv-defile-aide').isVisible(),false);
 
   // 7. Le réel, importé dans « Réel et calage » : sur la courbe, pour une mesure en personnes.

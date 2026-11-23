@@ -3021,6 +3021,9 @@
               <div class="at-menu-liste"><button type="button" class="lien-discret" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
               title="Retirer ${esc(lib)} et couper ses liens avec les équipes">Retirer du programme</button></div></details></td></tr>`;
         }).join('') + '</tbody></table>';
+      // Évolution 23 (g) : le tableau des commandes défile dans son cadre, en-tête figé ; la page, elle, ne défile pas.
+      const tableau = box.querySelector(':scope>table.at-commandes');
+      if (tableau) { const cadre = document.createElement('div'); cadre.className = 'at-cadre page-zone'; tableau.before(cadre); cadre.appendChild(tableau); }
     }
   }
 

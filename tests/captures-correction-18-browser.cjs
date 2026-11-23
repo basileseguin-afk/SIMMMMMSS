@@ -82,9 +82,12 @@ const OUVERTURE={de:'05:00',a:'23:00'};
     await capturer('synthese-goulot-ouverture');
 
     // 3. Le tableau « Les services » : ses deux nouvelles colonnes, à l'écran.
+    // (Évolution 23 g : le tableau défile dans la zone de la Synthèse ; ses lignes se lisent en y défilant, et la ligne qui
+    // explique l'occupation est derrière « Comment lire ce tableau ».)
     await page.locator('#bilan-journee .sy-table').evaluate(t=>t.scrollIntoView({block:'start'}));
     const colonnes=await page.evaluate(()=>{const t=document.querySelector('#bilan-journee .sy-table'),th=[...t.querySelectorAll('thead th')];
-      const vu=e=>{const b=e.getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight&&b.left>=0&&b.right<=innerWidth;};
+      const aide=document.querySelector('#bilan-journee .sy-aide');if(aide)aide.open=true;
+      const vu=e=>{if(e.closest('tbody'))e.scrollIntoView({block:'nearest'});const b=e.getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight&&b.left>=0&&b.right<=innerWidth;};
       const col=n=>th.find(x=>x.textContent.trim()===n);
       return {tetes:th.map(x=>x.textContent.trim()),sans:!!col('Personnes sans travail')&&vu(col('Personnes sans travail')),arrivage:!!col('Attente d’un arrivage')&&vu(col('Attente d’un arrivage')),
         attend:[...t.querySelectorAll('.sy-attend')].filter(vu).map(x=>x.innerText),arrivages:[...t.querySelectorAll('.sy-arrivage:not(.sy-vide)')].filter(vu).map(x=>x.innerText.replace(/\s+/g,' ')),

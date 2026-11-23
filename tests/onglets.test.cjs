@@ -388,3 +388,13 @@ test('le menu, quand des pages sont fermées : une entrée qui se lit encore pas
   // Le premier bloc ne donne jamais ses entrées : une page fermée y reste (c'est à la page de dire qu'elle l'est).
   assert.deepEqual(noms(O.menu({}, undefined, id => id === 'j-plan')), noms(avant));
 });
+
+test('chaque page a une phrase d’introduction au plus (évolution 23 g)', () => {
+  for (const p of O.PARTIES) for (const x of p.pages) {
+    const intro = O.page(x.id).intro || '';
+    // Une phrase : un seul point final (les deux-points et les points-virgules la prolongent, ils ne la finissent pas).
+    assert.equal((intro.match(/[.!?](\s|$)/g) || []).length, 1, x.id + ' : « ' + intro + ' »');
+    assert.match(intro, /[.!?]$/, x.id + ' finit sa phrase');
+    assert.ok(intro.length <= 200, x.id + ' : ' + intro.length + ' caractères');
+  }
+});

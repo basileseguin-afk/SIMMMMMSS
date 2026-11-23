@@ -234,14 +234,27 @@ function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+
 /* Le nom d'un service tel qu'on l'affiche : lisible, même s'il est enregistré en capitales. */
 const nomLisible=n=>window.OrlyIcones?OrlyIcones.nomLisible(n):n;
 /* Stocks et retours : ce qui attend entre deux ateliers, et devant la plonge. */
+/* Les trois règles d'une page (évolution 23 g, lisible.css) : la page ne défile pas ; ce qui dépasse défile dans une zone,
+ * une par colonne. Une page faite d'une seule fiche reçoit sa zone : `zonePage` rend l'élément où elle se dessine. Créée
+ * une fois ; ce que la page portait déjà y entre, sauf ce qui reste au-dessus d'elle (`sauf` : des identifiants). */
+function zonePage(vue,sauf){
+  const v=typeof vue==='string'?document.getElementById(vue):vue;if(!v)return null;
+  let z=[...v.children].find(c=>c.classList.contains('page-zone'));
+  if(z)return z;
+  z=document.createElement('div');z.className='page-zone';
+  const dehors=new Set(sauf||[]),dedans=[...v.children].filter(c=>!dehors.has(c.id));
+  v.appendChild(z);for(const c of dedans)z.appendChild(c);
+  return z;
+}
 function majStocks(){
   if(!window.OrlyTemps)return;
   const noms=Object.fromEntries(servicesDisponibles().map(s=>[s.id,s.nom]));
-  OrlyTemps.rendre(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
+  const stocks=zonePage('journee-stocks');
+  OrlyTemps.rendre(stocks,Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
   // Évolution 14 (d) : le plus en stock d'abord, l'échelle des petites courbes, plus de 24 h signalé (resultats-vue.js).
   // Évolution 15 (c) : une alerte de stock, ou un bouchon, seulement au-delà des seuils d'alerte.
   // Correction 18 (a) : le bouchon suit l'attente d'un arrivage (à une plonge par vol, un vol revenu qui attend son tunnel).
-  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,seuilsAlerte().seuils,
+  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(stocks,Sim.ateliers&&Sim.ateliers.resultat,seuilsAlerte().seuils,
     ((typeof reponsesDuJour==='function'&&reponsesDuJour())||{}).plonge);
 }
 /* Un service du plan d'origine retiré de l'unité (Organisation › Services) :
@@ -1140,6 +1153,18 @@ function majFichiers(){
 }
 /* « Réglages » (évolution 23 e, reglages-page.js) : une liste de sections à gauche, la section choisie à droite. Les
  * panneaux restent ceux d'avant ; le module pose la liste à côté d'eux. */
+/* Les pages qui ne sont pas dessinées d'un bloc reçoivent leur zone une fois, au démarrage (évolution 23 g). */
+function initZonesDesPages(){
+  // « Période » : son tableau et le calage sur le réel, dans une zone.
+  zonePage('journee-periode');
+  // « Détails › Vols » : la frise, les filtres et le tableau des vols dans une zone ; le handling et les comptes au-dessus.
+  const vols=document.getElementById('view-vols'),frise=document.getElementById('vols-frise');
+  if(vols&&frise&&!document.getElementById('vols-zone')){
+    const zone=document.createElement('div');zone.id='vols-zone';zone.className='page-zone';zone.dataset.sous='v-departs';
+    const dedans=[...vols.children].filter(c=>(c.dataset.sous||'').split(' ').includes('v-departs')&&c.id!=='vols-handling'&&c.id!=='vols-comptes');
+    frise.before(zone);for(const c of dedans)zone.appendChild(c);
+  }
+}
 function initReglagesPage(){
   const hote=document.getElementById('view-reglages');
   if(!window.OrlyReglagesPage||!hote||!hote.querySelector('#rg-modele'))return;
@@ -2777,7 +2802,7 @@ function renderReglageHeuresSup(force){
  * Une plonge par vol n'en fait plus (évolution 18 : elle passe le relais, ou s'arrête) : elle n'y est pas. */
 function renderHeuresSup(r){
   // Évolution 15 b : le détail des heures sup quitte la Synthèse pour « Détails ».
-  const sec=document.getElementById('journee-details');if(!sec)return;
+  const sec=zonePage('journee-details');if(!sec)return;
   let box=document.getElementById('bilan-heures-sup');
   if(!heuresSup().actif||!r||!r.ok){if(box)box.remove();return;}
   if(!box){box=document.createElement('div');box.className='panneau panneau-heures-sup';box.id='bilan-heures-sup';sec.appendChild(box);}
@@ -2965,7 +2990,7 @@ function renderReglageRenforts(force){
 /* Dans la Synthèse : qui a aidé qui, et combien de temps (minutes-personne, délai d'arrivée compris). */
 function renderRenforts(r){
   // Évolution 15 b : le détail des renforts quitte la Synthèse pour « Détails ».
-  const sec=document.getElementById('journee-details');if(!sec)return;
+  const sec=zonePage('journee-details');if(!sec)return;
   let box=document.getElementById('bilan-renforts');
   if(!renforts().actif||!r||!r.ok||!Array.isArray(r.renforts)){if(box)box.remove();return;}
   if(!box){box=document.createElement('div');box.className='panneau panneau-renforts';box.id='bilan-renforts';sec.appendChild(box);}
@@ -4140,7 +4165,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
 etape('période',initPeriode); etape('réglages qui jouent',initJouent);
-etape('menu',initOnglets); etape('fichiers',initFichiers); etape('réglages en liste',initReglagesPage); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
+etape('menu',initOnglets); etape('fichiers',initFichiers); etape('réglages en liste',initReglagesPage); etape('zones des pages',initZonesDesPages); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);
