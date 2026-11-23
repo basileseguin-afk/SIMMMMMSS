@@ -407,6 +407,7 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
 | E21 | **Le poste ne dépend pas forcément des vols** : le choix équipe par équipe, pas seulement par service | 06/10 | ✅ | « Effectif » dans la fiche de chaque équipe : comme le service, dépend des vols, constant (saisi) ; constante, elle retrouve son effectif saisi |
 | E20 | **Des équipes qui ne dépendent pas du tunnel** à la plonge, avec le choix, comme ailleurs, d'un effectif qui dépend des vols ou non | 06/10 | ✅ | « + Ajouter une équipe hors tunnel » ; case « Effectif constant » dans la fiche de la plonge ; calculée : minutes par vol × vols qui reviennent ÷ poste. Type « hors tunnel » utilisable dans tout service (là : départs du jour). Les minutes par vol ne passent pas encore par le classeur Excel |
 | E30 | **Regrouper** : une chose se règle à un seul endroit ; le menu passe de 24 entrées à 14 ; une **lecture seule** | 18/11 | ✅ | Version 1, évolution 22 : deux blocs, « Lire » et « Régler » ; « Services et équipes », « Chemins », « Contrôles » et « Fichiers » reprennent neuf pages et un panneau (vingt-sept pages avant, dix-huit après) ; aucun réglage perdu ; les noms d'avant mènent aux nouvelles pages ; chaque nouvelle page tient sur un écran de portable. Voir « Le rangement du menu » et « La lecture seule », plus bas |
+| E31 | **Alléger** : un écran par page, un texte lisible, rien d'affiché qui ne serve pas | 23/11 | ✅ | Version 1, évolution 23 : le menu passe de 14 entrées à 13 (« Plan » en sort, la vue « À plat » aussi) ; la barre du jour seulement là où le jour compte ; « Réglages » en liste et fiche ; « Programme » et « Retours » en un écran ; « Contrôles » lisible en lecture seule ; trois règles pour toute page (13 px, un écran, la largeur), qu'un test parcourt ; aucun calcul ni réglage changé |
 
 ### Le vocabulaire retenu (version 1, évolution 19 a)
 
@@ -557,6 +558,31 @@ C'est une préférence de ce navigateur, gardée comme le thème (une clé
 `ory-ui-…`), hors de la sauvegarde ; elle survit au rechargement. À l'arrêt,
 tout revient. Contrôlé par `tests/lecture-seule.test.cjs` et
 `tests/lecture-seule-browser.cjs`.
+
+### Alléger : un écran par page (version 1, évolution 23)
+
+La dernière étape de l'audit de l'interface (après « Regrouper », évolution
+22). Aucun calcul ne change, ni le format de la sauvegarde ; aucun réglage
+n'est perdu : tout champ d'avant se règle encore, à un seul endroit.
+
+| Ce qui change | |
+|---|---|
+| Le menu | Treize entrées (quatorze avant). « Plan » en sort : la page du plan s'ouvre par « Aller à… » et par un lien en bas des « Réglages avancés » d'un service. « En direct » s'ouvre toujours en relief ; sa vue à plat, par « Aller à… » seulement. |
+| La barre « Journée de vols » | Seulement là où le jour compte : les pages du bloc « Lire », « Programme », « Retours », « Contrôles ». Le jour choisi se garde. |
+| « Chemins » | Le schéma ne se réduit plus sous une taille où ses textes font 12 px à l'écran : plus grand que son cadre, il y défile ; « Tout voir » le réduit à la demande. Sa barre d'outils est au-dessus du cadre. |
+| « Contrôles » | Lisible en lecture seule : la page reste au menu, sous « Lire », avec sa pastille ; ses boutons vers un réglage sont grisés, avec leur raison. |
+| « Réglages » | Une liste de dix sections à gauche, la section choisie à droite ; les réglages rares sous « Réglages avancés » ; aucun résultat (le bilan du matériel se lit dans « Détails › Stocks et retours »). |
+| « Programme », « Retours » | Le compte rendu d'un import en deux lignes, son détail jour par jour replié ; le tableau prend le reste de l'écran et défile dans son cadre, en-tête figé. |
+| Toute page du menu | Trois règles (`docs/DESIGN_SYSTEM.md`, « Les trois règles d'une page ») : aucun texte sous 13 px (12 px à l'écran dans un dessin) ; la fenêtre ne défile pas, ni la page — seules défilent ses zones, une par colonne ; les colonnes prennent la largeur. Une phrase d'introduction au plus ; un champ ne coupe ni sa valeur ni son texte d'attente. |
+
+Ce qui ne se lisait que dans la vue à plat de « En direct » et où cela se lit
+maintenant est dit dans le journal (`CHANGELOG.md`, évolution 23 a). Les pages
+de résultats gardent tout leur contenu : il défile dans une zone, sous
+l'en-tête de la page.
+
+Contrôlé par `tests/pages-menu-browser.cjs` (le parcours des pages du menu,
+aux deux tailles), le test de chaque page, et
+`tests/captures-evolution-23-browser.cjs` (les captures de contrôle).
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

@@ -358,7 +358,8 @@ Avec elles :
   bloc « Lire » ; la page de réglage y mène par un lien.
 
 `lisible.css`, chargée la dernière par la version 1 seule, porte ces règles ;
-les feuilles communes avec la version 2 ne sont pas modifiées.
+les feuilles communes avec la version 2 ne sont pas modifiées. Les captures
+de contrôle : `tests/captures-evolution-23-browser.cjs`.
 
 ### La palette et la fiche des raccourcis (`palette.js`)
 

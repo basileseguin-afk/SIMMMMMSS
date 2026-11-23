@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-23 — Évolution 23 (h) : le contrôle, les captures et la documentation
+
+Dernière partie de l’étape C de l’audit. Aucun code de la page ne change.
+
+- **Les captures de contrôle** : `tests/captures-evolution-23-browser.cjs` —
+  le menu, « Chemins », « Réglages », « Programme », « Contrôles » en lecture
+  seule, la Synthèse ; sur une unité fictive, en clair et en sombre, aux deux
+  tailles. Gardées hors du dépôt.
+- **La documentation** : `docs/DESIGN_SYSTEM.md` (les trois règles d’une
+  page), `docs/CAHIER_DES_CHARGES.md` (E31, « Alléger : un écran par page »),
+  ce fichier et le README.
+- **Les mesures**, page par page, avant (évolution 22) et après, sont dans le
+  message de ce commit : hauteur en écrans, champs, boutons, mots affichés,
+  textes sous 13 px.
+
 ## 2026-11-23 — Évolution 23 (g) : partout, un texte lisible, un écran, moins de mots
 
 Septième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
