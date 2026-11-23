@@ -107,8 +107,10 @@
     { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)',
       resume: 'Ce qui part et ce qui revient',
       pages: [
-        { id: 'v-programme', court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
-        { id: 'v-planche', court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
+        // `jour` (évolution 23 b) : hors du bloc « Lire », une page où le jour d'un programme daté compte — elle porte
+        // la barre « Journée de vols ».
+        { id: 'v-programme', jour: true, court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
+        { id: 'v-planche', jour: true, court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
       ] },
     { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, par où',
@@ -129,7 +131,7 @@
       pages: [
         { id: 'rg-simulation', court: 'Réglages', ico: 'curseurs', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
         // « Contrôles » : deux pages et un panneau en un (évolution 22 d) — l'état du calcul, puis les avis par niveau.
-        { id: 'mu-pas', intro: 'Ce qui bloque le calcul, ce qui est à corriger et ce qui se lit : chaque point mène là où il se règle.' }
+        { id: 'mu-pas', jour: true, intro: 'Ce qui bloque le calcul, ce qui est à corriger et ce qui se lit : chaque point mène là où il se règle.' }
       ] },
     { id: 'fichier', nom: 'Fichiers', ancien: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true, bas: true,
       resume: 'Votre travail dans un fichier',
@@ -225,6 +227,14 @@
     }
     return out;
   }
+  /**
+   * La barre « Journée de vols » d'un programme daté s'affiche-t-elle sur cette page (évolution 23 b) ? Sur les pages du
+   * bloc « Lire », où l'on lit la journée d'un jour, et sur celles qui le demandent (`jour`) ; pas là où l'on règle
+   * l'unité ou la simulation, ni dans « Fichiers ».
+   */
+  const avecJour = id => { const o = page(id), p = o && PARTIES.find(x => x.id === o.partie); return !!o && (p.bloc === 'lire' || !!o.jour); };
+  /** Les pages qui portent la barre du jour, dans l'ordre du menu. */
+  const pagesDuJour = () => PARTIES.flatMap(p => p.pages.map(x => x.id)).filter(avecJour);
   /** Le nom d'une entrée au menu : son nom court, sinon celui de sa page ou de son groupe. */
   const libelle = o => o.court || o.nom;
   /**
@@ -448,7 +458,7 @@
     }
   }
 
-  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, ANCIENNES, PAR_NOM, resoudre, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
+  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, ANCIENNES, PAR_NOM, resoudre, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, avecJour, pagesDuJour, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

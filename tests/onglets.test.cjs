@@ -350,3 +350,17 @@ test('la vue à plat de « En direct » ne s’ouvre que par son nom, et mène �
   assert.deepEqual(lieux, [['j-plan', 'plat']], 'aucun endroit demandé');
   assert.deepEqual(changements, ['j-plan', 'j-plan'], 'la page est prévenue à chaque ouverture, même si elle était déjà ouverte');
 });
+
+/* Évolution 23 (b) : la barre « Journée de vols » d'un programme daté ne s'affiche que là où le jour compte — les pages
+ * du bloc « Lire », « Programme », « Retours » et « Contrôles » ; pas là où l'on règle l'unité, ni dans « Fichiers ». */
+test('la barre du jour : sur les pages où le jour compte, et elles seules (évolution 23 b)', () => {
+  assert.deepEqual(O.pagesDuJour(), ['j-chiffres', 'j-plan', 'at-planning', 'j-periode', 'at-repas', 'v-departs', 'j-stocks', 'j-details', 'j-comparer',
+    'v-programme', 'v-planche', 'mu-pas']);
+  for (const id of ['mu-services', 'mu-flux', 'u-liens', 'u-plan', 'rg-simulation', 'u-sauvegarde']) assert.equal(O.avecJour(id), false, id + ' : pas de barre du jour');
+  for (const id of O.pagesDuJour()) assert.equal(O.avecJour(id), true, id);
+  // Une page d'avant vaut la page qui l'a reprise ; la vue à plat, « En direct ».
+  assert.deepEqual([O.avecJour('at-recap'), O.avecJour('u-lecture'), O.avecJour('j-plan:plat'), O.avecJour('rien')], [false, true, true, false]);
+  // Toutes les pages du bloc « Lire » y sont : ce qu'on y lit est la journée d'un jour.
+  const lire = O.PARTIES.filter(p => p.bloc === 'lire').flatMap(p => p.pages.map(x => x.id));
+  assert.deepEqual(lire.filter(id => !O.avecJour(id)), []);
+});

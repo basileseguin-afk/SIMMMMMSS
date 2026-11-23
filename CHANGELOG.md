@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-19 — Évolution 23 (b) : la barre « Journée de vols » seulement là où le jour compte
+
+Deuxième partie de l’étape C de l’audit. Aucun calcul ne change, ni le format
+de la sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- Avec un programme daté, la barre du jour (son sélecteur, « Simuler la
+  période ») s’affichait sur toutes les pages. Elle ne s’affiche plus que
+  sur les pages du bloc « Lire », sur « Programme », « Retours » et
+  « Contrôles ».
+- Elle n’est plus sur « Services et équipes », « Chemins », « Liens entre
+  services », « Réglages », « Fichiers » ni sur le plan : le contenu y
+  commence plus haut.
+- Le jour choisi se garde d’une page à l’autre.
+- Sans programme daté, rien ne change.
+
+Fichiers : `onglets.js` (`avecJour`, `pagesDuJour`), `sim.js`, `index.html`
+(empreintes) ; `tests/barre-jour-browser.cjs` (nouveau),
+`tests/onglets.test.cjs` ; `README.md`.
+
+---
+
 ## 2026-11-19 — Évolution 23 (a) : « Plan » sort du menu, la vue « À plat » sort de « En direct »
 
 Première partie de l’étape C de l’audit (« alléger »). Décision du chef de

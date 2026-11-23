@@ -2226,6 +2226,10 @@ function initJouent(){
 function initPeriode(){
   if(!window.OrlyPeriodeVue||!Sim.ateliers)return;
   if(window.OrlyOnglets)OrlyOnglets.conditions.periode=()=>!!programmeDate();
+  // La barre « Journée de vols » ne s'affiche que là où le jour compte (évolution 23 b) : les pages du bloc « Lire »,
+  // « Programme », « Retours » et « Contrôles ». Ailleurs, la règle des pages la masque ; le jour choisi reste.
+  const bandeau=document.getElementById('periode-bandeau');
+  if(bandeau&&window.OrlyOnglets&&OrlyOnglets.pagesDuJour)bandeau.dataset.sous=OrlyOnglets.pagesDuJour().join(' ');
   Sim.periode=new OrlyPeriodeVue.VuePeriode({
     programme:programmeDate,
     // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
