@@ -56,7 +56,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(v1){
     const entrees=await page.evaluate(()=>OrlyOnglets.entrees().filter(o=>!OrlyOnglets.partieDe(o.id).bas).map(o=>({cle:o.groupe?'groupe:'+o.groupe:o.id,
       titre:o.groupe?o.nom:OrlyOnglets.page(o.id).nom,espace:OrlyOnglets.partieDe(o.id).nom,pages:o.groupe?o.pages:[o.id]})));
-    assert.equal(entrees.length,12,V+'douze entrées dans les deux blocs (sans « Période », sans programme daté)');
+    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze.)
+    assert.equal(entrees.length,11,V+'onze entrées dans les deux blocs (sans « Période », sans programme daté)');
     let avant=null;
     for(const e of entrees){
      const bouton=page.locator(`#menu [data-entree="${e.cle}"]`);
@@ -75,6 +76,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
       }else avant=id;
      }
     }
+    // Le plan de l'unité, hors du menu (évolution 23 a) : « Aller à… » l'ouvre, en édition ; « Terminer » ramène.
+    await nav.aller(page,'u-plan');await attendre(200);
+    assert.equal(await actif(),'u-plan');
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true,V+'le plan de l’unité s’ouvre en édition');
+    assert.equal(await page.locator('#view-title').textContent(),'Plan de l’unité');
+    await page.locator('#edit-done').click();await attendre(150);
+    assert.equal(await actif(),avant,V+'« Terminer » ramène à « '+avant+' »');
    }
    for(const p of v1?[]:parties){
     await page.locator(`#menu [data-vers-partie=${p.id}]`).click();await attendre();

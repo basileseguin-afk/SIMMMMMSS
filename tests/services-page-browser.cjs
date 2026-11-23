@@ -73,7 +73,8 @@ function ecarts(avant,apres,chemin='',out=[]){
   await nav.section(page,'avance');
   assert.match(await page.locator(`${M} [data-mu-section=avance] .se-rattache`).innerText(),/Rattaché à/,'son rattachement, dans les réglages avancés');
   assert.equal(await page.locator(`${M} [data-mu-section=avance] [data-svc-reparent="${neuf}"]`).count(),1);
-  assert.deepEqual(await page.locator(`${M} [data-mu-section=avance] [data-mu-action]`).evaluateAll(bs=>bs.map(b=>b.dataset.muAction)),['voir','plan','supprimer'],'sa place sur le plan et « Supprimer », dans les réglages avancés');
+  assert.deepEqual(await page.locator(`${M} [data-mu-section=avance] [data-mu-action]`).evaluateAll(bs=>bs.map(b=>b.dataset.muAction)),['supprimer','plan'],'« Supprimer », puis le lien vers le plan, en bas des réglages avancés (évolution 23 a : « Voir sur le plan » n’y est plus)');
+  assert.equal((await page.locator(`${M} [data-mu-section=avance] [data-mu-action=plan]`).innerText()).trim(),'Placer ce service sur le plan →');
   assert.equal(await page.locator(`${M} .se-tete [data-mu-action]`).count(),0,'plus de boutons en tête de fiche');
   // Un service du plan d'origine, supprimé : il se retrouve par le lien du bas de la liste, et se remet.
   await nav.service(page,'bobduty');await nav.section(page,'avance');

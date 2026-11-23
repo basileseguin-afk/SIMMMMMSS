@@ -64,7 +64,7 @@
       // Le détail derrière la Synthèse (évolution 15 b) : les heures sup et les renforts, équipe par équipe.
       { id: 'j-details', nom: 'Heures sup et renforts', ancien: 'Détails', ico: 'sablier' },
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' },
-      // La même toile, pour la modifier : une page de passage, jamais retenue.
+      // La même toile, pour la modifier : une page de passage, jamais retenue. Hors du menu depuis l'évolution 23 (a).
       { id: 'u-plan', nom: 'Plan de l’unité', ico: 'unite', passage: true }
     ],
     flux: [
@@ -120,7 +120,9 @@
         // Évolution 19 (b) : ces liens ne servent qu'aux commandes sans chemin. La page n'est jamais au menu (`sous` : elle
         // s'ouvre depuis « Chemins », qui reste marquée) ; « Aller à… » et ses liens y mènent toujours.
         { id: 'u-liens', sous: 'mu-flux', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
-        { id: 'u-plan', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' }
+        // Évolution 23 (a) : le plan de l'unité ne sert pas au calcul. Sa page n'est plus au menu (`sous`) : elle s'ouvre
+        // par « Aller à… » et par le lien « Placer ce service sur le plan » de la fiche d'un service, qui reste marquée.
+        { id: 'u-plan', sous: 'mu-services', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' }
       ] },
     { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Régler, vérifier',
@@ -171,8 +173,16 @@
     'u-lecture': { vers: 'mu-pas', nom: 'Contrôles détaillés' },
     'mu-pas:problemes': { vers: 'mu-pas', nom: 'Problèmes' }
   };
-  /** La page qui s'ouvre pour cet identifiant : elle-même, ou celle qui l'a reprise. */
-  const resoudre = id => (ANCIENNES[id] ? ANCIENNES[id].vers : id);
+  /**
+   * Ce qui ne s'ouvre que par son nom (évolution 23 a) : ni une page, ni une entrée du menu, ni une page d'avant — une
+   * vue d'une page (`vers`), que « Aller à… » trouve, et que la page comprend (`lieu`). « En direct » s'ouvre toujours
+   * en relief ; sa vue à plat, sur le plan dessiné de l'unité, ne s'ouvre plus que d'ici.
+   */
+  const PAR_NOM = {
+    'j-plan:plat': { vers: 'j-plan', lieu: 'plat', nom: 'En direct, à plat', ancien: 'À plat · Le plan dessiné · Le plan rejoué' }
+  };
+  /** La page qui s'ouvre pour cet identifiant : elle-même, ou celle qui l'a reprise, ou celle dont c'est une vue. */
+  const resoudre = id => { const a = ANCIENNES[id] || PAR_NOM[id]; return a ? a.vers : id; };
 
   function defaut(vue) { return ((ONGLETS[vue] || [])[0] || {}).id || null; }
   /* L'identifiant d'une page d'avant (`ANCIENNES`) vaut celui de la page qui l'a reprise : sa vue, son espace, son nom. */
@@ -328,7 +338,8 @@
      * `lieu` : un endroit de la page, que la page comprend (`a.lieu`). */
     choisir(id, focus, ouverture, lieu) {
       // Une page d'avant, reprise par une autre (évolution 22 b) : celle-ci s'ouvre, au bon endroit dedans.
-      const reprise = ANCIENNES[id];
+      // De même une vue qui ne s'ouvre que par son nom (évolution 23 a) : sa page s'ouvre, et apprend laquelle on veut.
+      const reprise = ANCIENNES[id] || PAR_NOM[id];
       if (reprise) return this.choisir(reprise.vers, focus, ouverture, lieu || reprise.lieu);
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
       // Une page fermée (la lecture seule, évolution 22 f) ne s'ouvre pas : la page le dit.
@@ -437,7 +448,7 @@
     }
   }
 
-  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, ANCIENNES, resoudre, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
+  const api = { ONGLETS, BLOCS, PARTIES, GROUPES, ANCIENNES, PAR_NOM, resoudre, conditions, montree, auMenu, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, menu, entrees, entreeDe, libelle, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

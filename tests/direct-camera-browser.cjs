@@ -55,7 +55,7 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    const e0=await pose();
    assert.equal(await page.evaluate(()=>document.body.dataset.direct),'relief',V+'la page s’ouvre en relief');
    assert.deepEqual([await toile.isVisible(),await page.locator('#plan').isVisible()],[true,false],V+'la toile à la place du plan dessiné');
-   assert.deepEqual(await page.locator('#direct-choix [data-direct-mode]').evaluateAll(l=>l.map(b=>[b.textContent,b.getAttribute('aria-pressed')])),[['En relief','true'],['À plat','false']]);
+   assert.equal(await page.locator('#direct-choix, [data-direct-mode]').count(),0,V+'la page n’offre plus le choix « En relief / À plat » (évolution 23 a)');
    assert.deepEqual([e0.camera.cap,Math.round(e0.camera.site*100)/100,e0.ajustee],[45,35.26,true],V+'l’angle de la maquette');
    assert.deepEqual([e0.ecran.w,e0.ecran.h],[Math.round(cadre.width),Math.round(cadre.height)]);
    tient(e0,V+'à l’ouverture');
@@ -192,13 +192,13 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    // 8. « À plat » : le plan dessiné, avec les mêmes données et la même heure ; « En relief » retrouve la scène et sa caméra.
    const heure=await page.locator('#horloge').textContent();
    await bouton('droite',1);
-   await page.locator('#direct-choix [data-direct-mode=plat]').click();
+   await nav.vueDuPlan(page,'plat');   // par « Aller à… » (évolution 23 a)
    await page.waitForFunction(()=>document.body.dataset.direct==='plat');
    assert.deepEqual([await toile.isVisible(),await page.locator('#plan').isVisible(),await page.locator('#direct-cmd').isVisible()],[false,true,false],V+'à plat : le plan dessiné');
-   assert.deepEqual(await page.locator('#direct-choix [data-direct-mode]').evaluateAll(l=>l.map(b=>b.getAttribute('aria-pressed'))),['false','true']);
+   assert.equal(await page.locator('#view-title').textContent(),'En direct, à plat',V+'le titre dit la vue');
    assert.equal(await page.locator('#horloge').textContent(),heure,V+'la même heure');
    await page.waitForFunction(()=>[...document.querySelectorAll('#plan .zone .fond')].some(f=>f.getBoundingClientRect().width>0));
-   await page.locator('#direct-choix [data-direct-mode=relief]').click();
+   await nav.vueDuPlan(page,'relief');   // l'entrée « En direct » du menu
    await page.waitForFunction(()=>document.body.dataset.direct==='relief');
    assert.equal((await pose()).camera.cap,60,V+'en relief : la caméra est restée');
    assert.deepEqual([await toile.isVisible(),await page.locator('#plan').isVisible()],[true,false]);
@@ -253,7 +253,7 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    Object.assign(local,{x:-2600,y:-900});delete local.pts;
    Object.assign(zones.find(z=>z.id==='cuisine'),{x:-1400,y:300});
    const {ctx,page,x}=await ouvrir({viewport:{width:1280,height:800}},sauvegarde);
-   await page.locator('#direct-choix [data-direct-mode=plat]').click();
+   await nav.vueDuPlan(page,'plat');
    await page.waitForFunction(()=>document.body.dataset.direct==='plat'&&document.getElementById('plan').getBoundingClientRect().width>0);
    const mesure=()=>page.evaluate(id=>{const s=document.getElementById('plan').getBoundingClientRect(),r=e=>{const b=e.getBoundingClientRect();return [b.left-s.left,b.top-s.top,s.right-b.right,s.bottom-b.bottom];};
      const formes=[...document.querySelectorAll('#plan .zone .fond'),...document.querySelectorAll('#plan [data-pe-zone] > :first-child')].filter(e=>e.getBoundingClientRect().width>0);

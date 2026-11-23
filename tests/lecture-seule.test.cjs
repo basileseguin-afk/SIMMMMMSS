@@ -114,7 +114,7 @@ test('le menu : en lecture seule, les pages de « Régler » ne s’ouvrent pas,
   // Arrêtée : le menu d'avant, et les pages s'ouvrent.
   lecture = false; so.rendre();
   assert.equal(/data-ferme/.test(hote.innerHTML), false);
-  assert.equal((hote.innerHTML.match(/data-sous-onglet=/g) || []).length, 12);
+  assert.equal((hote.innerHTML.match(/data-sous-onglet=/g) || []).length, 11);   // (évolution 23 a : « Plan » n'est plus au menu)
   so.choisir('mu-services');
   assert.equal(so.page, 'mu-services');
 });

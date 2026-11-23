@@ -57,6 +57,7 @@
 
 /* Le choix de la vue : « En relief » (la scène générée) ou « À plat » (le plan dessiné), avec les mêmes données. Un seul
  * contrôle à deux segments, de la hauteur des boutons voisins : la ligne du titre ne grandit pas. */
+/* (Évolution 23 a : le choix « En relief / À plat » a quitté la page ; ces règles ne servent plus qu'à mémoire.) */
 .direct-choix{display:inline-flex;align-items:stretch;box-sizing:border-box;height:var(--ds-h-compact);padding:0;overflow:hidden;
   border:1px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2);background:var(--ds-surface-2)}
 .so-outils .direct-choix .btn{min-height:0;height:auto;padding:0 10px;border:0;border-radius:0;background:transparent;box-shadow:none;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
@@ -336,3 +337,8 @@ body.direct-dispose[data-direct="relief"][data-sous="j-plan"] #direct-panneau{di
 /* Pendant « Disposer les zones », sur une toile étroite (un portable), la légende cacherait le site qu'on dispose : elle
    laisse la place à la scène, et revient à la fermeture du panneau (un défaut que les captures de contrôle ont montré). */
 @container (max-width: 980px){body.direct-dispose .direct-coin{display:none}}
+
+/* Évolution 23 (a) : le plan de l'unité et la vue à plat quittent l'écran. « Voir sur le plan », dans « Liens entre
+   services », menait à la vue à plat : il n'est plus montré (flow-center.js, commun avec la version 2, n'est pas modifié).
+   La vue à plat ne s'ouvre que par « Aller à… ». */
+#fc-show-map{display:none!important}

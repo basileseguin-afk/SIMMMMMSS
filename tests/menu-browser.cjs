@@ -14,8 +14,9 @@ const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL_SITE=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
 const LIRE=['Synthèse','En direct','Planning','Période','Détails','Comparer'];
-const REGLER=[['Vols',['Programme','Retours']],['L’unité',['Services et équipes','Chemins','Plan']],['Simulation',['Réglages','Contrôles']]];
-const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
+// (Évolution 23 a : « Plan » n'est plus au menu — treize entrées, contre quatorze.)
+const REGLER=[['Vols',['Programme','Retours']],['L’unité',['Services et équipes','Chemins']],['Simulation',['Réglages','Contrôles']]];
+const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:950}}),errors=[];
@@ -60,15 +61,15 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await courant(),'mu-services');
   assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services et leurs équipes');
 
-  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, treize (« Période » n'y est pas). Deux blocs,
+  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, douze (« Période » n'y est pas). Deux blocs,
   //    trois espaces titrés sous « Régler » ; ni partie à ouvrir, ni mention « Plus ».
-  assert.deepEqual(await entrees(),QUATORZE.filter(x=>x!=='Période'));
+  assert.deepEqual(await entrees(),TREIZE.filter(x=>x!=='Période'));
   assert.deepEqual(await page.locator('#menu .menu-bloc').evaluateAll(bs=>bs.map(b=>[b.querySelector('.menu-bloc-titre').textContent,
     [...b.querySelectorAll('.menu-espace')].map(e=>[(e.querySelector('.menu-espace-titre')||{}).textContent||'',[...e.querySelectorAll('[data-sous-onglet]>span:not(.so-badge)')].map(x=>x.textContent)])])),
     [['Lire',[['',LIRE.filter(x=>x!=='Période')]]],['Régler',REGLER]]);
   assert.equal(await page.locator('#menu .so-plus, #menu .so-secondaire, #menu [data-vers-partie], #menu .menu-partie').count(),0,'ni « Plus », ni partie à ouvrir');
   assert.equal(await page.locator('#menu [data-sous-onglet]:not(:visible)').count(),0,'toutes les entrées se voient');
-  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),12,'un pictogramme par entrée');
+  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),11,'un pictogramme par entrée');
   // Chaque entrée ouvre sa page, ou la première de son groupe ; le fil d'Ariane dit l'espace, le titre la page ou le groupe.
   const attendues=[['j-chiffres','Lire','Synthèse'],['j-plan','Lire','En direct'],['at-planning','Lire','Planning des équipes'],['groupe:details','Lire','Détails',['at-repas','v-departs','j-stocks','j-details']],
     ['j-comparer','Lire','Comparer deux essais'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
@@ -251,10 +252,11 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await page.locator('#edit-done').click();await attendre();
   assert.equal(await page.locator('#menu [data-sous-onglet]:disabled').count(),0);
   assert.equal(await page.locator('#btn-sauvegarde').isDisabled(),false);
-  // « Plan » ouvre la modification du plan ; « Terminer » ramène où l'on était.
+  // Le plan (hors du menu depuis l'évolution 23 a) s'ouvre par « Aller à… », en modification ; « Terminer » ramène où l'on était.
   await nav.aller(page,'rg-simulation');
-  await page.locator('#menu [data-entree="u-plan"]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true,'« Plan » ouvre le plan en modification');
+  assert.equal(await page.locator('#menu [data-entree="u-plan"]').count(),0,'« Plan » n’est plus une entrée du menu');
+  await nav.aller(page,'u-plan');await attendre();
+  assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true,'« Aller à… » ouvre le plan en modification');
   await page.locator('#edit-done').click();await attendre();
   assert.equal(await actif(),'rg-simulation','« Terminer » ramène où l’on était');
 
@@ -274,7 +276,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'l’accueil non plus');
   await page.close();
 
-  // 11. Une unité fictive et un programme de vols daté : les quatorze entrées, dans cet ordre, aux deux tailles d'écran ;
+  // 11. Une unité fictive et un programme de vols daté : les treize entrées, dans cet ordre, aux deux tailles d'écran ;
   //     à 1 366 × 768, le menu ne défile pas.
   for(const [w,h] of [[1366,768],[1920,1080]]){
    const T=w+' × '+h+' : ';
@@ -284,7 +286,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
    const site=await F.charger(p,nav,URL_SITE,{csv:date,pageId:'j-chiffres'});
    try{
     const lus=()=>p.evaluate(()=>[...document.querySelectorAll('#menu [data-sous-onglet] > span:not(.so-badge), #btn-sauvegarde > span:last-child')].map(x=>x.textContent.trim()));
-    assert.deepEqual(await lus(),QUATORZE,T+'les quatorze entrées, dans l’ordre');
+    assert.deepEqual(await lus(),TREIZE,T+'les treize entrées, dans l’ordre');
     // Sans défilement : la zone du menu ne déborde pas, et chaque entrée tient dans l'écran.
     const m=await p.evaluate(()=>{const z=document.querySelector('.barre-defile');
       return {deborde:z.scrollHeight-z.clientHeight,bas:Math.max(...[...document.querySelectorAll('#menu [data-sous-onglet], .barre-pied .barre-lien')].map(b=>b.getBoundingClientRect().bottom)),
@@ -302,7 +304,7 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     await p.locator('#btn-accueil').click();await p.waitForTimeout(150);
     assert.equal(await p.locator('#view-accueil').isVisible(),true,T+'la marque mène à l’accueil');
     assert.deepEqual(await p.locator('.acc-tuile').first().locator('.acc-page').allTextContents(),LIRE,T+'l’accueil liste « Période » avec un programme daté');
-    assert.deepEqual(await lus(),QUATORZE,T+'le menu reste entier sur l’accueil');
+    assert.deepEqual(await lus(),TREIZE,T+'le menu reste entier sur l’accueil');
     if(w===1366){
      // « Aller à… » : chaque nom de page d'avant l'évolution — et chaque nom plus ancien — mène à sa page.
      // Les cinq pages que « Services et équipes » a reprises (évolution 22 b) se cherchent toujours par leur nom, et par
@@ -350,13 +352,13 @@ const QUATORZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     assert.equal(await p.locator('#view-accueil').isVisible(),false);
     assert.equal(await p.locator('#bilan-journee').isVisible(),true);
     assert.equal(await p.locator('#menu [aria-selected=true]').getAttribute('data-entree'),'j-chiffres');
-    assert.deepEqual(await lus(),QUATORZE.filter(x=>x!=='Période'),T+'sans programme daté, treize entrées');
+    assert.deepEqual(await lus(),TREIZE.filter(x=>x!=='Période'),T+'sans programme daté, douze entrées');
     // Cette ouverture n'est pas un choix : la dernière page choisie de « Lire » reste « Comparer ».
     assert.deepEqual(await p.evaluate(()=>[Sim.onglets.ouverture,Sim.onglets.choix.resultats,JSON.parse(localStorage.getItem('ory-menu-pages')).resultats]),[true,'j-comparer','j-comparer'],T+'la page choisie reste retenue');
    }finally{site.effacer();await p.close();}
   }
 
   assert.deepEqual(errors,[],'aucune erreur de page');
-  console.log('menu-browser : ok — quatorze entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
+  console.log('menu-browser : ok — treize entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

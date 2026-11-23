@@ -1050,6 +1050,9 @@ function initOnglets(){
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
     lieu:(id,lieu)=>{
+      // « En direct, à plat » (évolution 23 a) : la vue à plat ne s'ouvre plus que par son nom, dans « Aller à… ».
+      // « Terminer » le plan ramène alors à elle.
+      if(id==='j-plan'&&lieu==='plat'){choisirVueDirect('plat');Sim.pageAvantPlan='j-plan:plat';return;}
       if(id==='at-repas'&&lieu==='etapes'&&Sim.ateliers&&Sim.ateliers.ouvrirEtapes)return Sim.ateliers.ouvrirEtapes();
       if(id==='u-sauvegarde'&&lieu==='classeurs'){const t=document.getElementById('fichiers-classeurs');if(t)t.scrollIntoView({block:'start'});return;}
       if(!Sim.unite)return;
@@ -1061,6 +1064,8 @@ function initOnglets(){
       if(id==='u-plan'){if(!editMode)basculerEdition();}else Sim.pageAvantPlan=id;},
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
+      // « En direct » s'ouvre toujours en relief (évolution 23 a), même après une visite de sa vue à plat.
+      if(id==='j-plan'&&document.body.dataset.direct==='plat')choisirVueDirect('relief');
       if(id==='v-departs')renderFlights();
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
@@ -1173,7 +1178,9 @@ function afficherTitre(){
   const O=window.OrlyOnglets, accueil=activeView==='accueil', id=document.body.dataset.sous;
   const pg=!accueil&&O&&id?O.page(id):null, partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
   // Une page d'un groupe (« Détails », évolution 15 c) : le groupe en titre ; ses onglets internes disent laquelle.
-  const titre=pg&&pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom:pg?pg.nom:'';
+  // « En direct », ouverte à plat par son nom (évolution 23 a) : le titre le dit.
+  const aPlat=!!pg&&pg.id==='j-plan'&&document.body.dataset.direct==='plat'&&O.PAR_NOM&&O.PAR_NOM['j-plan:plat'];
+  const titre=aPlat?aPlat.nom:pg&&pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom:pg?pg.nom:'';
   document.getElementById('view-title').textContent=accueil?'Accueil':titre;
   // Au-dessus de la page (15/10) : la partie en surtitre, le nom de la page en grand.
   const surtitre=document.getElementById('tete-partie'),grand=document.getElementById('tete-titre');
@@ -1331,6 +1338,9 @@ function elementsPalette(){
   // mène à la page qui l'a reprise, au bon endroit dedans.
   if(O&&O.ANCIENNES)for(const [id,a] of Object.entries(O.ANCIENNES)){const pg=O.page(a.vers);if(!pg)continue;
     out.push({groupe:'Pages',nom:a.nom,indice:pageFermee(id)?OrlyLectureSeule.MOT:'dans '+pg.nom,ico:pg.ico,mots:[a.ancien,'ancienne page'].filter(Boolean).join(' '),faire:()=>vers(id)});}
+  // Une vue qui ne s'ouvre que par son nom (évolution 23 a) : « En direct, à plat », le plan dessiné de l'unité.
+  if(O&&O.PAR_NOM)for(const [id,a] of Object.entries(O.PAR_NOM)){const pg=O.page(a.vers);if(!pg)continue;
+    out.push({groupe:'Pages',nom:a.nom,indice:'dans '+pg.nom,ico:'grille',mots:a.ancien||'',faire:()=>vers(id)});}
   const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
   for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
   for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
@@ -1387,8 +1397,9 @@ function initFlux(){
     // Les liens ne servent au calcul que pour une commande sans chemin.
     liensUtiles:()=>sansChemin()>0,
     changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
-    // « Voir sur le plan » montre les liens : ils se dessinent sur le plan dessiné, donc la vue à plat (évolution 16 b).
-    showMap:()=>{showView('plan');choisirVueDirect('plat');},notify:toast});
+    // « Voir sur le plan » montrait les liens sur le plan dessiné, donc dans la vue à plat (évolution 16 b). Le bouton
+    // n'est plus montré (évolution 23 a, direct.css) : la vue à plat ne s'ouvre que par « Aller à… ».
+    showMap:()=>{if(Sim.onglets)Sim.onglets.choisir('j-plan:plat');},notify:toast});
   redessinerEdges();
 }
 
@@ -2462,11 +2473,12 @@ function siteDeLaVue() {
   siteGarde = { r: at.resultat, cle, site: OrlySite.generer(r) };
   return siteGarde.site;
 }
-/** « En relief » ou « À plat » : le choix de la page, gardé le temps de la visite. */
+/** « En relief » ou « À plat ». Depuis l'évolution 23 (a), la page n'offre plus le choix : « En direct » s'ouvre toujours
+ *  en relief ; la vue à plat (le plan dessiné de l'unité) ne s'ouvre que par son nom, dans « Aller à… ». */
 function choisirVueDirect(mode) {
   const relief = mode !== 'plat';
   document.body.dataset.direct = relief ? 'relief' : 'plat';
-  document.querySelectorAll('#direct-choix [data-direct-mode]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.directMode === 'relief') === relief)));
+  if (document.body.dataset.sous === 'j-plan') afficherTitre();
   if (relief) rendreDirect();
   // Caché pendant la vue en relief, le plan dessiné ne se repeint pas. Quand il revient, il se trace à l'heure courante
   // avant d'être montré (évolution 21 f) : jamais les chiffres de l'heure où on l'a quitté.
@@ -2478,7 +2490,7 @@ function retracerLePlan() {
   else { ajusterTextesPlan(); peindrePlanFlux(); }
 }
 function initDirect() {
-  const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
+  const hote = document.getElementById('direct');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
   // La légende se pose dans un coin de la toile (évolution 19, retouche). Sans choix retenu, elle s'ouvre dépliée sur un
   // grand écran et repliée sous 1 500 px de large (correction 21 d) : sur un portable, elle ne cache pas la scène. On la
@@ -2511,7 +2523,6 @@ function initDirect() {
     enLecture: () => !!(Sim.vue && Sim.vue.enMarche),
     dire: x => { const el = document.getElementById('direct-tranche'); if (el) el.textContent = 'un chariot = ' + (x.tranche || OrlyDirectEtat.TRANCHE) + ' repas'; }
   });
-  if (choix) choix.addEventListener('click', e => { const b = e.target.closest('[data-direct-mode]'); if (b) choisirVueDirect(b.dataset.directMode); });
   initLireDirect();
   choisirVueDirect('relief');
 }

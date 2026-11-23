@@ -30,10 +30,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre(300);
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
 
-   // 1. L'unité › Plan (v1), Équipes › Plan de l'unité (v2) ouvre l'édition.
+   // 1. Équipes › Plan de l'unité (v2) ouvre l'édition ; en version 1, la page n'est plus au menu (évolution 23 a) : elle
+   //    s'ouvre par « Aller à… ».
    await nav.entree(page,'mu-services','organisation');await attendre();
    assert.equal(await actif(),'mu-services');
-   await page.locator('#sous-onglets [data-sous-onglet=u-plan]').click();await attendre(300);
+   if(version==='v1'){assert.equal(await page.locator('#menu [data-sous-onglet=u-plan]').count(),0,V+'« Plan » n’est plus au menu');await nav.aller(page,'u-plan');}
+   else await page.locator('#sous-onglets [data-sous-onglet=u-plan]').click();
+   await attendre(300);
    assert.equal(await actif(),'u-plan');
    assert.equal(await edition(),true,V+'la page ouvre l’édition');
    assert.equal(await page.locator('#ariane-partie').textContent(),version==='v1'?'L’unité':'Équipes');
@@ -106,7 +109,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(()=>document.activeElement&&document.activeElement.id),'btn-edit',V+'le focus revient au bouton');
    // La fiche d'un service aussi.
    if(await nav.v1(page)){
-    // v1 (évolution 22 b) : « Le déplacer sur le plan », dans les réglages avancés de la fiche du service.
+    // v1 : « Placer ce service sur le plan », un lien en bas des réglages avancés de la fiche du service (évolution 23 a ;
+    // « Le déplacer sur le plan » avant).
     await nav.service(page,'cuisine');await nav.section(page,'avance');
     await page.locator('#mu-services [data-mu-action=plan]').click();await attendre(300);
     assert.equal(await actif(),'u-plan');

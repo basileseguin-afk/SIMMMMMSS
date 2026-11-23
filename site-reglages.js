@@ -138,7 +138,10 @@
     const section = box && box.querySelector('[data-mu-section="avance"]'), a = at && at();
     if (!section || !a || section.querySelector('[data-site-surface]')) return;
     const e = etatDe(section, a, regime);
-    if (e) section.insertAdjacentHTML('beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : '') + (a.regleRayonnages ? caseRayonnages(e.rayonnages) : '')
+    if (!e) return;
+    // Avant « Supprimer » et le lien vers le plan, qui ferment la section (évolution 23 a) ; sans eux, à la fin.
+    const fin = section.querySelector('.se-supprimer, .se-place');
+    (fin || section).insertAdjacentHTML(fin ? 'beforebegin' : 'beforeend', champ(e.service, e.reglee, e.part, e.zone) + (a.reglePartage ? choix(e.partage) : '') + (a.regleRayonnages ? caseRayonnages(e.rayonnages) : '')
       + (a.reglePosteDuService ? choixPoste(e.poste) : ''));
   }
 

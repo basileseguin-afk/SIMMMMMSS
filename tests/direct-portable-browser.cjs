@@ -86,11 +86,13 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
     assert.ok(Math.max(bat.largeur,bat.hauteur)>=0.7,V+'le bâtiment occupe au moins 70 % de la largeur ou de la hauteur de la toile ('+pourcent(bat.largeur)+', '+pourcent(bat.hauteur)+')');
     if(etroit)assert.ok(e0.ecran.h>=560,V+'la toile fait au moins 560 px de haut ('+e0.ecran.h+' px)');
     mesures.push(largeur+' px : toile '+e0.ecran.w+' × '+e0.ecran.h+', bâtiment '+pourcent(bat.largeur)+' × '+pourcent(bat.hauteur));
-    // L'en-tête : le titre de la page et « En relief / À plat » sur une seule ligne ; plus de bande au-dessus de la scène.
-    const tete=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),t=b('#tete-titre'),c=b('#direct-choix'),h=b('#tete-page'),toile=b('#direct-toile');
+    // L'en-tête : le titre de la page et ses outils sur une seule ligne ; plus de bande au-dessus de la scène. (Le choix
+    // « En relief / À plat » n'y est plus : évolution 23 a.)
+    assert.equal(await page.locator('#direct-choix').count(),0,V+'plus de choix « En relief / À plat »');
+    const tete=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect(),t=b('#tete-titre'),c=b('#so-outils'),h=b('#tete-page'),toile=b('#direct-toile');
       return {hauteur:h.height,ligne:t.bottom>c.top&&c.bottom>t.top,titre:document.getElementById('tete-titre').textContent,bande:document.getElementById('plan-bande').offsetParent!==null,
         intro:document.getElementById('view-intro').textContent.length>10&&b('#view-intro').width<=2,colle:Math.abs(toile.top-h.bottom)};});
-    assert.ok(tete.ligne&&tete.hauteur<=44&&tete.titre==='En direct',V+'le titre et « En relief / À plat » sur une seule ligne ('+tete.hauteur+' px)');
+    assert.ok(tete.ligne&&tete.hauteur<=44&&tete.titre==='En direct',V+'le titre et ses outils sur une seule ligne ('+tete.hauteur+' px)');
     assert.ok(!tete.bande&&tete.colle<=1,V+'la scène commence sous l’en-tête : plus de bande entre les deux');
     assert.ok(tete.intro,V+'l’introduction n’est plus à l’écran ; les lecteurs d’écran la lisent encore');
     // La légende : dans un coin de la toile, repliable ; le choix est retenu. À l'ouverture, sans choix retenu, elle est

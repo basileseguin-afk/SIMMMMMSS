@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-19 — Évolution 23 (a) : « Plan » sort du menu, la vue « À plat » sort de « En direct »
+
+Première partie de l’étape C de l’audit (« alléger »). Décision du chef de
+projet : le plan de l’unité ne sert pas — ni la page qui le dessine, ni la
+vue qui rejoue la journée dessus. Aucun calcul ne change, ni le format de la
+sauvegarde. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Le menu passe à treize entrées** : dans « L’unité », il reste « Services
+  et équipes » et « Chemins ».
+- **La page du plan n’est pas supprimée**, ni ses données. Elle s’ouvre par
+  « Aller à… » et par un lien discret, « Placer ce service sur le plan », en
+  bas des « Réglages avancés » d’un service.
+- **« En direct » s’ouvre toujours en relief** ; le choix « En relief / À
+  plat » quitte la page. La vue à plat s’ouvre par « Aller à… » (« En direct,
+  à plat »), et nulle part ailleurs.
+- Les liens qui y menaient suivent : « Voir sur le plan » quitte la fiche
+  d’un service et « Liens entre services ».
+- En lecture seule, la page du plan reste verrouillée ; la vue à plat
+  s’ouvre.
+
+Fichiers : `onglets.js`, `sim.js`, `services-page.js`, `site-reglages.js`,
+`direct.css`, `lecture-seule.css`, `index.html` ;
+`tests/plan-hors-menu-browser.cjs` (nouveau), `tests/onglets.test.cjs`,
+`tests/nav.cjs`, `tests/plan-rejoue-fictif.cjs` et les tests qui suivent ;
+`README.md`.
+
+---
+
 ## 2026-11-18 — Évolution 22 (g) : le contrôle, les captures, la documentation
 
 Dernière partie de l’étape B de l’audit. Aucun calcul ne change, ni le format

@@ -174,7 +174,8 @@ const ANGLES=[
     // 5. « À plat » montre les mêmes données, à la même heure : les personnes au travail de chaque service.
     const enRelief=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#direct-panneau-corps .dq-personnes [data-direct-service]')].map(x=>[x.dataset.directService,+x.closest('tr').querySelector('td[data-etat="auTravail"]').textContent])));
     const heure=await page.evaluate(()=>Sim.vue.t);
-    await page.locator('#direct-choix [data-direct-mode=plat]').click();
+    // (Évolution 23 a : la vue à plat ne s'ouvre plus que par « Aller à… ».)
+    await nav.vueDuPlan(page,'plat');
     await page.waitForFunction(()=>document.getElementById('direct').offsetParent===null&&document.querySelectorAll('#plan .zone[data-au-travail]').length>0);
     // Caché pendant la vue en relief, le plan à plat ne se repeint pas : quand il reparaît, il montre encore l'heure où on
     // l'a quitté, jusqu'à son premier tracé. On attend qu'il montre l'heure rejouée — son effet, pas un délai. S'il ne la
@@ -184,7 +185,7 @@ const ANGLES=[
     assert.equal(await page.evaluate(()=>Sim.vue.t),heure,V+'à plat : la même heure');
     assert.ok(Object.keys(aPlat).length>=4,V+'à plat : les services dessinés');
     for(const [id,n] of Object.entries(aPlat))assert.equal(n,enRelief[id],V+'à plat, '+id+' : autant de personnes au travail qu’en relief');
-    await page.locator('#direct-choix [data-direct-mode=relief]').click();
+    await nav.vueDuPlan(page,'relief');
     await page.waitForFunction(()=>document.getElementById('direct').offsetParent!==null);
 
     // 6. Non-régression : regarder la journée ne l'a pas changée. Le résultat, les indicateurs, les réponses, et

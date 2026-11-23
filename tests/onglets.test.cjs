@@ -40,21 +40,22 @@ test('les pictogrammes des onglets existent', () => {
   for (const o of Object.values(O.ONGLETS).flat()) assert.ok(I.TRAITS[o.ico], o.id + ' : ' + o.ico);
 });
 
-/* Le menu (évolution 22 a) : deux blocs, quatorze entrées, toutes visibles ; chaque page dans un seul espace. */
-test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler » en trois espaces, puis « Fichiers »', () => {
+/* Le menu (évolution 22 a) : deux blocs, toutes les entrées visibles ; chaque page dans un seul espace. Évolution 23 (a) :
+ * « Plan » en sort — treize entrées, contre quatorze. */
+test('le menu a treize entrées, dans cet ordre : « Lire », puis « Régler » en trois espaces, puis « Fichiers »', () => {
   const noms = () => O.entrees().map(O.libelle);
-  // « Période » ne se montre qu'avec un programme daté : treize entrées sans lui, quatorze avec.
+  // « Période » ne se montre qu'avec un programme daté : douze entrées sans lui, treize avec.
   assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer',
-    'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Plan', 'Réglages', 'Contrôles', 'Fichiers']);
+    'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
   O.conditions.periode = () => true;
   try {
     assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer',
-      'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Plan', 'Réglages', 'Contrôles', 'Fichiers']);
-    assert.equal(O.entrees().length, 14);
+      'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
+    assert.equal(O.entrees().length, 13);
     const m = O.menu();
     assert.deepEqual(m.blocs.map(b => [b.nom, b.espaces.map(e => [e.nom, e.titre, e.entrees.map(O.libelle)])]), [
       ['Lire', [['Lire', false, ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer']]]],
-      ['Régler', [['Vols', true, ['Programme', 'Retours']], ['L’unité', true, ['Services et équipes', 'Chemins', 'Plan']], ['Simulation', true, ['Réglages', 'Contrôles']]]]
+      ['Régler', [['Vols', true, ['Programme', 'Retours']], ['L’unité', true, ['Services et équipes', 'Chemins']], ['Simulation', true, ['Réglages', 'Contrôles']]]]
     ]);
     assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
   } finally { delete O.conditions.periode; }
@@ -282,7 +283,7 @@ test('le bloc « Lire » (évolution 15 c) : six entrées ; « Détails » en qu
   assert.equal(O.page('v-departs').ancien, 'Vols prêts au départ');
   // « Étapes de chaque commande » n'est plus une page (évolution 22 c) : son identifiant mène à « Chemins ».
   assert.equal(O.page('at-grille').id, 'mu-flux');
-  assert.deepEqual(O.menuDe('organisation').map(o => o.id), ['mu-services', 'mu-flux', 'u-plan']);
+  assert.deepEqual(O.menuDe('organisation').map(o => o.id), ['mu-services', 'mu-flux']);
 });
 
 test('« Liens entre services » n’est jamais au menu : la page s’ouvre depuis « Chemins », qui reste marquée (évolutions 19 b et 22 c)', () => {
@@ -295,8 +296,8 @@ test('« Liens entre services » n’est jamais au menu : la page s’ouvre depu
       assert.equal(O.montree('u-liens'), true, 'elle s’ouvre toujours : « Aller à… » et le lien de « Chemins » y mènent');
       assert.equal(O.auMenu('u-liens'), false);
       assert.equal(O.auMenu('u-liens', 'u-liens'), false);
-      assert.deepEqual(entrees(), ['mu-services', 'mu-flux', 'u-plan']);
-      assert.deepEqual(entrees('u-liens'), ['mu-services', 'mu-flux', 'u-plan']);
+      assert.deepEqual(entrees(), ['mu-services', 'mu-flux']);
+      assert.deepEqual(entrees('u-liens'), ['mu-services', 'mu-flux']);
     }
     assert.ok(O.pagesDe('organisation').some(x => x.id === 'u-liens'), 'la recherche la liste encore');
     // Tant qu'on y est, « Chemins » est l'entrée marquée : on sait où l'on est.
@@ -312,4 +313,40 @@ test('« Liens entre services » n’est jamais au menu : la page s’ouvre depu
     for (const id of ['mu-flux', 'mu-services', 'j-chiffres', 'u-services', 'at-chemins']) assert.equal(O.auMenu(id), true, id);
     assert.equal(O.auMenu('j-periode'), false, 'une page conditionnelle fermée n’est pas au menu');
   } finally { delete O.conditions.liens; }
+});
+
+/* Évolution 23 (a) : le plan de l'unité ne sert pas — ni la page qui le dessine, ni la vue qui rejoue la journée dessus.
+ * Ils quittent l'écran, pas l'application : la page du plan s'ouvre par « Aller à… » et depuis la fiche d'un service ; la
+ * vue à plat, par « Aller à… » seulement. */
+test('« Plan » n’est plus au menu : la page s’ouvre toujours, depuis « Services et équipes », qui reste marquée (évolution 23 a)', () => {
+  assert.equal(O.page('u-plan').sous, 'mu-services');
+  assert.equal(O.montree('u-plan'), true, 'elle s’ouvre : « Aller à… » et le lien d’un service y mènent');
+  assert.equal(O.auMenu('u-plan'), false);
+  assert.equal(O.auMenu('u-plan', 'u-plan'), false, 'même ouverte, elle n’est pas une entrée');
+  assert.ok(O.pagesDe('organisation').some(x => x.id === 'u-plan'), 'la recherche la liste encore');
+  assert.deepEqual([O.page('u-plan').nom, O.page('u-plan').court, O.partieDe('u-plan').id, O.vueDe('u-plan')], ['Plan de l’unité', 'Plan', 'organisation', 'plan']);
+  assert.equal(O.entreeDe('u-plan').id, 'mu-services', 'tant qu’on y est, « Services et équipes » est l’entrée marquée');
+  const s = new O.SousOnglets({ hote: () => null, vue: () => 'plan' });
+  s.choisir('mu-flux');
+  s.choisir('u-plan');
+  assert.equal(s.page, 'u-plan', 'elle s’ouvre');
+  assert.equal(s.choix.organisation, 'mu-flux', 'elle n’est pas retenue : l’espace rouvre la page d’avant');
+});
+
+test('la vue à plat de « En direct » ne s’ouvre que par son nom, et mène à « En direct », à plat (évolution 23 a)', () => {
+  assert.deepEqual(Object.entries(O.PAR_NOM).map(([id, a]) => [id, a.nom, a.vers, a.lieu]), [['j-plan:plat', 'En direct, à plat', 'j-plan', 'plat']]);
+  // Ce n'est ni une page, ni une entrée du menu, ni une page d'avant : seulement un nom que « Aller à… » trouve.
+  assert.ok(!Object.values(O.ONGLETS).flat().some(o => o.id === 'j-plan:plat'));
+  assert.ok(!O.ANCIENNES['j-plan:plat']);
+  assert.ok(!O.regles().includes('j-plan:plat'));
+  assert.equal(O.resoudre('j-plan:plat'), 'j-plan');
+  assert.equal(O.entreeDe('j-plan:plat').id, 'j-plan');
+  const lieux = [], changements = [];
+  const s = new O.SousOnglets({ hote: () => null, vue: () => 'plan', change: (vue, id) => changements.push(id), lieu: (id, lieu) => lieux.push([id, lieu]) });
+  s.choisir('j-plan:plat');
+  assert.deepEqual([s.page, lieux, changements], ['j-plan', [['j-plan', 'plat']], ['j-plan']], '« En direct » s’ouvre, et la page apprend qu’on la veut à plat');
+  // Par le menu, « En direct » s'ouvre sans endroit : en relief (c'est la page qui le fait, à chaque ouverture).
+  s.choisir('j-plan');
+  assert.deepEqual(lieux, [['j-plan', 'plat']], 'aucun endroit demandé');
+  assert.deepEqual(changements, ['j-plan', 'j-plan'], 'la page est prévenue à chaque ouverture, même si elle était déjà ouverte');
 });

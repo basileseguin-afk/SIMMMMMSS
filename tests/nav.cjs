@@ -19,27 +19,41 @@ async function terminerPlan(page) {
     await page.locator('#edit-done').click(); await page.waitForTimeout(150);
   }
 }
-/* Le plan rejoué montre la journée « En relief » (le site généré d'après les réglages, évolution 16) ou « À plat » (le plan
- * dessiné de l'unité), avec les mêmes données ; il s'ouvre en relief. Le choix tient jusqu'au rechargement de la page.
- * `vueDuPlan(page, 'plat' | 'relief')` clique le choix, comme à la main ; sans ce choix (la version 2), elle ne fait rien. */
+/* « En direct » montre la journée « En relief » (le site généré d'après les réglages, évolution 16) ou « À plat » (le plan
+ * dessiné de l'unité), avec les mêmes données. Depuis l'évolution 23 (a), la page n'offre plus le choix : elle s'ouvre
+ * toujours en relief, et la vue à plat ne s'ouvre que par son nom, dans « Aller à… ».
+ * `vueDuPlan(page, 'plat' | 'relief')` y mène, comme à la main : « Aller à… » pour la vue à plat, l'entrée du menu pour
+ * la vue en relief. Avant l'évolution 23 (et tant que le choix est sur la page), elle clique le choix ; sans vue en relief
+ * (la version 2), elle ne fait rien. */
 async function vueDuPlan(page, mode) {
   const b = page.locator(`#direct-choix [data-direct-mode=${mode}]`);
-  if (!(await b.count()) || !(await b.isVisible())) return;
-  if (await page.evaluate(() => document.body.dataset.direct) !== mode) { await b.click(); await page.waitForTimeout(150); }
+  if (await b.count()) {
+    if (!(await b.isVisible())) return;
+    if (await page.evaluate(() => document.body.dataset.direct) !== mode) { await b.click(); await page.waitForTimeout(150); }
+    return;
+  }
+  const ici = await page.evaluate(() => ({ direct: document.body.dataset.direct, parNom: !!(window.OrlyOnglets && OrlyOnglets.PAR_NOM && OrlyOnglets.PAR_NOM['j-plan:plat']) }));
+  if (!ici.parNom || ici.direct === mode) return;
+  if (mode === 'plat') await parNom(page, await page.evaluate(() => OrlyOnglets.PAR_NOM['j-plan:plat'].nom));
+  else { await page.locator('#menu [data-entree="j-plan"]').click(); await page.waitForTimeout(150); }
 }
-/* `aller(page, 'j-plan')` choisit « À plat » : les tests d'avant l'évolution 16 y lisent le plan dessiné. Ceux de la vue en
+/* « Aller à… » : chercher par son nom, et ouvrir — une page hors du menu, ou une vue qui ne s'ouvre que par son nom. */
+async function parNom(page, nom) {
+  await page.keyboard.press('Control+k'); await page.waitForSelector('dialog.palette [role=option]');
+  await page.keyboard.type(nom); await page.waitForTimeout(200);
+  const options = page.locator('dialog.palette [role=option]');
+  const i = (await options.evaluateAll(os => os.map(o => (o.querySelector('.pal-nom') || o).textContent.trim()))).findIndex(t => t === nom || t.endsWith('› ' + nom));
+  if (i < 0) throw new Error('introuvable par « Aller à… » : ' + nom);
+  await options.nth(i).click(); await page.waitForTimeout(150);
+}
+/* `aller(page, 'j-plan')` choisit « À plat » : les tests d'avant l'évolution 16 y lisent le plan dessiné (depuis
+ * l'évolution 23 a, par « Aller à… »). Ceux de la vue en
  * relief demandent `{ relief: true }`. En relief, sous 1 500 px de large, « En ce moment » est replié à l'ouverture
  * (évolution 16, retouches) : ces tests lisent le panneau, il s'ouvre donc par son bouton, comme à la main — sauf avec
  * `{ panneau: false }`, pour les tests qui regardent la page telle qu'elle s'ouvre. */
 /* « Aller à… » : chercher une page par son nom, et l'ouvrir — pour une page hors du menu. */
 async function parAllerA(page, id) {
-  const nom = await page.evaluate(id => OrlyOnglets.page(id).nom, id);
-  await page.keyboard.press('Control+k'); await page.waitForSelector('dialog.palette [role=option]');
-  await page.keyboard.type(nom); await page.waitForTimeout(200);
-  const options = page.locator('dialog.palette [role=option]');
-  const i = (await options.evaluateAll(os => os.map(o => (o.querySelector('.pal-nom') || o).textContent.trim()))).findIndex(t => t === nom || t.endsWith('› ' + nom));
-  if (i < 0) throw new Error('page introuvable par « Aller à… » : ' + id);
-  await options.nth(i).click(); await page.waitForTimeout(150);
+  await parNom(page, await page.evaluate(id => OrlyOnglets.page(id).nom, id));
 }
 /* Le menu de la version 1 (évolution 22 a) : toutes ses entrées sont visibles. Une page est une entrée, ou un onglet
  * interne de son entrée (« Services et équipes », « Chemins », « Contrôles », « Détails ») ; « Fichiers » est en bas ;
@@ -310,4 +324,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { v1, aller, vue, vueDuPlan, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, versFichiers, exporterJournee, exporterPeriode, exporterCharge, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { v1, aller, vue, vueDuPlan, parNom, entree, equipe, reglagesEquipe, ajouterEquipe, service, effectif, retour, section, ajouterService, sectionChemin, ajouterChemin, etapesCommandes, cheminDe, lectureLiens, versFichiers, exporterJournee, exporterPeriode, exporterCharge, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

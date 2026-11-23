@@ -23,6 +23,20 @@ const TETE = 'vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,n
 const volsCsv = (decalage = 0) => TETE + '\n' + S.args.vols.map(v => LIGNE(v, decalage)).join('\n') + '\n';
 
 /**
+ * Le même programme fictif, daté (évolution 23) : `jours` jours de suite à partir de `debut` (une date fictive), les
+ * mêmes vols chaque jour ; `sauf` : les rangs des jours sans vol (0 pour le premier).
+ */
+function volsDatesCsv(jours = 3, debut = '2031-03-03', sauf = []) {
+  const [a, m, j] = debut.split('-').map(Number), lignes = [];
+  for (let i = 0; i < jours; i++) {
+    if (sauf.includes(i)) continue;
+    const d = new Date(Date.UTC(a, m - 1, j + i)).toISOString().slice(0, 10);
+    for (const v of S.args.vols) lignes.push(d + ',' + LIGNE(v));
+  }
+  return 'date,' + TETE + '\n' + lignes.join('\n') + '\n';
+}
+
+/**
  * Une journée sans retard (évolution 15 b) : les mêmes vols, partis 5 h plus tard (23:50 au plus tard), sans la compagnie
  * que personne ne prépare (ZEN) ni le vol qui manquerait de chauffeurs (OU405). Fictive, comme les autres.
  */
@@ -123,4 +137,4 @@ async function remettreEquipes(page, equipes) {
   await page.waitForFunction(() => { const r = Sim.ateliers.resultat; return !!r && (r.ateliers || []).some(a => a.type === 'lavage'); });
 }
 
-module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, heureDOuvertureAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };
+module.exports = { S, volsCsv, volsDatesCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, heureDOuvertureAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };

@@ -178,6 +178,26 @@ C’est une préférence de ce navigateur, gardée comme le thème (clé
 `ory-ui-lecture-seule`) : hors des données, hors de la sauvegarde ; elle
 survit au rechargement. À l’arrêt, tout revient. Sans elle, rien ne change.
 
+**Le plan hors de l’écran** (version 1, évolution 23 a). Le plan de l’unité
+ne sert pas au calcul : ni la page qui le dessine, ni la vue qui rejoue la
+journée dessus. Ils quittent l’écran, pas l’application.
+
+- **Le menu a treize entrées** (quatorze avant) : dans « L’unité », il reste
+  « Services et équipes » et « Chemins ».
+- **La page du plan** garde ses données et son éditeur. Elle s’ouvre par
+  « Aller à… », et par un lien discret, « Placer ce service sur le plan »,
+  en bas des « Réglages avancés » d’un service. « Voir sur le plan » et « Le
+  déplacer sur le plan » quittent la fiche.
+- **« En direct » s’ouvre toujours en relief** : le choix « En relief / À
+  plat » n’est plus sur la page. La vue à plat s’ouvre par « Aller à… »
+  (« En direct, à plat »), et nulle part ailleurs ; l’entrée « En direct »
+  ramène au relief.
+- En lecture seule, la page du plan reste verrouillée ; la vue à plat, qui
+  se lit, s’ouvre.
+
+Une sauvegarde d’avant se restaure telle quelle : ses services et son plan
+sont intacts. Sans rien d’autre, aucun calcul ne change.
+
 **Le rangement d’ensemble** (version 1, évolution 22) — le menu en deux
 blocs, ce que chaque page d’avant est devenue, la règle des nouvelles pages
 (la liste à gauche, la fiche à droite, sur un écran de portable) — est décrit
@@ -484,7 +504,10 @@ le rouge ne sert qu’aux retards.
    - *Plan de l’unité* : la place et la forme de chaque service, en pleine
      page : les calques à gauche (les zones rangées par type), le plan au
      centre avec sa barre d’outils, la zone choisie à droite. La page s’ouvre
-     en édition ; « Terminer » ramène à la page d’où l’on venait.
+     en édition ; « Terminer » ramène à la page d’où l’on venait. En version 1,
+     depuis l’évolution 23 (a), elle n’est plus au menu : on l’ouvre par
+     « Aller à… », ou par « Placer ce service sur le plan », en bas des
+     « Réglages avancés » d’un service.
    - **Plus ›** *Liste des services* (**en version 2 seulement** — en version 1, la liste de « Services et équipes », évolution 22 b2) : un service par ligne — son nom (qui se change ici), ses
      équipes, les commandes qui y passent et ce qui lui manque, en tête de liste.
      « + Une équipe » crée une case dans ce service et l’ouvre ; « Voir sur le
@@ -675,10 +698,12 @@ le rouge ne sert qu’aux retards.
      **« En relief »**, le site généré d’après les réglages — ses ateliers,
      ses personnes, ce qui circule, où ça coince —, avec la barre du temps
      sous la scène et les cinq réponses à droite (« La vue en direct », plus
-     bas). **« À plat »**, le plan dessiné de l’unité, avec les mêmes
-     données : les chiffres de l’instant, la légende et le zoom posés sur le
-     plan ; au-dessus des services, ce qui attend en stock ou à laver ;
-     « Modifier le plan » ouvre *Équipes › Plan de l’unité*. « En ce moment »,
+     bas). La page s’ouvre toujours en relief (évolution 23 a). **« À
+     plat »**, le plan dessiné de l’unité, avec les mêmes données — les
+     chiffres de l’instant, la légende et le zoom posés sur le plan ;
+     au-dessus des services, ce qui attend en stock ou à laver ; « Modifier
+     le plan » — ne s’ouvre plus que par « Aller à… », sous le nom « En
+     direct, à plat ». « En ce moment »,
      à droite, se replie (bouton dans le titre de la page) pour laisser toute
      la largeur.
    - *Planning des équipes* : qui travaille quand — d'abord toute l'unité sur
@@ -816,11 +841,13 @@ correspond à un réglage de la simulation ou à une quantité du résultat.
   d'un service, le vol suivi, et le choix « Référence / Essai » quand deux
   essais sont retenus.
 
-Le choix **« En relief / À plat »**, dans la page, passe de cette scène au
-plan dessiné de l'unité et en revient : la même journée, la même heure, les
-mêmes données (« Lire le plan rejoué et le planning », plus bas). De retour
-à « À plat », le plan se trace à l'heure courante avant d'être montré : il
-ne montre jamais les chiffres de l'heure où on l'avait quitté (évolution
+Jusqu'à l'évolution 22, un choix **« En relief / À plat »**, dans la page,
+passait de cette scène au plan dessiné de l'unité. Depuis l'évolution 23 (a),
+la page s'ouvre toujours en relief ; la vue à plat — la même journée, la même
+heure, les mêmes données (« Lire le plan rejoué et le planning », plus bas) —
+s'ouvre par « Aller à… » (« En direct, à plat »), et l'entrée « En direct »
+ramène au relief. Le plan s'y trace à l'heure courante avant d'être montré :
+il ne montre jamais les chiffres de l'heure où on l'avait quitté (évolution
 21 f).
 
 **Ce qui vient d'un réglage, ce qui vient du résultat, ce qui est une mise
@@ -1083,10 +1110,11 @@ la part de surface et la zone partagée, une case de plus :
 ### En relief : se déplacer dans le site (évolution 16 b)
 
 La page « En direct » s'ouvre **« En relief »** : la scène générée, dessinée dans un
-canvas 2D, sans bibliothèque. Le choix **« En relief / À plat »**, à côté du
-titre de la page, passe au plan dessiné de l'unité et en revient, avec les
-mêmes données et la même heure rejouée. « Voir sur le plan » (les liens de
-l'unité) ouvre la vue à plat : les liens se dessinent sur le plan dessiné.
+canvas 2D, sans bibliothèque. La vue à plat (le plan dessiné de l'unité, avec
+les mêmes données et la même heure rejouée) ne s'ouvre plus que par « Aller
+à… » (évolution 23 a) ; les liens entre services s'y dessinent toujours
+(« Liens dessinés »), mais « Voir sur le plan », dans « Liens entre
+services », n'est plus montré.
 
 - **La projection est orthogonale** : sans fuite de perspective, les tailles
   restent comparables. La caméra tourne autour du site (sur 360°), s'incline
@@ -1284,8 +1312,8 @@ nouveau.
   son détail : ses personnes par état, ses équipes et leur horaire, ses lots à
   faire, ses arrivages en attente avec leur attente, ses personnes sans
   travail et ce qu'elles attendent, sa courbe de charge. Un service qui n'a
-  aucune équipe n'est pas dans la scène (« Voir sur le plan », depuis la liste
-  des services, peut en choisir un) : le panneau le dit et propose, comme
+  aucune équipe n'est pas dans la scène (la vue à plat peut en choisir
+  un) : le panneau le dit et propose, comme
   celui du plan dessiné, d'ajouter une équipe ou d'ouvrir le service. Sans
   journée à rejouer, il le dit et mène à la description de l'unité.
 - **Un clic sur un chariot ou un avion suit ce vol** : ses lots, sa tournée et
@@ -1389,7 +1417,7 @@ Sur un portable (1 366 × 768), la scène passe avant ce qui l'entoure :
 
 ## Lire le plan rejoué et le planning
 
-**Le plan rejoué** — la vue « À plat » de Résultats › En direct — montre la journée calculée à
+**Le plan rejoué** — la vue « À plat » de « En direct », ouverte par « Aller à… » (évolution 23 a) — montre la journée calculée à
 l'heure rejouée — à l'ouverture, le moment où le premier goulot du jour
 commence à coincer ; sans goulot, le créneau où le plus de personnes sont au
 travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
@@ -1535,8 +1563,9 @@ encore pris en charge.** Aucun effectif passager n’est déduit de cet export.
 
 ## Dessiner et détailler le plan
 
-**Équipes › Plan de l’unité** (ou « Modifier le plan » sur le plan rejoué, ou
-« Modifier le plan de l’unité » sur la fiche d’un service) ouvre l’éditeur en
+**Équipes › Plan de l’unité** (version 2 ; en version 1, « Aller à… », « Placer
+ce service sur le plan » dans la fiche d’un service, ou « Modifier le plan »
+dans la vue à plat) ouvre l’éditeur en
 pleine page : à gauche les **calques**, rangés par type (services, zones de
 production, locaux, équipements, circulations) et recherchables ; au centre le
 plan, avec sa barre d’outils flottante (Sélection, Rectangle, Polygone, Main ;
@@ -2043,7 +2072,7 @@ aucun vol.
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
 | `demarrage.js` / `histoire.css` | L’accueil : l’histoire en quatre images, « à faire ensuite », puis les deux blocs du menu, une tuile par espace avec son état et ses entrées (v1, évolution 22 a) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
-| `onglets.js` | Le menu (v1, évolution 22 a) : deux blocs (`BLOCS`), leurs espaces (`PARTIES`) et leurs quatorze entrées, toutes visibles — une page, ou un groupe de pages en onglets internes (`GROUPES`) ; `menu`, `entrees`, `entreeDe` ; chaque page est un sous-onglet d’une vue ; la règle qui masque les autres, le clavier, la dernière page choisie de chaque espace et de chaque groupe (la page ouverte au démarrage n’en est pas une) ; une page conditionnelle (la Période, avec un programme daté) ; `ANCIENNES`, `resoudre` (évolution 22 b2) : les pages qu’une page nouvelle a reprises — leur nom, leur nom plus ancien, la page qui les reprend et l’endroit où y arriver (`lieu`) ; `choisir(id, …, lieu)` y mène |
+| `onglets.js` | Le menu (v1, évolution 22 a) : deux blocs (`BLOCS`), leurs espaces (`PARTIES`) et leurs treize entrées (quatorze avant l’évolution 23 a : « Plan » en est sorti ; `PAR_NOM` : ce qui ne s’ouvre que par son nom, « En direct, à plat »), toutes visibles — une page, ou un groupe de pages en onglets internes (`GROUPES`) ; `menu`, `entrees`, `entreeDe` ; chaque page est un sous-onglet d’une vue ; la règle qui masque les autres, le clavier, la dernière page choisie de chaque espace et de chaque groupe (la page ouverte au démarrage n’en est pas une) ; une page conditionnelle (la Période, avec un programme daté) ; `ANCIENNES`, `resoudre` (évolution 22 b2) : les pages qu’une page nouvelle a reprises — leur nom, leur nom plus ancien, la page qui les reprend et l’endroit où y arriver (`lieu`) ; `choisir(id, …, lieu)` y mène |
 | `menu.css` | Le menu de la version 1 : les deux blocs, les titres des espaces, les entrées, la barre repliée pendant la modification du plan ; les blocs de l’accueil. Les couleurs sont celles de la barre latérale de `ds.css`, qu’elle ne modifie pas |
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent. **Version 2** ; la version 1 a le sien, `avis.js` (évolution 19 d) |
@@ -2260,6 +2289,7 @@ aucun vol.
 | `tests/lecture-seule.test.cjs` | « Lecture seule » (v1, évolution 22 f), sans navigateur : le choix gardé comme le thème (une clé `ory-ui-…`), les pages fermées (celles de « Régler », et elles seules), les règles des liens, la garde d’un réglage (refusé en marche, la méthode d’avant à l’arrêt), le menu (le bloc replié, les pages qui ne s’ouvrent pas, le même menu à l’octet près sans page fermée), « Fichiers » (les imports et « Restaurer » grisés, la raison ; tout revient) |
 | `tests/lecture-seule-browser.cjs` | « Lecture seule » dans la page (v1, évolution 22 f), sur l’unité fictive, à 1 366 × 768 : l’interrupteur en bas du menu ; « Régler » replié, au menu et sur l’accueil ; ses huit pages ne s’ouvrent par aucun chemin et la page le dit ; un lien d’un résultat vers un réglage le dit ; « Fichiers » (imports et « Restaurer » grisés, exports qui marchent) ; **aucun réglage ne change par l’interface** — tout ce qui se clique sur les pages ouvertes est cliqué, les portes des réglages sont essayées : les mêmes données à l’octet près, la même sauvegarde ; l’état survit au rechargement ; à l’arrêt, tout revient |
 | `tests/captures-evolution-22-browser.cjs` | Les captures de contrôle de l’évolution 22 (v1), sur l’unité fictive, en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080 : le menu (deux blocs, douze entrées, « Fichiers », « Lecture seule », le thème), « Services et équipes », « Chemins », « Contrôles », « Fichiers », la Synthèse en lecture seule. Chaque capture est vérifiée ; pour les quatre nouvelles pages : la page ne défile pas, chaque colonne défile seule, aucun texte sous 13 px. Les mesures de l’après sont dites à la fin. Captures hors du dépôt (`$ORY_CAPTURES`, sinon un dossier temporaire) |
+| `tests/plan-hors-menu-browser.cjs` | Le plan et la vue à plat hors de l’écran (v1, évolution 23 a), sur l’unité fictive, à 1 366 × 768 : le menu a treize entrées (douze sans programme daté), « Plan » n’y est plus ; « En direct » n’a plus le choix « À plat » et s’ouvre en relief, y compris après une visite de la vue à plat et après un rechargement ; « Aller à… » ouvre la vue à plat et la page du plan ; la fiche d’un service y mène par un lien discret ; aucun lien d’une page du menu, ni l’accueil, ni « Liens entre services », ne mène au plan ; en lecture seule, le plan reste verrouillé et la vue à plat s’ouvre ; une sauvegarde d’avant se restaure, ses services et son plan intacts |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués — en version 1, depuis l’évolution 22 (b2) : l’heure d’une équipe dans sa fiche (Entrée enregistre, une heure impossible refusée), les temps par vol dans la fiche du service (nombres à droite, Entrée descend dans la colonne, la fiche ne saute pas) |
 | `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites ; en version 1, la rubrique « En direct » de la fiche des raccourcis, avec les touches de la scène (évolution 16 g), celle de la version 2 inchangée |

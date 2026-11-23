@@ -139,10 +139,11 @@ const recoupe=(a,b)=>a.x0<b.x1-0.5&&b.x0<a.x1-0.5&&a.y0<b.y1-0.5&&b.y0<a.y1-0.5;
     /** À plat, repeint exprès à l'heure courante, deux images plus tard : la référence. */
     const reference=()=>page.evaluate(()=>{Sim.vue.pause();return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>r(window.__chiffres()))));});
     const aLHeure=async t=>{await page.evaluate(t=>{Sim.vue.pause();Sim.vue.allerA(t);},t);await page.waitForFunction(t=>Math.abs(Sim.vue.t-t)<1e-9,t);};
-    /** Clique « À plat » et lit le plan dans le même geste, avant toute image : ce que la première image montrera. */
-    const revenirAPlat=()=>page.evaluate(()=>{document.querySelector('#direct-choix [data-direct-mode=plat]').click();
+    /** Ouvre la vue à plat et lit le plan dans le même geste, avant toute image : ce que la première image montrera.
+     *  (Évolution 23 a : la vue à plat ne s'ouvre plus que par « Aller à… » ; c'est la porte que prend ce choix.) */
+    const revenirAPlat=()=>page.evaluate(()=>{Sim.onglets.choisir('j-plan:plat');
       return {mode:document.body.dataset.direct,t:Sim.vue.t,lus:window.__chiffres()};});
-    const enRelief=async()=>{await page.locator('#direct-choix [data-direct-mode=relief]').click();await page.waitForFunction(()=>document.body.dataset.direct==='relief');await dessinee();};
+    const enRelief=async()=>{await page.locator('#menu [data-entree="j-plan"]').click();await page.waitForFunction(()=>document.body.dataset.direct==='relief');await dessinee();};
     const bornes=await page.evaluate(()=>({debut:Sim.vue.debut,fin:Sim.vue.fin}));
     const h1=Math.round(bornes.debut+(bornes.fin-bornes.debut)*0.3),h2=Math.round(bornes.debut+(bornes.fin-bornes.debut)*0.55),h3=Math.round(bornes.debut+(bornes.fin-bornes.debut)*0.42);
     // Le plan dessiné est vu une première fois, à l'heure h1.

@@ -39,7 +39,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await row.locator('[data-action=reverse]').click();assert.equal(await page.locator('#fc-list article').count(),2);
   await row.locator('[data-field=enabled]').uncheck();assert.equal(await page.evaluate(()=>Sim.flows.state.flows.filter(f=>f.type==='runner'&&f.enabled).length),1);
   await click('#btn-annuler');assert.equal(await page.evaluate(()=>Sim.flows.state.flows.filter(f=>f.type==='runner'&&f.enabled).length),2);
-  await click('#fc-show-map');assert.equal(await page.locator('#flow-edges [data-flow-id]').count(),2);
+  // (Évolution 23 a : « Voir sur le plan » n'est plus montré ; les liens se dessinent toujours dans la vue à plat, que
+  //  « Aller à… » ouvre.)
+  assert.equal(await page.locator('#fc-show-map').isVisible(),false,'« Voir sur le plan » n’est plus montré');
+  await nav.aller(page,'j-plan');assert.equal(await page.evaluate(()=>document.body.dataset.direct),'plat');
+  // La vue s'ouvre sur « Ce qui circule » ; « Liens dessinés » montre une famille de liens — celle que la page des
+  // liens filtrait, comme le faisait « Voir sur le plan ».
+  await page.locator('#fc-map-filter').selectOption(await page.evaluate(()=>Sim.flows.family));
+  assert.equal(await page.locator('#flow-edges [data-flow-id]').count(),2);
   await page.locator('#fc-map-filter').selectOption('none');assert.equal(await page.locator('#flow-edges [data-flow-id]').count(),0);
   await nav.vue(page,'flux');await add('of','cuisine','prepa');await add('kanban','prepa','cuisine');
   await page.locator('#fc-list article').first().locator('[data-field=label]').fill('<img src=x onerror=alert(1)>');await page.locator('#fc-list article').first().locator('[data-action=reverse]').click();

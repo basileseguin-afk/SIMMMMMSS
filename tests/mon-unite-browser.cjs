@@ -20,7 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Le menu (évolution 22 a) : deux blocs, trois espaces sous « Régler » ; le chemin d'une commande est dans « Chemins ».
   assert.deepEqual(await page.locator('#menu .menu-bloc-titre, #menu .menu-espace-titre').allInnerTexts().then(t=>t.map(x=>x.toLowerCase())),['lire','régler','vols','l’unité','simulation']);
-  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]>span:not(.so-badge)').allInnerTexts(),['Services et équipes','Chemins','Plan']);
+  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]>span:not(.so-badge)').allInnerTexts(),['Services et équipes','Chemins']);   // (évolution 23 a : « Plan » n'est plus au menu)
   // (Évolution 22 c : « Chemins » est une seule page — la liste des chemins, le chemin choisi — sans onglets internes.)
   await page.locator('#menu [data-entree="mu-flux"]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux','« Chemins » s’ouvre sur la liste des chemins');

@@ -86,12 +86,13 @@ const MESURER=([racine,vue])=>{
         entrees:[...document.querySelectorAll('#menu [data-sous-onglet]')].map(b=>b.textContent.replace(/\d+$/,'').trim()),
         pied:[...document.querySelectorAll('#barre .barre-pied > button')].map(b=>b.textContent.trim()),defile:z.scrollHeight-z.clientHeight,
         pages:O.PARTIES.flatMap(p=>p.pages).length,montrees:O.PARTIES.flatMap(p=>p.pages).filter(q=>O.montree(q.id)).length,auMenu:O.entrees().length,anciennes:Object.keys(O.ANCIENNES).length};});
-    assert.deepEqual(menu.blocs,[['Lire',5],['Régler',7]],V+'deux blocs : cinq entrées pour lire, sept pour régler');
-    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Programme','Retours','Services et équipes','Chemins','Plan','Réglages','Contrôles'],V+'les douze entrées, dans l’ordre');
+    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze.)
+    assert.deepEqual(menu.blocs,[['Lire',5],['Régler',6]],V+'deux blocs : cinq entrées pour lire, six pour régler');
+    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles'],V+'les onze entrées, dans l’ordre');
     assert.deepEqual(menu.pied,['Fichiers','Lecture seule','Thème sombre'],V+'en bas : Fichiers, Lecture seule, le thème');
     assert.ok(menu.defile<=1,V+'le menu ne défile pas ('+menu.defile+' px)');
-    // Treize entrées sans programme daté (douze et « Fichiers ») ; « Période » fait la quatorzième avec un programme daté.
-    assert.deepEqual([menu.auMenu,menu.pages,menu.montrees],[13,18,17],V+'treize entrées au menu, dix-huit pages (dix-sept sans « Période »)');
+    // Douze entrées sans programme daté (onze et « Fichiers ») ; « Période » fait la treizième avec un programme daté.
+    assert.deepEqual([menu.auMenu,menu.pages,menu.montrees],[12,18,17],V+'douze entrées au menu, dix-huit pages (dix-sept sans « Période »)');
     await capturer('1-menu');
 
     /* ---- « Services et équipes » : la liste à gauche, la fiche à droite -------------------------------------- */
@@ -146,7 +147,7 @@ const MESURER=([racine,vue])=>{
     assert.ok(await page.locator('#journee-chiffres .sy-service').count()>=5,V+'la Synthèse est intacte');
     await capturer('6-synthese-lecture-seule');
     await page.locator('#btn-lecture-seule').click();
-    await page.waitForFunction(()=>document.body.dataset.lecture===undefined&&document.querySelectorAll('#menu [data-sous-onglet]').length===12);
+    await page.waitForFunction(()=>document.body.dataset.lecture===undefined&&document.querySelectorAll('#menu [data-sous-onglet]').length===11);
 
     if(theme==='clair'&&largeur===1366)mesures={menu,pages:M};
     assert.deepEqual(errors,[],V+'aucune erreur de page');
@@ -155,7 +156,7 @@ const MESURER=([racine,vue])=>{
   assert.equal(faites.length,24,'six captures, en clair et en sombre, à deux tailles');
   const m=mesures.pages,dire=(nom,p)=>nom+' : '+p.champs+' champs et '+p.boutons+' boutons visibles, '+p.ecrans+' écran, '+p.zonesQuiDefilent+' zone(s) qui défilent';
   console.log('captures-evolution-22-browser : ok — '+faites.length+' captures (le menu, « Services et équipes », « Chemins », « Contrôles », « Fichiers », la Synthèse en lecture seule), en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080, dans '+dossier);
-  console.log('mesures à 1 366 × 768 — le menu : '+mesures.menu.auMenu+' entrées (douze et « Fichiers » ; quatorze avec « Période »), '+mesures.menu.pages+' pages, '+mesures.menu.anciennes+' noms de pages d’avant qui mènent aux nouvelles ; '
+  console.log('mesures à 1 366 × 768 — le menu : '+mesures.menu.auMenu+' entrées (onze et « Fichiers » ; treize avec « Période »), '+mesures.menu.pages+' pages, '+mesures.menu.anciennes+' noms de pages d’avant qui mènent aux nouvelles ; '
     +[dire('Services et équipes',m.services),dire('Chemins',m.chemins),dire('Contrôles',m.controles),dire('Fichiers',m.fichiers)].join(' ; ')+'.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

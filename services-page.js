@@ -316,10 +316,12 @@
         av.classList.add('se-section');
         const titre = av.querySelector('summary h3');
         if (titre) { const note = titre.querySelector('small'); titre.textContent = 'Réglages avancés'; if (note) titre.appendChild(note); }
-        const voir = boutons.filter(x => x.dataset.muAction !== 'supprimer'), supprimer = boutons.filter(x => x.dataset.muAction === 'supprimer');
+        const supprimer = boutons.filter(x => x.dataset.muAction === 'supprimer');
+        // Évolution 23 (a) : le plan de l'unité n'est plus au menu. « Voir sur le plan » et « Le déplacer sur le plan »
+        // laissent la place à un seul lien discret, tout en bas, qui ouvre la page du plan sur ce service.
         av.insertAdjacentHTML('beforeend', (this.a.rattachement ? this.a.rattachement(s.id) : '')
-          + `<p class="se-place"><span>Sa place sur le plan</span>${voir.map(html).join('')}</p>`
-          + (supprimer.length ? `<p class="se-supprimer">${supprimer.map(html).join('')}<span class="mini-note">ses équipes partent avec lui ; un service du plan se remet depuis la liste, en bas</span></p>` : ''));
+          + (supprimer.length ? `<p class="se-supprimer">${supprimer.map(html).join('')}<span class="mini-note">ses équipes partent avec lui ; un service du plan se remet depuis la liste, en bas</span></p>` : '')
+          + `<p class="se-place"><button type="button" class="lien-discret" data-mu-action="plan">Placer ce service sur le plan →</button></p>`);
       }
       return html(tete) + avis + equipes + temps + html(av);
     }

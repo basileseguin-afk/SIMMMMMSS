@@ -280,7 +280,7 @@ function ecarts(avant,apres,chemin='',out=[]){
   await nav.terminerPlan(page);
   assert.deepEqual(avecEditeur,['mu-flux'],'l’éditeur de chemin ne se voit que dans « Chemins »');
   assert.deepEqual(avecOnglet,[],'aucun onglet interne d’une page de chemins');
-  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.entree)),['mu-services','mu-flux','u-plan'],'« Chemins » est une entrée, pas un groupe');
+  assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.entree)),['mu-services','mu-flux'],'« Chemins » est une entrée, pas un groupe (évolution 23 a : « Plan » n’est plus au menu)');
 
   /* ---- 10. les noms, les liens et la page retenue d'avant mènent à « Chemins », au bon endroit --------------------- */
   assert.deepEqual(await page.evaluate(()=>Object.entries(OrlyOnglets.ANCIENNES).filter(([,a])=>a.vers==='mu-flux').map(([id,a])=>[id,a.lieu,a.nom])),
