@@ -194,6 +194,8 @@
   function suivre(avant, apres, o) {
     const regles = REGLES.get(apres) || new Set();
     REGLES.delete(apres);
+    // Un geste qui ne touche à aucun chemin ne peut déplacer aucun lien : rien à suivre (une heure, un effectif…).
+    if (JSON.stringify(avant.parcours || []) === JSON.stringify(apres.parcours || [])) return false;
     const d = fournisseurs(avant, o);
     if (!d.length) return false;
     const encore = new Set(fournisseurs(apres, o)), suivis = d.filter(f => encore.has(f));
@@ -201,8 +203,9 @@
     const texte = JSON.stringify([apres.parcours, apres.fournisseurs || null]);
     const ra = releve(avant), connu = new Map();
     const etatAvant = (f, s) => { const k = cle(f, s); if (!connu.has(k)) connu.set(k, etatClient(avant, f, s, ra).etat); return connu.get(k); };
+    const cheminsAvant = new Map((avant.parcours || []).map(x => [x.id, x]));
     for (const p of apres.parcours || []) {
-      const pa = (avant.parcours || []).find(x => x.id === p.id);
+      const pa = cheminsAvant.get(p.id);
       if (!pa) continue;
       const etapesAvant = new Set(P.servicesDuParcours(pa)), arcsAvant = P.arcsDuParcours(pa);
       const liensAvant = new Set(arcsAvant.map(a => cle(a.from, a.to))), fournissait = new Set(arcsAvant.map(a => a.from));
@@ -259,6 +262,22 @@
       equipes: (etat.ateliers || []).filter(a => a && a.service === f).length })), lignes, enPartie };
   }
 
+  /**
+   * Un chemin, ses étapes d'un côté, ses fournisseurs de l'autre (évolution 24 b) : le schéma ne dessine que les
+   * premières, chacune avec la pastille de ses fournisseurs.
+   * @returns {{etapes: string[], fournisseurs: string[], clients: Object<string, string[]>}}
+   *   clients : pour chaque étape cliente, ses fournisseurs dans ce chemin (dans l'ordre des fournisseurs du chemin)
+   */
+  function duChemin(etat, p, o) {
+    const tous = new Set(fournisseurs(etat, o)), services = P.servicesDuParcours(p), fs = services.filter(s => tous.has(s)), clients = {};
+    for (const f of fs) for (const a of P.arcsDuParcours(p)) {
+      if (a.from !== f) continue;
+      if (!clients[a.to]) clients[a.to] = [];
+      if (!clients[a.to].includes(f)) clients[a.to].push(f);
+    }
+    return { etapes: services.filter(s => !tous.has(s)), fournisseurs: fs, clients };
+  }
+
   /** Le nombre de clients réglés en partie (l'avis de « Contrôles »). */
   function enPartie(etat, services, o) { return tableau(etat, services, o).enPartie; }
 
@@ -304,7 +323,7 @@
       <p class="fo-vers"><button type="button" class="lien-fort" data-fo-ouvrir>Régler dans Chemins › Fournisseurs →</button></p></div>`;
   }
 
-  const api = { REGLE, estFournisseur, fournisseurs, releve, etatClient, lire, regler, suivre, tableau, enPartie, clientsDe, direPartie, tableauHTML, clientsHTML };
+  const api = { REGLE, estFournisseur, fournisseurs, releve, etatClient, lire, regler, suivre, tableau, duChemin, enPartie, clientsDe, direPartie, tableauHTML, clientsHTML };
   if (NODE) module.exports = api;
   else root.OrlyFournisseurs = api;
 })(typeof window !== 'undefined' ? window : globalThis);

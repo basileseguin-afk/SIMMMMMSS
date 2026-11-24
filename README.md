@@ -231,6 +231,19 @@ attend son ouverture, et c’est voulu. Le détail est dans
 module de la version 1 : `parcours.js` et `unite.js`, communs avec la
 version 2, ne sont pas modifiés.
 
+**Le schéma sans les fournisseurs** (version 1, évolution 24 b). Le schéma
+d’un chemin ne dessine plus les fournisseurs ni leurs liens — sur une vraie
+unité, près d’un tiers des liens d’un chemin. Une étape cliente porte une
+pastille au nom de son fournisseur ; sous le schéma, une ligne qui se lit,
+« Fournisseurs de ce chemin : … », et « Régler les clients », qui ouvre
+l’entrée « Fournisseurs ». Le compte d’un chemin distingue les deux : « 12
+commandes · 8 étapes · 2 fournisseurs ». L’interrupteur « Montrer les
+fournisseurs sur le schéma », éteint par défaut, redonne le dessin complet :
+leurs liens s’y lisent, en pointillé, sans s’y modifier — un geste dessus
+mène au tableau. C’est une préférence d’affichage
+(`ory-ui-chemins-fournisseurs`), hors de la sauvegarde. `graphe.js`, commun
+avec la version 2, n’est pas modifié.
+
 **Le schéma d’un chemin** (version 1, évolution 23 c). Dans « Chemins », le
 schéma ne se réduit plus pour tenir dans son cadre : il s’affiche à la taille
 où son plus petit texte fait 12 px à l’écran, et, plus grand que son cadre,

@@ -64,11 +64,14 @@ function ecarts(avant,apres,chemin='',out=[]){
   const v1=await ouvrir(URL_V1),page=v1.page;
 
   /* ---- 1. la liste des chemins --------------------------------------------------------------------------------- */
-  const attendus=await etat(page,(st,a,PC,P)=>st.parcours.map(p=>[p.id,p.nom,PC.commandesDuType(st,p.id,Sim.ateliers.classes).length,P.servicesDuParcours(p).length]));
+  // Évolution 24 (b) : le compte d'un chemin distingue ses étapes de ses fournisseurs (la réception, le magasin).
+  const attendus=await etat(page,(st,a,PC,P)=>st.parcours.map(p=>{const d=OrlyFournisseurs.duChemin(st,p,Sim.unite.optionsFournisseurs());
+    return [p.id,p.nom,PC.commandesDuType(st,p.id,Sim.ateliers.classes).length,d.etapes.length,d.fournisseurs.length];}));
   assert.ok(attendus.length>=2,'l’unité fictive a ses chemins');
+  assert.ok(attendus.every(x=>x[4]===2),'chacun a ses deux fournisseurs');
   const liste=await page.locator(`${M} .ch-liste [data-mu-flux-choisir]`).evaluateAll(bs=>bs.map(b=>[b.dataset.muFluxChoisir,b.querySelector('b').textContent,b.querySelector('small').textContent]));
   const pl=(n,mot)=>n+' '+mot+(n>1?'s':'');
-  assert.deepEqual(liste,attendus.map(([id,nom,c,e])=>[id,nom,pl(c,'commande')+' · '+pl(e,'étape')]),'chaque chemin, ses commandes et ses étapes');
+  assert.deepEqual(liste,attendus.map(([id,nom,c,e,f])=>[id,nom,pl(c,'commande')+' · '+pl(e,'étape')+' · '+pl(f,'fournisseur')]),'chaque chemin, ses commandes, ses étapes et ses fournisseurs');
   assert.equal(await page.locator(`${M} .ch-liste > *`).first().evaluate(e=>e.matches('details.se-ajout')&&!e.open),true,'« Ajouter un chemin » en tête, replié');
   assert.equal(await page.locator(`${M} .ch-liste > *`).last().innerText(),'Toutes les commandes ont un chemin');
   assert.equal(await page.locator(`${M} .ch-liste [aria-current=true]`).count(),1,'un chemin est choisi');
@@ -77,7 +80,7 @@ function ecarts(avant,apres,chemin='',out=[]){
   const complet=attendus.sort((a,b)=>b[2]-a[2])[0];
   await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${complet[0]}"]`).click();await attendre(page);
   assert.equal(await page.locator(`${M} [data-mu-flux-nom]`).inputValue(),complet[1]);
-  assert.equal(await page.locator(`${M} .ch-compte`).innerText(),pl(complet[2],'commande')+' · '+pl(complet[3],'étape'));
+  assert.equal(await page.locator(`${M} .ch-compte`).innerText(),pl(complet[2],'commande')+' · '+pl(complet[3],'étape')+' · '+pl(complet[4],'fournisseur'));
   assert.equal(await page.locator(`${M} [data-mu-graphe]`).count(),1,'un éditeur de chemin sur la page');
   assert.equal(await page.locator(`${M} [data-mu-graphe] [data-noeud]`).count(),complet[3],'une case par étape');
   assert.ok(await page.locator(`${M} [data-mu-graphe] .gr-lien`).count()>=complet[3]-3,'reliées');
@@ -103,7 +106,8 @@ function ecarts(avant,apres,chemin='',out=[]){
   // Aucun résultat sur la page : ni heure de fin, ni attente.
   assert.equal(await page.locator(`${M} .ch-cadre`).innerText().then(t=>/\d\d:\d\d ?[–→-] ?\d\d:\d\d|prête à|en retard|attend \d/.test(t)),false,'aucun résultat');
   // Une mise à disposition : rien à choisir, elle sert toutes les commandes ; son nom mène à sa fiche.
-  await noeud(page,'magasin');
+  // (La légumerie, une étape du schéma. Le magasin, un fournisseur, n'y est plus dessiné : évolution 24 b.)
+  await noeud(page,'decontam');
   assert.equal(await page.locator(`${M} .ch-table select[data-ch-equipe]`).count(),0,'une mise à disposition ne se choisit pas par commande');
   assert.match(await page.locator(`${M} .ch-table tbody tr`).first().innerText(),/mise à disposition : elle sert toutes les commandes/);
 
@@ -222,7 +226,7 @@ function ecarts(avant,apres,chemin='',out=[]){
   // (Comme depuis « Chemin d'une commande » : une copie du chemin, à son nom, qu'elle est seule à suivre.)
   assert.deepEqual([variante.type,variante.nom.startsWith(complet[1]+' · ')],[true,true],'sa variante du chemin');
   assert.equal(await page.locator(`${M} .ch-liste [aria-current=true]`).getAttribute('data-mu-flux-choisir'),variante.id,'la variante est ouverte');
-  assert.equal(await page.locator(`${M} .ch-compte`).innerText(),'1 commande · '+pl(complet[3],'étape'));
+  assert.equal(await page.locator(`${M} .ch-compte`).innerText(),'1 commande · '+pl(complet[3],'étape')+' · '+pl(complet[4],'fournisseur'));
   assert.equal(await etat(page,(st,[a,b],PC,P)=>JSON.stringify(P.arcsDuParcours(st.parcours.find(p=>p.id===a)))===JSON.stringify(P.arcsDuParcours(st.parcours.find(p=>p.id===b))),[variante.id,complet[0]]),true,'les mêmes étapes, reliées de même');
   await page.locator('#btn-annuler').click();await attendre(page,400);
   assert.equal(await etat(page,(st,c)=>st.parcoursClasse[c]||null,pour),null,'« Annuler » la défait');
@@ -363,7 +367,9 @@ function ecarts(avant,apres,chemin='',out=[]){
     const avant=at.state.ateliers.filter(a=>a.service===s);at.changer(()=>{at.state.ateliers=at.state.ateliers.filter(a=>a.service!==s);},'');return {id:p.id,s,n:avant.length,dedans:MoteurProduction.servicesDuParcours(p).includes(s)};});
   assert.ok(sv.n>=1&&sv.dedans,'le magasin fictif est une étape de « Complet », avec son équipe');
   await attendre(page,300);
-  await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${sv.id}"]`).click();await attendre(page);await noeud(page,sv.s);
+  // (Le magasin est un fournisseur : pour le choisir dans le schéma, « Montrer les fournisseurs sur le schéma ».)
+  await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${sv.id}"]`).click();await attendre(page);
+  await page.locator(`${M} [data-ch-fournisseurs]`).click();await attendre(page);await noeud(page,sv.s);
   const choixPlus=page.locator(`${M} .ch-etape select[data-ch-equipe]`).first();
   assert.match(await choixPlus.locator('option[value="+"]').innerText(),/Créer l’équipe de .* : elle sert toutes les commandes/);
   assert.ok(await page.locator(`${M} .ch-etape .ch-a-corriger`).count()>=1,'sans équipe : à corriger');

@@ -14,7 +14,12 @@
  *              (fournisseurs.js) ;
  *   à droite   le chemin choisi : ses étapes de l'amont vers l'aval, en cases
  *              reliées ; un clic sur une étape montre, dessous, le tableau
- *              « commande, équipe à cette étape, temps par vol ».
+ *              « commande, équipe à cette étape, temps par vol ». Le schéma ne
+ *              dessine pas les fournisseurs ni leurs liens (évolution 24 b) :
+ *              une étape cliente porte une pastille au nom de son fournisseur,
+ *              une ligne sous le schéma les nomme, et un interrupteur,
+ *              « Montrer les fournisseurs sur le schéma », redonne le dessin
+ *              complet — où leurs liens se lisent, sans s'y modifier.
  *
  * Un seul éditeur de chemin : le diagramme de graphe.js, celui de « Chemins de
  * production ». La page hérite de `MonUnite` (unite.js, commun avec la
@@ -29,6 +34,8 @@
   const NODE = typeof module !== 'undefined' && module.exports && typeof window === 'undefined';
   const P = NODE ? require('./moteur/production.js') : root.MoteurProduction;
   const PC = NODE ? require('./parcours.js') : root.OrlyParcours;
+  /** Les fournisseurs (évolution 24) ; sans ce module — la page d'avant —, un chemin n'a que des étapes. */
+  const FOURNISSEURS = NODE ? require('./fournisseurs.js') : null;
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -38,19 +45,24 @@
   /**
    * Les chemins de l'unité, dans l'ordre de la liste : les chemins que suivent des classes ou plusieurs commandes,
    * leurs variantes, puis les chemins à part (celui d'une seule commande).
-   * @returns {{p: object, genre: 'chemin'|'variante'|'apart', commandes: object[], etapes: number}[]}
+   * Évolution 24 (b) : le compte d'un chemin distingue ses étapes de ses fournisseurs (un service de mise à disposition
+   * où rien n'arrive, dans aucun chemin).
+   * @param {{nom?: Function, nature?: Function}} [o]  de quoi nommer les services et dire leur nature (fournisseurs.js)
+   * @returns {{p: object, genre: 'chemin'|'variante'|'apart', commandes: object[], etapes: number, fournisseurs: number}[]}
    */
-  function chemins(etat, classes) {
+  function chemins(etat, classes, o) {
     const rang = { chemin: 0, variante: 1, apart: 2 };
+    const F = FOURNISSEURS || root.OrlyFournisseurs || null, fs = F ? new Set(F.fournisseurs(etat, o)) : new Set();
     return (etat.parcours || []).map((p, i) => {
       const genre = p.type ? (p.auto ? 'variante' : 'chemin') : 'apart';
       const commandes = genre === 'apart' ? (classes || []).filter(c => PC.cheminDe(etat, c.id) === p) : PC.commandesDuType(etat, p.id, classes);
-      return { p, genre, commandes, etapes: P.servicesDuParcours(p).length, i };
+      const services = P.servicesDuParcours(p), fournisseurs = services.filter(s => fs.has(s)).length;
+      return { p, genre, commandes, etapes: services.length - fournisseurs, fournisseurs, i };
     }).sort((a, b) => rang[a.genre] - rang[b.genre] || a.i - b.i);
   }
 
-  /** Ce que la liste dit d'un chemin : « 12 commandes · 9 étapes ». */
-  const compte = x => pl(x.commandes.length, 'commande') + ' · ' + pl(x.etapes, 'étape');
+  /** Ce que la liste dit d'un chemin : « 12 commandes · 9 étapes », et ses fournisseurs à part : « · 2 fournisseurs ». */
+  const compte = x => pl(x.commandes.length, 'commande') + ' · ' + pl(x.etapes, 'étape') + (x.fournisseurs ? ' · ' + pl(x.fournisseurs, 'fournisseur') : '');
 
   /** Les commandes qui n'ont pas de chemin : ni le leur, ni celui de leur classe. */
   const sansChemin = (etat, classes) => (classes || []).filter(c => !PC.fluxDe(etat, c));
@@ -99,7 +111,10 @@
     return { k, lisible, deborde };
   }
 
-  const api = { chemins, compte, sansChemin, ligneEtape, TEXTE_MIN, echelleSchema };
+  /** La préférence « Montrer les fournisseurs sur le schéma » (évolution 24 b) : un réglage d'affichage, hors de la sauvegarde. */
+  const CLE_FOURNISSEURS = 'ory-ui-chemins-fournisseurs';
+
+  const api = { chemins, compte, sansChemin, ligneEtape, TEXTE_MIN, echelleSchema, CLE_FOURNISSEURS };
   if (NODE) { module.exports = api; return; }
   const S = root.OrlyServicesPage;
   if (!S || !S.PageServices) { root.OrlyCheminsPage = api; return; }
@@ -117,6 +132,9 @@
       this.cheminPanneau = null;        // 'sans' : les commandes sans chemin, à la place du chemin choisi ; 'fournisseurs' : leur tableau
       this.cheminAjout = false;         // « Ajouter un chemin », déplié
       this.cheminSections = new Map();  // les sections repliées de la fiche d'un chemin
+      // « Montrer les fournisseurs sur le schéma » (évolution 24 b) : éteint par défaut ; gardé dans ce navigateur.
+      this.fournisseursMontres = false;
+      try { this.fournisseursMontres = root.localStorage.getItem(CLE_FOURNISSEURS) === '1'; } catch (e) { /* stockage indisponible */ }
       this.lierChemins();
     }
 
@@ -153,9 +171,10 @@
     allerChemins(lieu) {
       if (lieu === 'fournisseurs' && FO()) return this.ouvrirFournisseurs();
       this.cheminPanneau = lieu === 'sans' && sansChemin(this.etat, this.at.classes).length ? 'sans' : null;
-      const p = this.cheminChoisi() || (chemins(this.etat, this.at.classes)[0] || {}).p;
+      const p = this.cheminChoisi() || (chemins(this.etat, this.at.classes, this.optionsFournisseurs())[0] || {}).p;
       if (lieu === 'etapes' && p && !(this.fluxSel && this.fluxSel.type === 'noeud')) {
-        const premiere = P.servicesDuParcours(p)[0];
+        // La première étape que le schéma dessine : pas un fournisseur, tant qu'ils n'y sont pas montrés (évolution 24 b).
+        const premiere = (this.fournisseursMontres ? P.servicesDuParcours(p) : this.partsDuChemin(p).etapes)[0];
         this.fluxChoisi = p.id; this.fluxSel = premiere ? { type: 'noeud', id: premiere } : null;
         if (this.graphe) this.graphe.selection = this.fluxSel;
       }
@@ -173,7 +192,7 @@
 
     rendreFlux() {
       const box = root.document.getElementById('mu-flux'); if (!box) return;
-      const st = this.etat, classes = this.at.classes || [], tous = chemins(st, classes);
+      const st = this.etat, classes = this.at.classes || [], tous = chemins(st, classes, this.optionsFournisseurs());
       if (!tous.some(x => x.p.id === this.fluxChoisi)) {
         const suivi = tous.slice().sort((a, b) => b.commandes.length - a.commandes.length)[0];
         this.fluxChoisi = suivi ? suivi.p.id : null; this.fluxSel = null;
@@ -185,6 +204,11 @@
       // Une étape choisie qui n'est plus dans le chemin (retirée, autre chemin) ne l'est plus.
       if (this.fluxSel && x && !(this.fluxSel.type === 'noeud' ? P.servicesDuParcours(x.p).includes(this.fluxSel.id)
         : P.arcsDuParcours(x.p).some(a => a.from + '>' + a.to === this.fluxSel.id))) this.fluxSel = null;
+      // Le lien d'un fournisseur que le schéma ne dessine pas ne peut pas y être choisi (évolution 24 b). Un fournisseur,
+      // lui, garde son tableau sous le schéma quand on arrive pour lui (une cellule des résultats) : il s'y lit.
+      if (this.fluxSel && this.fluxSel.type === 'lien' && x && !this.fournisseursMontres && this.estFournisseur(this.fluxSel.id.split('>')[0])) {
+        this.fluxSel = null; if (this.graphe) this.graphe.selection = null;
+      }
       const ligne = y => {
         const on = y.p.id === this.fluxChoisi && !this.cheminPanneau;
         const ch = PC.chaines(st, y.p, y.commandes.map(c => c.id)).map(g => this.nom(g.avant) + ' + ' + this.nom(g.service));
@@ -223,6 +247,70 @@
       this.ajusterSchema();
     }
 
+    /* ---- le schéma sans les fournisseurs (évolution 24 b) --------------------------------------------------------
+     * graphe.js (commun avec la version 2) n'est pas modifié : la page lui donne les étapes à dessiner, et pose les
+     * pastilles sur le dessin qu'il rend. */
+
+    /** Le chemin choisi, ses étapes d'un côté, ses fournisseurs de l'autre ; sans fournisseurs.js, tout est étape. */
+    partsDuChemin(p) {
+      const f = FO();
+      return f && p ? f.duChemin(this.etat, p, this.optionsFournisseurs()) : { etapes: p ? P.servicesDuParcours(p) : [], fournisseurs: [], clients: {} };
+    }
+
+    /** « Montrer les fournisseurs sur le schéma » : le dessin complet, ou les seules étapes. Une préférence d'affichage. */
+    montrerFournisseurs(oui) {
+      this.fournisseursMontres = !!oui;
+      try { if (oui) root.localStorage.setItem(CLE_FOURNISSEURS, '1'); else root.localStorage.removeItem(CLE_FOURNISSEURS); } catch (e) { /* stockage indisponible */ }
+      this.rendreFlux();
+      const b = root.document.querySelector('#mu-flux [data-ch-fournisseurs]'); if (b) b.focus({ preventScroll: true });
+    }
+
+    /** La ligne sous le schéma : « Fournisseurs de ce chemin : … ». Elle se lit ; les clients se règlent dans « Fournisseurs ». */
+    ligneFournisseurs(p) {
+      if (!FO()) return '';
+      const d = this.partsDuChemin(p), noms = d.fournisseurs.map(f => this.nom(f));
+      return `<p class="ch-fournis" data-ch-fournis><span class="ch-fournis-dit">Fournisseurs de ce chemin : ${noms.length ? `<b>${esc(noms.join(', '))}</b>` : 'aucun'}</span>
+        <button type="button" class="lien-discret" data-fo-ouvrir title="Les clients de chaque fournisseur se règlent une fois, pour tous les chemins">Régler les clients →</button>
+        <button type="button" class="ch-interrupteur" role="switch" aria-checked="${this.fournisseursMontres}" data-ch-fournisseurs
+          title="Dessiner aussi les fournisseurs et leurs liens ; ils s’y lisent, et se règlent dans « Fournisseurs »"><span class="ch-temoin" aria-hidden="true"></span>Montrer les fournisseurs sur le schéma</button></p>`;
+    }
+
+    /**
+     * Les pastilles : sur le dessin que graphe.js vient de rendre, chaque étape cliente porte le nom de son fournisseur,
+     * à cheval sur son bord bas — à droite, puis à gauche du rond de l'étape (deux pastilles au plus ; au-delà, la
+     * seconde dit combien d'autres). Un nom trop long pour sa place est raccourci ; le nom entier se lit au survol.
+     * Quand les fournisseurs sont dessinés, leurs liens le disent déjà : pas de pastille.
+     */
+    poserPastilles() {
+      const d = root.document, svg = d.querySelector('#mu-flux [data-mu-graphe] .gr-svg'), p = this.cheminChoisi();
+      if (!svg) return;
+      for (const g of svg.querySelectorAll('.ch-pastille')) g.remove();
+      if (!p || !FO() || this.fournisseursMontres) return;
+      const NS = 'http://www.w3.org/2000/svg', clients = this.partsDuChemin(p).clients;
+      const creer = (nom, attrs, texte) => { const e = d.createElementNS(NS, nom); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); if (texte != null) e.textContent = texte; return e; };
+      for (const n of svg.querySelectorAll('.gr-noeud[data-noeud]')) {
+        const fs = clients[n.dataset.noeud]; if (!fs || !fs.length) continue;
+        const fond = n.querySelector('.gr-fond'), L = fond ? +fond.getAttribute('width') || 200 : 200, H = fond ? +fond.getAttribute('height') || 52 : 52;
+        const noms = fs.map(f => this.nom(f));
+        // Deux places, de part et d'autre du milieu du bord bas (le rond de l'étape, quand le schéma est « en étapes »).
+        const places = [{ droite: L - 6, max: L / 2 - 18 }, { droite: L / 2 - 12, max: L / 2 - 18 }];
+        const dits = noms.length <= 2 ? noms.map((x, i) => ({ texte: x, titre: 'Se fournit chez ' + x, qui: fs[i] }))
+          : [{ texte: noms[0], titre: 'Se fournit chez ' + noms[0], qui: fs[0] },
+            { texte: '+ ' + pl(noms.length - 1, 'autre'), titre: 'Se fournit aussi chez ' + noms.slice(1).join(', '), qui: fs.slice(1).join(' ') }];
+        dits.forEach((x, i) => {
+          const place = places[i], g = creer('g', { class: 'ch-pastille', 'data-ch-pastille': x.qui });
+          g.appendChild(creer('title', {}, x.titre));
+          const fondP = g.appendChild(creer('rect', { height: 18, rx: 9, y: H - 7 }));
+          const t = g.appendChild(creer('text', { y: H + 6 }, x.texte));
+          n.appendChild(g);
+          const mesure = () => (t.getComputedTextLength ? t.getComputedTextLength() : t.textContent.length * 7);
+          for (let k = x.texte.length - 1; k > 2 && mesure() > place.max - 14; k--) t.textContent = x.texte.slice(0, k).trimEnd() + '…';
+          const l = Math.ceil(mesure()) + 14;
+          fondP.setAttribute('x', place.droite - l); fondP.setAttribute('width', l); t.setAttribute('x', place.droite - l + 7);
+        });
+      }
+    }
+
     /**
      * Le schéma à sa taille lisible (évolution 23 c) : son plus petit texte fait 12 px au moins à l'écran ; plus grand que
      * son cadre, il y défile. « Tout voir » le réduit à la demande, le temps qu'on regarde ; « Taille lisible » y revient.
@@ -231,6 +319,7 @@
     ajusterSchema() {
       const d = root.document, hote = d.querySelector('#mu-flux [data-mu-graphe]'), svg = hote && hote.querySelector('.gr-svg');
       if (!svg || !svg.viewBox || !svg.viewBox.baseVal) return;
+      this.poserPastilles();
       const vb = svg.viewBox.baseVal, cadre = hote.querySelector('.gr-cadre'), fiche = hote.closest('.ch-fiche'), barre = hote.querySelector('.gr-barre');
       // Un autre chemin s'ouvre à sa taille lisible.
       if (this.schemaDe !== this.fluxChoisi) { this.schemaDe = this.fluxChoisi; this.schemaTout = false; }
@@ -350,7 +439,7 @@
         : this.tableEtape(x, sel.id);
       const suivi = x.genre === 'apart' ? this.quiSuitApart(x) : this.sansVoir(this.quiSuit(p, classes));
       return tete
-        + `<div class="pc-graphe mu-graphe ch-graphe" data-mu-graphe></div>${choisi}`
+        + `<div class="pc-graphe mu-graphe ch-graphe" data-mu-graphe></div>${this.ligneFournisseurs(p)}${choisi}`
         + this.sectionChemin('suivi', 'Qui le suit', suivi + this.cheminDeChacune(x) + this.variante(x), esc(pl(x.commandes.length, 'commande')), false)
         + this.sectionChemin('commandes', 'Commandes exclues et ajoutées', this.exclues(classes), (this.at.retirees || []).length ? esc(pl(this.at.retirees.length, 'exclue')) : '', false)
         + `<p class="ch-resultats"><button type="button" class="lien-discret" data-page="at-repas" data-lieu="etapes">Suivre ces commandes dans les résultats →</button></p>`;
@@ -425,7 +514,7 @@
           <td class="num">${t ? esc(t) : '<span class="mini-note">—</span>'}</td></tr>`;
       }).join('');
       return `<section class="ch-etape" data-ch-etape="${esc(s)}" aria-label="L’étape ${esc(nom)}">
-        <p class="ch-etape-tete"><b>Étape : ${esc(nom)}</b>
+        <p class="ch-etape-tete"><b>${this.estFournisseur(s) ? 'Fournisseur' : 'Étape'} : ${esc(nom)}</b>
           <span class="mini-note">${manque ? `<b class="ch-a-corriger">${pl(manque, 'commande')} sans équipe ici</b>` : lignes.length ? 'chaque commande a son équipe' : 'aucune commande ne suit ce chemin'}</span>
           <span class="mu-tete-fin"></span>
           ${this.estFournisseur(s) ? '' : `<button type="button" class="btn btn-sm" data-ch-relier="${esc(s)}" title="Puis choisissez l’étape qui reçoit : d’un clic, ou au clavier (Entrée)">Relier à…</button>`}
@@ -467,7 +556,7 @@
     grapheFlux() {
       if (this.graphe || !root.OrlyGraphe) return this.graphe;
       const u = this, chemin = () => u.cheminChoisi();
-      const commandes = () => { const x = chemins(u.etat, u.at.classes).find(y => y.p.id === u.fluxChoisi); return x ? x.commandes : []; };
+      const commandes = () => { const x = chemins(u.etat, u.at.classes, u.optionsFournisseurs()).find(y => y.p.id === u.fluxChoisi); return x ? x.commandes : []; };
       this.graphe = new root.OrlyGraphe.Diagramme({
         hote: () => root.document.querySelector('#mu-flux [data-mu-graphe]'),
         get cle() { return 'flux:' + (u.fluxChoisi || ''); },
@@ -475,7 +564,9 @@
         noeuds: () => {
           const t = chemin(); if (!t) return [];
           const cmds = commandes(), ico = s => (I() ? I().icoService(s, u.nom(s)) : 'service');
-          return P.servicesDuParcours(t).map(s => {
+          // Évolution 24 (b) : sans l'interrupteur, le schéma ne dessine pas les fournisseurs.
+          const dessines = u.fournisseursMontres ? P.servicesDuParcours(t) : u.partsDuChemin(t).etapes;
+          return dessines.map(s => {
             const eq = u.etat.ateliers.filter(a => a.service === s), fab = eq.filter(fabrique);
             const propres = u.at.classesDe(s);
             if (propres) {
@@ -497,7 +588,13 @@
             titre: g.equipes.map(a => '« ' + a.nom + ' »').join(', ') + ' : ' + u.nom(g.avant) + ' + ' + u.nom(g.service) + ' d’un bloc, pour '
               + g.commandes.map(c => PC.etiquette(c)).join(', ') + '.' }));
         },
-        liens: () => { const t = chemin(); return t ? P.arcsDuParcours(t).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to, titre: u.nom(a.from) + ' livre ' + u.nom(a.to) })) : []; },
+        liens: () => {
+          const t = chemin(); if (!t) return [];
+          // Ni leurs liens ; dessinés à la demande, ils se lisent (en pointillé) et ne se modifient pas ici.
+          const fs = new Set(u.partsDuChemin(t).fournisseurs);
+          return P.arcsDuParcours(t).filter(a => u.fournisseursMontres || !fs.has(a.from)).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to,
+            ...(fs.has(a.from) ? { pointille: true, titre: u.nom(a.to) + ' se fournit chez ' + u.nom(a.from) + ' (réglé pour toute l’unité, dans « Fournisseurs »)' } : { titre: u.nom(a.from) + ' livre ' + u.nom(a.to) }) }));
+        },
         relier: (de, vers) => {
           const t = chemin(); if (!t) return 'Aucun chemin choisi.';
           // Un lien de fournisseur ne se dessine pas chemin par chemin (évolution 24 a) : le geste mène au tableau.
@@ -589,6 +686,7 @@
         if (pan) { this.cheminPanneau = pan.dataset.chPanneau; return this.rendreFlux(); }
         // Les fournisseurs (évolution 24 a) : ouvrir leur tableau ; « Partout », « Nulle part » pour un client en partie.
         if (e.target.closest('[data-fo-ouvrir]')) return this.ouvrirFournisseurs();
+        if (e.target.closest('[data-ch-fournisseurs]')) return this.montrerFournisseurs(!this.fournisseursMontres);
         const partout = e.target.closest('[data-fo-partout]'), nulle = e.target.closest('[data-fo-nulle-part]');
         if (partout) return this.reglerClient(partout.dataset.foFournisseur, partout.dataset.foPartout, true);
         if (nulle) return this.reglerClient(nulle.dataset.foFournisseur, nulle.dataset.foNullePart, false);

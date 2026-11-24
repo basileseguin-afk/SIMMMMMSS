@@ -647,22 +647,36 @@ liens qu'on coche changent, comme si on les avait dessinés.
   lien, elle prépare de 05:00 à 05:30. Cliente du magasin, elle attend 07:00
   et prépare de 07:00 à 07:30 ; le montage, qui la suit, glisse d'autant.
 
+**Dans le schéma d'un chemin (évolution 24 b).** Le schéma ne dessine plus
+les fournisseurs ni leurs liens : il ne montre que les étapes.
+
+| | |
+|---|---|
+| Une étape cliente | Elle porte une pastille au nom de son fournisseur, sur son bord bas (deux au plus ; au-delà, « + n autres »). Un nom trop long est raccourci ; le nom entier se lit au survol. Texte de 12 px au moins à l'écran, comme le reste du dessin. |
+| Sous le schéma | Une ligne qui se lit : « Fournisseurs de ce chemin : … », et « Régler les clients », qui ouvre l'entrée « Fournisseurs ». Rien ne se règle sur cette ligne. |
+| Le compte d'un chemin | Il distingue les deux : « 12 commandes · 8 étapes · 2 fournisseurs » (un chemin sans fournisseur ne dit que ses étapes). |
+| « Montrer les fournisseurs sur le schéma » | Un interrupteur, au bout de cette ligne, éteint par défaut : il redonne le dessin complet. Les liens des fournisseurs s'y lisent, en pointillé, et ne s'y modifient pas : tirer un lien depuis un fournisseur, Suppr sur un de ses liens ou sa croix ne changent rien et mènent au tableau « Qui se fournit où ». C'est une préférence d'affichage, gardée dans le navigateur (`ory-ui-chemins-fournisseurs`), hors de la sauvegarde. |
+
+Un fournisseur ne s'ajoute pas comme une étape (« Ajouter une étape » ne le
+propose pas) : il entre dans un chemin avec son premier client, et en sort
+avec le dernier.
+
 **Dans les autres pages.** La fiche d'un fournisseur (« Services et équipes »)
 ne règle plus « Quels chemins en ont besoin ? » : elle montre la liste de ses
-clients, qui se lit, et « Régler dans Chemins › Fournisseurs » y mène. Dans le
-schéma d'un chemin, un lien de fournisseur ne se tire ni ne se retire : le
-geste mène au tableau. Un avis de « Contrôles » qui parle d'un lien de
-fournisseur (un fournisseur sans équipe sur le chemin de ses clients) y mène
-aussi.
+clients, qui se lit, et « Régler dans Chemins › Fournisseurs » y mène. Un avis
+de « Contrôles » qui parle d'un lien de fournisseur (un fournisseur sans
+équipe sur le chemin de ses clients) y mène aussi.
 
 Un chemin écrit d'un bloc (une organisation importée, une migration à
 l'ouverture d'une très vieille sauvegarde) est pris tel quel : s'il s'écarte
 de ce qui est coché, le tableau le dit « en partie ».
 
-Code : `fournisseurs.js` (pur, version 1 ; `parcours.js` et `unite.js`,
-communs avec la version 2, ne sont pas modifiés). Contrôlé par
-`tests/fournisseurs.test.cjs` (dont la journée calculée à la main) et
-`tests/fournisseurs-browser.cjs`.
+Code : `fournisseurs.js` (pur, version 1 ; `parcours.js`, `unite.js` et
+`graphe.js`, communs avec la version 2, ne sont pas modifiés : la page donne
+au diagramme les étapes à dessiner, et pose les pastilles sur son dessin).
+Contrôlé par `tests/fournisseurs.test.cjs` (dont la journée calculée à la
+main), `tests/fournisseurs-browser.cjs` et
+`tests/chemins-fournisseurs-browser.cjs` (le schéma, aux deux tailles).
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

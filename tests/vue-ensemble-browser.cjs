@@ -87,6 +87,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 4. Le diagramme en étapes : de haut en bas, une bande par étape, dans la largeur.
    const y=id=>page.locator(`${G} [data-noeud=${id}]`).evaluate(n=>n.transform.baseVal.consolidate().matrix.f);
+   // (Version 1, évolution 24 b : le schéma ne dessine plus les fournisseurs — la réception n'y est pas. Ce test regarde
+   //  le dessin complet : « Montrer les fournisseurs sur le schéma » le redonne.)
+   if(version==='v1'){
+    assert.equal(await page.locator(`${G} [data-noeud=appros]`).count(),0,'v1 : la réception, un fournisseur, n’est pas dessinée');
+    assert.ok(await y('decontam')<await y('cuisine')&&await y('cuisine')<await y('preparation'),'v1 : ses étapes, de haut en bas');
+    await page.locator('#mu-flux [data-ch-fournisseurs]').click();await attendre();
+   }
    assert.ok(await y('appros')<await y('decontam')&&await y('decontam')<await y('cuisine'),'de haut en bas');
    assert.ok(await page.locator(`${G} .gr-etape`).count()>=4,'une bande par étape');
    assert.match(await page.locator(`${G} .gr-etape text`).first().textContent(),/Étape 1/);

@@ -44,7 +44,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await defaut('YC'),'sans-cuisine');
   // Un chemin est un diagramme : un nœud par service, un trait par livraison.
   await ouvrir('complet');
-  assert.equal(await page.locator(`${G} .gr-lien[data-lien$=">prepa"]`).count(),3,'trois traits arrivent au montage');
+  // (Évolution 24 b : le magasin, un fournisseur, n'est plus dessiné. Deux traits arrivent au montage, de ses étapes, et
+  //  il porte la pastille de son fournisseur ; « Montrer les fournisseurs sur le schéma » redonne le troisième trait.)
+  assert.equal(await page.locator(`${G} .gr-lien[data-lien$=">prepa"]`).count(),2,'deux traits arrivent au montage, de ses étapes');
+  assert.equal(await page.locator(`${G} [data-noeud=prepa] .ch-pastille`).count(),1,'et la pastille de son fournisseur');
+  await page.locator('#mu-flux [data-ch-fournisseurs]').click();await page.waitForTimeout(300);
+  assert.equal(await page.locator(`${G} .gr-lien[data-lien$=">prepa"]`).count(),3,'le dessin complet : trois traits arrivent au montage');
+  await page.locator('#mu-flux [data-ch-fournisseurs]').click();await page.waitForTimeout(300);
   await ouvrir('sans-cuisine');
   assert.equal(await page.locator(`${G} [data-noeud=cuisine], ${G} [data-noeud=decontam]`).count(),0,
     'le chemin sans cuisine n’a ni cuisine ni légumerie');

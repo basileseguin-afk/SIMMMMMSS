@@ -175,7 +175,9 @@ const MODULE=/\/fournisseurs\.js(\?|$)/;
   assert.equal((await cellule(page,'cuisine','magasin')).coche,true,'client dans les quatre chemins où il passe');
 
   /* ---- 10 : dans le schéma, un lien de fournisseur ne se règle pas ------------------------------------------------ */
+  // (Évolution 24 b : le schéma ne dessine les fournisseurs et leurs liens qu'à la demande — l'interrupteur les montre.)
   await choisirChemin(page,'Complet');
+  await page.locator(`${M} [data-ch-fournisseurs]`).click();await attendre(page,300);
   const ajout=await page.locator(`${M} [data-mu-flux-ajout] option`).evaluateAll(os=>os.map(o=>o.value));
   assert.equal(ajout.includes('appros')||ajout.includes('magasin'),false,'un fournisseur ne s’ajoute pas comme une étape');
   await page.evaluate(()=>{Sim.unite.fluxSel={type:'lien',id:'magasin>prepa'};Sim.unite.graphe.selection=Sim.unite.fluxSel;Sim.unite.rendreFlux();});await attendre(page,200);

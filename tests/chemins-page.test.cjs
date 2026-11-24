@@ -18,11 +18,14 @@ const etat = (ateliers = []) => ({
 
 test('la liste des chemins : ceux que suivent des classes, leurs variantes, puis les chemins à part — avec leurs commandes et leurs étapes', () => {
   const l = C.chemins(etat(), classes);
-  assert.deepEqual(l.map(x => [x.p.id, x.genre, x.commandes.map(c => c.id), x.etapes]), [
-    ['p1', 'chemin', ['NO/BC', 'SU/BC'], 3],
-    ['p2', 'variante', ['NO/PC'], 1],
-    ['p3', 'apart', ['SU/YC'], 2]]);
-  assert.deepEqual(l.map(C.compte), ['2 commandes · 3 étapes', '1 commande · 1 étape', '1 commande · 2 étapes']);
+  // Évolution 24 (b) : le compte distingue les étapes des fournisseurs. Le magasin de « Complet », une mise à disposition
+  // où rien n'arrive, est un fournisseur : deux étapes et un fournisseur (avant : « 3 étapes »).
+  assert.deepEqual(l.map(x => [x.p.id, x.genre, x.commandes.map(c => c.id), x.etapes, x.fournisseurs]), [
+    ['p1', 'chemin', ['NO/BC', 'SU/BC'], 2, 1],
+    ['p2', 'variante', ['NO/PC'], 1, 0],
+    ['p3', 'apart', ['SU/YC'], 2, 0]]);
+  assert.deepEqual(l.map(C.compte), ['2 commandes · 2 étapes · 1 fournisseur', '1 commande · 1 étape', '1 commande · 2 étapes']);
+  assert.equal(C.compte({ commandes: [], etapes: 4, fournisseurs: 2 }), '0 commande · 4 étapes · 2 fournisseurs');
   // Sans chemin ni commande : la liste est vide, rien ne casse.
   assert.deepEqual(C.chemins({}, classes), []);
   assert.deepEqual(C.chemins(etat(), []).map(x => x.commandes.length), [0, 0, 0]);

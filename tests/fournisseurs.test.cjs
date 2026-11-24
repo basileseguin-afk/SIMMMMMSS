@@ -387,6 +387,24 @@ test('une sauvegarde d’après, relue par le code d’avant (la version 2), don
   assert.deepEqual(heures(avant), heures(r));
 });
 
+/* ---- évolution 24 (b) : le schéma sans les fournisseurs -------------------------------------------------------- */
+
+test('un chemin : ses étapes d’un côté, ses fournisseurs de l’autre, et les pastilles de ses étapes clientes', () => {
+  const e = unite(), avant = JSON.stringify(e);
+  assert.deepEqual(F.duChemin(e, chemin(e, 'c1'), O), { etapes: ['decontam', 'cuisine', 'prepa'], fournisseurs: ['appros', 'magasin'],
+    clients: { decontam: ['appros'], prepa: ['magasin'] } });
+  // « Mixte » : le montage y passe sans le magasin (client en partie) — pas de pastille là où il n'y a pas de lien.
+  assert.deepEqual(F.duChemin(e, chemin(e, 'c3'), O), { etapes: ['cuisine', 'preparation', 'prepa'], fournisseurs: ['appros'], clients: { cuisine: ['appros'] } });
+  // Une étape cliente de deux fournisseurs porte les deux.
+  F.regler(e, 'appros', 'prepa', true, O);
+  assert.deepEqual(F.duChemin(e, chemin(e, 'c1'), O).clients.prepa, ['appros', 'magasin']);
+  // Une mise à disposition qui a un amont est une étape : elle se dessine.
+  assert.ok(F.duChemin(e, chemin(e, 'c1'), O).etapes.includes('decontam'));
+  const lu = unite();
+  F.duChemin(lu, chemin(lu, 'c1'), O);
+  assert.equal(JSON.stringify(lu), avant, 'lire ne change rien');
+});
+
 /* ---- ce que la page en montre -------------------------------------------------------------------------------- */
 
 test('le tableau dit la règle, coche, décoche, et nomme un client en partie', () => {

@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Évolution 24 (b) : « Chemins », le schéma sans les fournisseurs
+
+Deuxième partie de l’évolution 24. Aucun calcul ne change, ni la sauvegarde.
+La version 2 n’est pas touchée, ni aucun fichier commun (`graphe.js` reste tel
+quel : la page lui donne les étapes à dessiner).
+
+- **Le schéma ne dessine plus les fournisseurs ni leurs liens.** Une étape
+  cliente porte une pastille au nom de son fournisseur, sur son bord bas (le
+  nom entier au survol).
+- **Sous le schéma, une ligne qui se lit** : « Fournisseurs de ce chemin :
+  … », et « Régler les clients », qui ouvre l’entrée « Fournisseurs ». Rien ne
+  se règle sur cette ligne.
+- **Le compte d’un chemin distingue les deux** : « n étapes · n
+  fournisseurs », dans la liste et dans l’en-tête.
+- **« Montrer les fournisseurs sur le schéma »**, un interrupteur éteint par
+  défaut, redonne le dessin complet. Leurs liens s’y lisent, en pointillé, et
+  ne s’y modifient pas : un geste dessus mène au tableau « Qui se fournit
+  où ». Une préférence d’affichage (`ory-ui-chemins-fournisseurs`), hors de la
+  sauvegarde.
+- Le suivi des fournisseurs ne coûte rien à un geste qui ne touche aucun
+  chemin (une heure, un effectif).
+
+Fichiers : `chemins-page.js`, `chemins-page.css`, `fournisseurs.js`
+(`duChemin`), `index.html` ; `tests/chemins-fournisseurs-browser.cjs`
+(nouveau) et les tests adaptés ; `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Évolution 24 (a) : les clients d’un fournisseur, une liste pour toute l’unité
 
 Première partie de l’évolution 24. Le code du calcul ne change pas : le moteur

@@ -126,3 +126,24 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 .fo-clients .fo-vers{margin:0}
 /* Dans le schéma, un lien de fournisseur ne se retire pas : il mène au tableau. */
 .ch-lien-fournisseur{flex-wrap:wrap}
+
+/* Évolution 24 (b) : le schéma sans les fournisseurs. Une étape cliente porte une pastille au nom de son fournisseur ;
+   sous le schéma, une ligne les nomme, mène au tableau « Qui se fournit où », et porte l'interrupteur qui redonne le
+   dessin complet. graphe.css, commun avec la version 2, n'est pas modifié. */
+.ch-fournis{display:flex;align-items:center;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.ch-fournis-dit b{color:var(--ds-texte-1);font-weight:var(--ds-g-fort)}
+#mu-flux .ch-fournis .lien-discret{padding:0}
+/* L'interrupteur : un témoin qui glisse, à gauche de son nom ; poussé à droite de la ligne. */
+.ch-interrupteur{appearance:none;display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:3px 6px;border:0;border-radius:var(--ds-r-2);background:none;
+  font:inherit;font-size:var(--ds-t-13);color:var(--ds-texte-2);cursor:pointer}
+.ch-interrupteur:hover{color:var(--ds-texte-1)}
+.ch-interrupteur:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.ch-interrupteur .ch-temoin{position:relative;flex:none;width:28px;height:16px;border-radius:99px;background:var(--ds-texte-4,var(--ds-bordure));transition:background var(--ds-t-rapide)}
+.ch-interrupteur .ch-temoin::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--ds-surface-1);
+  box-shadow:0 0 0 1px var(--ds-bordure);transition:transform var(--ds-t-rapide)}
+.ch-interrupteur[aria-checked="true"]{color:var(--ds-texte-1)}
+.ch-interrupteur[aria-checked="true"] .ch-temoin{background:var(--accent)}
+.ch-interrupteur[aria-checked="true"] .ch-temoin::after{transform:translateX(12px);box-shadow:none}
+/* La pastille, dans le dessin : à cheval sur le bord haut de l'étape, à droite. Son texte a la taille des autres. */
+.ch-pastille rect{fill:var(--ds-surface-1);stroke:var(--ds-bordure-2,var(--ds-bordure));stroke-width:1}
+.ch-pastille text{font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);fill:var(--ds-texte-2);pointer-events:none}

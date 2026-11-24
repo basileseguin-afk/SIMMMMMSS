@@ -123,6 +123,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Évolution 24 (a) : les clients d'un fournisseur (la réception) se règlent une fois pour toute l'unité. Tirer un lien
   // depuis lui ne crée rien : le geste dit pourquoi, et mène au tableau « Qui se fournit où ». Suppr sur un de ses liens
   // ne le retire pas non plus.
+  // (Évolution 24 b : le schéma ne dessine plus les fournisseurs ; « Montrer les fournisseurs sur le schéma » les
+  //  redonne, pour la suite de ce test — leurs liens s'y lisent, sans s'y modifier.)
+  assert.equal(await page.locator(`${Z} [data-noeud=appros], ${Z} [data-noeud=magasin]`).count(),0,'sans l’interrupteur, pas de fournisseur dans le schéma');
+  await page.locator(`${M} [data-ch-fournisseurs]`).click();await attendre(300);
+  assert.equal(await page.locator(`${Z} [data-noeud=appros], ${Z} [data-noeud=magasin]`).count(),2);
   const avantFournisseur=await liens(bc);
   await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre(300);
