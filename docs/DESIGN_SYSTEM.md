@@ -275,7 +275,9 @@ tableau.
   du haut : `menu-browser` la veut finie avant 132 px. Sur un écran bas
   (820 px ou moins), le surtitre se retire : le fil d'Ariane dit déjà la
   partie, et le contenu remonte (`rejeu-browser` : le plan d'abord, à
-  1 024 × 768 aussi).
+  1 024 × 768 aussi). Les onglets d'un groupe de pages (« Détails ») sont
+  sous le titre et sa phrase, jamais au-dessus (version 1, correction 23 b,
+  `lisible.css`).
 - Un fond en dégradé garde une couleur de repli (`linear-gradient(…)
   var(--ds-nav-fond)`) : c'est elle que lisent les contrôles de contraste.
 - **L'accueil** : le bandeau de l'histoire reprend le bleu nuit de la
@@ -342,7 +344,10 @@ manque.
    page défile comme avant.
 3. **Les colonnes prennent la largeur.** Une page ne tient pas dans une
    demi-largeur en laissant l'autre vide : le contenu va d'un bord à l'autre.
-   Un champ, lui, garde une largeur de champ.
+   Un champ, lui, garde une largeur de champ. Un petit tableau non plus ne
+   s'étire pas : sa carte va d'un bord à l'autre, ses colonnes prennent la
+   largeur de leur contenu (« Détails › Heures sup et renforts », trois
+   colonnes ; correction 23 b).
 
 Avec elles :
 

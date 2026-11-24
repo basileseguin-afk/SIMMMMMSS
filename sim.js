@@ -2837,7 +2837,7 @@ function renderHeuresSup(r){
   const total=lignes.reduce((n,[,l])=>n+l.total,0),dl=MoteurProduction.dureeLisible;
   box.innerHTML='<h3>Heures supplémentaires</h3>'
     +(lignes.length?'<p class="mini-note">'+escapeHTML(dl(total))+' en tout, plafond '+heuresFr(heuresSup().plafond)+' h par personne. Par service : les heures sup de chaque personne restée, additionnées.</p>'
-      +'<div class="table-scroll"><table class="svc-table hs-table"><thead><tr><th scope="col">Service</th><th scope="col">Heures sup</th><th scope="col">Équipes</th></tr></thead><tbody>'
+      +'<div class="table-scroll"><table class="svc-table hs-table"><thead><tr><th scope="col">Service</th><th scope="col" class="num">Heures sup</th><th scope="col">Équipes</th></tr></thead><tbody>'
       +lignes.map(([id,l])=>'<tr data-hs-service="'+escapeHTML(id)+'"><th scope="row">'+escapeHTML(noms[id]||nomDeService(id))+'</th><td class="num">'+escapeHTML(dl(l.total))+'</td><td>'
         +l.equipes.map(a=>escapeHTML(a.nom)+' : '+detail(a)).join('<br>')+'</td></tr>').join('')
       +'</tbody></table></div>'
@@ -3019,7 +3019,7 @@ function renderRenforts(r){
   box.innerHTML='<h3>Renforts</h3>'
     +(r.renforts.length?'<p class="mini-note">Temps prêté en tout : '+escapeHTML(dl(total))+(sup>0?', dont '+escapeHTML(dl(sup))+' en heures supplémentaires':'')
       +'. En minutes-personne, du départ du renfort à son retour, hors de ses pauses.</p>'
-      +'<div class="table-scroll"><table class="svc-table rf-bilan"><thead><tr><th scope="col">Équipe qui aide</th><th scope="col">Équipe aidée</th><th scope="col">Temps prêté</th></tr></thead><tbody>'
+      +'<div class="table-scroll"><table class="svc-table rf-bilan"><thead><tr><th scope="col">Équipe qui aide</th><th scope="col">Équipe aidée</th><th scope="col" class="num">Temps prêté</th></tr></thead><tbody>'
       +r.renforts.map(p=>'<tr data-rf-de="'+escapeHTML(p.de)+'" data-rf-vers="'+escapeHTML(p.vers)+'"><td>'+cellule(p.de)+'</td><td>'+cellule(p.vers)+'</td><td class="num">'+escapeHTML(dl(p.minutes))+'</td></tr>').join('')
       +'</tbody></table></div>'
     :'<p class="mini-note">Aucun : aucune équipe qui a fini ne peut aider une équipe en retard.</p>');

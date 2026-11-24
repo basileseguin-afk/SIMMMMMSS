@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (b) : « Heures sup et renforts », une page mise en forme comme les autres
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **Les deux cartes** (« Heures supplémentaires », « Renforts ») ont une
+  marge intérieure, une bordure fine et un rayon de 8 px, comme les cartes
+  des autres onglets de « Détails » : leur titre, leur phrase et leur tableau
+  ne touchent plus le bord. Aux deux tailles (1 366 × 768, 1 920 × 1 080),
+  aucun texte n’est à moins de 12 px du bord de sa carte.
+- **Un tableau de trois colonnes ne s’étire plus** sur toute la largeur : ses
+  colonnes prennent la largeur de leur contenu ; les nombres (« Heures sup »,
+  « Temps prêté ») sont à droite, en-tête compris.
+- **Le titre de la page** (« Détails ») et sa phrase sont au-dessus de la
+  rangée d’onglets, comme sur les autres pages — pour les quatre onglets.
+
+Fichiers : `lisible.css`, `sim.js` (la classe `num` sur deux en-têtes),
+`index.html` ; `tests/heures-sup-renforts-page-browser.cjs` (nouveau) ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (a) : le Planning garde le jour de travail choisi
 
 Première partie de la correction 23 (les retours du chef de projet après une

@@ -98,3 +98,22 @@ body[data-vue="plan"]:not(.editing):not([data-sous="j-plan"]):not([data-sous="u-
   body[data-sous="at-planning"] #at-planning>.pg-cadre{max-height:max(260px,calc(100vh - 160px))}
   body[data-sous="at-planning"] #view-ateliers>#at-charge{max-height:none;overflow:visible}
 }
+
+/* Correction 23 (b) : le titre de la page est au-dessus de ses onglets, comme sur les autres pages. Les onglets de
+   « Détails » se posaient dans la première case libre de l'en-tête, au-dessus du titre : ils ont leur rangée, sous la
+   phrase d'introduction ; la barre du jour vient ensuite. ds.css, commun avec la version 2, n'est pas modifié. */
+#tete-page>.onglets-internes{grid-column:1/-1;grid-row:4}
+
+/* Correction 23 (b) : « Détails › Heures sup et renforts » — deux cartes mises en forme comme le reste (une bordure
+   fine, un rayon de 8 px, une marge intérieure) ; leur titre a la taille de ceux des autres onglets. Un tableau de
+   trois colonnes ne s'étire pas sur toute la largeur : ses colonnes prennent la largeur de leur contenu. */
+#journee-details .panneau{margin:0;padding:var(--ds-e-4) var(--ds-e-5) var(--ds-e-5);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+  background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
+#journee-details .panneau>h3{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:0;text-transform:none;color:var(--ds-texte-1)}
+#journee-details .panneau>.mini-note{margin:0 0 var(--ds-e-3)}
+#journee-details .panneau>:last-child{margin-bottom:0}
+#journee-details .panneau>.table-scroll{width:fit-content;max-width:100%}
+#journee-details .panneau table{width:auto}
+#journee-details .panneau :is(th,td){padding-left:var(--ds-e-4);padding-right:var(--ds-e-4)}
+#journee-details .panneau :is(th,td).num{text-align:right}
+#journee-details .panneau tbody th{font-size:var(--ds-t-14);color:var(--ds-texte-1)}
