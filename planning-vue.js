@@ -283,7 +283,10 @@
    * Ce que la page garde d'un dessin à l'autre : le zoom, le jour affiché, les services dépliés (tous repliés à l'ouverture),
    * l'heure à gauche, la commande choisie, la légende (repliée ou non), le plein écran.
    */
-  const etat = { zoom: 'jour', jour: null, deplies: new Set(), gauche: null, choix: null, vue: null, vise: null, amener: false, legende: true, plein: false };
+  const etat = { zoom: 'jour', jour: null, deplies: new Set(), gauche: null, choix: null, vue: null, vise: null, amener: false, legende: true, plein: false,
+    // Le jour de travail que l'utilisateur a choisi par son onglet (correction 23 a) : il se garde quand la journée de
+    // vols change, tant qu'elle a des lots ce jour-là ; `programme` : le programme de vols où il l'a choisi.
+    voulu: null, programme: undefined };
 
   /*
    * Les services dépliés : ce navigateur s'en souvient (une préférence d'affichage, `ory-ui-…`, que le garde des onglets
@@ -598,7 +601,7 @@
       if (z) { const c = cadreDe(), v = etat.vue; zoomer(z.dataset.pgZoom, v && c ? { t: v.t0 + (c.scrollLeft + (c.clientWidth - v.noms) / 2) / v.pxh * 60, px: (c.clientWidth - v.noms) / 2 } : null); return; }
       // Un onglet de jour : ce jour de travail, dans son cadre ; depuis « Toute la chaîne », on passe à « Un jour ».
       const j = e.target.closest('[data-pg-jour]');
-      if (j) { etat.jour = +j.dataset.pgJour; if (etat.zoom === 'chaine') etat.zoom = 'jour'; etat.gauche = null; tracer(box, etat.o); return; }
+      if (j) { etat.voulu = etat.jour = +j.dataset.pgJour; if (etat.zoom === 'chaine') etat.zoom = 'jour'; etat.gauche = null; tracer(box, etat.o); return; }
       const tout = e.target.closest('[data-pg-tout]');
       if (tout) { for (const g of box.querySelectorAll('.pg-groupe')) plier(box, g, tout.dataset.pgTout === 'deplier'); if (tout.dataset.pgTout !== 'deplier') etat.deplies.clear(); apresPli(box); return; }
       if (e.target.closest('.pg-legende-bouton')) { etat.legende = !etat.legende; direLegende(box); ajusterHauteur(box); return; }
@@ -680,10 +683,13 @@
     box.classList.add('pg');
     box.classList.toggle('pg-plein', !!etat.plein);
     relire();
-    // Une autre journée (un autre programme, un autre jour) : le planning revient au jour qui a le plus de lots.
+    // Une autre journée (un autre jour du programme) : le planning garde le jour de travail que l'utilisateur a choisi,
+    // tant qu'elle a des lots ce jour-là ; sinon — ou sans choix — il revient au jour qui a le plus de lots, et le choix
+    // revient dès qu'une journée l'a de nouveau (correction 23 a). Un autre programme importé repart de zéro.
+    if (etat.programme !== o.programme) { etat.programme = o.programme; etat.voulu = null; etat.cle = null; }
     const b = bornes(r), cle = b.t0 + '|' + b.t1 + '|' + jours.map(x => x.jour + ':' + x.lots).join(',');
-    if (etat.cle !== cle) { etat.cle = cle; etat.gauche = null; etat.jour = E().jourAOuvrir(r); }
-    if (!jours.some(x => x.jour === etat.jour)) { etat.jour = E().jourAOuvrir(r); etat.gauche = null; }
+    if (etat.cle !== cle) { etat.cle = cle; etat.gauche = null; etat.jour = E().jourAMontrer(r, etat.voulu); }
+    if (!jours.some(x => x.jour === etat.jour)) { etat.jour = E().jourAMontrer(r, etat.voulu); etat.gauche = null; }
     // Un service visé depuis la Synthèse, pas encore montré : son jour de travail.
     if (etat.vise && etat.amener) { const j = jourDuVise(r); if (j !== etat.jour) { etat.jour = j; etat.gauche = null; } }
     // Une commande choisie qui n'existe plus ne reste pas en évidence.

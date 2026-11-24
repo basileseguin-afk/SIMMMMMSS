@@ -111,6 +111,9 @@ let flights = [];
  * montre une de ses journées de vols (`Sim.jourVols`), la première tant qu'on
  * n'en choisit pas une autre. Sans date, rien ne change. */
 let descProgramme = { data: null, d: null };
+/* Le numéro du programme de vols en place (correction 23 a) : il change à chaque import. Ce que l'utilisateur a choisi
+ * pour comparer une journée à l'autre (le jour de travail du Planning) ne vaut que pour un programme. */
+let numeroProgramme = 0;
 const descriptionDuProgramme = data => (descProgramme.data === data ? descProgramme.d : (descProgramme = { data, d: OrlyPeriode.decrire(data) }).d);
 function chargerVols(data) {
   const d = descriptionDuProgramme(data);
@@ -610,6 +613,8 @@ function initAteliers(){
     hote:()=>document.getElementById('view-ateliers'),
     services:servicesDisponibles,
     vols:()=>flights,
+    // Le programme de vols en place (correction 23 a) : son numéro change à chaque import.
+    programme:()=>numeroProgramme,
     // Le handling a son service à lui, dans la zone CF départ food (où il charge).
     creerHandling:()=>Sim.editor?Sim.editor.nouveauService('Handling','handling',!ZONES.handling):null,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
@@ -2390,8 +2395,9 @@ function initVueSimulation() {
   });
   // Évolution 14 (a) : à l'ouverture, l'heure rejouée est le créneau où le plus de personnes sont au travail. Elle reste
   // celle choisie tant que la journée relue ne change pas (un autre programme de vols, un autre jour du programme).
+  // Correction 23 (a) : d'un jour du programme à l'autre, l'heure que l'utilisateur a choisie se garde (voir placerAuPic).
   const recalculer = Sim.vue.recalculer.bind(Sim.vue);
-  Sim.vue.recalculer = () => { recalculer(); placerAuPic(); };
+  Sim.vue.recalculer = () => { const regardee = Sim.vue.t; recalculer(); placerAuPic(regardee); };
   // Les points de « Ce qui circule » n'avancent que pendant la lecture : la pause les retire.
   const pauseVue = Sim.vue.pause.bind(Sim.vue);
   Sim.vue.pause = () => { pauseVue(); peindrePlanFlux(); };
@@ -2744,17 +2750,23 @@ function initLireDirect() {
   });
 }
 
-let journeeRelue = null;
-function placerAuPic() {
-  const v = Sim.vue, r = Sim.ateliers && Sim.ateliers.resultat;
+/* Correction 23 (a) : quand la journée de vols change, l'heure rejouée revenait à son départ. Elle garde maintenant
+ * l'heure que l'utilisateur a choisie (`heureVoulue` : celle qu'il regardait, si ce n'est pas celle que la page avait
+ * placée, `heurePlacee`), tant que la nouvelle journée la contient ; sinon — ou sans choix — l'heure d'ouverture, comme
+ * avant, et le choix revient dès qu'une journée le contient. Un autre programme importé repart de zéro. */
+let journeeRelue = null, heurePlacee = null, heureVoulue = null;
+function placerAuPic(regardee) {
+  const v = Sim.vue, r = Sim.ateliers && Sim.ateliers.resultat, DL = window.OrlyDirectLire;
   const cle = [Sim.dataCourante, Sim.jourVols];
   if (journeeRelue && journeeRelue[0] === cle[0] && journeeRelue[1] === cle[1]) return;
+  heureVoulue = !DL || !DL.heureChoisie || !journeeRelue || journeeRelue[0] !== cle[0] ? null : DL.heureChoisie(heureVoulue, regardee, heurePlacee);
   journeeRelue = cle;
   if (!v || v.vide || !r || !r.ok || !window.OrlyIndicateurs || !window.OrlyChargeVue) return;
   // À l'ouverture : le moment où le premier goulot du jour commence à coincer ; sans goulot, le pic de travail (évolution 16 e).
   const lue = journeeLue(), goulot = lue && window.OrlyDirectLire ? OrlyDirectLire.lire(lue, { de: v.debut, a: v.fin }).ouverture : null;
-  const t = goulot != null && goulot >= v.debut && goulot <= v.fin ? goulot : OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
-  if (t != null && t >= v.debut && t <= v.fin) v.allerA(t);
+  const ouverture = goulot != null && goulot >= v.debut && goulot <= v.fin ? goulot : OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
+  const t = DL && DL.heureAMontrer ? DL.heureAMontrer(heureVoulue, { debut: v.debut, fin: v.fin }, ouverture) : ouverture;
+  if (t != null && t >= v.debut && t <= v.fin) { v.allerA(t); heurePlacee = v.t; }
 }
 
 /* ==========================================================================
@@ -3414,6 +3426,7 @@ function direImport(report,reconnu,data,nom){
 }
 /** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
 function remplacerProgramme(data,nom){
+  numeroProgramme++;
   Sim.dataCourante=data;Sim.jourVols=null;dataSource=nom;snaps={};majCompare();reset(data);updateSource();
   // Un programme daté (évolution 10) : la période qu'il couvre, les vols de chaque jour, un jour sans vol signalé.
   const periode=OrlyPeriode.decrire(data);
@@ -4116,6 +4129,7 @@ function initWorkbench() {
   document.getElementById('restore-demo').addEventListener('click',async()=>{
     if(dataSource!=='Jeu de démonstration'&&!await OrlyNotif.demander('Les vols importés et les scénarios capturés seront remplacés par le jeu de démonstration.',
       {titre:'Recharger la démo ?',oui:'Recharger la démo',danger:true}))return;
+    numeroProgramme++;
     dataSource='Jeu de démonstration';cleDemo='';suivreDemo();snaps={};majCompare();reset(Sim.dataCourante);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });

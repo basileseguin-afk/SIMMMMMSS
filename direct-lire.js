@@ -240,7 +240,25 @@
     return vols.length ? vols[0].id : null;
   }
 
-  const api = { reunir, phraseDuGoulot, lire, goulotA, goulotsA, pointSuivant, tonsA, tonDeZone, frise, detail, suivi, estDuVol, volDe };
+  /**
+   * L'heure rejouée à montrer quand la journée change (correction 23 a) : celle que l'utilisateur a choisie (`voulue`),
+   * tant qu'elle est dans la journée (`cadre` : son début et sa fin) ; sinon — ou sans choix — l'heure d'ouverture de
+   * la journée (`ouverture` : son premier goulot, sinon son pic). Le choix n'est pas perdu : il revient dès qu'une
+   * journée le contient.
+   */
+  function heureAMontrer(voulue, cadre, ouverture) {
+    const dedans = t => Number.isFinite(t) && !!cadre && t >= cadre.debut && t <= cadre.fin;
+    return dedans(voulue) ? voulue : dedans(ouverture) ? ouverture : null;
+  }
+  /**
+   * L'heure que l'utilisateur a choisie, relue au moment où la journée change : celle qu'il regardait (`regardee`), si
+   * ce n'est pas celle que la page avait placée (`placee`) ; sinon son choix d'avant (`voulue`), qui tient.
+   */
+  function heureChoisie(voulue, regardee, placee) {
+    return Number.isFinite(regardee) && Number.isFinite(placee) && Math.abs(regardee - placee) > 1e-6 ? regardee : (voulue == null ? null : voulue);
+  }
+
+  const api = { reunir, phraseDuGoulot, lire, goulotA, goulotsA, pointSuivant, tonsA, tonDeZone, frise, detail, suivi, estDuVol, volDe, heureAMontrer, heureChoisie };
   if (enNode) module.exports = api;
   else root.OrlyDirectLire = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

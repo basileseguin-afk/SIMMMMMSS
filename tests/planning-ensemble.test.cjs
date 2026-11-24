@@ -155,3 +155,19 @@ test('l’unité fictive de 15 services et 50 équipes : 15 services ont des lot
   const c = E.cadreDuJour(r, 0);
   assert.ok(E.pxParHeure('jour', 850, c.t0, c.t1) >= 40);
 });
+
+test('correction 23 (a) : le jour de travail choisi se garde d’une journée à l’autre, tant qu’elle a des lots ce jour-là', () => {
+  const journee = (...jours) => ({ ateliers: jours.map(([jour, n], i) => ({ id: 'a' + i, jour, lots: Array.from({ length: n }, (_, k) => ({ debut: k * 10, fin: k * 10 + 5 })) })) });
+  const avecJ2 = journee([-2, 1], [-1, 2], [0, 5]), sansJ2 = journee([-1, 2], [0, 5]);
+  // Sans choix de l'utilisateur : le jour qui a le plus de lots, comme avant.
+  assert.equal(E.jourAMontrer(avecJ2, null), 0);
+  assert.equal(E.jourAMontrer(avecJ2, undefined), E.jourAOuvrir(avecJ2));
+  // Un jour choisi : il se garde tant que la journée a des lots ce jour-là.
+  assert.equal(E.jourAMontrer(avecJ2, -2), -2);
+  assert.equal(E.jourAMontrer(avecJ2, -1), -1);
+  // Une journée sans lot ce jour-là : le jour qui en a le plus ; le choix, lui, n'est pas perdu (la suivante y revient).
+  assert.equal(E.jourAMontrer(sansJ2, -2), 0);
+  assert.equal(E.jourAMontrer(avecJ2, -2), -2);
+  // Sans lot : aucun jour.
+  assert.equal(E.jourAMontrer({ ateliers: [] }, -2), null);
+});

@@ -73,6 +73,14 @@
     return mieux ? mieux.jour : null;
   }
   /**
+   * Le jour à montrer (correction 23 a) : celui que l'utilisateur a choisi (`voulu`), tant que la journée a des lots ce
+   * jour-là ; sinon — ou sans choix — celui qui a le plus de lots. Le choix n'est pas perdu : une journée qui a de
+   * nouveau des lots ce jour-là y revient.
+   */
+  function jourAMontrer(r, voulu) {
+    return voulu != null && joursAvecLots(r).some(x => x.jour === voulu) ? voulu : jourAOuvrir(r);
+  }
+  /**
    * Le cadre d'un jour de travail : du premier début de lot de ses équipes moins 30 min à leur dernière fin plus 30 min (un lot
    * pas fini compte à son début). Null si ce jour n'a pas de lot.
    */
@@ -205,7 +213,7 @@
     return pts.length ? 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') : '';
   }
 
-  const api = { MARGE, PX_HEURE_JOUR, PX_HEURE_SIX, NOMS_MIN, NOMS_MAX, SANS_LOT, estUnLot, lotsDe, jourDeLEquipe, nombre, motDuJour, joursAvecLots, jourAOuvrir, cadreDuJour,
+  const api = { MARGE, PX_HEURE_JOUR, PX_HEURE_SIX, NOMS_MIN, NOMS_MAX, SANS_LOT, estUnLot, lotsDe, jourDeLEquipe, nombre, motDuJour, joursAvecLots, jourAOuvrir, jourAMontrer, cadreDuJour,
     pxParHeure, lignes, heureDuJour, resume, motsDuPic, phraseDuResume, avantLePremierLot, motsDAvant, motsDesPersonnes, largeurDesNoms, escalier };
   if (enNode) module.exports = api;
   else root.OrlyPlanningEnsemble = api;

@@ -1458,7 +1458,12 @@ nouveau.
   « Montage : l'équipe … finit à hh:mm pour hh:mm », ou « Montage : 12
   commandes ou vols partent en retard par ses lots ».
 - **À l'ouverture**, l'heure rejouée est le moment où le premier goulot du
-  jour commence à coincer ; sans goulot, le pic de travail.
+  jour commence à coincer ; sans goulot, le pic de travail. Quand la journée
+  de vols change (un autre jour du programme), l'heure que l'on a choisie se
+  garde, tant que la nouvelle journée la contient ; sinon — ou si l'on n'a
+  rien choisi — la journée s'ouvre à son heure d'ouverture, et l'heure
+  choisie revient dès qu'une journée la contient (version 1, correction
+  23 a). Un autre programme importé repart de zéro.
 - **Sous la scène, la barre du temps** : les personnes au travail (une aire),
   dessous les arrivages en attente (une ligne), un repère par départ de vol
   (plus haut et critique s'il est en retard), les jours marqués (« J−1 »,
@@ -1636,7 +1641,13 @@ service.
   équipes sans commande, services entiers compris.
 - **Un jour à la fois** : un onglet par jour de travail qui a des lots
   (« veille », « jour des vols »…), avec le nombre d'équipes qui y
-  travaillent ; à l'ouverture, celui qui a le plus de lots. « Un jour » cadre
+  travaillent ; à l'ouverture, celui qui a le plus de lots. **Le jour de
+  travail que l'on choisit se garde quand la journée de vols change**
+  (version 1, correction 23 a), tant que la nouvelle journée a des lots ce
+  jour-là — pour comparer le même jour de travail d'une journée à l'autre
+  sans recliquer ; sinon le planning ouvre le jour le plus chargé, et le
+  choix revient dès qu'une journée l'a de nouveau. Sans choix, rien ne
+  change ; un autre programme importé repart de zéro. « Un jour » cadre
   du premier début de lot moins 30 min à la dernière fin plus 30 min, et
   remplit la largeur (une heure fait au moins 40 px) ; « 6 h » pour le
   détail ; « Toute la chaîne » montre tous les jours à la fois. Ctrl + molette
@@ -2539,6 +2550,7 @@ aucun vol.
 | `tests/unite-15-services.cjs` | L’unité fictive des tests du planning (correction 18 b) : 15 services qui ont des lots le jour des vols (dont huit services « à part entière » ajoutés après le montage), 3 mises à disposition sans lot, 50 équipes, un nom d’équipe long, une commande finie la veille |
 | `tests/planning-vue.test.cjs` | Le planning des équipes sans navigateur (évolution 14 c, correction 18 b, `planning-vue.js`) : l’échelle des trois zooms (« Un jour » remplit la largeur), les bornes de la chaîne, le jour qu’on ouvre, l’ordre des services le long du chemin et les lignes (les équipes sans lot à part), une pause prise qui troue la barre, la limite de chaque commande sur son dernier lot, le retard et la marge, l’infobulle, la période visible, l’axe à deux niveaux, la commande mise en évidence |
 | `tests/planning-vue-browser.cjs` | Le planning des équipes (évolution 14 c, correction 18 b), sur l’unité et les vols fictifs, à 1 280 et 1 920 px, les services dépliés : « Un jour » sur le jour qui a le plus de lots, cadré sur ses lots, dans la largeur (40 px par heure au moins), la période dite, lignes de 28 px (services : 32 px) et textes de 12 à 13 px, la légende sur la ligne des boutons ; les trois zooms (boutons, Ctrl + molette) et le glissé ; l’axe et les noms à la vue après un défilement ; une ligne par service qui a des lots dans l’ordre du chemin, sa courbe, les équipes sans lot à part, replier ; la limite d’une commande en retard à gauche de la fin de sa barre ; le clic qui met une commande en évidence, Échap, l’infobulle au focus clavier ; le trait de l’heure rejouée |
+| `tests/planning-jour-garde-browser.cjs` | Le jour de travail choisi se garde (v1, correction 23 a), sur l’unité fictive et un programme daté fictif de trois jours dont le deuxième n’a aucun lot à J−2 : sans choix, chaque journée ouvre son jour le plus chargé ; « J−2 » choisi, l’onglet reste « J−2 » d’une journée à l’autre ; la journée sans lot à J−2 ouvre le jour le plus chargé, la suivante revient à « J−2 » ; un réglage changé ne le fait pas quitter ; un autre programme importé repart de zéro. « En direct » garde de même l’heure rejouée choisie |
 | `tests/plan-flux.test.cjs` | Ce qui se passe à l’heure rejouée, sans navigateur (évolution 14 b, `plan-flux.js`) : les paires de services qui ont des repas en stock entre eux, l’épaisseur en racine de la quantité, au plus 8 traits et les trois étiquettes, les points d’une tranche qui avancent avec l’heure, le tracé de bord à bord qui contourne une zone, « au travail / présents » d’un créneau, les véhicules du handling |
 | `tests/plan-flux-browser.cjs` | Le plan rejoué : ce qui se passe à l’heure rejouée (évolution 14 b), sur un plan et des vols fictifs, en thème clair et sombre : les quatre états en remplissage franc et leurs contrastes (3:1 sur la toile, 4,5:1 pour le texte), « au travail / présents » et « en file » égaux aux indicateurs de charge, « Ce qui circule » par défaut (un trait par paire, l’épaisseur qui suit la quantité, trois étiquettes, aucun trait quand rien n’attend, jamais plus de 8), les points pendant la lecture seulement et jamais en reduced-motion, les choix d’avant qui dessinent comme avant, les véhicules du handling |
 | `tests/plan-rejoue-browser.cjs` | Le plan rejoué : le cadrage et les commandes (évolution 14 a), sur un plan et des vols fictifs (`tests/plan-rejoue-fictif.cjs`), à 1 280 et 1 920 px, sans fond et avec une tuile fictive : l’ouverture au pic de travail, le plan entier qui tient, « Tout voir » et « Cadrer », aucun texte sous 11 px, les noms entre 12 et 16 px, la bande des chiffres au-dessus du plan sans recouvrir de zone, une seule barre de commandes dans l’ordre, les repères du curseur, l’heure gardée tant que la journée ne change pas, « Fond de plan » seulement avec un fond |

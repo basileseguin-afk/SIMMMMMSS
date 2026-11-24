@@ -2772,7 +2772,8 @@
       const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
       // Les indicateurs et les réponses de la journée : ceux que la page a déjà lus (sim.js), pour ce résultat.
       const journee = () => (typeof root.journeeLue === 'function' ? root.journeeLue() : null);
-      if (V) V.rendre(box, { resultat: r, args: this.args, nomService: nomSvc, journee });
+      // `programme` : le programme de vols en place (correction 23 a) — le jour de travail choisi ne vaut que pour lui.
+      if (V) V.rendre(box, { resultat: r, args: this.args, nomService: nomSvc, journee, programme: this.a.programme ? this.a.programme() : undefined });
       this.rendreCharge(r);
     }
 

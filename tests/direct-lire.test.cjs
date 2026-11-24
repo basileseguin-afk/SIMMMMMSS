@@ -443,3 +443,23 @@ test('un service choisi sans aucune équipe n’est pas dans la scène : le pann
   const service = U.lu.goulots[0].service, d = L.detail(U.lu, U.journee, service, 400);
   assert.ok(!PN.corps({ ...x, selection: service, detail: d, sansEquipe: { service, nom: 'x' } }).includes('Aucune équipe ici'), 'le détail l’emporte');
 });
+
+test('correction 23 (a) : l’heure rejouée choisie se garde d’une journée à l’autre, tant qu’elle est dans la journée', () => {
+  // Sans choix : l'heure d'ouverture de la journée (son premier goulot, sinon son pic), comme avant.
+  assert.equal(L.heureAMontrer(null, { debut: -600, fin: 1500 }, 420), 420);
+  assert.equal(L.heureAMontrer(undefined, { debut: -600, fin: 1500 }, 420), 420);
+  // Une heure choisie : la même heure dans la journée suivante.
+  assert.equal(L.heureAMontrer(-900, { debut: -1700, fin: 1500 }, 420), -900);
+  assert.equal(L.heureAMontrer(1500, { debut: -600, fin: 1500 }, 420), 1500, 'les bornes comptent');
+  // Hors de la journée (elle commence plus tard) : l'heure d'ouverture ; le choix revient à la journée d'après.
+  assert.equal(L.heureAMontrer(-900, { debut: -600, fin: 1500 }, 420), 420);
+  assert.equal(L.heureAMontrer(-900, { debut: -1700, fin: 1500 }, 300), -900);
+  // Une ouverture inconnue, une heure choisie hors de la journée : rien à placer.
+  assert.equal(L.heureAMontrer(-900, { debut: -600, fin: 1500 }, null), null);
+  // L'heure que l'utilisateur a choisie : celle qu'il regardait, si elle n'est pas celle que la page avait placée.
+  assert.equal(L.heureChoisie(null, 300, 420), 300, 'il a bougé le curseur');
+  assert.equal(L.heureChoisie(null, 420, 420), null, 'il n’y a pas touché');
+  assert.equal(L.heureChoisie(-900, 420, 420), -900, 'son choix d’avant tient, là où la page avait dû placer une autre heure');
+  assert.equal(L.heureChoisie(-900, 600, 420), 600, 'un nouveau choix le remplace');
+  assert.equal(L.heureChoisie(-900, 600, null), -900, 'rien n’avait été placé : rien à comparer');
+});

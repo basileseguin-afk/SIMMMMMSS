@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (a) : le Planning garde le jour de travail choisi
+
+Première partie de la correction 23 (les retours du chef de projet après une
+semaine d’usage). Aucun calcul ne change, ni la sauvegarde. La version 2
+n’est pas touchée, ni aucun fichier commun.
+
+- **Planning** : le jour de travail choisi par son onglet (« J−2 »,
+  « veille »…) se garde quand la journée de vols change, tant que la nouvelle
+  journée a des lots ce jour-là. Sinon, le planning ouvre le jour le plus
+  chargé, comme avant, et le choix revient dès qu’une journée l’a de nouveau.
+  Sans choix de l’utilisateur, rien ne change. Un autre programme importé
+  repart de zéro.
+- **« En direct »** : l’heure rejouée revenait à son départ quand la journée
+  change. Elle se garde de la même façon : l’heure choisie, tant que la
+  nouvelle journée la contient ; sinon l’heure d’ouverture (le premier goulot,
+  sinon le pic), et le choix revient. Sans choix, l’heure d’ouverture, comme
+  avant.
+
+Fichiers : `planning-vue.js`, `planning-ensemble.js` (`jourAMontrer`),
+`direct-lire.js` (`heureAMontrer`, `heureChoisie`), `sim.js`, `ateliers.js`,
+`index.html` ; `tests/planning-jour-garde-browser.cjs` (nouveau),
+`tests/planning-ensemble.test.cjs`, `tests/direct-lire.test.cjs` ;
+`README.md`.
+
 ## 2026-11-24 — Évolution 24 (d) : le contrôle, les captures et la documentation
 
 Dernière partie de l’évolution 24. Aucun calcul ne change, ni la sauvegarde.
