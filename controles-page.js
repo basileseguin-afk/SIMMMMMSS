@@ -38,7 +38,8 @@
    *   service  — la fiche de ce service (« Services et équipes »), ou son étape (« Chemins ») ;
    *   equipe   — la fiche de cette équipe ;
    *   commande — la commande à mettre en évidence dans le tableau de l'étape ;
-   *   lieu     — un endroit de la page (`temps` : les temps par vol du service ; `supprimes` : les services supprimés).
+   *   lieu     — un endroit de la page (`temps` : les temps par vol du service ; `supprimes` : les services supprimés ;
+   *              `fournisseurs` : le tableau « Qui se fournit où », dans « Chemins » — évolution 24 a).
    *   `null` : l'avis ne mène nulle part ailleurs (il se lit ici).
    */
   function destination(p) {
@@ -47,6 +48,8 @@
     if (p.page === 'j-chiffres') return { page: 'j-chiffres' };
     if (p.fantome) return { page: 'mu-services', lieu: 'supprimes' };
     if (p.lien) return { page: 'u-liens' };
+    // Un lien de fournisseur se règle une fois, pour toute l'unité : dans « Chemins › Fournisseurs » (évolution 24 a).
+    if (p.fournisseur) return { page: 'mu-flux', lieu: 'fournisseurs' };
     // Une étape du chemin que personne ne prépare : l'équipe d'une commande à une étape se choisit dans « Chemins ».
     if (p.code === 'parcours-trou' && p.service) return { page: 'mu-flux', service: p.service, commande: (p.classes || [])[0] || undefined };
     if (SANS_TEMPS.has(p.code) && p.service) return { page: 'mu-services', service: p.service, lieu: 'temps' };
@@ -62,7 +65,7 @@
   function bouton(p, nomPage) {
     const d = destination(p); if (!d) return null;
     const nom = typeof nomPage === 'function' ? nomPage(d.page) : d.page;
-    return { ...d, texte: (AV.estProbleme(p) ? 'Régler dans ' : 'Voir dans ') + nom };
+    return { ...d, texte: (AV.estProbleme(p) ? 'Régler dans ' : 'Voir dans ') + nom + (d.lieu === 'fournisseurs' ? ' › Fournisseurs' : '') };
   }
 
   /** Où en est le calcul : `ok` (à jour), `vide` (rien à calculer), `arret` (un point bloquant l'arrête). */

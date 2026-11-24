@@ -39,17 +39,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 1. La démonstration, sans équipe : deux choses à compléter. En version 1 : aucune commande n'est préparée
    //    (bloquant), aucun service n'a d'équipe (à corriger) ; et, depuis l'évolution 22 (d), les vols d'exemple
-   //    (une information, que « Prêt à simuler ? » montrait à l'état « exemple »).
+   //    (une information, que « Prêt à simuler ? » montrait à l'état « exemple ») ; depuis l'évolution 24 (a), une
+   //    information de plus — dans les chemins types, la prépa se fournit à la réception dans un chemin sur deux.
    let r=await registre();
-   assert.deepEqual(r.map(p=>p.niveau),v1?['bloquant','corriger','information']:['completer','completer'],V+JSON.stringify(r));
+   assert.deepEqual(r.map(p=>p.niveau),v1?['bloquant','corriger','information','information']:['completer','completer'],V+JSON.stringify(r));
+   if(v1)assert.equal(r[3].titre,'1 client réglé en partie');
    assert.equal(await compteBarre(),comptes(r),V+'le pied de la barre dit le nombre');
    if(v1){
     // « Contrôles » : les avis du registre, rangés par niveau, dans ses colonnes.
     assert.equal(await page.locator('#btn-problemes, #problemes').count(),0,V+'plus de bouton ni de panneau « Problèmes »');
     await nav.aller(page,'mu-pas');await attendre();
     assert.deepEqual(await page.locator('#mu-pas .ct-niveau').evaluateAll(s=>s.map(x=>[x.dataset.ctNiveau,x.querySelectorAll('.ct-point').length])),
-      [['bloquant',1],['corriger',1],['information',1]],V+'rangés par niveau');
-    assert.match(await page.locator('#mu-pas .ct-niveau.information .ct-point').innerText(),/vols d’exemple[\s\S]*Voir dans Programme des vols/);
+      [['bloquant',1],['corriger',1],['information',2]],V+'rangés par niveau');
+    assert.match(await page.locator('#mu-pas .ct-niveau.information .ct-point').first().innerText(),/vols d’exemple[\s\S]*Voir dans Programme des vols/);
+    assert.match(await page.locator('#mu-pas .ct-niveau.information .ct-point').nth(1).innerText(),/1 client réglé en partie[\s\S]*Voir dans Chemins › Fournisseurs/);
     await page.locator('#mu-pas .ct-synthese').focus();await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#mu-pas .ct-point')),true,V+'au clavier, on passe d’un avis à l’autre');
    }else{

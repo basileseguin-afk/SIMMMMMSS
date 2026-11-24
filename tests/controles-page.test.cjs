@@ -192,3 +192,24 @@ test('en lecture seule (évolution 23 d) : la page se lit en entier ; « Régler
   const mal = A.lister({ anomalies: [{ code: 'handling-sans', message: '2 vols : aucun handling', compagnie: '"><b>X' }] });
   assert.doesNotMatch(C.html(mal, { ...base, verrou: true, ferme: () => true, motFerme: '<i>mot</i>' }), /"><b>X|<i>mot/);
 });
+
+test('évolution 24 (a) : un avis qui parle d’un lien de fournisseur mène au tableau « Qui se fournit où »', () => {
+  const liste = A.lister({
+    // Un fournisseur sans équipe, sur le chemin de ses clients : il se règle dans « Chemins › Fournisseurs ».
+    anomalies: [{ code: 'parcours-trou', message: '« Réception » est sur le chemin de 2 commandes, mais aucune équipe ne l’y prépare.', service: 'reception', classes: ['NO/BC'], fournisseur: true },
+      { code: 'parcours-trou', message: '« Dotation » est sur le chemin de 2 commandes, mais aucune équipe ne l’y prépare.', service: 'dotation', classes: ['NO/BC'] }],
+    clientsEnPartie: 2
+  });
+  const trou = liste.find(p => /Réception/.test(p.titre)), autre = liste.find(p => /Dotation/.test(p.titre)), partie = liste.find(p => /en partie/.test(p.titre));
+  assert.deepEqual(C.destination(trou), { page: 'mu-flux', lieu: 'fournisseurs' });
+  assert.equal(C.bouton(trou, () => 'Chemins').texte, 'Régler dans Chemins › Fournisseurs');
+  // Une étape qui n'est pas un fournisseur garde sa destination : son tableau, dans « Chemins ».
+  assert.deepEqual(C.destination(autre), { page: 'mu-flux', service: 'dotation', commande: 'NO/BC' });
+  assert.equal(C.bouton(autre, () => 'Chemins').texte, 'Régler dans Chemins');
+  // Les clients réglés en partie : une information, qui se lit dans le tableau.
+  assert.equal(partie.niveau, 'information');
+  assert.equal(partie.titre, '2 clients réglés en partie');
+  assert.deepEqual(C.destination(partie), { page: 'mu-flux', lieu: 'fournisseurs' });
+  assert.equal(C.bouton(partie, () => 'Chemins').texte, 'Voir dans Chemins › Fournisseurs');
+  assert.match(C.html(liste, { etat: 'ok', nomPage: () => 'Chemins' }), /Voir dans Chemins › Fournisseurs →/);
+});

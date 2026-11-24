@@ -186,3 +186,20 @@ test('une information qui propose un geste le dit : « Facultatif »', () => {
   assert.equal(A.marquerFacultatifs(racine, 'details.info .gestes'), 0, 'déjà marqués');
   assert.equal(A.marquerFacultatifs(null, 'x'), 0);
 });
+
+test('évolution 24 (a) : « n clients réglés en partie », une information, tant qu’il en reste', () => {
+  const un = A.lister({ clientsEnPartie: 1 }), trois = A.lister({ clientsEnPartie: 3 });
+  assert.deepEqual(un.map(p => [p.niveau, p.titre, p.page, p.fournisseur]), [['information', '1 client réglé en partie', 'mu-flux', true]]);
+  assert.match(un[0].detail, /^Il se fournit chez un fournisseur dans une partie seulement des chemins où il passe\. Choisissez « Partout » ou « Nulle part »/);
+  assert.equal(trois[0].titre, '3 clients réglés en partie');
+  assert.match(trois[0].detail, /^Ils se fournissent/);
+  // Rien n'est demandé : elle ne compte ni au menu ni sur une page.
+  assert.equal(A.compte(trois), 0);
+  assert.deepEqual(A.pages(trois[0]), []);
+  // Aucun client en partie (ou une source d'avant, qui ne le dit pas) : pas d'avis.
+  assert.deepEqual(A.lister({ clientsEnPartie: 0 }), []);
+  assert.deepEqual(A.lister({}), []);
+  // Une anomalie du calcul marquée « fournisseur » le reste dans le registre ; un résultat de la journée, non.
+  const l = A.lister({ anomalies: [{ code: 'parcours-trou', message: 'x', service: 'reception', fournisseur: true }, { code: 'bouchon', message: 'y', service: 'plonge', fournisseur: true }] });
+  assert.deepEqual(l.map(p => !!p.fournisseur), [true, false]);
+});

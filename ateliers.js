@@ -501,6 +501,11 @@
     // Les compagnies sans chargement par camion, et c'est voulu (évolution 21 e) : une liste de codes, vide par défaut.
     // Elles ne lèvent plus l'avis « aucun handling ne charge cette compagnie » ; le calcul ne change pas.
     const sansChargement = sansChargementDe(brut.sansChargement, ateliers);
+    // Les clients de chaque fournisseur, cochés une fois pour toute l'unité (évolution 24 a) : { fournisseur: [clients] }.
+    // Le calcul ne la lit pas : il lit les liens des chemins, que « Chemins › Fournisseurs » écrit. Sans elle (une
+    // sauvegarde d'avant), rien ne change ; elle sert au service coché qui n'est encore dans aucun chemin.
+    const FOURNISSEURS = fournisseursModule();
+    const fournisseurs = FOURNISSEURS ? FOURNISSEURS.lire(brut.fournisseurs) : {};
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
@@ -508,8 +513,11 @@
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
       ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
       ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}),
-      ...(Object.keys(postes).length ? { postes } : {}), ...(sansChargement.length ? { sansChargement } : {}) };
+      ...(Object.keys(postes).length ? { postes } : {}), ...(sansChargement.length ? { sansChargement } : {}),
+      ...(Object.keys(fournisseurs).length ? { fournisseurs } : {}) };
   }
+  /** Les fournisseurs et leurs clients (fournisseurs.js, évolution 24 a) ; sans ce module, la page d'avant. */
+  function fournisseursModule() { return root.OrlyFournisseurs || (enNode ? require('./fournisseurs.js') : null); }
   /**
    * Les compagnies sans chargement (évolution 21 e), mises au propre : des codes de compagnie, une fois chacun, dans
    * l'ordre. Une compagnie qu'un handling charge en sort d'elle-même : elle est dans sa liste de compagnies, ou un
@@ -1175,8 +1183,19 @@
      *  saisie se lit sous son `champ` (étape 7) ; celui d'un autre geste, en
      *  notification. */
     changer(fn, message, champ) {
-      const avant = clone(this.state);
-      try { fn(); this.state = valider(this.state); }
+      const avant = clone(this.state), unite = this.state;
+      try {
+        fn();
+        // Seul « Chemins › Fournisseurs » change un lien de fournisseur (évolution 24 a) : après le geste, chaque client
+        // garde l'état qu'il avait — un client coché reçoit son lien dans le chemin où il vient d'entrer. Un état remplacé
+        // en entier (un import, une organisation rétablie) n'est pas un geste sur les chemins : il est pris tel quel.
+        const F = fournisseursModule();
+        if (F && !this.telQuel && this.state === unite) {
+          const services = this.a.services();
+          F.suivre(avant, this.state, { services: services.map(x => x.id), nom: id => (services.find(x => x.id === id) || {}).nom || id });
+        }
+        this.state = valider(this.state);
+      }
       catch (e) {
         this.state = avant;
         if (champ) { this.rendre(); this.refuserAuChamp(champ, e.message); }
@@ -1188,6 +1207,16 @@
         this.version++; if (root.OrlyNotif) root.OrlyNotif.marquer('cases');
       }
       this.enregistrer(); this.rendre(message); return true;
+    }
+
+    /**
+     * Un changement d'organisation que la page fait d'elle-même (une migration à l'ouverture d'une sauvegarde d'avant,
+     * un service remplacé par un autre) : pris tel quel, comme avant l'évolution 24 — sans le suivi des fournisseurs,
+     * qui ne vaut que pour les gestes de l'utilisateur.
+     */
+    migrer(fn, message) {
+      this.telQuel = true;
+      try { return this.changer(fn, message); } finally { this.telQuel = false; }
     }
 
     /** Sous le champ, tel qu'il est à l'écran après le rendu ; s'il n'y est plus, en notification. */

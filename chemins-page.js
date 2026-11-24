@@ -7,7 +7,11 @@
  *   à gauche   la liste des chemins, avec pour chacun son nombre de commandes
  *              et d'étapes ; en tête, « Ajouter un chemin » ; en bas, « Toutes
  *              les commandes ont un chemin », ou le nombre de celles qui n'en
- *              ont pas, avec un lien qui les montre ;
+ *              ont pas, avec un lien qui les montre ; au-dessus des chemins,
+ *              une entrée à part, « Fournisseurs » (évolution 24 a) : elle
+ *              ouvre le tableau « Qui se fournit où », le seul endroit où se
+ *              règlent les clients d'un fournisseur, pour toute l'unité
+ *              (fournisseurs.js) ;
  *   à droite   le chemin choisi : ses étapes de l'amont vers l'aval, en cases
  *              reliées ; un clic sur une étape montre, dessous, le tableau
  *              « commande, équipe à cette étape, temps par vol ».
@@ -101,6 +105,8 @@
   if (!S || !S.PageServices) { root.OrlyCheminsPage = api; return; }
   const I = () => root.OrlyIcones;
   const pic = (nom, classe) => (I() ? I().ico(nom, classe) : '');
+  /** Les fournisseurs et leurs clients (évolution 24 a) ; sans ce module, la page d'avant. */
+  const FO = () => root.OrlyFournisseurs || null;
   const GENRES = { chemin: 'Chemins', variante: 'Variantes', apart: 'Chemins à part' };
   const COMMUNE = { dispo: 'mise à disposition : elle sert toutes les commandes', lavage: 'elle lave pour toutes les commandes',
     handling: 'elle charge les vols de toutes les commandes' };
@@ -108,7 +114,7 @@
   class PageChemins extends S.PageServices {
     constructor(a) {
       super(a);
-      this.cheminPanneau = null;        // 'sans' : les commandes sans chemin, à la place du chemin choisi
+      this.cheminPanneau = null;        // 'sans' : les commandes sans chemin, à la place du chemin choisi ; 'fournisseurs' : leur tableau
       this.cheminAjout = false;         // « Ajouter un chemin », déplié
       this.cheminSections = new Map();  // les sections repliées de la fiche d'un chemin
       this.lierChemins();
@@ -141,9 +147,11 @@
     /**
      * Arriver par le nom ou le lien d'une page d'avant, au bon endroit : `liste` — la liste des chemins (« Vue
      * d'ensemble », « Chemins de production ») ; `etapes` — le tableau d'une étape du chemin choisi (« Chemin d'une
-     * commande », « Étapes de chaque commande ») ; `sans` — les commandes sans chemin (« Liens entre services »).
+     * commande », « Étapes de chaque commande ») ; `sans` — les commandes sans chemin (« Liens entre services ») ;
+     * `fournisseurs` — le tableau « Qui se fournit où » (évolution 24 a).
      */
     allerChemins(lieu) {
+      if (lieu === 'fournisseurs' && FO()) return this.ouvrirFournisseurs();
       this.cheminPanneau = lieu === 'sans' && sansChemin(this.etat, this.at.classes).length ? 'sans' : null;
       const p = this.cheminChoisi() || (chemins(this.etat, this.at.classes)[0] || {}).p;
       if (lieu === 'etapes' && p && !(this.fluxSel && this.fluxSel.type === 'noeud')) {
@@ -172,12 +180,13 @@
       }
       const sans = sansChemin(st, classes);
       if (this.cheminPanneau === 'sans' && !sans.length) this.cheminPanneau = null;
+      if (this.cheminPanneau === 'fournisseurs' && !FO()) this.cheminPanneau = null;
       const x = tous.find(y => y.p.id === this.fluxChoisi);
       // Une étape choisie qui n'est plus dans le chemin (retirée, autre chemin) ne l'est plus.
       if (this.fluxSel && x && !(this.fluxSel.type === 'noeud' ? P.servicesDuParcours(x.p).includes(this.fluxSel.id)
         : P.arcsDuParcours(x.p).some(a => a.from + '>' + a.to === this.fluxSel.id))) this.fluxSel = null;
       const ligne = y => {
-        const on = y.p.id === this.fluxChoisi && this.cheminPanneau !== 'sans';
+        const on = y.p.id === this.fluxChoisi && !this.cheminPanneau;
         const ch = PC.chaines(st, y.p, y.commandes.map(c => c.id)).map(g => this.nom(g.avant) + ' + ' + this.nom(g.service));
         return `<button type="button" class="mu-svc ${y.commandes.length ? 'ok' : 'libre'}${ch.length ? ' en-chaine' : ''}${on ? ' actif' : ''}" data-mu-flux-choisir="${esc(y.p.id)}" aria-current="${on}">
           <span class="mu-svc-ico" aria-hidden="true">${pic('fleche')}</span>
@@ -195,20 +204,21 @@
           <label>Nom <input name="nom" maxlength="76" placeholder="ex. Économie robot" required></label>
           <label>Partir de <select name="source"><option value="">rien (vide)</option>${PC.types(st).map(t => `<option value="${esc(t.id)}"${t.id === this.fluxChoisi ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form></details>
-        ${groupe('chemin')}${groupe('variante')}${groupe('apart')}${tous.some(y => y.genre === 'apart' && y.commandes.length)
+        ${this.entreeFournisseurs()}${groupe('chemin')}${groupe('variante')}${groupe('apart')}${tous.some(y => y.genre === 'apart' && y.commandes.length)
           ? `<button type="button" class="lien-discret ch-regrouper" data-mu-flux-action="regrouper" title="Chaque classe aura son chemin ; les commandes qui s’en écartent, leur variante">Regrouper les chemins à part</button>` : ''}
         <p class="ch-bas">${bas}</p>
       </nav>`;
       let corps, vue = 'chemin';
       try {
         if (this.cheminPanneau === 'sans') { vue = 'sans'; corps = this.ficheSansChemin(sans); }
+        else if (this.cheminPanneau === 'fournisseurs') { vue = 'fournisseurs'; corps = this.ficheFournisseurs(); }
         else corps = x ? this.ficheChemin(x, classes) : '<p class="mini-note">Aucun chemin : ajoutez-en un (à gauche).</p>';
       } catch (e) {
         corps = `<p class="mu-q" role="alert">Ce chemin n’a pas pu s’afficher : ${esc(e.message)}. Envoyez ce message pour qu’on corrige.</p>`;
         if (root.console) root.console.error(e);
       }
       this.poserChemins(box, `<div class="mu-cadre ch-cadre">${liste}<div class="mu-fiche ch-fiche" data-mu-flux-fiche="${esc(x ? x.p.id : '')}" data-ch-vue="${vue}"
-        data-ch-cle="${esc([this.fluxChoisi || '', vue].join('|'))}">${corps}</div></div>`);
+        data-ch-cle="${esc([vue === 'fournisseurs' ? '' : this.fluxChoisi || '', vue].join('|'))}">${corps}</div></div>`);
       const g = this.grapheFlux(); if (g && x && vue === 'chemin') g.rendre();
       this.ajusterSchema();
     }
@@ -250,10 +260,62 @@
 
     /** La fiche défile dans sa colonne : redessinée, elle reste où elle était ; un autre chemin s'ouvre en haut. */
     poserChemins(box, html) {
-      const avant = box.querySelector('.ch-fiche'), garde = avant ? { cle: avant.dataset.chCle, haut: avant.scrollTop } : null;
+      const avant = box.querySelector('.ch-fiche'), cadre = avant && avant.querySelector('.fo-cadre');
+      const garde = avant ? { cle: avant.dataset.chCle, haut: avant.scrollTop, cadre: cadre ? [cadre.scrollTop, cadre.scrollLeft] : null } : null;
       this.poser(box, html);
       const apres = box.querySelector('.ch-fiche');
-      if (garde && apres && apres !== avant && apres.dataset.chCle === garde.cle) apres.scrollTop = garde.haut;
+      if (!(garde && apres && apres !== avant && apres.dataset.chCle === garde.cle)) return;
+      apres.scrollTop = garde.haut;
+      // Le tableau « Qui se fournit où » défile dans son cadre : coché plus bas, il reste où il était.
+      const c = apres.querySelector('.fo-cadre');
+      if (c && garde.cadre) { c.scrollTop = garde.cadre[0]; c.scrollLeft = garde.cadre[1]; }
+    }
+
+    /* ---- les fournisseurs (évolution 24 a) ------------------------------------------------------------------------
+     * Leurs clients se règlent une fois pour toute l'unité, ici et nulle part ailleurs. Le calcul lit toujours les
+     * liens des chemins : le tableau les écrit (fournisseurs.js). */
+
+    /** Le tableau « Qui se fournit où » de l'unité, dans l'ordre de ses services (de l'amont vers l'aval). */
+    tableauFournisseurs() { return FO().tableau(this.etat, this.ordre(this.a.services()), this.optionsFournisseurs()); }
+
+    /** L'entrée « Fournisseurs » de la liste : à part, au-dessus des chemins. */
+    entreeFournisseurs() {
+      if (!FO()) return '';
+      const t = this.tableauFournisseurs(), on = this.cheminPanneau === 'fournisseurs';
+      const dit = t.fournisseurs.length ? pl(t.fournisseurs.length, 'fournisseur') + (t.enPartie ? ' · ' + pl(t.enPartie, 'client') + ' en partie' : '') : 'aucun fournisseur';
+      return `<p class="mu-groupe">Pour toute l’unité</p>
+        <button type="button" class="mu-svc ch-fournisseurs ${t.fournisseurs.length ? 'ok' : 'libre'}${on ? ' actif' : ''}" data-ch-panneau="fournisseurs" aria-current="${on}"
+          title="Qui se fournit où : les clients de chaque fournisseur, pour tous les chemins">
+          <span class="mu-svc-ico" aria-hidden="true">${pic(I() ? I().icoService('magasin', 'Magasin') : 'service')}</span>
+          <span class="mu-svc-txt"><b>Fournisseurs</b><small>${esc(dit)}</small></span></button>`;
+    }
+
+    /** Ouvrir « Fournisseurs » : le tableau, à la place du chemin choisi. */
+    ouvrirFournisseurs() {
+      this.cheminPanneau = 'fournisseurs'; this.cheminCmd = null;
+      if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
+      const b = root.document.querySelector('#mu-flux [data-ch-panneau="fournisseurs"]');
+      if (b) { b.scrollIntoView({ block: 'nearest' }); b.focus({ preventScroll: true }); }
+    }
+
+    ficheFournisseurs() { return FO().tableauHTML(this.tableauFournisseurs()); }
+
+    /** Cocher ou décocher un client, pour toute l'unité : le lien est écrit dans chaque chemin où il est une étape, ou retiré de tous. */
+    reglerClient(fournisseur, service, oui) {
+      const f = FO(); if (!f || !fournisseur || !service) return;
+      const o = this.optionsFournisseurs(), avant = f.etatClient(this.etat, fournisseur, service), nf = this.nom(fournisseur), ns = this.nom(service);
+      // Un fournisseur qui reçoit d'un autre n'en est plus un : c'est une étape comme les autres, et la page le dit.
+      const devient = oui && avant.m > 0 && f.estFournisseur(this.etat, service, o);
+      const message = oui
+        ? (avant.m ? ns + ' se fournit chez ' + nf + ' dans ' + (avant.m > 1 ? 'ses ' + avant.m + ' chemins' : 'son chemin') + '.'
+          : ns + ' se fournira chez ' + nf + ' : il n’est encore dans aucun chemin, il recevra son lien en y entrant.')
+          + (devient ? ' ' + ns + ' reçoit maintenant d’un autre service : ce n’est plus un fournisseur, mais une étape comme les autres.' : '')
+        : ns + ' ne se fournit plus chez ' + nf + (avant.n ? ' : le lien est retiré de ' + pl(avant.n, 'chemin') + '.' : '.');
+      this.at.changer(() => { f.regler(this.at.state, fournisseur, service, oui); }, message);
+      this.rendreFlux();
+      // « Partout » et « Nulle part » laissent la place à une coche : le clavier y reste.
+      const coche = root.document.querySelector(`#mu-flux input[data-fo-client="${CSS.escape(service)}"][data-fo-fournisseur="${CSS.escape(fournisseur)}"]`);
+      if (coche && !root.document.activeElement.closest('#mu-flux .fo-table')) coche.focus({ preventScroll: true });
     }
 
     /** Une section de la fiche, repliée ou non ; le repli est gardé d'un chemin à l'autre. */
@@ -265,7 +327,8 @@
     ficheChemin(x, classes) {
       const st = this.etat, p = x.p, dedans = P.servicesDuParcours(p), sel = this.fluxSel;
       const cabs = P.CABINES.filter(c => (st.parcoursCabine || {})[c] === p.id);
-      const hors = this.a.services().filter(s => !dedans.includes(s.id));
+      // Un fournisseur n'est pas une étape qu'on ajoute : il entre dans un chemin avec ses clients (évolution 24 a).
+      const hors = this.a.services().filter(s => !dedans.includes(s.id) && !this.estFournisseur(s.id));
       const tete = `<div class="mu-tete ch-tete">
         <span class="mu-tete-ico mu-tete-flux" aria-hidden="true">${pic('fleche')}</span>
         <label class="mu-nom">Nom du chemin<input data-mu-flux-nom="${esc(p.id)}" maxlength="76" value="${esc(p.nom)}"></label>
@@ -279,6 +342,9 @@
           <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les étapes d’elles-mêmes, de l’amont vers l’aval">Réorganiser</button>
           <button class="btn btn-sm" type="button" data-ch-schema aria-pressed="false" hidden title="Réduire le schéma pour le voir en entier">Tout voir</button>`;
       const choisi = !sel ? `<p class="mini-note ch-geste">Cliquez une étape : le tableau dit, dessous, quelle équipe y prépare chaque commande. Tirez le rond d’une étape jusqu’à une autre pour dire qu’elle la livre.</p>`
+        : sel.type === 'lien' && this.estFournisseur(sel.id.split('>')[0]) ? `<p class="ch-lien ch-lien-fournisseur"><b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b>
+          <span class="mini-note">${esc(this.nom(sel.id.split('>')[0]))} est un fournisseur : ses clients se règlent une fois, pour tous les chemins.</span>
+          <button class="btn btn-sm" type="button" data-fo-ouvrir>Régler dans Fournisseurs →</button></p>`
         : sel.type === 'lien' ? `<p class="ch-lien"><b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b>
           <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-lien" data-lien="${esc(sel.id)}">Retirer ce lien</button></p>`
         : this.tableEtape(x, sel.id);
@@ -362,10 +428,11 @@
         <p class="ch-etape-tete"><b>Étape : ${esc(nom)}</b>
           <span class="mini-note">${manque ? `<b class="ch-a-corriger">${pl(manque, 'commande')} sans équipe ici</b>` : lignes.length ? 'chaque commande a son équipe' : 'aucune commande ne suit ce chemin'}</span>
           <span class="mu-tete-fin"></span>
-          <button type="button" class="btn btn-sm" data-ch-relier="${esc(s)}" title="Puis choisissez l’étape qui reçoit : d’un clic, ou au clavier (Entrée)">Relier à…</button>
+          ${this.estFournisseur(s) ? '' : `<button type="button" class="btn btn-sm" data-ch-relier="${esc(s)}" title="Puis choisissez l’étape qui reçoit : d’un clic, ou au clavier (Entrée)">Relier à…</button>`}
           <button type="button" class="lien-discret" data-ch-temps="${esc(s)}" title="Les temps par vol se règlent dans la fiche du service">Ses temps par vol →</button>
           <button type="button" class="lien-discret" data-mu-ouvrir-svc="${esc(s)}">Ses équipes →</button>
-          <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(s)}">Retirer du chemin</button></p>
+          ${this.estFournisseur(s) ? `<button class="btn btn-sm" type="button" data-fo-ouvrir title="Un fournisseur est dans un chemin tant qu’il y a un client : ses clients se règlent pour toute l’unité">Régler ses clients →</button>`
+            : `<button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(s)}">Retirer du chemin</button>`}</p>
         ${lignes.length ? `<div class="table-scroll"><table class="svc-table ch-table"><caption class="sr-only">L’étape ${esc(nom)} : qui prépare chaque commande</caption>
           <thead><tr><th scope="col">${propres ? 'Compagnie' : 'Commande'}</th><th scope="col">Équipe à cette étape</th><th scope="col">Temps par vol</th></tr></thead>
           <tbody>${rangs}</tbody></table></div>` : ''}
@@ -433,12 +500,16 @@
         liens: () => { const t = chemin(); return t ? P.arcsDuParcours(t).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to, titre: u.nom(a.from) + ' livre ' + u.nom(a.to) })) : []; },
         relier: (de, vers) => {
           const t = chemin(); if (!t) return 'Aucun chemin choisi.';
+          // Un lien de fournisseur ne se dessine pas chemin par chemin (évolution 24 a) : le geste mène au tableau.
+          if (u.estFournisseur(de)) { setTimeout(() => u.ouvrirFournisseurs(), 0); return u.nom(de) + ' est un fournisseur : ses clients se règlent ici, une fois pour tous les chemins.'; }
           if (P.arcsDuParcours(t).some(a => a.from === de && a.to === vers)) return u.nom(de) + ' livre déjà ' + u.nom(vers) + '.';
           if (PC.creeBoucle(t, de, vers)) return 'Impossible : ' + u.nom(vers) + ' livre déjà ' + u.nom(de) + ' (directement ou par d’autres services).';
-          u.changerFlux(y => { y.liens.push({ de, vers }); }, u.nom(de) + ' livre maintenant ' + u.nom(vers) + ', dans « ' + t.nom + ' ».');
+          // Un fournisseur qui reçoit d'un autre service n'en est plus un : la page le dit.
+          const devient = u.estFournisseur(vers) ? ' ' + u.nom(vers) + ' reçoit maintenant d’un autre service : ce n’est plus un fournisseur, mais une étape comme les autres.' : '';
+          u.changerFlux(y => { y.liens.push({ de, vers }); }, u.nom(de) + ' livre maintenant ' + u.nom(vers) + ', dans « ' + t.nom + ' ».' + devient);
           return '';
         },
-        retirerLien: id => { const [de, vers] = id.split('>'); u.changerFlux(y => { y.liens = y.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
+        retirerLien: id => { const [de, vers] = id.split('>'); if (u.estFournisseur(de)) return void setTimeout(() => u.ouvrirFournisseurs(), 0); u.changerFlux(y => { y.liens = y.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
         choisir: sel => { u.fluxSel = sel; u.cheminCmd = null; u.rendreFlux(); u.montrerEtape(); },
         outils: () => u.outilsFlux || '',
         message: (t, o) => PC.annoncer(t, o)
@@ -502,6 +573,12 @@
           .observe(page, { subtree: true, attributes: true, attributeFilter: ['viewBox'] });
       }
       root.addEventListener('resize', () => this.ajusterSchema());
+      // Choisir un chemin referme le panneau ouvert à sa place (« Fournisseurs », les commandes sans chemin) : avant que
+      // unite.js ne choisisse le chemin et ne redessine la page (il écoute le même clic, à la remontée).
+      d.addEventListener('click', e => {
+        if (!dans(e.target) || !e.target.closest('[data-mu-flux-choisir]')) return;
+        this.cheminPanneau = null; this.cheminCmd = null; if (this.graphe) this.graphe.selection = null;
+      }, true);
       d.addEventListener('click', e => {
         if (!dans(e.target)) return;
         const p = this.cheminChoisi();
@@ -510,6 +587,11 @@
         if (c) { this.cheminPanneau = null; this.cheminCmd = null; if (this.graphe) this.graphe.selection = null; return this.rendreFlux(); }
         const pan = e.target.closest('[data-ch-panneau]');
         if (pan) { this.cheminPanneau = pan.dataset.chPanneau; return this.rendreFlux(); }
+        // Les fournisseurs (évolution 24 a) : ouvrir leur tableau ; « Partout », « Nulle part » pour un client en partie.
+        if (e.target.closest('[data-fo-ouvrir]')) return this.ouvrirFournisseurs();
+        const partout = e.target.closest('[data-fo-partout]'), nulle = e.target.closest('[data-fo-nulle-part]');
+        if (partout) return this.reglerClient(partout.dataset.foFournisseur, partout.dataset.foPartout, true);
+        if (nulle) return this.reglerClient(nulle.dataset.foFournisseur, nulle.dataset.foNullePart, false);
         // « Tout voir » / « Taille lisible » : l'échelle du schéma (évolution 23 c).
         const sc = e.target.closest('[data-ch-schema]');
         if (sc) { this.schemaTout = !this.schemaTout; this.ajusterSchema(); if (this.schemaTout) { const c = sc.closest('.gr-boite'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'nearest' }); } return; }
@@ -526,6 +608,7 @@
       d.addEventListener('change', e => {
         const el = e.target; if (!dans(el)) return;
         const st = this.at.state, p = this.cheminChoisi();
+        if (el.dataset.foClient !== undefined) return void this.reglerClient(el.dataset.foFournisseur, el.dataset.foClient, el.checked);
         if (el.dataset.chEquipe !== undefined) { const v = el.value, s = el.dataset.service, cmd = el.dataset.chEquipe; return void setTimeout(() => this.choisirEquipe(s, cmd, v), 0); }
         if (el.dataset.chVariante !== undefined && el.value && p) {
           const cmd = el.value; let v;

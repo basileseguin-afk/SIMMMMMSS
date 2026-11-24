@@ -118,9 +118,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-mu-nature=decontam]').inputValue(),'dispo');
   assert.ok((await chemin('AF/BC')).services.includes('decontam'));
   const fluxBC=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id);
-  await page.locator(`[data-mu-besoin="${fluxBC}"]`).uncheck();await attendre();
+  // (Un clic, pas « décocher » : en version 1, la fiche change aussitôt — voir plus bas.)
+  await page.locator(`[data-mu-besoin="${fluxBC}"]`).click();await attendre();
   assert.ok(!(await chemin('AF/BC')).services.includes('decontam'),'le flux des Business n’a plus besoin de légumerie');
   assert.ok(!(await chemin('TX/BC')).services.includes('decontam'),'pour toutes ses commandes');
+  // Évolution 24 (a), version 1 : sortie de son seul chemin, la légumerie ne reçoit plus de personne — c'est un
+  // fournisseur. Sa fiche ne règle plus « Quels chemins en ont besoin ? » : elle montre ses clients (aucun encore) et
+  // mène à « Chemins › Fournisseurs ». La réception, qui ne fournissait qu'elle dans ce chemin, en est sortie aussi.
+  if(await page.evaluate(()=>!!window.OrlyFournisseurs)){
+    assert.deepEqual(await page.evaluate(()=>{const f=document.querySelector('#mu-services .se-fiche');return [f.querySelectorAll('[data-mu-besoin]').length,f.querySelectorAll('.fo-clients').length,f.querySelector('.fo-clients-liste').textContent.trim()];}),
+      [0,1,'Aucun client pour l’instant.']);
+    assert.ok(!(await chemin('AF/BC')).services.includes('appros'),'la réception n’a plus de client dans ce chemin');
+    assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.fournisseurs),{appros:['decontam']},'la liste retient que la légumerie se fournit à la réception : elle retrouvera ce lien en revenant dans un chemin');
+  }
 
   // 9. Une salle de plus du Montage : elle prend sa place dans le chemin.
   await nav.ajouterService(page);

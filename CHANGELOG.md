@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Évolution 24 (a) : les clients d’un fournisseur, une liste pour toute l’unité
+
+Première partie de l’évolution 24. Le code du calcul ne change pas : le moteur
+lit toujours les liens des chemins. La version 2 n’est pas touchée, ni aucun
+fichier commun : un module de la version 1, `fournisseurs.js`, porte la règle.
+
+- **Un fournisseur** : un service de mise à disposition où rien n’arrive —
+  aucun lien n’y entre, dans aucun chemin. Une mise à disposition qui reçoit
+  d’un autre service reste une étape comme les autres.
+- **« Chemins » a une entrée à part, « Fournisseurs »**, au-dessus des
+  chemins : elle ouvre le tableau « Qui se fournit où », une ligne par
+  service, une colonne par fournisseur. C’est le seul endroit où se règlent
+  les clients d’un fournisseur. Cocher écrit le lien dans chaque chemin où le
+  service est une étape, et dans aucun autre ; décocher le retire de tous, et
+  un fournisseur sans client dans un chemin en sort.
+- **La liste vaut pour la suite** : une étape ajoutée à un chemin reçoit
+  aussitôt les liens de ses fournisseurs ; un service coché qui n’est dans
+  aucun chemin les recevra en y entrant. Elle se garde avec les équipes et les
+  chemins (`fournisseurs`, dans `ory-ateliers-v1`), donc dans la sauvegarde.
+- **Seul le tableau change un lien de fournisseur** : un geste sur un chemin
+  n’en crée ni n’en retire (une étape insérée entre un client et son
+  fournisseur ne prend plus le lien ; une étape retirée ne passe plus son
+  fournisseur à celles qu’elle livrait). Dans le schéma, tirer ou retirer un
+  tel lien mène au tableau.
+- **Une sauvegarde d’avant ne change pas à l’ouverture** : un client qui ne
+  l’est que dans une partie des chemins s’affiche « en partie : n chemins sur
+  m », avec « Partout » et « Nulle part » ; tant qu’on ne choisit pas, aucun
+  lien ne bouge. « Contrôles » le dit : « n clients réglés en partie ».
+- **La fiche d’un fournisseur** (« Services et équipes ») ne règle plus
+  « Quels chemins en ont besoin ? » : elle montre ses clients, et mène au
+  tableau.
+- **Ce que cela change au résultat** : avec un fournisseur toujours ouvert,
+  aucune heure ; avec un fournisseur à horaires, un client de plus attend son
+  ouverture, et c’est voulu (`docs/CAHIER_DES_CHARGES.md`, « Les
+  fournisseurs »).
+
+Fichiers : `fournisseurs.js` (nouveau), `ateliers.js` (la liste relue, le
+suivi après chaque geste, `migrer`), `chemins-page.js`, `chemins-page.css`,
+`services-page.js`, `avis.js`, `controles-page.js`, `sim.js`, `index.html` ;
+`tests/fournisseurs.test.cjs`, `tests/fournisseurs-browser.cjs` (nouveaux) et
+les tests adaptés ; `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-23 — Évolution 23 (h) : le contrôle, les captures et la documentation
 
 Dernière partie de l’étape C de l’audit. Aucun code de la page ne change.

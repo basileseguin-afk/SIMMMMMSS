@@ -111,6 +111,7 @@ de relire le cahier des charges initial :
 | M26 | **Le relais à la plonge par vol** : deux équipes qui se suivent se passent le vol en cours dans son tunnel ; personne ne reste en heures sup pour le finir ; ce qui n'est pas fini à la fin de la dernière présence se lave le lendemain | Banc d'essai, évolution 18 | ✅ | Version 1 (`BANC_ESSAI.md` § 2, `MODELE_ATELIERS.md`). La règle est automatique, sans réglage, et ne change que la plonge par vol. Une équipe prend un vol tant qu'elle est présente ; à la fin de sa présence, une autre équipe de la même plonge présente à cet instant sur la même machine (un tunnel du même nom) continue le lavage : un seul lot, avec ses parts. Sinon le lavage s'arrête ; **une équipe de la plonge qui arrive ensuite le reprend d'abord, sur n'importe lequel de ses tunnels libres** (celui où la reprise finirait le plus tôt), pour sa seule durée restante, à la vitesse de ce tunnel ; à plusieurs lavages arrêtés, dans l'ordre de leur arrêt — le même lot, une part de plus, avec son trou (correction 19 ; sa retouche : plus besoin du même nom de tunnel, le relais sans interruption restant sur la même machine). Ce n'est que sans équipe pour le reprendre ce jour-là que le vol reste sale et passe au lendemain avec sa durée restante (`saleFinal[].reste`), lavée d'abord. Une plonge par vol n'a plus d'heures sup ; la nuit « sur le retard » se juge sur le lavage que le retard pousse au-delà de la présence du matin. Dans les résultats : le lot sur les deux lignes du planning (une reprise, avec son trou : « arrêté à hh:mm, repris par … à hh:mm »), « reste à laver le lendemain » dans la Synthèse, une conséquence de plus pour « Où ça coince » — seulement quand la première équipe du lendemain ne peut pas absorber ce reste pendant sa présence (correction 19, § 6 bis). |
 | M27 | **Le relais sur la ligne du robot** : deux équipes de robot se suivent sur la même ligne ; la première, ses commandes finies, avance le travail de la suivante, vol par vol, sans jamais s'arrêter au milieu d'un vol ni rester en heures sup pour cela | Banc d'essai, évolution 21 (a, c) | ✅ | Version 1 (`BANC_ESSAI.md` § 2). La règle est automatique, sans réglage, et ne change que les équipes de robot qui partagent une ligne (le même service, hors « ligne propre »), le même jour de travail. **La suivante** d'une équipe est celle dont le poste commence juste après le sien sur cette ligne ; une équipe sous condition qui ne vient pas ce jour-là n'en est pas une. **Qui avance** : une équipe qui a fini ses propres commandes, qui a son minimum de personnes et dont la présence n'est pas finie, tant que la suivante n'est pas arrivée. **Dans quel ordre** : d'abord la commande de la suivante dont le temps par vol est le plus petit (le barème du service du robot), puis la suivante dans cet ordre ; à égalité, ou sans temps par vol, la dernière de sa liste ; dans une commande, les vols dans l'ordre des départs. La suivante, elle, garde l'ordre de sa liste. **L'unité est le vol** : ses plateaux ÷ le débit de la suivante pour cette commande ; un vol ne s'avance que si son amont est prêt et si son matériel est là, selon les règles de toujours. **Un vol entamé se finit toujours** : une pause due pendant ce vol se prend à sa fin, pour sa durée entière. **Jamais d'heure sup pour une avance** : un vol qui ne tient pas avant la fin de la présence n'est pas commencé ; dès que la suivante est arrivée, plus aucun vol n'est commencé pour elle, celui en cours se finit, et elle attend la ligne. **La suivante reprend au premier vol non fait** ; une commande avancée en entier ne lui laisse rien. C'est **une seule commande, avec ses parts** (`parts`, comme un lavage en relais) : qui a fait quels vols, de quand à quand, pour combien de plateaux ; chaque équipe est créditée de sa part ; la commande est livrée à l'aval à la fin de sa dernière part. L'effectif calculé de chaque équipe reste calculé sur ses propres commandes. Ne changent pas : une équipe seule sur sa ligne, une « ligne propre », le débit, le minimum de personnes, les arrêts de la ligne, les renforts, les heures sup d'une équipe sur ses propres commandes, les autres équipes ; une journée où rien n'est avancé est celle d'avant, champ par champ. Dans les résultats (§ 6 bis) : la commande sur les deux lignes du planning, avec le repère de relais ; « … avance n vols de … » dans la Synthèse ; « Où ça coince » ne cite plus le robot quand le relais suffit à tenir les deux postes |
 | M28 | **L'effectif calculé d'un robot ne dépasse pas ses postes de travail** : autour d'une ligne, il y a toujours entre un minimum et un maximum de personnes, quel que soit le nombre de vols | Banc d'essai, évolution 21 (b) | ✅ | Version 1 (`BANC_ESSAI.md` § 10). Le réglage « Postes de travail » d'une équipe (`personnesMax`), qui ne limitait que ses renforts, plafonne aussi l'effectif **calculé** d'une équipe de robot : de son minimum (« Minimum pour tourner ») à ce maximum. Des personnes en plus n'accélèrent pas la ligne : sa durée ne change pas. Vide : pas de plafond. Dans la fiche d'une équipe de robot, le champ est toujours visible, à côté du minimum (« au plus, renforts compris ») ; un maximum sous le minimum est refusé, sous le champ ; venu d'un fichier d'avant, il ne s'applique pas (le minimum l'emporte, la journée se joue) et un avis « à corriger » le dit. Le besoin du service, les indicateurs de charge et les classeurs lisent l'effectif plafonné. Ne changent pas : un robot dont l'effectif est saisi, les équipes à la main, un calcul qui n'atteint pas le maximum |
+| M29 | **Les clients d'un fournisseur valent pour toute l'unité** : un service qui se sert chez un fournisseur s'y sert pour toutes ses commandes | Évolution 24 (a) | ✅ | Version 1. Un **fournisseur** est un service de mise à disposition où rien n'arrive : aucun lien n'y entre, dans aucun chemin (une mise à disposition qui reçoit d'un autre service reste une étape comme les autres). Ses clients se cochent une fois, dans « Chemins › Fournisseurs » ; le lien « fournisseur → client » est écrit dans chaque chemin où le client est une étape. **Le calcul ne change pas** : le moteur lit toujours les liens des chemins (voir §9, « Les fournisseurs ») |
 
 ## 6. Simulation et visualisation
 
@@ -408,6 +409,7 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
 | E20 | **Des équipes qui ne dépendent pas du tunnel** à la plonge, avec le choix, comme ailleurs, d'un effectif qui dépend des vols ou non | 06/10 | ✅ | « + Ajouter une équipe hors tunnel » ; case « Effectif constant » dans la fiche de la plonge ; calculée : minutes par vol × vols qui reviennent ÷ poste. Type « hors tunnel » utilisable dans tout service (là : départs du jour). Les minutes par vol ne passent pas encore par le classeur Excel |
 | E30 | **Regrouper** : une chose se règle à un seul endroit ; le menu passe de 24 entrées à 14 ; une **lecture seule** | 18/11 | ✅ | Version 1, évolution 22 : deux blocs, « Lire » et « Régler » ; « Services et équipes », « Chemins », « Contrôles » et « Fichiers » reprennent neuf pages et un panneau (vingt-sept pages avant, dix-huit après) ; aucun réglage perdu ; les noms d'avant mènent aux nouvelles pages ; chaque nouvelle page tient sur un écran de portable. Voir « Le rangement du menu » et « La lecture seule », plus bas |
 | E31 | **Alléger** : un écran par page, un texte lisible, rien d'affiché qui ne serve pas | 23/11 | ✅ | Version 1, évolution 23 : le menu passe de 14 entrées à 13 (« Plan » en sort, la vue « À plat » aussi) ; la barre du jour seulement là où le jour compte ; « Réglages » en liste et fiche ; « Programme » et « Retours » en un écran ; « Contrôles » lisible en lecture seule ; trois règles pour toute page (13 px, un écran, la largeur), qu'un test parcourt ; aucun calcul ni réglage changé |
+| E32 | **Les fournisseurs sortent du dessin des chemins** : leurs clients se règlent une fois pour toute l'unité | 24/11 | ✅ | Version 1, évolution 24 : dans « Chemins », une entrée à part, « Fournisseurs », ouvre le tableau « Qui se fournit où » (une ligne par service, une colonne par fournisseur) — le seul endroit où cela se règle ; la fiche d'un fournisseur montre ses clients et y mène ; « Contrôles » dit les clients réglés en partie. Voir « Les fournisseurs », plus bas |
 
 ### Le vocabulaire retenu (version 1, évolution 19 a)
 
@@ -583,6 +585,84 @@ l'en-tête de la page.
 Contrôlé par `tests/pages-menu-browser.cjs` (le parcours des pages du menu,
 aux deux tailles), le test de chaque page, et
 `tests/captures-evolution-23-browser.cjs` (les captures de contrôle).
+
+### Les fournisseurs : leurs clients, une fois pour toute l'unité (version 1, évolution 24)
+
+Le constat, sur une vraie unité : le schéma d'un chemin est peu lisible parce
+qu'il a trop de liens, et une bonne part de ces liens partent des services qui
+ne font que fournir les autres. Or être client d'un fournisseur ne dépend pas
+du chemin : un service qui se sert chez lui s'y sert pour toutes ses
+commandes. Ce lien se dessinait pourtant chemin par chemin, à quelques oublis
+près.
+
+**Ce qu'est un fournisseur.** Un service de mise à disposition où rien
+n'arrive : aucun lien n'y entre, dans aucun chemin (le magasin, la réception).
+Une mise à disposition qui reçoit d'un autre service (une légumerie servie par
+la réception) reste une étape comme les autres. Rien ne se déclare : cela se
+lit dans les équipes et les chemins.
+
+**Où se règlent ses clients.** Dans « Chemins », la liste de gauche a une
+entrée à part, au-dessus des chemins : « Fournisseurs ». Elle ouvre le tableau
+« Qui se fournit où » — une ligne par service de l'unité, une colonne par
+fournisseur, une coche à chaque croisement (rien entre un fournisseur et
+lui-même). C'est le seul endroit où cela se règle :
+
+| Le geste | Ce qu'il écrit |
+|---|---|
+| Cocher un service | Le lien « fournisseur → service » dans chaque chemin où ce service est une étape, et dans aucun autre ; le fournisseur entre dans ces chemins. |
+| Décocher | Le lien est retiré de tous les chemins ; un fournisseur qui n'a plus de client dans un chemin en sort. |
+| Un service coché qui n'est dans aucun chemin | Aucun lien encore : il les recevra en entrant dans un chemin. |
+| Ensuite, ajouter une étape à un chemin | Elle reçoit aussitôt le lien de chaque fournisseur dont elle est cliente — et aucun des autres, même quand l'insertion en devinait un. Un chemin dupliqué porte les liens de son modèle ; un chemin créé vide reçoit ses étapes une à une. |
+| Tout autre geste sur un chemin | Il ne crée ni ne retire un lien de fournisseur : une étape déjà dans un chemin y garde ce qu'elle avait. Une étape insérée entre un client et son fournisseur ne prend pas le lien ; une étape retirée ne passe pas son fournisseur à celles qu'elle livrait. |
+
+**Une sauvegarde d'avant ne change pas à l'ouverture.** L'état d'un client se
+lit dans les liens : client dans tous les chemins où il est une étape, la
+coche est mise ; dans aucun, elle ne l'est pas ; dans une partie seulement, la
+cellule dit « en partie : n chemins sur m », avec la liste des chemins au
+survol et deux boutons, « Partout » et « Nulle part ». Tant qu'on ne choisit
+pas, aucun lien ne bouge et le résultat est le même, champ par champ.
+« Contrôles » le dit en information : « n clients réglés en partie », tant
+qu'il en reste.
+
+**La liste, pour la suite.** Ce qui est coché se garde avec les équipes et les
+chemins, donc dans la sauvegarde : `fournisseurs: { fournisseur: [clients] }`,
+dans `ory-ateliers-v1`. Elle sert au service coché qui n'est dans aucun
+chemin, et au client qui en sort puis y revient. Une sauvegarde d'avant n'en
+a pas, et n'en reçoit pas tant qu'on ne coche rien ; cocher puis décocher la
+rend telle qu'elle était. **Le calcul ne la lit pas** : il lit les liens des
+chemins. Une sauvegarde d'après, relue par le code d'avant (ou par la version
+2), garde ses chemins et leurs liens, et donne le même résultat ; ce code-là
+laisse seulement tomber la liste.
+
+**Ce que cela change au résultat.** Le moteur n'est pas modifié ; seuls les
+liens qu'on coche changent, comme si on les avait dessinés.
+
+- Avec un fournisseur **toujours ouvert** : rien. Aucune heure, aucune
+  attente, aucun indicateur ne change. Le lot du client dit seulement depuis
+  quand il était prêt (servi dès le début de son poste) — le champ `pret`,
+  vide quand il n'attendait personne.
+- Avec un fournisseur **à horaires** : un client de plus attend son ouverture
+  pour son premier lot, et c'est voulu. Exemple (fictif) : un magasin ouvert
+  de 07:00 à 18:00 ; une cuisine qui commence à 05:00, 30 min par vol. Sans le
+  lien, elle prépare de 05:00 à 05:30. Cliente du magasin, elle attend 07:00
+  et prépare de 07:00 à 07:30 ; le montage, qui la suit, glisse d'autant.
+
+**Dans les autres pages.** La fiche d'un fournisseur (« Services et équipes »)
+ne règle plus « Quels chemins en ont besoin ? » : elle montre la liste de ses
+clients, qui se lit, et « Régler dans Chemins › Fournisseurs » y mène. Dans le
+schéma d'un chemin, un lien de fournisseur ne se tire ni ne se retire : le
+geste mène au tableau. Un avis de « Contrôles » qui parle d'un lien de
+fournisseur (un fournisseur sans équipe sur le chemin de ses clients) y mène
+aussi.
+
+Un chemin écrit d'un bloc (une organisation importée, une migration à
+l'ouverture d'une très vieille sauvegarde) est pris tel quel : s'il s'écarte
+de ce qui est coché, le tableau le dit « en partie ».
+
+Code : `fournisseurs.js` (pur, version 1 ; `parcours.js` et `unite.js`,
+communs avec la version 2, ne sont pas modifiés). Contrôlé par
+`tests/fournisseurs.test.cjs` (dont la journée calculée à la main) et
+`tests/fournisseurs-browser.cjs`.
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

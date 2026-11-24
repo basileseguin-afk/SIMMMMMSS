@@ -31,7 +31,9 @@ const AVANT=[
   ['information','Vol NO107 (J-1) dans « Plonge » : le poste se termine avant la f'],
   ['information','Quais : 15 vols chargés après leur départ (le plus en retard : N'],
   ['information','Plonge soir : 2 vols revenus ne sont pas lavés (le poste finit, '],
-  ['information','479 u reviennent après la fin du poste de la plonge (20:30) et n']];
+  ['information','479 u reviennent après la fin du poste de la plonge (20:30) et n'],
+  // Évolution 24 (a) : la prépa de l'unité fictive se fournit à la réception dans un de ses deux chemins seulement.
+  ['information','1 client réglé en partie']];
 
 /* Les titres portent des espaces et des traits insécables (« J‑1 ») : on les compare sans eux. */
 const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
@@ -43,7 +45,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
  const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=300)=>page.waitForTimeout(ms);
  const sous=()=>page.evaluate(()=>document.body.dataset.sous);
- const registre=()=>page.evaluate(()=>Sim.problemes.liste.map(p=>({niveau:p.niveau,titre:p.titre,code:p.code||null,service:p.service||null,equipe:p.equipe||null,classes:p.classes||null,services:p.services||null})));
+ const registre=()=>page.evaluate(()=>Sim.problemes.liste.map(p=>({niveau:p.niveau,titre:p.titre,code:p.code||null,service:p.service||null,equipe:p.equipe||null,classes:p.classes||null,services:p.services||null,fournisseur:!!p.fournisseur})));
  const controles=async()=>{await nav.aller(page,'mu-pas');await attendre();};
  const pastille=()=>page.evaluate(()=>[...document.querySelectorAll('#menu [data-sous-onglet]')].filter(b=>b.querySelector('.so-badge')).map(b=>[b.dataset.entree,+b.querySelector('.so-badge').textContent]));
  /** Le point de la page dont le titre commence ainsi, et son bouton. */
@@ -59,7 +61,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.equal(await page.locator('#view-title').textContent(),'Contrôles');
   assert.equal(await page.locator('#ariane-partie').textContent(),'Simulation');
   assert.deepEqual(await page.locator(`${C} .ct-niveau`).evaluateAll(s=>s.map(x=>[x.dataset.ctNiveau,x.querySelector('h3 span').textContent,+x.querySelector('.ct-n').textContent])),
-    [['bloquant','Bloquant',1],['corriger','À corriger',6],['information','Information',5]]);
+    [['bloquant','Bloquant',1],['corriger','À corriger',6],['information','Information',6]]);
   for(const n of ['bloquant','corriger','information'])
     assert.deepEqual(await page.locator(`${C} .ct-niveau.${n} .ct-point .ct-corps>b`).evaluateAll(bs=>bs.map(b=>b.textContent)),r.filter(p=>p.niveau===n).map(p=>p.titre),n+' : la colonne montre les avis du registre, dans l’ordre');
   assert.equal(await page.locator(`${C} .ct-point`).count(),AVANT.length,'aucun avis de plus, aucun de moins');
@@ -96,9 +98,19 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   /* ---- 3. chaque bouton mène à la bonne page, au bon endroit ---------------------------------------------------- */
   assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),AVANT.length,'un bouton par avis');
   // a. Une étape du chemin que personne ne prépare : « Chemins », le tableau de cette étape, une commande à corriger en évidence.
+  // Évolution 24 (a) : la réception est un fournisseur encore sans équipe. Son avis parle de ses liens, qui se règlent une
+  // fois pour toute l'unité : il mène au tableau « Qui se fournit où », dont la colonne dit qu'elle est sans équipe.
+  assert.deepEqual(r.filter(x=>x.code==='parcours-trou'&&x.fournisseur).map(x=>x.service),['appros']);
   for(const p of r.filter(x=>x.code==='parcours-trou')){
     await controles();
     const b=point(p.titre.slice(0,40)).locator('[data-ct-aller]');
+    if(p.fournisseur){
+      assert.equal(await b.innerText(),'Régler dans Chemins › Fournisseurs →',p.titre.slice(0,30));
+      await b.click();await attendre(400);
+      assert.deepEqual([await sous(),await page.locator('#mu-flux .ch-fiche').getAttribute('data-ch-vue')],['mu-flux','fournisseurs'],'le tableau « Qui se fournit où »');
+      assert.equal(await page.locator('#mu-flux .fo-table thead th[data-fo-colonne="appros"] .fo-sans').count(),1,'sa colonne dit qu’il est sans équipe');
+      continue;
+    }
     assert.equal(await b.innerText(),'Régler dans Chemins →',p.titre.slice(0,30));
     await b.click();await attendre(400);
     assert.equal(await sous(),'mu-flux',p.service+' : « Chemins »');
@@ -126,7 +138,8 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.equal(await sous(),'mu-services');
   // e. Une information : ce que la journée montre se lit dans la Synthèse.
   await controles();
-  assert.deepEqual(await page.locator(`${C} .ct-niveau.information [data-ct-aller]`).evaluateAll(bs=>[...new Set(bs.map(b=>b.textContent))]),['Voir dans Synthèse →']);
+  assert.deepEqual(await page.locator(`${C} .ct-niveau.information [data-ct-aller]`).evaluateAll(bs=>[...new Set(bs.map(b=>b.textContent))]),
+    ['Voir dans Synthèse →','Voir dans Chemins › Fournisseurs →'],'les résultats de la journée, puis le client réglé en partie (évolution 24 a)');
   await page.locator(`${C} .ct-niveau.information [data-ct-aller]`).first().click();await attendre(400);
   assert.equal(await sous(),'j-chiffres');
   // f. Les avis que l'unité fictive n'a pas : le même geste, sur un avis de chaque sorte.
@@ -182,9 +195,10 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   const infos=page.locator(`${C} .ct-niveau.information`);
   assert.equal(await infos.locator('.ct-point:visible').count(),3,'trois informations d’emblée');
   assert.equal(await infos.locator('details.ct-plus').evaluate(d=>d.open),false);
-  assert.equal(await infos.locator('details.ct-plus>summary').innerText(),'2 autres informations');
+  // (Évolution 24 a : une information de plus, « 1 client réglé en partie ».)
+  assert.equal(await infos.locator('details.ct-plus>summary').innerText(),'3 autres informations');
   await infos.locator('details.ct-plus>summary').click();await attendre(150);
-  assert.equal(await infos.locator('.ct-point:visible').count(),5,'elles se déplient');
+  assert.equal(await infos.locator('.ct-point:visible').count(),6,'elles se déplient');
   // Le repli reste comme on l'a laissé quand la page se redessine.
   await page.evaluate(()=>Sim.unite.rendrePas());await attendre(150);
   assert.equal(await infos.locator('details.ct-plus').evaluate(d=>d.open),true);

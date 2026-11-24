@@ -88,3 +88,41 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 #mu-flux .gr-cadre .gr-svg,#mu-flux .gr-cadre.bas .gr-svg{max-width:none}
 #mu-flux .ch-graphe{padding:8px;min-height:0}
 #mu-flux .gr-barre :is(.btn,.gr-sens,.gr-outil-choix,select){font-size:var(--ds-t-13)}
+
+/* Évolution 24 (a) : « Fournisseurs », une entrée à part au-dessus des chemins, et son tableau « Qui se fournit où » —
+   le seul endroit où se règlent les clients d'un fournisseur, pour toute l'unité (fournisseurs.js).
+   Le tableau tient dans la colonne : son titre et sa règle restent en place ; au-delà d'une quinzaine de services, il
+   défile dans son cadre, en-têtes figés (la ligne des fournisseurs en haut, la colonne des services à gauche). */
+#mu-flux .ch-fiche[data-ch-vue="fournisseurs"]{display:flex;flex-direction:column;overflow:hidden}
+#mu-flux .ch-fiche[data-ch-vue="fournisseurs"]>*{flex:none}
+#mu-flux .ch-fiche[data-ch-vue="fournisseurs"]>.fo-cadre{flex:0 1 auto;min-height:0;overflow:auto;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-2)}
+.fo-titre{margin:0 0 4px}
+.fo-regle{margin:0 0 10px;color:var(--ds-texte-2)}
+.fo-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--ds-t-13)}
+.fo-table th,.fo-table td{padding:2px 12px;vertical-align:middle;border-bottom:1px solid var(--ds-bordure)}
+.fo-table tbody tr:last-child>*{border-bottom:0}
+.fo-table thead th{position:sticky;top:0;z-index:2;padding-top:6px;padding-bottom:6px;background:var(--ds-surface-2);text-align:center;white-space:nowrap;
+  text-transform:none;letter-spacing:0;font-size:var(--ds-t-13);color:var(--ds-texte-1)}
+.fo-table thead th:first-child{left:0;z-index:3;width:1%;text-align:left}
+.fo-table thead th b{display:block}
+.fo-table thead th small{font-weight:var(--ds-g-normal,400);color:var(--ds-texte-2)}
+.fo-table thead th .fo-sans{margin-left:8px;padding:0;color:var(--ds-attente-texte)}
+.fo-table tbody th{position:sticky;left:0;z-index:1;background:var(--ds-surface-1);text-align:left;white-space:nowrap;font-weight:var(--ds-g-moyen);
+  text-transform:none;letter-spacing:0;font-size:var(--ds-t-13);color:var(--ds-texte-1)}
+.fo-table tbody th small{margin-left:8px;font-weight:var(--ds-g-normal,400);color:var(--ds-texte-2)}
+.fo-table td{text-align:center}
+.fo-table td.fo-soi{color:var(--ds-texte-3)}
+.fo-table tbody tr:hover>*{background:var(--ds-surface-2)}
+.fo-chk{display:inline-flex;align-items:center;justify-content:center;margin:0;padding:1px 14px;cursor:pointer;vertical-align:middle}
+.fo-chk input{width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer}
+/* Un client en partie (une sauvegarde d'avant) : ce qu'il en est, et les deux choix. */
+/* Sur une ligne quand la colonne est large ; sinon les deux boutons passent sous le texte. */
+.fo-dit{display:inline-block;margin:0 6px;font-weight:var(--ds-g-fort);color:var(--ds-attente-texte);white-space:nowrap;cursor:help}
+.fo-choix{display:inline-flex;gap:6px;margin:1px 6px;vertical-align:middle;white-space:nowrap}
+#mu-flux .fo-choix .btn{min-height:0;height:22px;padding:0 10px}
+/* La fiche d'un fournisseur, dans « Services et équipes » : ses clients se lisent, ils se règlent dans « Chemins ». */
+.fo-clients .fo-clients-liste{margin:0 0 6px}
+.fo-clients .fo-partie{color:var(--ds-attente-texte)}
+.fo-clients .fo-vers{margin:0}
+/* Dans le schéma, un lien de fournisseur ne se retire pas : il mène au tableau. */
+.ch-lien-fournisseur{flex-wrap:wrap}

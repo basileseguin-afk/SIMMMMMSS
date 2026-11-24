@@ -485,7 +485,9 @@ function reaffecterService(de,vers,nomDe){
   const touche=st.ateliers.some(a=>a.service===de)||(st.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(de));
   if(!touche)return;
   const nomVers=vers?((servicesDisponibles().find(x=>x.id===vers)||{}).nom||vers):'';
-  at.changer(()=>{
+  // Un service remplacé par un autre garde ses liens tels quels, ceux de ses fournisseurs compris (évolution 24 a) ; retiré
+  // sans remplaçant, c'est un geste comme un autre : ses fournisseurs ne passent pas à ceux qu'il livrait.
+  (vers?at.migrer:at.changer).call(at,()=>{
     if(vers)for(const a of st.ateliers){if(a.service===de)a.service=vers;}
     else st.ateliers=st.ateliers.filter(a=>a.service!==de);
     for(const p of st.parcours||[]){
@@ -830,7 +832,12 @@ function sourcesProblemes(){
   // Une compagnie qu'aucun handling ne charge se règle dans l'équipe du handling : son avis y mène (évolution 22 d).
   const handling=(Sim.ateliers.state.ateliers.find(x=>x.type==='handling')||{}).id;
   const situer=a=>(a.code==='handling-sans'&&!a.atelier&&handling?{...a,atelier:handling}:a);
-  return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
+  // Les fournisseurs (évolution 24 a) : un fournisseur sans équipe, sur le chemin de ses clients, se règle dans « Chemins ›
+  // Fournisseurs » ; et les clients réglés en partie (une sauvegarde d'avant) se lisent, en information.
+  const U=Sim.unite&&window.OrlyFournisseurs&&Sim.unite.estFournisseur?Sim.unite:null;
+  const fourni=a=>(U&&a.code==='parcours-trou'&&a.service&&U.estFournisseur(a.service)?{...a,fournisseur:true}:a);
+  return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
+    clientsEnPartie:U&&U.tableauFournisseurs?U.tableauFournisseurs().enPartie:0,
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
     etapes,enClair:MoteurProduction.enClair};
 }
@@ -3843,7 +3850,7 @@ function migrerRobot(){
   if(!z){const id=Sim.editor.nouveauService('Robot','prepa');z=Sim.editor.state.zones.find(v=>v.id===id);}
   if(!z)return;
   let faites=[];
-  at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
+  at.migrer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
     +'. Une seule équipe Robot les prépare, à régler (débit par commande, personnes) dans L’unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
@@ -3873,7 +3880,7 @@ function migrerSansQrDl(){
   const sort=x=>/^(QR|DL)$/i.test(String(x).trim());
   const deCie=id=>sort(String(id).slice(0,String(id).lastIndexOf('/')));
   let n=0;
-  at.changer(()=>{
+  at.migrer(()=>{
     const st=at.state,avant=JSON.stringify(st);
     for(const a of st.ateliers){
       if(Array.isArray(a.lots))a.lots=a.lots.map(l=>[].concat(l).filter(id=>!deCie(id))).filter(l=>l.length);
@@ -3914,7 +3921,7 @@ function migrerCfDepart(){
   const vers=autre?autre.id:Sim.editor.nouveauService('Handling','handling',false);
   if(!vers)return;
   let n=0;
-  at.changer(()=>{n=OrlyParcours.separerHandling(at.state,'handling',vers);},'');
+  at.migrer(()=>{n=OrlyParcours.separerHandling(at.state,'handling',vers);},'');
   if(n)at.rendre('Le handling a maintenant son service à lui : CF départ food est le service des checkeurs (ajoutez-y leurs équipes). « Annuler » revient en arrière.');
 }
 function migrerArmement(){
@@ -3929,13 +3936,13 @@ function migrerArmement(){
   // des chemins des repas (CF food → handling) : on retire ces flèches.
   if(faites.includes('armement-handling')){
     let n=0;
-    at.changer(()=>{n=OrlyParcours.delierHandling(at.state,armements.map(s=>s.id),handlings);
+    at.migrer(()=>{n=OrlyParcours.delierHandling(at.state,armements.map(s=>s.id),handlings);
       at.state.migrations=[...(at.state.migrations||[]),'handling-seul'];},'');
     if(n)at.rendre('Handling : '+n+(n>1?' flèches retirées':' flèche retirée')+' depuis les étapes des repas (CF food…) ; il n’est relié qu’à l’armement. « Annuler » revient en arrière.');
     return;
   }
   let n=0;
-  at.changer(()=>{
+  at.migrer(()=>{
     const st=at.state;st.categories=st.categories||{};
     for(const s of armements){
       if(!(st.categories[s.id]||[]).length)st.categories[s.id]=[{id:OrlyEchanges.codeService(s.nom,st),nom:s.nom,minutes:{}}];

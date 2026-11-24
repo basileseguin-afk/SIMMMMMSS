@@ -105,29 +105,51 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(lignes[0].c,'TX/BC');assert.equal(lignes[0].mm,30);assert.ok(lignes[0].fin<lignes[1].fin);
   assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^2\/2 préparées/);
 
-  // 4. Un lien ne vaut que pour son chemin : appros → montage, au clic, sur celui de TX seulement.
+  // 4. Un lien entre deux étapes ne vaut que pour son chemin : légumerie → montage, au clic, sur celui de TX seulement.
+  //    (Évolution 24 a : le lien d'un fournisseur, lui, vaut pour toute l'unité — voir plus bas. Avant, ce geste partait
+  //    de la réception.)
   const liensComplet=await liens('complet');
-  await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
+  await page.locator(`${Z} .gr-port[data-port=decontam]`).click();await attendre();
   assert.match(await page.locator('#notifs .notif.consigne').textContent(),/Relier/,'la consigne s’affiche, le temps du geste');
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
   assert.equal(await page.locator('#notifs .notif.consigne').count(),0,'elle part avec le geste');
-  assert.ok((await liens(bc)).includes('appros>prepa'));
-  assert.ok((await liens(bc)).includes('appros>decontam'),'appros livre deux services');
+  assert.ok((await liens(bc)).includes('decontam>prepa'));
+  assert.ok((await liens(bc)).includes('decontam>cuisine'),'la légumerie livre deux services');
   assert.deepEqual(await liens('complet'),liensComplet,'le chemin « Complet » ne bouge pas');
   assert.match(await page.locator('#at-status').textContent(),/livre maintenant Montage, dans « Complet TX BC »/);
   // Suppr retire le lien qui a le focus ; un lien en double est refusé et dit pourquoi.
-  await page.locator(`${Z} .gr-lien[data-lien="appros>prepa"]`).focus();await page.keyboard.press('Delete');await attendre();
-  assert.ok(!(await liens(bc)).includes('appros>prepa'));
+  await page.locator(`${Z} .gr-lien[data-lien="decontam>prepa"]`).focus();await page.keyboard.press('Delete');await attendre();
+  assert.ok(!(await liens(bc)).includes('decontam>prepa'));
+  // Évolution 24 (a) : les clients d'un fournisseur (la réception) se règlent une fois pour toute l'unité. Tirer un lien
+  // depuis lui ne crée rien : le geste dit pourquoi, et mène au tableau « Qui se fournit où ». Suppr sur un de ses liens
+  // ne le retire pas non plus.
+  const avantFournisseur=await liens(bc);
+  await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
+  await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre(300);
+  assert.deepEqual(await liens(bc),avantFournisseur,'aucun lien de fournisseur ne se crée dans le schéma');
+  assert.match(await page.locator('#at-status').textContent(),/est un fournisseur : ses clients se règlent ici, une fois pour tous les chemins/);
+  assert.equal(await page.locator(`${M} .ch-fiche`).getAttribute('data-ch-vue'),'fournisseurs','le geste mène au tableau');
+  await choisir(bc);
+  await page.locator(`${Z} .gr-lien[data-lien="appros>decontam"]`).focus();await page.keyboard.press('Delete');await attendre(300);
+  assert.deepEqual(await liens(bc),avantFournisseur,'ni ne se retire');
+  assert.equal(await page.locator(`${M} .ch-fiche`).getAttribute('data-ch-vue'),'fournisseurs');
+  await choisir(bc);
   await tirer(Z,'dotation','prepa');
   assert.match(await page.locator('#at-status').textContent(),/livre déjà/);
   // Au clavier : Entrée choisit une étape (son tableau s'ouvre), « Relier à… », Entrée sur l'autre relie.
   await page.locator(`${M} [data-mu-flux-ajout]`).selectOption('armement');await attendre();
   assert.ok((await liens(bc)).includes('armement>prepa'),'l’armement entre à sa place');
+  // (Depuis une étape : la dotation. Le magasin est un fournisseur — son tableau n'a pas « Relier à… », mais « Régler
+  //  ses clients », évolution 24 a.)
   await page.locator(`${Z} [data-noeud=magasin]`).focus();await page.keyboard.press('Enter');await attendre();
   assert.equal(await page.locator(`${M} .ch-etape`).getAttribute('data-ch-etape'),'magasin','Entrée ouvre le tableau de l’étape');
-  await page.locator(`${M} [data-ch-relier=magasin]`).click();await attendre();
+  assert.deepEqual([await page.locator(`${M} .ch-etape [data-ch-relier]`).count(),await page.locator(`${M} .ch-etape [data-mu-flux-action=retirer-service]`).count(),
+    await page.locator(`${M} .ch-etape [data-fo-ouvrir]`).innerText()],[0,0,'Régler ses clients →']);
+  await page.locator(`${Z} [data-noeud=dotation]`).focus();await page.keyboard.press('Enter');await attendre();
+  assert.equal(await page.locator(`${M} .ch-etape`).getAttribute('data-ch-etape'),'dotation');
+  await page.locator(`${M} [data-ch-relier=dotation]`).click();await attendre();
   await page.locator(`${Z} [data-noeud=armement]`).focus();await page.keyboard.press('Enter');await attendre();
-  assert.ok((await liens(bc)).includes('magasin>armement'));
+  assert.ok((await liens(bc)).includes('dotation>armement'));
   // La prépa se place avant le montage.
   assert.ok((await liens(bc)).includes('preparation>prepa'),'cuisine → prépa → montage');
   assert.equal(await page.locator(`${Z} [data-noeud=preparation] .gr-nom`).textContent(),'Prépa');

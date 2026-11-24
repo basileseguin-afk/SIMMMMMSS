@@ -76,9 +76,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[{de:'prepa',vers:'armement'}],'fait une fois seulement');
 
    // 6. Une unité intégrée par la première version (CF food → handling) : la flèche s'en va, celle de l'armement reste.
-   await page.evaluate(()=>Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;
+   // (Une sauvegarde d'avant, écrite telle quelle : depuis l'évolution 24 a, un geste de la page ne crée plus de lien de fournisseur.)
+   await page.evaluate(()=>{const s=JSON.parse(JSON.stringify(Sim.ateliers.state));
      s.migrations=s.migrations.filter(m=>m!=='handling-seul');
-     const t=s.parcours.find(p=>p.id==='complet');t.liens.push({de:'magasin',vers:'quais'});},''));
+     s.parcours.find(p=>p.id==='complet').liens.push({de:'magasin',vers:'quais'});
+     localStorage.setItem('ory-ateliers-v1',JSON.stringify(s));});
    await page.reload();await attendre();
    s=await st();
    const complet=s.parcours.find(p=>p.id==='complet');

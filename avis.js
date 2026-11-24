@@ -76,13 +76,16 @@
    *   fantomes  : services supprimés encore cités ({id, nom, cases, chemins}) ;
    *   liens     : alertes des liens de l'unité, quand ils servent ({texte, grave}) ;
    *   etapes    : étapes à faire ({id, titre, texte, page, services?}) ; `information` : elle se lit, rien n'est demandé ;
+   *   clientsEnPartie : le nombre de clients d'un fournisseur réglés en partie (évolution 24 a) ;
    *   enClair   : le texte d'une anomalie, avec les mots de la page (facultatif).
+   *   Une anomalie marquée `fournisseur` parle d'un lien de fournisseur : elle se règle dans « Chemins › Fournisseurs ».
    * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string,
    *   code?:string, equipe?:string, classes?:string[], etape?:string, services?:string[], fantome?:string, lien?:boolean}>}
    *   page : où il se règle ; aussi : les pages qui le montrent aussi (et le comptent) ; voulu : la compagnie d'un
    *   avis « aucun handling ne charge cette compagnie », qui propose de dire que c'est voulu (évolution 21 e).
    *   Évolution 22 (d) : de quoi mener à l'endroit précis — le code du point, son équipe, ses commandes ; l'étape et ses
    *   services à compléter ; le service supprimé ; un avis des liens entre services.
+   *   Évolution 24 (a) : `fournisseur` — l'avis parle d'un lien de fournisseur, il mène au tableau « Qui se fournit où ».
    */
   function lister(s = {}) {
     const clair = typeof s.enClair === 'function' ? s.enClair : (t => t);
@@ -104,7 +107,9 @@
         service: !resultat && a.service ? a.service : undefined,
         ...(resultat ? {} : { code: a.code, ...(a.atelier ? { equipe: a.atelier } : {}), ...(Array.isArray(a.classes) && a.classes.length ? { classes: a.classes.slice() } : {}) }),
         // Une compagnie qu'aucun handling ne charge (évolution 21 e) : l'avis propose de dire que c'est voulu.
-        ...(a.code === 'handling-sans' && a.compagnie ? { voulu: String(a.compagnie) } : {}) });
+        ...(a.code === 'handling-sans' && a.compagnie ? { voulu: String(a.compagnie) } : {}),
+        // Un fournisseur sans équipe sur le chemin de ses clients (évolution 24 a) : ses liens se règlent pour toute l'unité.
+        ...(!resultat && a.fournisseur ? { fournisseur: true } : {}) });
     }
     // Les liens de l'unité : ce qui est grave est « à corriger » ; un service en bout de chaîne ne demande rien.
     // (Une boucle qui arrête le calcul, c'est le calcul qui la dit : bloquant.) Ils se règlent dans « Liens entre services ».
@@ -118,6 +123,13 @@
         detail: noms.length ? (noms.length > 4 ? noms.slice(0, 4).join(', ') + ' et ' + pl(noms.length - 4, 'autre') : noms.join(', ')) + ' : à corriger.' : (e.texte || ''),
         page: e.page || 'mu-pas', aussi: ['mu-pas'], etape: e.id, ...(e.services && e.services.length ? { services: e.services.map(x => x.id) } : {}) });
     }
+    // Les clients d'un fournisseur réglés en partie (évolution 24 a) : une sauvegarde d'avant les porte tels qu'ils
+    // étaient dessinés, chemin par chemin. Rien n'est demandé, et rien ne bouge tant qu'on ne choisit pas.
+    const partiels = Number.isInteger(s.clientsEnPartie) && s.clientsEnPartie > 0 ? s.clientsEnPartie : 0;
+    if (partiels) out.push({ niveau: 'information', titre: pl(partiels, 'client réglé', 'clients réglés') + ' en partie',
+      detail: (partiels > 1 ? 'Ils se fournissent' : 'Il se fournit') + ' chez un fournisseur dans une partie seulement des chemins où '
+        + (partiels > 1 ? 'ils passent' : 'il passe') + '. Choisissez « Partout » ou « Nulle part » ; d’ici là, aucun lien ne bouge.',
+      page: 'mu-flux', aussi: [], fournisseur: true });
     // Du bloquant à l'information ; dans un niveau, l'ordre des sources.
     return out.map((p, i) => [p, i]).sort((a, b) => RANG[a[0].niveau] - RANG[b[0].niveau] || a[1] - b[1]).map(x => x[0]);
   }

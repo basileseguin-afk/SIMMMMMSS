@@ -6,7 +6,9 @@
  *   3. Le nom d'une équipe mène à sa fiche, dans « Services et équipes » ; l'équipe d'une commande se choisit ici.
  *   4. Créer un chemin, y mettre une étape, y rattacher une commande, choisir son équipe à une étape : la sauvegarde
  *      est celle que donnaient les anciennes pages — les mêmes gestes sont faits dans la version 2 (gelée), qui les
- *      porte, et les deux sauvegardes changent des mêmes champs, aux mêmes valeurs.
+ *      porte, et les deux sauvegardes changent des mêmes champs, aux mêmes valeurs. (Évolution 24 a : sauf les liens
+ *      des fournisseurs, qu'un geste sur un chemin ne déplace plus — ils se règlent dans « Fournisseurs » ; la
+ *      comparaison les met à part, et les relit.)
  *   5. Une commande sans chemin : le bas de la liste la compte, un lien la montre, elle y choisit son chemin.
  *   6. Une variante pour une commande ; les commandes exclues et ajoutées, dans une section repliée.
  *   7. Un chemin à part (celui d'une seule commande) se règle avec le même éditeur.
@@ -155,14 +157,32 @@ function ecarts(avant,apres,chemin='',out=[]){
    ['dupliquer le chemin',async p=>{await p.locator(`${M} [data-mu-flux-action=dupliquer]`).click();await attendre(p,400);}],
    ['supprimer la copie',async p=>{await p.locator(`${M} [data-mu-flux-action=supprimer]`).click();await attendre(p,400);}]
   ];
+  // Évolution 24 (a) : les clients d'un fournisseur (la réception, le magasin) se règlent une fois pour toute l'unité,
+  // dans « Fournisseurs ». Un geste sur un chemin ne déplace plus leurs liens ; dans la version 2, gelée, il les déplace
+  // encore (une étape insérée entre un client et son fournisseur prend le lien). La comparaison les met donc à part.
+  const FOURNISSEURS=['appros','magasin'];
+  const horsFournisseurs=e=>({...e,parcours:(e.parcours||[]).map(p=>({...p,liens:p.liens.filter(l=>!FOURNISSEURS.includes(l.de))}))});
+  const deFournisseurs=e=>Object.fromEntries((e.parcours||[]).map(p=>[p.nom,p.liens.filter(l=>FOURNISSEURS.includes(l.de)).map(l=>l.de+'>'+l.vers).sort()]));
   let avant1=await sauvegarde(page),avant2=await sauvegarde(v2.page),changes=0;
   assert.deepEqual(avant1,avant2,'les deux versions partent de la même sauvegarde');
   for(const [nom,geste] of GESTES){
    await geste(page,1);await geste(v2.page,2);
    const apres1=await sauvegarde(page),apres2=await sauvegarde(v2.page);
-   const e1=ecarts(avant1,apres1),e2=ecarts(avant2,apres2);
+   const e1=ecarts(horsFournisseurs(avant1),horsFournisseurs(apres1)),e2=ecarts(horsFournisseurs(avant2),horsFournisseurs(apres2));
    assert.deepEqual(e1,e2,nom+' : la sauvegarde change des mêmes champs, aux mêmes valeurs, que depuis les anciennes pages');
    assert.ok(e1.length>0,nom+' : la sauvegarde a changé');changes++;
+   const f1=deFournisseurs(apres1),f2=deFournisseurs(apres2);
+   if(nom==='y mettre une étape'){
+    // La cuisine entre dans la copie de « Sans cuisine », entre la réception et la prépa. Version 1 : la prépa y garde
+    // son fournisseur, et la cuisine, qui n'est cliente de personne, n'en reçoit pas. Version 2 : le lien passe à la cuisine.
+    assert.deepEqual(f1['Chemin fictif'],['appros>preparation','magasin>prepa'],'version 1 : les liens des fournisseurs ne bougent pas');
+    assert.deepEqual(f1,deFournisseurs(avant1));
+    assert.deepEqual(f2['Chemin fictif'],['appros>cuisine','magasin>prepa'],'le témoin : dans la version 2, le geste déplace le lien');
+   }
+   // Tant que la cuisine est dans le chemin, les deux versions diffèrent de ce seul lien ; aucun de ces gestes n'y touche.
+   else if(['y rattacher une commande','choisir son équipe à une étape','renommer le chemin'].includes(nom))assert.deepEqual(Object.values(f1),Object.values(deFournisseurs(avant1)),nom+' : aucun lien de fournisseur ne bouge');
+   // La cuisine retirée, et hors de ces gestes : les deux versions portent les mêmes liens de fournisseurs.
+   else assert.deepEqual(Object.values(f1),Object.values(f2),nom+' : les mêmes liens de fournisseurs');
    avant1=apres1;avant2=apres2;
   }
   assert.equal(changes,GESTES.length);
@@ -350,16 +370,22 @@ function ecarts(avant,apres,chemin='',out=[]){
   await choixPlus.selectOption('+');await attendre(page,400);
   assert.deepEqual(await page.evaluate(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>[a.type,a.lots.length]),sv.s),[['dispo',0]],'une mise à disposition, partagée : pas une équipe par commande');
   assert.equal(await page.locator(`${M} .ch-etape .ch-a-corriger`).count(),0,'toutes les commandes sont servies');
-  // « Relier à… » : l'étape choisie, puis une autre, au clavier — le lien se crée ; « Annuler » le défait.
+  // Évolution 24 (a) : le magasin est un fournisseur. Son tableau n'a ni « Relier à… » ni « Retirer du chemin » : ses
+  // clients se règlent pour toute l'unité, et « Régler ses clients » y mène.
+  assert.deepEqual([await page.locator(`${M} .ch-etape [data-ch-relier]`).count(),await page.locator(`${M} .ch-etape [data-mu-flux-action=retirer-service]`).count(),
+    await page.locator(`${M} .ch-etape [data-fo-ouvrir]`).innerText()],[0,0,'Régler ses clients →']);
+  // « Relier à… » : l'étape choisie (la dotation), puis une autre, au clavier — le lien se crée ; « Annuler » le défait.
+  const de='dotation';
+  await noeud(page,de);
   const liensDe=()=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),sv.id);
   const avantLien=await liensDe();
-  const cible=await page.evaluate(([id,s])=>{const p=Sim.ateliers.state.parcours.find(x=>x.id===id);
-    return MoteurProduction.servicesDuParcours(p).find(t=>t!==s&&!p.liens.some(l=>l.de===s&&l.vers===t)&&!OrlyParcours.creeBoucle(p,s,t))||null;},[sv.id,sv.s]);
-  assert.ok(cible,'une étape que le magasin ne livre pas encore');
-  await page.locator(`${M} .ch-etape [data-ch-relier="${sv.s}"]`).click();await attendre(page,200);
+  const cible=await page.evaluate(([id,s])=>{const p=Sim.ateliers.state.parcours.find(x=>x.id===id),F=OrlyFournisseurs;
+    return MoteurProduction.servicesDuParcours(p).find(t=>t!==s&&!F.estFournisseur(Sim.ateliers.state,t)&&!p.liens.some(l=>l.de===s&&l.vers===t)&&!OrlyParcours.creeBoucle(p,s,t))||null;},[sv.id,de]);
+  assert.ok(cible,'une étape que la dotation ne livre pas encore');
+  await page.locator(`${M} .ch-etape [data-ch-relier="${de}"]`).click();await attendre(page,200);
   assert.match(await page.locator('#notifs .notif.consigne').textContent(),/Relier/,'la consigne du geste');
   await page.locator(`${M} [data-mu-graphe] [data-noeud="${cible}"]`).focus();await page.keyboard.press('Enter');await attendre(page,300);
-  assert.deepEqual(await liensDe(),avantLien.concat(sv.s+'>'+cible),'le lien est créé, sans la souris');
+  assert.deepEqual(await liensDe(),avantLien.concat(de+'>'+cible),'le lien est créé, sans la souris');
   await page.locator('#btn-annuler').click();await attendre(page,300);
   assert.deepEqual(await liensDe(),avantLien,'« Annuler » le défait');
 

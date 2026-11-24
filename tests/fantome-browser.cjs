@@ -87,8 +87,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     return {cases:st.ateliers.filter(a=>a.service==='armement').length,
       chemins:st.parcours.filter(p=>MoteurProduction.servicesDuParcours(p).includes('armement')).length,
       lien:MoteurProduction.arcsDuParcours(st.parcours.find(p=>p.id==='pfa')).map(a=>a.from+'>'+a.to)};});
-  // Le chemin ne se coupe pas en deux : ce qui livrait l'armement livre ce qu'il livrait.
-  assert.deepEqual(reste,{cases:0,chemins:0,lien:['appros>prepa']},'effacé des cases et des chemins');
+  // Le chemin ne se coupe pas en deux : ce qui livrait l'armement livre ce qu'il livrait. Sauf son fournisseur (évolution
+  // 24 a) : la réception fournissait l'armement, pas le montage — ses clients se règlent dans « Chemins › Fournisseurs »,
+  // un geste ne lui en donne pas. Sans client dans ce chemin, elle en sort. (Avant : le lien « appros>prepa ».)
+  assert.deepEqual(reste,{cases:0,chemins:0,lien:[]},'effacé des cases et des chemins');
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.parcours.find(p=>p.id==='pfa').noeuds),['prepa']);
   assert.equal(await page.locator('#at-anomalies [data-at-action=fantome-effacer]').count(),0);
   await supprimes();
   assert.equal(await fantomes.count(),0,'plus rien à effacer');

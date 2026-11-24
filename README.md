@@ -210,6 +210,27 @@ et équipes », « Chemins », « Liens entre services », « Réglages »,
 servir. Le jour choisi se garde d’une page à l’autre. Sans programme daté,
 rien ne change.
 
+**Les fournisseurs** (version 1, évolution 24 a). Un fournisseur est un
+service de mise à disposition où rien n’arrive : aucun lien n’y entre, dans
+aucun chemin (le magasin, la réception). Être son client ne dépend pas du
+chemin : ses clients se cochent **une fois pour toute l’unité**, dans
+« Chemins », par l’entrée « Fournisseurs » — à part, au-dessus des chemins —,
+qui ouvre le tableau « Qui se fournit où » (une ligne par service, une colonne
+par fournisseur). Cocher un service écrit le lien « fournisseur → service »
+dans chaque chemin où il est une étape ; décocher le retire de tous ; une
+étape ajoutée ensuite à un chemin reçoit aussitôt les liens de ses
+fournisseurs. Une sauvegarde d’avant s’ouvre sans qu’aucun lien ne bouge : un
+client qui ne l’est que dans une partie des chemins s’affiche « en partie :
+n chemins sur m », avec « Partout » et « Nulle part », et « Contrôles » le dit
+en information. **Le calcul ne change pas** — il lit toujours les liens des
+chemins ; la liste de ce qui est coché se garde avec les équipes
+(`fournisseurs`, dans `ory-ateliers-v1`). Avec un fournisseur toujours ouvert,
+un client de plus ne change aucune heure ; avec un fournisseur à horaires, il
+attend son ouverture, et c’est voulu. Le détail est dans
+`docs/CAHIER_DES_CHARGES.md` (« Les fournisseurs »). `fournisseurs.js` est un
+module de la version 1 : `parcours.js` et `unite.js`, communs avec la
+version 2, ne sont pas modifiés.
+
 **Le schéma d’un chemin** (version 1, évolution 23 c). Dans « Chemins », le
 schéma ne se réduit plus pour tenir dans son cadre : il s’affiche à la taille
 où son plus petit texte fait 12 px à l’écran, et, plus grand que son cadre,

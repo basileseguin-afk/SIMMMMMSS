@@ -170,6 +170,19 @@
       if (heure && el.select) el.select();
     }
 
+    /* ---- les fournisseurs (évolution 24 a) : leurs clients se règlent dans « Chemins › Fournisseurs » ----------- */
+
+    /** De quoi nommer les services et dire leur nature, pour fournisseurs.js. La nature choisie d'un service encore
+     *  sans équipe compte, comme dans sa fiche. */
+    optionsFournisseurs() {
+      const st = this.etat, sans = id => !(st.ateliers || []).some(a => a.service === id);
+      return { services: this.a.services().map(s => s.id), nom: id => this.nom(id),
+        nature: id => (this.natures[id] && sans(id) ? this.natures[id] : PC.natureService(st, id, this.nom(id))) };
+    }
+
+    /** Ce service est-il un fournisseur ? Sans fournisseurs.js (la page d'avant), aucun ne l'est. */
+    estFournisseur(s) { const F = root.OrlyFournisseurs; return !!F && F.estFournisseur(this.etat, s, this.optionsFournisseurs()); }
+
     /* La fiche d'avant (unite.js), sans aucun résultat, en morceaux : le calcul n'y est pas passé, et les fiches
      * d'équipe (ateliers.js) le savent — ni heure de fin, ni effectif calculé, ni plan du dernier calcul. */
     morceaux(s, b, classes) {
@@ -268,6 +281,15 @@
       const html = e => (e ? e.outerHTML : '');
       const section = (cle, titre, corps, note, ouvert) => `<details class="mu-etape se-section" data-mu-section="${cle}"${this.sections.get(cle) ?? ouvert ? ' open' : ''}>
         <summary><h3>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3></summary>${corps}</details>`;
+      // Évolution 24 (a) : la fiche d'un fournisseur ne règle plus « Quels chemins en ont besoin ? ». Elle montre ses
+      // clients, qui se lisent, et mène au tableau où ils se règlent pour toute l'unité. Une mise à disposition qui
+      // reçoit d'un autre service reste une étape comme les autres : sa fiche ne change pas.
+      const F = root.OrlyFournisseurs, besoin = un('.mu-besoin');
+      if (F && besoin && this.estFournisseur(s.id)) {
+        const t = root.document.createElement('template');
+        t.innerHTML = F.clientsHTML(F.clientsDe(this.etat, s.id, this.ordre(this.a.services()), this.optionsFournisseurs()));
+        besoin.replaceWith(t.content);
+      }
 
       // 1. Son nom et ce qu'il fait : le type se choisit ici, une seule fois.
       const tete = un('.mu-tete'), typeDe = un('label.mu-nature');
@@ -393,8 +415,10 @@
     lierPage() {
       const d = root.document;
       d.addEventListener('click', e => {
-        const t = e.target.closest && e.target.closest('#mu-services [data-se-equipe], #mu-services [data-se-retour], #mu-services [data-se-panneau], #mu-services [data-se-resultats]');
+        const t = e.target.closest && e.target.closest('#mu-services [data-se-equipe], #mu-services [data-se-retour], #mu-services [data-se-panneau], #mu-services [data-se-resultats], #mu-services [data-fo-ouvrir]');
         if (!t) return;
+        // La fiche d'un fournisseur : « Régler dans Chemins › Fournisseurs » (évolution 24 a).
+        if (t.dataset.foOuvrir !== undefined) return void (this.ouvrirFournisseurs ? this.ouvrirFournisseurs() : this.a.page('mu-flux'));
         // Dans une ligne du tableau, un clic n'importe où ouvre la fiche ; le bouton du nom, au clavier.
         if (t.dataset.seEquipe) return void this.ouvrirEquipe(t.dataset.seEquipe, this.choisi);
         if (t.dataset.seRetour !== undefined) { this.panneau = null; return void this.ouvrirEquipe(null); }
