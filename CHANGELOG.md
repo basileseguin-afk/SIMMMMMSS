@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Évolution 24 (d) : le contrôle, les captures et la documentation
+
+Dernière partie de l’évolution 24. Aucun calcul ne change, ni la sauvegarde.
+(La partie (c) de la consigne — la vue « À plat » sort de « En direct » —
+était déjà faite : évolution 23 a.)
+
+- **Une retouche de contrôle** : la fiche d’un fournisseur disait encore
+  « Dites quand il est ouvert, combien de personnes y travaillent sur la
+  journée, et qui en a besoin. » Ses clients ne se règlent plus là : la
+  phrase s’arrête à « … et combien de personnes y travaillent sur la
+  journée. » (`services-page.js` ; `unite.js`, commun, n’est pas modifié).
+
+- **Les captures de contrôle** : `tests/captures-evolution-24-browser.cjs` —
+  « Chemins » sans et avec les fournisseurs sur le schéma, la ligne sous le
+  schéma, le tableau « Qui se fournit où » (un client coché, un décoché, un
+  « en partie »), la fiche d’un fournisseur ; sur une unité fictive, en clair
+  et en sombre, aux deux tailles. Gardées hors du dépôt.
+- **La documentation** : `docs/CAHIER_DES_CHARGES.md` (« Les fournisseurs » :
+  ce qu’est un fournisseur, où se règlent ses clients, ce que cela change au
+  résultat ; M29, E32), ce fichier et le README (les quatre tests de
+  l’évolution dans la table des tests).
+
 ## 2026-11-24 — Évolution 24 (b) : « Chemins », le schéma sans les fournisseurs
 
 Deuxième partie de l’évolution 24. Aucun calcul ne change, ni la sauvegarde.

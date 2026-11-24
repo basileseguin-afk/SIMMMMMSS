@@ -214,9 +214,14 @@ const MODULE=/\/fournisseurs\.js(\?|$)/;
     return {besoins:f.querySelectorAll('[data-mu-besoin]').length,titre:c.querySelector('h4').textContent,clients:c.querySelector('.fo-clients-liste').textContent.replace(/\s+/g,' ').trim(),
       champs:c.querySelectorAll('input,select').length,lien:c.querySelector('[data-fo-ouvrir]').textContent.trim()};});
   assert.deepEqual(fiche,{besoins:0,titre:'Ses clients',clients:'Cuisine froide, Montage',champs:0,lien:'Régler dans Chemins › Fournisseurs →'},'la fiche montre ses clients : rien ne s’y règle');
+  // (Évolution 24 d, retouche de contrôle.) La phrase de la fiche ne demande plus « qui en a besoin » : cela se règle ailleurs.
+  const phrase=()=>page.evaluate(()=>[...document.querySelectorAll('#mu-services .se-fiche p.mini-note')].map(p=>p.textContent).find(t=>/^Il sert toutes les commandes/.test(t))||'');
+  assert.match(await phrase(),/Dites quand il est ouvert et combien de personnes y travaillent sur la journée\.$/);
+  assert.doesNotMatch(await phrase(),/qui en a besoin/);
   // La légumerie reçoit de la réception : une étape comme les autres, sa fiche ne change pas.
   await page.locator('#mu-services .se-liste [data-mu-choisir="decontam"]').click();await attendre(page);
   assert.deepEqual(await page.evaluate(()=>{const f=document.querySelector('#mu-services .se-fiche');return [f.querySelectorAll('.fo-clients').length,f.querySelectorAll('[data-mu-besoin]').length>0];}),[0,true]);
+  assert.match(await phrase(),/et qui en a besoin\.$/,'sa phrase non plus');
   await page.locator('#mu-services .se-liste [data-mu-choisir="magasin"]').click();await attendre(page);
   await page.locator('#mu-services .fo-clients [data-fo-ouvrir]').click();await attendre(page);
   assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,document.querySelector('#mu-flux .ch-fiche').dataset.chVue]),['mu-flux','fournisseurs'],'le lien mène au tableau, dans « Chemins »');

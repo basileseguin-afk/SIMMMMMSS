@@ -675,8 +675,11 @@ Code : `fournisseurs.js` (pur, version 1 ; `parcours.js`, `unite.js` et
 `graphe.js`, communs avec la version 2, ne sont pas modifiés : la page donne
 au diagramme les étapes à dessiner, et pose les pastilles sur son dessin).
 Contrôlé par `tests/fournisseurs.test.cjs` (dont la journée calculée à la
-main), `tests/fournisseurs-browser.cjs` et
-`tests/chemins-fournisseurs-browser.cjs` (le schéma, aux deux tailles).
+main), `tests/fournisseurs-browser.cjs`,
+`tests/chemins-fournisseurs-browser.cjs` (le schéma, aux deux tailles) et
+`tests/captures-evolution-24-browser.cjs` (les captures de contrôle : le
+schéma sans et avec les fournisseurs, le tableau, la fiche d'un
+fournisseur).
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

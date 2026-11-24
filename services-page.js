@@ -289,6 +289,9 @@
         const t = root.document.createElement('template');
         t.innerHTML = F.clientsHTML(F.clientsDe(this.etat, s.id, this.ordre(this.a.services()), this.optionsFournisseurs()));
         besoin.replaceWith(t.content);
+        // La phrase d'avant demandait aussi « qui en a besoin » : cela ne se dit plus ici (évolution 24 d, retouche de contrôle).
+        const FIN = /, combien de personnes y travaillent sur la journée, et qui en a besoin\.$/;
+        for (const n of tous('p.mini-note')) if (FIN.test(n.textContent)) n.textContent = n.textContent.replace(FIN, ' et combien de personnes y travaillent sur la journée.');
       }
 
       // 1. Son nom et ce qu'il fait : le type se choisit ici, une seule fois.
