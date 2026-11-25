@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (e) : fiche d’un service par compagnie, l’encart « Lié au handling »
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **La phrase dit le service par son nom** : « Le handling attend <nom du
+  service> avant de charger un vol, pour les compagnies qui passent par lui :
+  celles dont un chemin passe par ce service, ou qu’une de ses équipes a
+  cochées. Il charge les autres sans l’attendre. » Elle ne contient
+  « armement » que pour un service de ce nom.
+- **Plus de bouton qui écrit un lien** : « Le relier au seul handling » et
+  « L’ajouter à tous les chemins, relié au handling » disparaissent ; les
+  liens se règlent dans « Chemins ».
+- **« À reprendre dans ces chemins : … » reste** : chaque chemin cité est un
+  lien qui l’ouvre dans « Chemins », ce service choisi.
+- Les migrations d’ouverture ne changent pas.
+
+Fichiers : `services-page.js` (`lienHandling`), `index.html` ;
+`tests/lien-handling-browser.cjs` (nouveau), `tests/categories-browser.cjs`,
+`tests/armement-chemins-browser.cjs`, `tests/armement-integre-browser.cjs` ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (d) : Synthèse, le bandeau « n commandes que personne ne prépare » mène à « Contrôles »
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

@@ -38,9 +38,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      Sim.ateliers.changer(()=>{st.parcours.find(x=>x.id===p.id).liens.push({de:'armement',vers:'prepa'});},'');return p.nom;});
    f=await fiche();
    assert.match(await f.innerText(),new RegExp('À reprendre dans ce chemin : « '+nomFlux+' » \\(relié aussi à Montage\\)'),version);
-   await f.locator('[data-mu-action=integrer-armement]').click();await attendre();
+   // Version 1 (correction 23 e) : la fiche n'a plus de bouton qui écrit un lien — les liens se règlent dans « Chemins ».
+   // Le test écrit ici ce que le bouton écrivait (le même geste, `placerArmement`) ; la version 2 garde son bouton.
+   assert.equal(await f.locator('[data-mu-action=integrer-armement]').count(),version==='v1'?0:1,version+' : le bouton « Le relier au seul handling »');
+   if(version==='v1')await page.evaluate(()=>{const u=Sim.unite,at=Sim.ateliers;at.changer(()=>{OrlyParcours.placerArmement(at.state,['armement'],u.handlings(at.state),at.classes);},'');u.rendreServices();});else await f.locator('[data-mu-action=integrer-armement]').click();
+   await attendre();
    f=await fiche();
-   assert.match(await f.innerText(),/Dans chaque chemin qui passe par lui/,version+' : un clic le remet en ordre');
+   assert.match(await f.innerText(),/Dans chaque chemin qui passe par lui/,version+' : le geste le remet en ordre');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('armement-integre-browser : ok');

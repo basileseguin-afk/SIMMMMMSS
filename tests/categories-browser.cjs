@@ -51,9 +51,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Un handling dont la liste ne cite pas FWI ; puis l'armement, encore dans aucun chemin, ajouté à tous d'un clic.
    const sansFWI=construites.filter(c=>c!=='FWI');
    await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansFWI);await attendre();
-   assert.match(await fiche('.mu-lien-handling').innerText(),/« Quais » attend les repas du vol, et son armement quand sa compagnie en a un/);
+   // Version 1 (correction 23 e) : la phrase dit le service par son nom, plus « son armement ».
+   assert.match(await fiche('.mu-lien-handling').innerText(),version==='v1'?/Le handling attend Armement avant de charger un vol, pour les compagnies qui passent par lui/
+     :/« Quais » attend les repas du vol, et son armement quand sa compagnie en a un/);
    assert.match(await fiche('.mu-arm-aucun').innerText(),/Aucun chemin ne passe encore par/);
-   await fiche('[data-mu-action=integrer-armement]').click();await attendre();
+   // Version 1 (correction 23 e) : la fiche n'a plus de bouton qui écrit un lien — les liens se règlent dans « Chemins ».
+   // Le test écrit ici ce que le bouton écrivait (le même geste, `placerArmement`) ; la version 2 garde son bouton.
+   const relierAuHandling=async()=>{
+     assert.equal(await fiche('[data-mu-action=integrer-armement]').count(),version==='v1'?0:1,version+' : le bouton qui écrit le lien');
+     if(version==='v1')await page.evaluate(()=>{const u=Sim.unite,at=Sim.ateliers;at.changer(()=>{OrlyParcours.placerArmement(at.state,['armement'],u.handlings(at.state),at.classes);},'');u.rendreServices();});else await fiche('[data-mu-action=integrer-armement]').click();
+     await attendre();};
+   await relierAuHandling();
    const tous=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
    assert.deepEqual(await cases(),tous,version+' : chaque compagnie dont le chemin passe par l’armement — FWI comprise, absente de la liste de « Quais »');
    assert.doesNotMatch(await fiche('').innerText(),/Sans armement :/);
@@ -101,7 +109,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
    assert.match(await fiche('.mu-lien-handling').innerText(),/À reprendre dans ce chemin : « .+ » \(relié aussi à /);
-   await fiche('[data-mu-action=integrer-armement]').click();await attendre();
+   await relierAuHandling();
    const parcours=await page.evaluate(()=>Sim.ateliers.state.parcours);
    assert.ok(parcours.every(p=>!p.noeuds.length||(p.noeuds.includes('armement')&&p.liens.filter(l=>l.de==='armement'||l.vers==='armement').every(l=>l.de==='armement'&&l.vers==='quais'))),'dans tous les chemins, relié seulement au handling');
    assert.match(await fiche('.mu-arm-ok').innerText(),/Dans chaque chemin qui passe par lui/);

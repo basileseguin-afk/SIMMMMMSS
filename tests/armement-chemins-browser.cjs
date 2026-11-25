@@ -59,7 +59,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // L'armement dans ce chemin, mais relié à la Prépa : à reprendre ; un clic le relie au seul handling.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const p=Sim.ateliers.state.parcours.find(x=>x.id==='neuf');p.noeuds=p.noeuds.concat(['armement']);p.liens=[{de:'prepa',vers:'armement'}];},''));await attendre();
    assert.match(await page.locator('#mu-services .mu-arm-reprendre').innerText(),/« Neuf » \(relié aussi à /);
-   await page.locator('#mu-services [data-mu-action=integrer-armement]').click();await attendre();
+   // Version 1 (correction 23 e) : la fiche n'a plus de bouton qui écrit un lien — les liens se règlent dans « Chemins ».
+   // Le test écrit ici ce que le bouton écrivait (le même geste, `placerArmement`) ; la version 2 garde son bouton.
+   assert.equal(await page.locator('#mu-services [data-mu-action=integrer-armement]').count(),version==='v1'?0:1,version+' : le bouton « Le relier au seul handling »');
+   if(version==='v1')await page.evaluate(()=>{const u=Sim.unite,at=Sim.ateliers;at.changer(()=>{OrlyParcours.placerArmement(at.state,['armement'],u.handlings(at.state),at.classes);},'');u.rendreServices();});else await page.locator('#mu-services [data-mu-action=integrer-armement]').click();
+   await attendre();
    s=await st();
    const neuf=s.parcours.find(p=>p.id==='neuf');
    assert.deepEqual(neuf.liens,[{de:'armement',vers:'quais'}]);

@@ -237,6 +237,35 @@
     /** Ce service est-il un fournisseur ? Sans fournisseurs.js (la page d'avant), aucun ne l'est. */
     estFournisseur(s) { const F = root.OrlyFournisseurs; return !!F && F.estFournisseur(this.etat, s, this.optionsFournisseurs()); }
 
+    /* ---- l'encart « Lié au handling » d'un service par compagnie (correction 23 e) --------------------------------- */
+
+    /**
+     * La phrase dit le service par son nom : « son armement » ne veut rien dire pour un service par compagnie qui ne
+     * s'appelle pas « Armement ». Les liens d'un chemin se règlent dans « Chemins » : chaque chemin à reprendre est un
+     * lien qui l'y ouvre, ce service choisi, et plus aucun bouton n'écrit de lien d'ici (« Le relier au seul handling »,
+     * « L'ajouter à tous les chemins, relié au handling »). Remplace celui de unite.js, commun avec la version 2, non modifié.
+     */
+    lienHandling(s) {
+      const st = this.etat, nom = esc(s.nom), handlings = (st.ateliers || []).filter(a => a.type === 'handling');
+      // Seulement les chemins que suivent les commandes et qui passent par lui ; un lien vers un handling suffit.
+      const aReprendre = handlings.length ? PC.armementACorriger(st, [s.id], this.handlings(st), this.at.classes) : [];
+      const suivis = new Set((this.at.classes || []).map(c => (PC.fluxDe(st, c) || {}).id).filter(Boolean));
+      const dans = (st.parcours || []).some(p => suivis.has(p.id) && (p.noeuds || []).includes(s.id));
+      const chemin = x => `<button type="button" class="lien-discret mu-arm-chemin" data-mu-arm-chemin="${esc(x.parcours.id)}" data-service="${esc(s.id)}"
+          title="Ouvrir ce chemin dans « Chemins », sur ${nom}">« ${esc(x.parcours.nom || x.parcours.id)} »</button> (${
+        x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : 'pas relié au handling'})`;
+      const ou = !handlings.length ? ''
+        : aReprendre.length ? `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aReprendre.length > 1 ? 'ces chemins' : 'ce chemin'} : ${aReprendre.map(chemin).join(', ')}.
+          Dans un chemin, ${nom} se relie au handling, et à lui seul : cela se règle dans « Chemins ».</p>`
+        : dans ? `<p class="mini-note mu-arm-ok">${pic('check', 'ico-texte')} Dans chaque chemin qui passe par lui, en branche à part, relié seulement au handling.</p>`
+        : `<p class="mini-note mu-arm-aucun">Aucun chemin ne passe encore par ${nom} : ajoutez-le comme étape dans
+          <button type="button" class="lien-discret" data-page="mu-flux">Chemins →</button>, relié au handling.</p>`;
+      return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
+        ? `Le handling attend ${nom} avant de charger un vol, pour les compagnies qui passent par lui : celles dont un chemin passe par ce service, ou qu’une de ses équipes a cochées. Il charge les autres sans l’attendre.`
+        : `Pas encore de handling dans l’unité : créez-en un, puis reliez-lui ${nom} dans « Chemins ».`}</p>
+        ${ou}</div>`;
+    }
+
     /* ---- l'encart « à compléter » et l'endroit exact où un point se règle (correction 23 c) ------------------------ */
 
     /** L'encart « à compléter » d'un service : une ligne par point, qui nomme les commandes ou les compagnies en cause ; chaque nom se clique. */
@@ -557,6 +586,9 @@
     lierPage() {
       const d = root.document;
       d.addEventListener('click', e => {
+        // Un chemin à reprendre, dans l'encart « Lié au handling » (correction 23 e) : il s'ouvre dans « Chemins », ce service choisi.
+        const arm = e.target.closest && e.target.closest('#mu-services [data-mu-arm-chemin]');
+        if (arm) return void this.ouvrirFlux(arm.dataset.muArmChemin, arm.dataset.service);
         const t = e.target.closest && e.target.closest('#mu-services [data-se-viser], #mu-services [data-se-equipe], #mu-services [data-se-retour], #mu-services [data-se-panneau], #mu-services [data-se-resultats], #mu-services [data-fo-ouvrir]');
         if (!t) return;
         // Une ligne de l'encart « à compléter » (correction 23 c) : l'endroit exact, en évidence, le clavier dessus.
