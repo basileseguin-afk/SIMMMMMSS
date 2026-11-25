@@ -2466,11 +2466,13 @@
 
     /* Une ligne par compagnie : ce qu'on règle pour elle, et combien de vols elle a.
      * `colonnes` : les temps réglés par compagnie ({ map, lib } ; `durees` est le
-     * temps principal) ; `extra` : les colonnes propres au service. */
+     * temps principal) ; `extra` : les colonnes propres au service ; `extra.sans` : les compagnies qui n'ont pas de
+     * ligne (correction 23 f) — leurs valeurs restent dans l'état, et reviennent avec leur ligne. */
     tableCompagnies(a, cies, nbVols, colonnes, extra) {
       const cols = typeof colonnes === 'string' ? [{ map: 'durees', lib: colonnes }] : colonnes;
       const propres = [...new Set(cols.flatMap(c => Object.keys(a[c.map] || {})).filter(k => k !== P.TOUTES))];
-      const liste = [...new Set(cies.concat(propres))].sort();
+      const sans = new Set((extra && extra.sans) || []);
+      const liste = [...new Set(cies.concat(propres))].filter(c => !sans.has(c)).sort();
       const champ = (c, cie, lib) => {
         const m = a[c.map] || {}, toutes = m[P.TOUTES] ?? c.defaut;
         const vide = c.vide ?? (c.map === 'durees' ? 'à saisir' : String(c.defaut ?? 0));
@@ -2574,6 +2576,9 @@
 
         <div class="at-sous-titre">Par compagnie : courrier et trajet du camion, en minutes (aller + charger + retour)</div>
         ${this.tableCompagnies(a, cies, nb, colonnes, {
+          // Correction 23 (f) : aucun camion ne charge une compagnie déclarée « sans chargement » — elle n'a pas de ligne
+          // ici ; elle reste dans la liste « Compagnies sans chargement », plus haut, d'où elle se remet.
+          sans: this.sansChargement(),
           total: cie => { const t = P.trajetHandling(a, cie), d = P.dureeHandling(a, cie);
             return d == null ? '—' : '<b>' + Math.round(t.aller + d + t.retour) + '</b> min'; },
           toutes: '<td>—</td><td>—</td>' + (h24 ? '<td>—</td><td>—</td>' : ''),

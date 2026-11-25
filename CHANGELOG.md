@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (f) : fiche du handling, une compagnie sans chargement n’est pas dans le tableau par compagnie
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- Une compagnie déclarée **« sans chargement »** (évolution 21 e) n’a plus
+  de ligne dans le tableau « Par compagnie : courrier et trajet du camion » :
+  aucun camion ne la charge. Elle reste dans la liste « Compagnies sans
+  chargement », au-dessus.
+- **Ses valeurs déjà saisies restent dans la sauvegarde**, et reviennent avec
+  sa ligne si on la retire de la liste.
+- Sans compagnie dans la liste, le tableau est celui d’avant.
+
+Fichiers : `ateliers.js` (`tableCompagnies`, `ficheHandling`), `index.html` ;
+`tests/handling-sans-chargement-browser.cjs` (nouveau) ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (e) : fiche d’un service par compagnie, l’encart « Lié au handling »
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

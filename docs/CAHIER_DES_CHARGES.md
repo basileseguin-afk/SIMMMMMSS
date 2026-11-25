@@ -563,6 +563,12 @@ Rien n'est calculé de plus : le registre range autrement ce que le calcul dit
 déjà. Contrôlé par `tests/avis.test.cjs`, `tests/controles-page.test.cjs`,
 `tests/services-page.test.cjs` et `tests/controles-points-browser.cjs`.
 
+Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
+chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par
+compagnie : courrier et trajet du camion » ; elle reste dans la liste
+« Compagnies sans chargement », au-dessus. Ses valeurs restent dans la
+sauvegarde et reviennent avec sa ligne (`tests/handling-sans-chargement-browser.cjs`).
+
 Correction 23 (e) — la fiche d'un service par compagnie : l'encart « Lié au
 handling » dit le service par son nom, sans le mot « armement » sauf si c'est
 ce nom ; les liens se règlent dans « Chemins » — la fiche n'a plus de bouton
