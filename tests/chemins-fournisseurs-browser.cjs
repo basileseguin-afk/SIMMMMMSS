@@ -2,10 +2,12 @@
  *   1. L'entrée « Fournisseurs » est dans la liste de « Chemins » et ouvre le tableau « Qui se fournit où ».
  *   2. Le schéma ne dessine plus les fournisseurs ni leurs liens : il compte moins de cases et moins de liens que le
  *      dessin complet. Le compte d'un chemin distingue les deux : « n étapes · n fournisseurs ».
- *   3. Chaque étape cliente porte une pastille au nom de son fournisseur (le nom entier au survol) ; une étape qui
- *      n'est cliente de personne n'en porte pas. Texte de 12 px au moins à l'écran, dans le dessin.
- *   4. Sous le schéma, une ligne qui se lit : « Fournisseurs de ce chemin : … », et « Régler les clients », qui ouvre
- *      l'entrée « Fournisseurs ». Rien ne se règle sur cette ligne. Texte de 13 px au moins.
+ *   3. Chaque étape cliente porte une pastille au nom de son fournisseur — le nom entier, jamais coupé (correction
+ *      23 j ; voir tests/chemins-retouches-browser.cjs) ; une étape qui n'est cliente de personne n'en porte pas. Texte
+ *      de 12 px au moins à l'écran, dans le dessin.
+ *   4. Au-dessus du schéma (correction 23 j ; elle était dessous), une ligne qui se lit : « Fournisseurs de ce
+ *      chemin : … », et « Régler les clients », qui ouvre l'entrée « Fournisseurs ». Rien ne se règle sur cette ligne.
+ *      Texte de 13 px au moins.
  *   5. L'interrupteur « Montrer les fournisseurs sur le schéma », éteint par défaut, redonne le dessin complet : leurs
  *      liens s'y lisent (en pointillé), sans pastille. C'est une préférence d'affichage (`ory-ui-…`), hors de la
  *      sauvegarde, gardée d'une visite à l'autre.
@@ -85,16 +87,16 @@ const MESURER=()=>{
    // Chaque étape cliente porte sa pastille ; les autres n'en ont pas.
    assert.deepEqual(sans.pastilles.map(x=>[x.etape,x.qui,x.survol]).sort(),[['decontam','appros','Se fournit chez Réception / Appros'],['prepa','magasin','Se fournit chez Magasin']],V+'une pastille par étape cliente');
    assert.equal(sans.pastilles.find(x=>x.etape==='prepa').texte,'Magasin',V+'au nom du fournisseur');
-   assert.match(sans.pastilles.find(x=>x.etape==='decontam').texte,/^Réce.*…$/,V+'un nom long est raccourci (le nom entier se lit au survol)');
+   assert.equal(sans.pastilles.find(x=>x.etape==='decontam').texte,'Réception / Appros',V+'un nom plus long est écrit en entier, jamais coupé (correction 23 j)');
    assert.ok(sans.pastilles.every(x=>x.px>=12&&x.dedans),V+'12 px au moins à l’écran, dans le dessin : '+JSON.stringify(sans.pastilles));
    assert.ok(sans.plusPetit>=12,V+'aucun texte du schéma sous 12 px : '+sans.plusPetit);
    assert.deepEqual([sans.fenetre,sans.vue],[0,0],V+'ni la fenêtre ni la page ne défilent');
 
-   /* ---- 4 : la ligne sous le schéma -------------------------------------------------------------------------------- */
+   /* ---- 4 : la ligne, au-dessus du schéma (correction 23 j) --------------------------------------------------------- */
    assert.equal(sans.ligne.dit,'Fournisseurs de ce chemin : Réception / Appros, Magasin',V+'la ligne les nomme');
    assert.deepEqual([sans.ligne.champs,sans.ligne.boutons],[0,['Régler les clients →','Montrer les fournisseurs sur le schéma']],V+'rien ne s’y règle : un lien, et l’interrupteur du dessin');
    assert.ok(sans.ligne.px>=13,V+'texte de 13 px au moins : '+sans.ligne.px);
-   assert.equal(await page.evaluate(()=>{const g=document.querySelector('#mu-flux [data-mu-graphe]'),l=document.querySelector('#mu-flux .ch-fournis');return !!(g.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING);}),true,V+'sous le schéma');
+   assert.equal(await page.evaluate(()=>{const g=document.querySelector('#mu-flux [data-mu-graphe]'),l=document.querySelector('#mu-flux .ch-fournis');return !!(g.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING);}),false,V+'au-dessus du schéma, plus dessous');
    await page.locator(`${M} .ch-fournis [data-fo-ouvrir]`).click();await attendre();
    assert.equal(await vueFiche(),'fournisseurs',V+'« Régler les clients » ouvre l’entrée « Fournisseurs »');
    // Un chemin sans fournisseur : la ligne le dit, le compte ne parle que d'étapes.
@@ -185,6 +187,6 @@ const MESURER=()=>{
   await fermer();
 
   assert.deepEqual(erreurs,[],'aucune erreur dans les pages : '+erreurs.join(' | '));
-  console.log('OK chemins-fournisseurs : le schéma sans les fournisseurs (moins de cases, moins de liens), une pastille par étape cliente, la ligne sous le schéma, l’interrupteur (préférence d’affichage), aucun geste du schéma ne touche un lien de fournisseur — aux deux tailles');
+  console.log('OK chemins-fournisseurs : le schéma sans les fournisseurs (moins de cases, moins de liens), une pastille par étape cliente (le nom entier), la ligne au-dessus du schéma, l’interrupteur (préférence d’affichage), aucun geste du schéma ne touche un lien de fournisseur — aux deux tailles');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

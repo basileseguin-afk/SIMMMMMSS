@@ -128,9 +128,14 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 .ch-lien-fournisseur{flex-wrap:wrap}
 
 /* Évolution 24 (b) : le schéma sans les fournisseurs. Une étape cliente porte une pastille au nom de son fournisseur ;
-   sous le schéma, une ligne les nomme, mène au tableau « Qui se fournit où », et porte l'interrupteur qui redonne le
-   dessin complet. graphe.css, commun avec la version 2, n'est pas modifié. */
+   une ligne les nomme, mène au tableau « Qui se fournit où », et porte l'interrupteur qui redonne le dessin complet.
+   graphe.css, commun avec la version 2, n'est pas modifié.
+   Correction 23 (j) : la ligne est dans l'en-tête du chemin, sous son nom et son compte, au-dessus du schéma — sous lui,
+   elle était hors de l'écran à l'ouverture d'un long chemin. Elle prend toute la largeur de l'en-tête. */
 .ch-fournis{display:flex;align-items:center;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.ch-tete>.ch-fournis{flex:1 1 100%;margin:0}
+/* Les noms prennent la place qui reste et passent à la ligne avant que l'interrupteur ne descende : une rangée de moins. */
+.ch-tete>.ch-fournis>.ch-fournis-dit{flex:1 1 260px;min-width:0}
 .ch-fournis-dit b{color:var(--ds-texte-1);font-weight:var(--ds-g-fort)}
 #mu-flux .ch-fournis .lien-discret{padding:0}
 /* L'interrupteur : un témoin qui glisse, à gauche de son nom ; poussé à droite de la ligne. */
@@ -144,7 +149,8 @@ body[data-sous="mu-flux"] #view-ateliers>#mu-flux{flex:1 1 0;min-height:300px}
 .ch-interrupteur[aria-checked="true"]{color:var(--ds-texte-1)}
 .ch-interrupteur[aria-checked="true"] .ch-temoin{background:var(--accent)}
 .ch-interrupteur[aria-checked="true"] .ch-temoin::after{transform:translateX(12px);box-shadow:none}
-/* La pastille, dans le dessin : à cheval sur le bord haut de l'étape, à droite. Son texte a la taille des autres. */
+/* La pastille, dans le dessin : à cheval sur le bord bas de l'étape, à droite. Son texte a la taille des autres ; il dit
+   le nom entier, sur la largeur de la case, à la ligne s'il le faut (correction 23 j). */
 .ch-pastille rect{fill:var(--ds-surface-1);stroke:var(--ds-bordure-2,var(--ds-bordure));stroke-width:1}
 .ch-pastille text{font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);fill:var(--ds-texte-2);pointer-events:none}
 

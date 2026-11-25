@@ -114,7 +114,31 @@
   /** La préférence « Montrer les fournisseurs sur le schéma » (évolution 24 b) : un réglage d'affichage, hors de la sauvegarde. */
   const CLE_FOURNISSEURS = 'ory-ui-chemins-fournisseurs';
 
-  const api = { chemins, compte, sansChemin, ligneEtape, TEXTE_MIN, echelleSchema, CLE_FOURNISSEURS };
+  /** La pastille d'un fournisseur, dans les unités du dessin : sa hauteur, le pas d'une ligne de plus, sa marge intérieure, son écart au bord de la case. */
+  const PASTILLE = { haut: 18, pas: 14, marge: 7, bord: 6 };
+  /**
+   * Un nom, en lignes d'au plus `max` de large (`mesure(texte)` donne la largeur) : coupé entre deux mots — l'espace reste
+   * en fin de ligne, les lignes mises bout à bout font le nom entier — ; un mot plus large que la ligne est coupé où il
+   * faut. Rien n'est retiré.
+   */
+  function lignesDuNom(nom, max, mesure) {
+    const lignes = [];
+    let reste = String(nom);
+    // Une ligne garde au moins un caractère : la boucle avance toujours.
+    while (reste.length > 1 && mesure(reste.trimEnd()) > max) {
+      let k = reste.length - 1;
+      while (k > 1 && mesure(reste.slice(0, k).trimEnd()) > max) k--;
+      const espace = reste.lastIndexOf(' ', k), coupe = espace > 0 ? espace + 1 : k;
+      lignes.push(reste.slice(0, coupe)); reste = reste.slice(coupe);
+    }
+    if (reste) lignes.push(reste);
+    return lignes;
+  }
+
+  /** La hauteur où graphe.js a posé une case (son `transform="translate(x,y)"`), dans les unités du dessin. */
+  const hautDuNoeud = n => { const m = /translate\(\s*-?[\d.]+[\s,]+(-?[\d.]+)/.exec(n.getAttribute('transform') || ''); return m ? +m[1] : 0; };
+
+  const api = { chemins, compte, sansChemin, ligneEtape, TEXTE_MIN, echelleSchema, CLE_FOURNISSEURS, lignesDuNom };
   if (NODE) { module.exports = api; return; }
   const S = root.OrlyServicesPage;
   if (!S || !S.PageServices) { root.OrlyCheminsPage = api; return; }
@@ -288,7 +312,11 @@
       const b = root.document.querySelector('#mu-flux [data-ch-fournisseurs]'); if (b) b.focus({ preventScroll: true });
     }
 
-    /** La ligne sous le schéma : « Fournisseurs de ce chemin : … ». Elle se lit ; les clients se règlent dans « Fournisseurs ». */
+    /**
+     * La ligne « Fournisseurs de ce chemin : … », son lien et l'interrupteur : dans l'en-tête du chemin, avec son compte,
+     * au-dessus du schéma (correction 23 j ; elle était dessous, hors de l'écran à l'ouverture d'un long chemin). Elle se
+     * lit ; les clients se règlent dans « Fournisseurs ».
+     */
     ligneFournisseurs(p) {
       if (!FO()) return '';
       const d = this.partsDuChemin(p), noms = d.fournisseurs.map(f => this.nom(f));
@@ -300,8 +328,10 @@
 
     /**
      * Les pastilles : sur le dessin que graphe.js vient de rendre, chaque étape cliente porte le nom de son fournisseur,
-     * à cheval sur son bord bas — à droite, puis à gauche du rond de l'étape (deux pastilles au plus ; au-delà, la
-     * seconde dit combien d'autres). Un nom trop long pour sa place est raccourci ; le nom entier se lit au survol.
+     * à cheval sur son bord bas (deux pastilles au plus ; au-delà, la seconde dit combien d'autres). Le nom est écrit en
+     * entier, jamais coupé (correction 23 j) : un nom court garde sa place — à droite, puis à gauche du rond de l'étape ;
+     * un nom plus long prend la largeur de la case ; s'il n'y tient pas, il passe à la ligne, entre deux mots. Le rond
+     * de l'étape reste par-dessus : le geste « tirer un lien » ne change pas.
      * Quand les fournisseurs sont dessinés, leurs liens le disent déjà : pas de pastille.
      */
     poserPastilles() {
@@ -311,27 +341,44 @@
       if (!p || !FO() || this.fournisseursMontres) return;
       const NS = 'http://www.w3.org/2000/svg', clients = this.partsDuChemin(p).clients;
       const creer = (nom, attrs, texte) => { const e = d.createElementNS(NS, nom); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); if (texte != null) e.textContent = texte; return e; };
+      let bas = -Infinity;
       for (const n of svg.querySelectorAll('.gr-noeud[data-noeud]')) {
         const fs = clients[n.dataset.noeud]; if (!fs || !fs.length) continue;
         const fond = n.querySelector('.gr-fond'), L = fond ? +fond.getAttribute('width') || 200 : 200, H = fond ? +fond.getAttribute('height') || 52 : 52;
-        const noms = fs.map(f => this.nom(f));
-        // Deux places, de part et d'autre du milieu du bord bas (le rond de l'étape, quand le schéma est « en étapes »).
-        const places = [{ droite: L - 6, max: L / 2 - 18 }, { droite: L / 2 - 12, max: L / 2 - 18 }];
+        const noms = fs.map(f => this.nom(f)), port = n.querySelector('.gr-port');
         const dits = noms.length <= 2 ? noms.map((x, i) => ({ texte: x, titre: 'Se fournit chez ' + x, qui: fs[i] }))
           : [{ texte: noms[0], titre: 'Se fournit chez ' + noms[0], qui: fs[0] },
             { texte: '+ ' + pl(noms.length - 1, 'autre'), titre: 'Se fournit aussi chez ' + noms.slice(1).join(', '), qui: fs.slice(1).join(' ') }];
-        dits.forEach((x, i) => {
-          const place = places[i], g = creer('g', { class: 'ch-pastille', 'data-ch-pastille': x.qui });
+        const faites = dits.map(x => {
+          const g = creer('g', { class: 'ch-pastille', 'data-ch-pastille': x.qui });
           g.appendChild(creer('title', {}, x.titre));
-          const fondP = g.appendChild(creer('rect', { height: 18, rx: 9, y: H - 7 }));
-          const t = g.appendChild(creer('text', { y: H + 6 }, x.texte));
-          n.appendChild(g);
-          const mesure = () => (t.getComputedTextLength ? t.getComputedTextLength() : t.textContent.length * 7);
-          for (let k = x.texte.length - 1; k > 2 && mesure() > place.max - 14; k--) t.textContent = x.texte.slice(0, k).trimEnd() + '…';
-          const l = Math.ceil(mesure()) + 14;
-          fondP.setAttribute('x', place.droite - l); fondP.setAttribute('width', l); t.setAttribute('x', place.droite - l + 7);
+          const rect = g.appendChild(creer('rect', { rx: 9 })), t = g.appendChild(creer('text', {}, x.texte));
+          // Sous le rond de l'étape, dans l'ordre du dessin : il reste cliquable par-dessus une pastille large.
+          n.insertBefore(g, port || null);
+          const mesure = s => { t.textContent = s; return t.getComputedTextLength ? t.getComputedTextLength() : s.length * 7; };
+          return { x, g, rect, t, mesure, large: mesure(x.texte) };
+        });
+        // Deux places d'une demi-case, de part et d'autre du rond (au milieu du bord bas, quand le schéma est « en étapes »).
+        const places = [{ droite: L - PASTILLE.bord, max: L / 2 - 18 }, { droite: L / 2 - 12, max: L / 2 - 18 }];
+        const courtes = faites.every((f, i) => f.large <= places[i].max - 2 * PASTILLE.marge);
+        let y = H - 7;
+        faites.forEach((f, i) => {
+          // Un nom qui ne tient pas dans sa demi-case prend la largeur de la case, sur autant de lignes qu'il lui en faut.
+          const lignes = courtes ? [f.x.texte] : lignesDuNom(f.x.texte, L - 2 * PASTILLE.bord - 2 * PASTILLE.marge, f.mesure);
+          const l = Math.ceil(Math.max(...lignes.map(s => f.mesure(s.trimEnd())))) + 2 * PASTILLE.marge, droite = courtes ? places[i].droite : L - PASTILLE.bord;
+          const haut = PASTILLE.haut + (lignes.length - 1) * PASTILLE.pas;
+          for (const [k, v] of Object.entries({ x: droite - l, y, width: l, height: haut })) f.rect.setAttribute(k, v);
+          f.t.textContent = '';
+          if (lignes.length === 1) { f.t.textContent = lignes[0]; f.t.setAttribute('x', droite - l + PASTILLE.marge); f.t.setAttribute('y', y + 13); }
+          else lignes.forEach((s, k) => f.t.appendChild(creer('tspan', { x: droite - l + PASTILLE.marge, y: y + 13 + k * PASTILLE.pas }, s)));
+          // Des pastilles larges s'empilent sous le bord bas ; deux courtes tiennent côte à côte.
+          bas = Math.max(bas, hautDuNoeud(n) + y + haut);
+          if (!courtes) y += haut + 2;
         });
       }
+      // Une pastille de plusieurs lignes, sous la dernière rangée, dépasse le bas du dessin : le dessin s'allonge d'autant.
+      const vb = svg.viewBox && svg.viewBox.baseVal;
+      if (vb && bas + PASTILLE.bord > vb.y + vb.height) svg.setAttribute('viewBox', [vb.x, vb.y, vb.width, bas + PASTILLE.bord - vb.y].join(' '));
     }
 
     /**
@@ -448,6 +495,7 @@
         <span class="mu-tete-fin"></span>
         <button class="btn btn-sm" type="button" data-mu-flux-action="dupliquer">Dupliquer</button>
         <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="supprimer"${cabs.length ? ' disabled title="C’est le chemin d’une classe : donnez d’abord un autre chemin à la classe"' : ''}>Supprimer</button>
+        ${this.ligneFournisseurs(p)}
       </div>`;
       // Ajouter un service et Réorganiser flottent sur le diagramme, comme avant.
       this.outilsFlux = `<label class="gr-outil-choix">Ajouter une étape <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
@@ -462,7 +510,7 @@
         : this.tableEtape(x, sel.id);
       const suivi = x.genre === 'apart' ? this.quiSuitApart(x) : this.sansVoir(this.quiSuit(p, classes));
       return tete
-        + `<div class="pc-graphe mu-graphe ch-graphe" data-mu-graphe></div>${this.ligneFournisseurs(p)}${choisi}`
+        + `<div class="pc-graphe mu-graphe ch-graphe" data-mu-graphe></div>${choisi}`
         + this.sectionChemin('suivi', 'Qui le suit', suivi + this.cheminDeChacune(x) + this.variante(x), esc(pl(x.commandes.length, 'commande')), false)
         + this.sectionChemin('commandes', 'Commandes exclues et ajoutées', this.exclues(classes), (this.at.retirees || []).length ? esc(pl(this.at.retirees.length, 'exclue')) : '', false)
         + `<p class="ch-resultats"><button type="button" class="lien-discret" data-page="at-repas" data-lieu="etapes">Suivre ces commandes dans les résultats →</button></p>`;

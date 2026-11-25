@@ -98,3 +98,27 @@ test('le schéma : jamais sous la taille où son plus petit texte fait 12 px ; �
   assert.equal(C.echelleSchema({ w: 0, h: 0 }, { largeur: 0, hauteur: 0 }, NaN, false).k, 1);
   assert.equal(C.echelleSchema({ w: 843, h: 1452 }, { largeur: 0, hauteur: 0 }, 11, true).k, 12 / 11);
 });
+
+test('le nom d’un fournisseur sur sa pastille : entier, coupé entre deux mots quand il ne tient pas sur une ligne (correction 23 j)', () => {
+  // Une largeur de 7 par caractère : la mesure du dessin, sans navigateur.
+  const mesure = s => s.length * 7, lignes = (nom, max) => C.lignesDuNom(nom, max, mesure);
+  // Un nom qui tient : une ligne, le nom tel quel.
+  assert.deepEqual(lignes('Magasin', 174), ['Magasin']);
+  assert.deepEqual(lignes('Réception / Appros', 174), ['Réception / Appros']);
+  // Un nom trop long : coupé entre deux mots ; l'espace reste en fin de ligne, rien n'est retiré.
+  const long = 'Magasin central des produits secs et des emballages', deux = lignes(long, 174);
+  assert.deepEqual(deux, ['Magasin central des ', 'produits secs et des ', 'emballages']);
+  assert.equal(deux.join(''), long, 'les lignes mises bout à bout font le nom entier');
+  assert.ok(deux.every(l => mesure(l.trimEnd()) <= 174), 'aucune ligne ne dépasse');
+  assert.deepEqual(lignes('Magasin central des produits secs', 174), ['Magasin central des ', 'produits secs']);
+  // Jamais de « … », quelle que soit la longueur.
+  for (const nom of [long, 'A'.repeat(120), 'Un nom avec des mots ' + 'trèslongsanscoupure'.repeat(4)]) {
+    const l = lignes(nom, 174);
+    assert.equal(l.join(''), nom); assert.ok(!l.join('').includes('…')); assert.ok(l.every(x => mesure(x.trimEnd()) <= 174), nom);
+  }
+  // Un mot plus large que la ligne : coupé où il faut.
+  assert.deepEqual(lignes('A'.repeat(30), 70), ['A'.repeat(10), 'A'.repeat(10), 'A'.repeat(10)]);
+  // Une largeur trop petite pour un caractère : une lettre par ligne, sans boucle sans fin.
+  assert.equal(lignes('Abc', 1).join(''), 'Abc');
+  assert.deepEqual(lignes('', 174), []);
+});

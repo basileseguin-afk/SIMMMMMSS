@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Correction 23 (j) : « Chemins », deux retouches de l’évolution 24
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **La pastille d’une étape cliente dit le nom entier de son fournisseur** :
+  « Réception / Appros », plus « Réceptio… ». Un nom court garde sa place ;
+  un nom plus long prend la largeur de la case ; s’il n’y tient pas, il passe
+  sur deux lignes, coupé entre deux mots. Jamais de « … ».
+- **La ligne « Fournisseurs de ce chemin : … », son lien et l’interrupteur
+  sont au-dessus du schéma**, dans l’en-tête du chemin, avec son compte. À
+  1 366 × 768, à l’ouverture d’un long chemin, l’interrupteur se voit sans
+  défiler.
+
+Fichiers : `chemins-page.js`, `chemins-page.css`, `index.html` ;
+`tests/chemins-retouches-browser.cjs` (nouveau), `tests/chemins-page.test.cjs`,
+`tests/chemins-fournisseurs-browser.cjs`,
+`tests/captures-evolution-24-browser.cjs` ; `docs/CAHIER_DES_CHARGES.md`,
+`README.md`.
+
 ## 2026-11-25 — Correction 23 (i) : « Période », l’en-tête du tableau reste figé
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

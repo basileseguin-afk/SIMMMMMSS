@@ -1,8 +1,8 @@
 /* Évolution 24 (d) — les captures de contrôle des fournisseurs, sur une unité fictive (tests/plan-rejoue-fictif.cjs), en
  * thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 :
  *   — « Chemins », le schéma sans les fournisseurs : les étapes seules, une pastille sur chaque étape cliente ;
- *   — « Chemins », la ligne sous le schéma et l'interrupteur ; puis le dessin complet, les liens des fournisseurs en
- *     pointillé ;
+ *   — « Chemins », la ligne des fournisseurs et l'interrupteur (au-dessus du schéma depuis la correction 23 j) ; puis
+ *     le dessin complet, les liens des fournisseurs en pointillé ;
  *   — le tableau « Qui se fournit où », avec un client coché, un décoché et un « en partie » ;
  *   — la fiche d'un fournisseur, dans « Services et équipes » : ses clients, et le lien vers le tableau.
  * Chaque capture est vérifiée : sa taille, ce qu'elle doit montrer, la fenêtre qui ne défile pas, aucun texte sous 13 px
@@ -76,7 +76,7 @@ const LIRE=()=>{
     assert.equal(await page.locator(`${M} .ch-compte`).textContent(),'12 commandes · 8 étapes · 2 fournisseurs',V+'le compte distingue étapes et fournisseurs');
     assert.equal(await page.locator(`${M} .ch-liste [data-ch-panneau="fournisseurs"] b`).textContent(),'Fournisseurs',V+'l’entrée « Fournisseurs », au-dessus des chemins');
     await capturer('chemins-sans-fournisseurs');
-    // La ligne sous le schéma, et l'interrupteur.
+    // La ligne des fournisseurs, et l'interrupteur (au-dessus du schéma depuis la correction 23 j : déjà à l'écran).
     await page.locator(`${M} .ch-fournis`).scrollIntoViewIfNeeded();await attendre(200);
     assert.equal(await page.locator(`${M} .ch-fournis-dit`).textContent(),'Fournisseurs de ce chemin : Réception / Appros, Magasin');
     assert.equal(await page.locator(`${M} [data-ch-fournisseurs]`).getAttribute('aria-checked'),'false');
@@ -118,6 +118,6 @@ const LIRE=()=>{
    }finally{site.effacer();await ctx.close();}
   }
   assert.equal(faites.length,20,'vingt captures : cinq vues, deux thèmes, deux tailles');
-  console.log('OK captures de l’évolution 24 : '+faites.length+' captures dans '+dossier+' — « Chemins » sans et avec les fournisseurs sur le schéma, la ligne sous le schéma, le tableau « Qui se fournit où » (un client coché, un décoché, un en partie), la fiche d’un fournisseur ; clair et sombre, 1 366 × 768 et 1 920 × 1 080');
+  console.log('OK captures de l’évolution 24 : '+faites.length+' captures dans '+dossier+' — « Chemins » sans et avec les fournisseurs sur le schéma, la ligne des fournisseurs, le tableau « Qui se fournit où » (un client coché, un décoché, un en partie), la fiche d’un fournisseur ; clair et sombre, 1 366 × 768 et 1 920 × 1 080');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

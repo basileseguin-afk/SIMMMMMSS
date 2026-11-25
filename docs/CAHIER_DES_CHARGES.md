@@ -598,6 +598,14 @@ n'est jamais plus haut que la zone de la page ; la zone défile encore pour
 la courbe et « Réel et calage ». Une période courte ne défile pas
 (`tests/periode-entete-browser.cjs`).
 
+Correction 23 (j) — **« Chemins » : deux retouches de l'évolution 24.** La
+pastille d'une étape cliente dit le nom entier de son fournisseur, sur la
+largeur de la case, sur deux lignes s'il n'y tient pas, jamais coupé. La
+ligne « Fournisseurs de ce chemin : … », son lien et l'interrupteur sont
+au-dessus du schéma, avec le compte du chemin : à 1 366 × 768, l'interrupteur
+se voit sans défiler (`tests/chemins-retouches-browser.cjs`,
+`tests/chemins-page.test.cjs`).
+
 Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
 chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par
 compagnie : courrier et trajet du camion » ; elle reste dans la liste
@@ -730,8 +738,8 @@ les fournisseurs ni leurs liens : il ne montre que les étapes.
 
 | | |
 |---|---|
-| Une étape cliente | Elle porte une pastille au nom de son fournisseur, sur son bord bas (deux au plus ; au-delà, « + n autres »). Un nom trop long est raccourci ; le nom entier se lit au survol. Texte de 12 px au moins à l'écran, comme le reste du dessin. |
-| Sous le schéma | Une ligne qui se lit : « Fournisseurs de ce chemin : … », et « Régler les clients », qui ouvre l'entrée « Fournisseurs ». Rien ne se règle sur cette ligne. |
+| Une étape cliente | Elle porte une pastille au nom de son fournisseur, sur son bord bas (deux au plus ; au-delà, « + n autres »). Le nom est écrit en entier, jamais coupé (correction 23 j) : un nom court à droite du rond de l'étape ; un nom plus long sur la largeur de la case ; s'il n'y tient pas, sur deux lignes, coupé entre deux mots. Texte de 12 px au moins à l'écran, comme le reste du dessin. |
+| Au-dessus du schéma | Une ligne qui se lit, dans l'en-tête du chemin, avec son compte : « Fournisseurs de ce chemin : … », et « Régler les clients », qui ouvre l'entrée « Fournisseurs ». Rien ne se règle sur cette ligne. Elle était sous le schéma : à 1 366 × 768, hors de l'écran à l'ouverture d'un long chemin (correction 23 j). |
 | Le compte d'un chemin | Il distingue les deux : « 12 commandes · 8 étapes · 2 fournisseurs » (un chemin sans fournisseur ne dit que ses étapes). |
 | « Montrer les fournisseurs sur le schéma » | Un interrupteur, au bout de cette ligne, éteint par défaut : il redonne le dessin complet. Les liens des fournisseurs s'y lisent, en pointillé, et ne s'y modifient pas : tirer un lien depuis un fournisseur, Suppr sur un de ses liens ou sa croix ne changent rien et mènent au tableau « Qui se fournit où ». C'est une préférence d'affichage, gardée dans le navigateur (`ory-ui-chemins-fournisseurs`), hors de la sauvegarde. |
 
