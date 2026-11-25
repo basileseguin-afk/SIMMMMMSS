@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (g) : le contrôle, les captures et la doc
+
+Aucun code de la page ne change : un test de plus, et la doc.
+
+- **Les captures de contrôle** du nouveau visuel, sur l'unité fictive, aux
+  deux tailles et dans les deux thèmes : chaque page du menu, « En direct »
+  à plat, l'accueil, la fiche d'un service aux champs saisis et vides, le
+  tableau de tous les temps par vol, un chemin ouvert, la carte « Couleurs
+  des compagnies », une notification, une question, la palette « Aller à… »,
+  la page d'entrée. Chacune est vérifiée ; elles restent hors du dépôt.
+- **La doc** : `docs/DESIGN_SYSTEM.md`, § 10, « Ce qui reste propre à la
+  version 2 » et « Le contrôle ».
+
+Fichiers : `tests/captures-evolution-25-browser.cjs` (nouveau) ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (f) : l'accueil et les pages hors application
 
 Aucun calcul ne change, ni aucune donnée, ni aucun texte, ni le titre de

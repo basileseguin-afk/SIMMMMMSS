@@ -501,6 +501,7 @@ mêmes textes, mêmes gestes.
 |---|---|
 | `visuel.css` | Les jetons de la version 1, dans les deux thèmes, puis la coquille et les composants. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
 | `visuel.js` | Ce que la feuille ne sait pas dire seule : l'ombre de la barre du haut quand un contenu défile dessous ; un texte d'attente vide pour les champs qui n'en ont pas, afin que la feuille reconnaisse un champ vide. Il ne lit ni n'écrit aucune donnée, et ne change aucun texte. |
+| `pastilles.js` | La compagnie et la classe, partout les mêmes : il habille leur nom là où il se lit seul (une pastille, une étiquette), dit le rang de couleur de chaque compagnie (automatique ou choisi) et dessine la carte « Couleurs des compagnies ». Chargé par la version 1 seule |
 
 ### Les jetons redéfinis
 
@@ -746,3 +747,37 @@ un chemin ouvert et sur « En direct » en relief, dans les deux thèmes ;
 
 `tests/accueil-browser.cjs` (la page d'entrée, aux deux thèmes) et
 `tests/visuel-coquille-browser.cjs` (le bandeau) le vérifient.
+
+### Ce qui reste propre à la version 2
+
+La version 2 (`v2/`) est gelée : elle garde son visuel d'avant. Rien de ce
+qui précède ne s'y applique.
+
+- Elle ne charge ni `visuel.css`, ni `visuel.js`, ni `pastilles.js` ; ces
+  fichiers n'ont pas de jumeau dans `v2/`.
+- Les feuilles et les scripts communs aux deux versions (`ds.css`,
+  `interface.css`, `unite.css`, `ateliers.css`, `temps.css`, `graphe.css`,
+  `reglages.css`, `champs.js`, `ds.js`, `plan-editor.js`, `flow-center.js`…)
+  n'ont pas été modifiés : ils restent identiques à leurs jumeaux
+  (`tests/parite.test.cjs`). C'est pourquoi le visuel de la version 1 passe
+  par une feuille posée par-dessus, jamais par une retouche de `ds.css`.
+- Elle garde donc : le menu bleu nuit et son dégradé, le fond gris chaud,
+  l'accent bleu océan, les cartes à 8 px, les titres en capitales espacées,
+  les champs tous de la même allure, les noms de compagnie en texte, et les
+  jetons de `ds.css` tels quels (`--ds-saisi-*`, `--ds-choix-*` et `--pa-*`
+  n'y existent pas).
+- Les pages de secours des deux versions sont autonomes et n'ont pas changé.
+- Une sauvegarde passe de l'une à l'autre comme avant : la version 2 ignore
+  l'entrée des couleurs des compagnies.
+
+### Le contrôle (évolution 25 g)
+
+`tests/captures-evolution-25-browser.cjs` produit les captures de contrôle,
+sur l'unité fictive, aux deux tailles (1 366 × 768 et 1 920 × 1 080) et dans
+les deux thèmes : chaque page du menu, « En direct » à plat, l'accueil, la
+fiche d'un service avec des champs saisis et des champs vides, le tableau de
+tous les temps par vol, un chemin ouvert, la carte « Couleurs des
+compagnies », une notification, une question, la palette « Aller à… », la
+page d'entrée. Chacune est vérifiée : sa taille, le thème, la fenêtre qui ne
+défile pas, aucun texte sous 13 px. Les captures restent hors du dépôt
+(`$ORY_CAPTURES`, ou un dossier temporaire).
