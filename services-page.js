@@ -184,6 +184,15 @@
      * équipe se referme : on arrive sur le service.
      */
     allerA(lieu) {
+      // « Temps par vol » (l'ancienne page, correction 23 g) : l'entrée « Tous les temps par vol », le clavier sur sa recherche.
+      if (lieu === 'tous' && this.tousLesTemps()) {
+        this.equipeOuverte = null; this.panneau = 'temps';
+        this.rendreServices();
+        const cherche = root.document.querySelector('#mu-services #rg-recap-filtre');
+        if (cherche) cherche.focus({ preventScroll: true });
+        return;
+      }
+      if (lieu === 'tous') lieu = 'temps';
       this.equipeOuverte = null; this.panneau = lieu === 'supprimes' ? 'supprimes' : null;
       if (lieu === 'equipes' || lieu === 'temps') this.sections.set(lieu, true);
       this.rendreServices();
@@ -197,7 +206,7 @@
         if (!ids.some(id => { super.ouvrir(id); return !!section(); }) && depart) super.ouvrir(depart);
       }
       const cible = lieu === 'supprimes' ? box.querySelector('.se-vers-supprimes')
-        : lieu === 'liste' ? box.querySelector('.se-liste .mu-svc.actif') || box.querySelector('.se-liste .mu-svc')
+        : lieu === 'liste' ? box.querySelector('.se-liste .mu-svc.actif') || box.querySelector('.se-liste .mu-svc[data-mu-choisir]')
         : section();
       if (!cible) return;
       cible.scrollIntoView({ block: 'nearest' });
@@ -385,7 +394,8 @@
           <label title="À part entière : ses propres temps par vol et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les temps et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
             <option value="salle">une salle de plus de ce service</option></select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form></details>
-        ${services.map(x => { const bx = bilans.get(x.id), on = x.id === this.choisi && this.panneau !== 'supprimes', l = lies(x.id);
+        ${this.entreeTousLesTemps()}
+        ${services.map(x => { const bx = bilans.get(x.id), on = x.id === this.choisi && !this.panneau, l = lies(x.id);
           return `<button type="button" class="mu-svc ${bx.etat}${l.length ? ' en-chaine' : ''}${on ? ' actif' : ''}" data-mu-choisir="${esc(x.id)}" aria-current="${on}">
           <span class="mu-svc-ico" aria-hidden="true">${ico(x)}</span><span class="mu-svc-txt"><b>${esc(x.nom)}</b><small>${esc(sousTitre(bx.nature, bx.cases))}</small>${l.length
             ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">${pic('chaine', 'ico-texte')} ${esc(l.join(' · '))} à la chaîne</i>` : ''}</span>
@@ -397,6 +407,7 @@
       let corps, vue = 'service';
       try {
         if (this.panneau === 'supprimes' && sup.html) { vue = 'supprimes'; corps = this.fichePanneau(sup); }
+        else if (this.panneau === 'temps' && this.tousLesTemps()) { vue = 'temps'; corps = this.ficheTousLesTemps(); }
         else if (!s) corps = '<p class="mini-note">Aucun service.</p>';
         else if (this.equipeOuverte) { vue = 'equipe'; corps = this.ficheEquipe(s, b, classes, this.equipeOuverte); }
         else corps = this.ficheService(s, b, classes);
@@ -411,10 +422,64 @@
     /* La fiche défile dans sa colonne. Redessinée — un champ validé, un recalcul —, elle reste où elle était ; une autre
      * fiche (un autre service, une équipe, le retour au service) s'ouvre en haut. */
     poser(box, html) {
+      const tableau = box.id === 'mu-services' ? this.tousLesTemps() : null;
+      // « Tous les temps par vol » reste en place quand la page se redessine : seule la liste se refait. Le tableau garde
+      // ainsi le champ qu'on saisit et l'endroit où il a défilé ; il se redessine lui-même (reglages.js) (correction 23 g).
+      if (tableau && box.contains(tableau) && html.includes('data-se-vue="temps"')) {
+        if (box._html === html) return;
+        const t = root.document.createElement('template'); t.innerHTML = html;
+        const neuve = t.content.querySelector('.se-liste'), liste = box.querySelector('.se-liste');
+        if (neuve && liste) { const haut = liste.scrollTop; liste.replaceWith(neuve); neuve.scrollTop = haut; }
+        box._html = html;
+        return;
+      }
       const avant = box.querySelector('.se-fiche'), garde = avant ? { cle: avant.dataset.seCle, haut: avant.scrollTop } : null;
       super.poser(box, html);
       const apres = box.querySelector('.se-fiche');
       if (garde && apres && apres !== avant && apres.dataset.seCle === garde.cle) apres.scrollTop = garde.haut;
+      // Son entrée vient d'être ouverte : le tableau entre dans la page, et se dessine.
+      const hote = tableau ? box.querySelector('[data-se-hote-temps]') : null;
+      if (!hote) return;
+      this.preparerTousLesTemps(tableau);
+      hote.appendChild(tableau);
+      const rg = this.a.rg ? this.a.rg() : null;
+      if (rg && rg.rendreRecap) rg.rendreRecap();
+    }
+
+    /* ---- « Tous les temps par vol » (correction 23 g) : le tableau d'avant, en seconde vue des champs des fiches ----- */
+
+    /** Le panneau du tableau (reglages.js, commun avec la version 2) que la page garde hors de l'écran, s'il y en a un. */
+    tousLesTemps() { return (this.a.tousLesTemps && this.a.tousLesTemps()) || null; }
+
+    /** Son entrée, à part, en tête de la liste, sous « Pour toute l'unité » — comme « Fournisseurs » dans « Chemins ». */
+    entreeTousLesTemps() {
+      if (!this.tousLesTemps()) return '';
+      const on = this.panneau === 'temps';
+      return `<p class="mu-groupe">Pour toute l’unité</p>
+        <button type="button" class="mu-svc se-tous-temps libre${on ? ' actif' : ''}" data-se-panneau="temps" aria-current="${on}"
+          title="Tous les temps par vol, d’un coup d’œil : un tableau pour en saisir beaucoup à la suite">
+          <span class="mu-svc-ico" aria-hidden="true">${pic('chrono')}</span>
+          <span class="mu-svc-txt"><b>Tous les temps par vol</b><small>un tableau, pour saisir vite</small></span></button>
+        <p class="mu-groupe">Services</p>`;
+    }
+
+    /** La colonne de droite : le tableau, posé par `poser`. */
+    ficheTousLesTemps() { return '<div class="se-temps" data-se-hote-temps></div>'; }
+
+    /**
+     * Une fois : sous son titre, ce qu'est ce tableau et où sont son import et son export ; et, derrière son « ? », la
+     * longue explication que le tableau écrit sous lui (la page la cache : la place va aux lignes).
+     */
+    preparerTousLesTemps(tableau) {
+      if (tableau.dataset.sePret) return;
+      tableau.dataset.sePret = '1';
+      const titre = tableau.querySelector('.titre-aide'), aide = tableau.querySelector('.aide-corps');
+      if (titre) titre.insertAdjacentHTML('afterend', `<p class="mini-note se-temps-dit">Une seconde vue des champs de « Ses temps par vol », dans la fiche
+        de chaque service : une valeur changée ici se lit là-bas, et l’inverse.
+        <button type="button" class="lien-discret" data-page="u-sauvegarde" data-lieu="classeurs">Importer ou exporter ce tableau : Fichiers →</button></p>`);
+      if (aide) aide.insertAdjacentHTML('beforeend', `<p>Les temps sont comptés pour <b>une seule personne</b>. Pour chaque service : la valeur,
+        l’effectif de l’équipe qui prépare et la durée — le temps divisé par les personnes ; pour un robot, les plateaux divisés par le débit.
+        Un effectif souligné en pointillé est celui d’une équipe partagée par plusieurs commandes : il vaut pour toutes.</p>`);
     }
 
     /** Les services supprimés (à remettre), et les zones du plan qui ne sont pas des services (à convertir). */

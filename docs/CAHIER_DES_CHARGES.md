@@ -517,7 +517,7 @@ Trois règles :
 |---|---|
 | Horaires des équipes | L'heure et le jour d'une équipe, les heures d'ouverture d'une mise à disposition, les vagues d'un handling : la fiche de l'équipe, dans « Services et équipes ». Le classeur : « Fichiers ». |
 | Équipes une par une | Tous les réglages d'une équipe : sa fiche (« Plus de réglages »). « + Équipe hors chemin » : « Ajouter une équipe », dans la fiche du service. |
-| Temps par vol | La valeur d'une commande dans un service : la fiche du service (« + Valeur propre à une compagnie × classe », ou la grille par compagnie) ; le débit d'un robot : la fiche de son équipe. Le classeur : « Fichiers ». |
+| Temps par vol | La valeur d'une commande dans un service : la fiche du service (« + Valeur propre à une compagnie × classe », ou la grille par compagnie) ; le débit d'un robot : la fiche de son équipe. Le classeur : « Fichiers ». **Correction 23 (g) : le tableau lui-même est revenu**, sous l'entrée « Tous les temps par vol » de « Services et équipes » — voir plus bas. |
 | Temps par vol par service | Les temps d'un service : sa fiche, « Ses temps par vol ». Le classeur de l'étude : « Fichiers ». « Remettre les temps par vol d'exemple » : « Réglages ». |
 | Liste des services | Le nom : l'en-tête de la fiche ; le rattachement, la place sur le plan, « Supprimer » : « Réglages avancés » ; « Ajouter un service » : la tête de la liste ; les services supprimés : le bas de la liste. |
 | Vue d'ensemble (des chemins) | La liste des chemins, à gauche de « Chemins » ; « Ajouter une étape » dans le chemin choisi. |
@@ -562,6 +562,21 @@ l'endroit exact** :
 Rien n'est calculé de plus : le registre range autrement ce que le calcul dit
 déjà. Contrôlé par `tests/avis.test.cjs`, `tests/controles-page.test.cjs`,
 `tests/services-page.test.cjs` et `tests/controles-points-browser.cjs`.
+
+Correction 23 (g) — **le tableau de tous les temps par vol revient.**
+L'évolution 22 (b) l'avait sorti de l'écran ; il servait à saisir vite des
+dizaines de valeurs. Dans « Services et équipes », la liste de gauche a une
+entrée à part, au-dessus des services, sous « Pour toute l'unité » : « Tous
+les temps par vol ». Elle ouvre à droite le tableau d'avant, avec sa
+recherche par compagnie et sa légende ; il défile dans son cadre, en-têtes
+figés, sans faire défiler la fenêtre ; « Annuler » et « Rétablir » sont ceux
+de la barre du haut. **C'est une exception voulue à « une chose se règle à un
+seul endroit »** : une seconde vue des mêmes champs que la section « Ses
+temps par vol » de chaque fiche — une valeur changée ici se lit là-bas, et
+l'inverse ; les deux écrivent la même donnée. « Aller à… » : « Temps par
+vol » ouvre cette entrée. L'import et l'export du classeur restent dans
+« Fichiers ». En lecture seule, comme le reste de « Régler »
+(`tests/tous-les-temps-browser.cjs`).
 
 Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
 chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par

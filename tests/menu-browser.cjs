@@ -320,7 +320,9 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
      // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris.
      assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,18,'les dix-huit pages');
      assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','mu-pas:avant','mu-pas:problemes','rg-minutes','rg-recap','u-lecture','u-services'],'et les douze noms repris');
+     // (Correction 23 g : « Temps par vol » ouvre l'entrée « Tous les temps par vol », son tableau à droite.)
      const AU_BON_ENDROIT={'mu-services:equipes':'#mu-services details[data-mu-section=equipes][open]','mu-services:temps':'#mu-services details[data-mu-section=temps][open]','mu-services:liste':'#mu-services .se-liste',
+       'mu-services:tous':'#mu-services .se-fiche[data-se-vue="temps"] .rg-recap-table',
        'mu-flux:liste':'#mu-flux .ch-liste .mu-svc.actif','mu-flux:etapes':'#mu-flux .ch-etape'};
      for(const [id,cherche,nom,lieu] of noms){
       await nav.terminerPlan(p);

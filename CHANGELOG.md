@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (g) : le tableau de tous les temps par vol revient
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **« Tous les temps par vol »** : une entrée à part dans « Services et
+  équipes », au-dessus des services, sous « Pour toute l’unité ». Elle ouvre
+  à droite le tableau d’avant (l’ancienne page « Temps par vol »), avec sa
+  recherche par compagnie et sa légende.
+- **Il défile dans son cadre**, ses en-têtes et sa première colonne figés,
+  sans faire défiler la fenêtre.
+- **Une seconde vue des mêmes champs** que « Ses temps par vol », dans la
+  fiche de chaque service : une valeur changée ici se lit là-bas, et
+  l’inverse. Une exception voulue à « une chose se règle à un seul endroit ».
+- **« Aller à… » : « Temps par vol »** ouvre cette entrée. L’import et
+  l’export du classeur restent dans « Fichiers ». En lecture seule, comme le
+  reste de « Régler ».
+
+Fichiers : `services-page.js`, `services-page.css`, `sim.js`, `onglets.js`,
+`index.html` ; `tests/tous-les-temps-browser.cjs` (nouveau),
+`tests/onglets.test.cjs`, `tests/services-page-browser.cjs`,
+`tests/menu-browser.cjs`, `tests/recap-browser.cjs` ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (f) : fiche du handling, une compagnie sans chargement n’est pas dans le tableau par compagnie
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

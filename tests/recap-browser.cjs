@@ -1,7 +1,10 @@
 /* « Temps par vol », tous les temps d'un coup : un fichier Excel de paramétrage (retour d'usage du 28/09).
  * Évolution 22 (b) : la vue d'ensemble a quitté l'écran — une ligne par commande, une colonne par service, c'est son
  * classeur, dans « Fichiers » ; à l'écran, les temps d'un service se règlent dans sa fiche (« Services et équipes »),
- * la valeur propre à une commande aussi. */
+ * la valeur propre à une commande aussi.
+ * Correction 23 (g) : le tableau revient à la demande, par l'entrée « Tous les temps par vol » de « Services et
+ * équipes » (voir tests/tous-les-temps-browser.cjs) ; « Aller à… › Temps par vol » l'ouvre. Hors de cette entrée, il
+ * n'est pas à l'écran. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
 const T=require('../tableur.js');
@@ -33,7 +36,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(feuilles[0].lignes[0].slice(0,3),['Compagnie','Classe','Vols (info)']);
   assert.ok(feuilles[0].lignes[0].length-3>=4,'des colonnes de services');
   assert.equal(await page.locator('#rg-recap, .rg-recap-table, #rg-recap-filtre, [data-rg-action=recap-vue]').count(),0,'la vue d’ensemble n’est plus à l’écran');
-  // Son ancien nom mène à la fiche d'un service, sur ses temps.
+  // Son ancien nom mène au tableau de tous les temps (correction 23 g ; avant, à la fiche d'un service, sur ses temps).
   await page.keyboard.press('Control+k');await page.waitForSelector('dialog.palette [role=option]');
   await page.keyboard.type('Temps par vol');await attendre();
   const options=page.locator('dialog.palette [role=option]');
@@ -42,7 +45,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await options.nth(io).click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
-  assert.equal(await page.locator('#mu-services details[data-mu-section=temps][open]').count(),1,'la section des temps du service, dépliée');
+  assert.equal(await page.locator('#mu-services .se-fiche[data-se-vue="temps"] .rg-recap-table').count(),1,'le tableau de tous les temps par vol');
+  assert.equal(await page.locator('#mu-services #rg-recap-export, #mu-services #rg-recap-import-btn').count(),0,'sans import ni export : ils restent dans « Fichiers »');
 
   // 2. Une valeur propre à une compagnie × classe, dans la fiche du service ; la retirer la ramène à la commune.
   const sid='cuisine',cls='AF/BC',cle=cls;

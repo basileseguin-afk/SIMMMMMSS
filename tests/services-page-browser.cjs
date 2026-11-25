@@ -50,13 +50,16 @@ function ecarts(avant,apres,chemin='',out=[]){
   const attendu=await page.evaluate(()=>Sim.unite.ordre(Sim.ateliers.a.services()).map(s=>{
     const cases=Sim.ateliers.state.ateliers.filter(a=>a.service===s.id);
     return [s.id,s.nom,OrlyServicesPage.sousTitre(OrlyParcours.natureService(Sim.ateliers.state,s.id,s.nom),cases)];}));
-  const liste=await page.locator(`${M} .se-liste .mu-svc`).evaluateAll(bs=>bs.map(b=>[b.dataset.muChoisir,b.querySelector('b').textContent,b.querySelector('small').textContent]));
+  // (Les services de la liste : l'entrée « Tous les temps par vol », au-dessus d'eux, n'en est pas un — correction 23 g.)
+  const liste=await page.locator(`${M} .se-liste .mu-svc[data-mu-choisir]`).evaluateAll(bs=>bs.map(b=>[b.dataset.muChoisir,b.querySelector('b').textContent,b.querySelector('small').textContent]));
   assert.deepEqual(liste,attendu,'la liste suit l’ordre des chemins, de l’amont vers l’aval, et dit le nombre d’équipes de chacun');
   assert.ok(liste.some(l=>l[2]==='toujours ouvert'),'une mise à disposition toujours ouverte le dit : '+JSON.stringify(liste.map(l=>l[2])));
   assert.ok(liste.some(l=>/^\d+ équipes?$/.test(l[2]))&&liste.some(l=>l[2]==='aucune équipe'),'les autres, leur nombre d’équipes');
   assert.equal(await page.locator(`${M} .se-liste > :first-child`).evaluate(e=>e.matches('details.se-ajout')),true,'« Ajouter un service », en tête de la liste');
   assert.match(await page.locator(`${M} .se-ajout > summary`).innerText(),/Ajouter un service/);
-  assert.equal(await page.locator(`${M} .mu-groupe`).count(),0,'plus de groupes « Utilisés » / « Pas utilisés »');
+  // Plus de groupes « Utilisés » / « Pas utilisés ». (Correction 23 g : deux libellés séparent l'entrée « Tous les temps
+  // par vol », à part, des services — avant, la liste n'en avait aucun.)
+  assert.deepEqual(await page.locator(`${M} .mu-groupe`).evaluateAll(es=>es.map(e=>e.textContent.trim())),['Pour toute l’unité','Services'],'ni « Utilisés » ni « Pas utilisés » : l’entrée à part, puis les services');
   // À l'ouverture, des sections repliées : « Ses équipes » ouverte, les temps et les réglages avancés repliés.
   await nav.service(page,'cuisine');
   assert.deepEqual(await page.locator(`${M} .se-fiche details.mu-etape`).evaluateAll(ds=>ds.map(d=>[d.dataset.muSection,d.querySelector('h3').firstChild.textContent,d.open])),
@@ -301,7 +304,8 @@ function ecarts(avant,apres,chemin='',out=[]){
   assert.equal(await page.locator('#at-liste, #at-new, #at-filtre, .recap-cases, #rc-filtre, #rg-recap-panneau, #rg-bareme-panneau, #services-unite, #onglets-internes:not([hidden]) [data-sous-onglet=at-recap]').count(),0,'ni leurs listes, ni leurs tableaux, ni leurs onglets');
   // (Celles que « Services et équipes » a reprises ; « Chemins » a les siennes, évolution 22 c.)
   assert.deepEqual(await page.evaluate(()=>Object.keys(OrlyOnglets.ANCIENNES).filter(id=>OrlyOnglets.resoudre(id)==='mu-services').map(id=>[id,OrlyOnglets.resoudre(id),OrlyOnglets.ANCIENNES[id].lieu])),
-    [['at-recap','mu-services','equipes'],['at-equipes','mu-services','equipes'],['rg-recap','mu-services','temps'],['rg-minutes','mu-services','temps'],['u-services','mu-services','liste']]);
+    // (Correction 23 g : « Temps par vol » ouvre l'entrée « Tous les temps par vol » — avant, la section d'un service.)
+    [['at-recap','mu-services','equipes'],['at-equipes','mu-services','equipes'],['rg-recap','mu-services','tous'],['rg-minutes','mu-services','temps'],['u-services','mu-services','liste']]);
   // Un lien vers une page d'avant (data-page) mène à la page nouvelle, au bon endroit : la fiche d'une équipe se referme.
   await nav.equipe(page,ids['Robot']);await nav.aller(page,'j-chiffres');
   await page.evaluate(()=>{const b=document.createElement('button');b.id='se-vieux-lien';b.dataset.page='rg-minutes';b.textContent='Temps par vol par service';document.querySelector('#view-title').after(b);});
@@ -312,7 +316,7 @@ function ecarts(avant,apres,chemin='',out=[]){
   await nav.service(page,dispo);
   await page.evaluate(()=>Sim.unite.allerA('temps'));await attendre(page,300);
   assert.notEqual(await page.evaluate(()=>Sim.unite.choisi),dispo);
-  assert.equal(await page.locator(`${M} details[data-mu-section=temps][open]`).count(),1,'« Temps par vol » mène à un service qui a des temps');
+  assert.equal(await page.locator(`${M} details[data-mu-section=temps][open]`).count(),1,'« Temps par vol par service » mène à un service qui a des temps');
   // Les services supprimés : le lien du bas de la liste.
   await page.evaluate(()=>Sim.unite.allerA('supprimes'));await attendre(page,300);
   assert.equal(await page.locator(`${M} .se-vers-supprimes.actif`).count(),1);

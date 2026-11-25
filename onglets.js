@@ -164,7 +164,8 @@
   const ANCIENNES = {
     'at-recap': { vers: 'mu-services', lieu: 'equipes', nom: 'Horaires des équipes' },
     'at-equipes': { vers: 'mu-services', lieu: 'equipes', nom: 'Équipes une par une', ancien: 'Les cases · Ateliers de travail' },
-    'rg-recap': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol', ancien: 'Heures de travail' },
+    // Correction 23 (g) : le tableau de tous les temps par vol est revenu — son entrée, dans « Services et équipes ».
+    'rg-recap': { vers: 'mu-services', lieu: 'tous', nom: 'Temps par vol', ancien: 'Heures de travail' },
     'rg-minutes': { vers: 'mu-services', lieu: 'temps', nom: 'Temps par vol par service', ancien: 'Barème par service' },
     'u-services': { vers: 'mu-services', lieu: 'liste', nom: 'Liste des services' },
     // Évolution 22 (c) : « Chemins » en reprend trois, et garde l'ancien nom de la sienne (une clé qui n'est pas une page).

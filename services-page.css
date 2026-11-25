@@ -118,3 +118,28 @@ body[data-sous="mu-services"] #view-ateliers{padding-bottom:12px}
 .se-afaire-vers{margin-left:auto;white-space:nowrap;color:var(--ds-accent-texte,var(--ds-accent));font-weight:var(--ds-g-moyen)}
 /* L'endroit visé : la case à cocher, le champ du temps par vol. */
 #mu-services .se-vise{outline:2px solid var(--ds-accent);outline-offset:-2px;border-radius:var(--ds-r-1);background:var(--ds-accent-doux)}
+
+/* Correction 23 (g) : « Tous les temps par vol ». Son entrée, à part, en tête de la liste ; à droite, le tableau d'avant
+   (reglages.css, commun avec la version 2, non modifié). La fiche ne défile pas : c'est le cadre du tableau qui défile,
+   ses en-têtes et sa première colonne figés — la fenêtre ne bouge pas. La place va aux lignes : la légende tient en une
+   rangée, les cellules sont serrées, et la longue explication que le tableau écrit sous lui passe derrière son « ? ». */
+.se-liste .mu-groupe{flex:none;margin:6px 0 0}
+#mu-services .se-fiche[data-se-vue="temps"]{display:flex;flex-direction:column;overflow:hidden}
+.se-temps{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+.se-temps>#rg-recap-panneau{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:6px;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.se-temps>#rg-recap-panneau>*{flex:none;margin-top:0;margin-bottom:0}
+.se-temps .titre-aide h3{margin:0;font-size:var(--ds-t-16)}
+.se-temps-dit{margin:0}
+.se-temps .rg-recap-legende{gap:4px 6px}
+.se-temps .rg-recap-legende .rgr{padding:1px 6px;white-space:nowrap}
+.se-temps>#rg-recap-panneau>#rg-recap{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:6px}
+.se-temps #rg-recap>*{flex:none;margin-top:0;margin-bottom:0}
+.se-temps #rg-recap>.rg-recap-scroll{flex:1 1 0;min-height:120px;max-height:none}
+.se-temps #rg-recap>.rg-recap-scroll~p{display:none}
+.se-temps .rg-recap-table :is(th,td){padding-top:2px;padding-bottom:2px}
+.se-temps .rg-recap-table input{height:28px;min-height:28px;padding-top:0;padding-bottom:0}
+.se-temps .rg-recap-t2 small{margin-left:4px}
+/* Les deux rangées d'en-tête restent en haut du cadre, l'une sous l'autre : la seconde se cale sous la première (dans
+   la feuille commune, elle se figeait au même endroit et la recouvrait). */
+.se-temps .rg-recap-table thead .rg-recap-t1 th{height:32px;padding-top:4px;padding-bottom:2px}
+.se-temps .rg-recap-table thead .rg-recap-t2 th{top:32px}

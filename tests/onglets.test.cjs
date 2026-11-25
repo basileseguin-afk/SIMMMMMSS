@@ -108,7 +108,8 @@ test('les pages reprises par « Services et équipes », « Chemins » et « Con
   assert.deepEqual(Object.entries(O.ANCIENNES).map(([id, a]) => [id, a.nom, a.ancien || '', a.vers, a.lieu]), [
     ['at-recap', 'Horaires des équipes', '', 'mu-services', 'equipes'],
     ['at-equipes', 'Équipes une par une', 'Les cases · Ateliers de travail', 'mu-services', 'equipes'],
-    ['rg-recap', 'Temps par vol', 'Heures de travail', 'mu-services', 'temps'],
+    // Correction 23 (g) : « Temps par vol » ouvre l'entrée « Tous les temps par vol » (avant : la section d'un service).
+    ['rg-recap', 'Temps par vol', 'Heures de travail', 'mu-services', 'tous'],
     ['rg-minutes', 'Temps par vol par service', 'Barème par service', 'mu-services', 'temps'],
     ['u-services', 'Liste des services', '', 'mu-services', 'liste'],
     ['mu-carte', 'Vue d’ensemble', '', 'mu-flux', 'liste'],
@@ -141,7 +142,7 @@ test('les pages reprises par « Services et équipes », « Chemins » et « Con
   s.choisir('mu-services', undefined, false, 'supprimes');
   s.choisir('u-services', undefined, false, 'supprimes');
   s.choisir('mu-services');
-  assert.deepEqual(vus, [['mu-services', 'temps'], ['mu-services', 'liste'], ['mu-services', 'equipes'], ['mu-services', 'supprimes'], ['mu-services', 'supprimes']]);
+  assert.deepEqual(vus, [['mu-services', 'tous'], ['mu-services', 'liste'], ['mu-services', 'equipes'], ['mu-services', 'supprimes'], ['mu-services', 'supprimes']]);
   // Les pages que « Chemins » a reprises : la liste des chemins, ou le tableau d'une étape.
   vus.length = 0;
   for (const id of ['mu-carte', 'at-chemins', 'at-grille', 'mu-flux:avant', 'mu-flux']) { s.choisir(id); assert.equal(s.page, 'mu-flux', id); }

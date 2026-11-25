@@ -925,6 +925,8 @@ function initUnite(){
   const Page=(window.OrlyControlesPage&&OrlyControlesPage.PageControles)||(window.OrlyCheminsPage&&OrlyCheminsPage.PageChemins)||(window.OrlyServicesPage&&OrlyServicesPage.PageServices)||OrlyUnite.MonUnite;
   Sim.unite=new Page({
     resultats:voirDansLesResultats, rattachement:rattachementService, supprimes:servicesSupprimes, jouent:()=>window.OrlyJouent||null,
+    // Le tableau de tous les temps par vol (correction 23 g), que la page pose quand on ouvre son entrée.
+    tousLesTemps:()=>Sim.tousLesTemps||null,
     at:()=>Sim.ateliers, rg:()=>Sim.reglages,
     services:servicesDisponibles,
     parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
@@ -1212,7 +1214,17 @@ function initFichiers(){
   majFichiers();
   const remise=document.querySelector('#rg-bareme-panneau .rg-reset-ligne'),ailleurs=document.querySelector('#rg-modele .rg-ailleurs');
   if(remise&&ailleurs){remise.dataset.sous='rg-simulation';ailleurs.before(remise);}
-  for(const sel of ['#rg-bareme-panneau','#rg-recap-panneau','#rg-modele > .titre-aide[data-sous="rg-minutes"]','#rc-classeur']){
+  // Correction 23 (g) : le tableau de tous les temps par vol revient. Son panneau (reglages.js, commun avec la version 2,
+  // non modifié) est gardé hors de la page ; « Services et équipes » le pose quand on ouvre son entrée. L'import et
+  // l'export du classeur restent dans « Fichiers » : le panneau ne les porte plus, ni la phrase d'aide qui en parlait.
+  const tous=document.getElementById('rg-recap-panneau');
+  if(tous){
+    tous.remove();tous.removeAttribute('data-sous');
+    for(const e of tous.querySelectorAll('#rg-recap-export,#rg-recap-import-btn,#rg-recap-import'))e.remove();
+    const aide=[...tous.querySelectorAll('.aide-corps > p')].pop();if(aide&&/Importer/.test(aide.textContent))aide.remove();
+    Sim.tousLesTemps=tous;
+  }
+  for(const sel of ['#rg-bareme-panneau','#rg-modele > .titre-aide[data-sous="rg-minutes"]','#rc-classeur']){
     const e=document.querySelector(sel);if(e)e.remove();
   }
 }
