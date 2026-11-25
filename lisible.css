@@ -74,8 +74,11 @@ body[data-sous="j-stocks"] #journee-stocks,body[data-sous="j-details"] #journee-
 #journee-stocks>.page-zone,#journee-details>.page-zone,#journee-periode>.page-zone{flex:1 1 0}
 #journee-periode>.page-zone{display:flex;flex-direction:column;gap:var(--ds-e-4)}
 #journee-periode>.page-zone>*{flex:none}
-/* Le tableau de la période défile avec sa page, pas dans un second cadre : une zone, pas deux l'une dans l'autre. */
-#journee-periode .pv-tableau .table-scroll{max-height:none}
+/* Le tableau de la période défile dans son cadre (correction 23 i) : son en-tête et sa première colonne ne restent figés
+   que là — ils sont collants dans ce cadre, pas dans la zone de la page. Le cadre n'est jamais plus haut que la zone : il
+   s'y voit en entier ; la zone défile encore, pour ce qui précède et ce qui suit le tableau. Une période courte ne
+   défile pas : le cadre a la hauteur de son tableau. */
+#journee-periode .pv-tableau .table-scroll{max-height:min(70vh,calc(100vh - 240px))}
 
 /* ---- 3. la largeur ---------------------------------------------------------------------------------------------- */
 /* Une page ne tient pas dans une demi-largeur : « Comparer » et « Période » vont d'un bord à l'autre. */

@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Correction 23 (i) : « Période », l’en-tête du tableau reste figé
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **Le tableau jour par jour défile dans son cadre** : sa première rangée et
+  sa première colonne restent figées pendant le défilement. Depuis
+  l’évolution 23 (g), c’est la zone de la page qui défilait, et l’en-tête
+  partait avec elle.
+- **Le cadre n’est jamais plus haut que la zone de la page** : il s’y voit en
+  entier. La zone défile encore, pour la courbe et « Réel et calage ».
+- **Une période courte ne défile pas** : le cadre a la hauteur de son
+  tableau.
+- La règle « une zone ne défile jamais dans une autre » a cette exception,
+  écrite dans `docs/DESIGN_SYSTEM.md`.
+
+Fichiers : `lisible.css`, `index.html` ;
+`tests/periode-entete-browser.cjs` (nouveau) ; `docs/DESIGN_SYSTEM.md`,
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-25 — Correction 23 (h) : « En direct », les chiffres cumulés à l’heure rejouée
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

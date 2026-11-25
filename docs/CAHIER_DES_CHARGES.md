@@ -589,6 +589,15 @@ chiffres et les mêmes mots que la bande (`chiffresCumules` et `morceaux`,
 rejouée et reste en tête avec le détail d'un service
 (`tests/direct-cumul-browser.cjs`, `tests/direct-lire.test.cjs`).
 
+Correction 23 (i) — **« Période » : l'en-tête du tableau reste figé.**
+Constat, à 1 366 × 768 sur un mois simulé : la zone de la page défilait, et
+l'en-tête du tableau jour par jour partait avec elle — il est collant, mais
+dans un cadre qui ne défilait pas. Le tableau défile maintenant dans son
+cadre : sa première rangée et sa première colonne restent figées. Le cadre
+n'est jamais plus haut que la zone de la page ; la zone défile encore pour
+la courbe et « Réel et calage ». Une période courte ne défile pas
+(`tests/periode-entete-browser.cjs`).
+
 Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
 chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par
 compagnie : courrier et trajet du camion » ; elle reste dans la liste

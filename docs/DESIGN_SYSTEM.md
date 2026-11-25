@@ -342,6 +342,12 @@ manque.
    son en-tête figé. Rien n'est coupé non plus : ce qui dépasse d'un bloc
    défile, ou se replie. Sur un écran étroit (860 px) ou très bas (560 px), la
    page défile comme avant.
+   **Une exception** (correction 23 i) : un long tableau dans une page qui
+   défile déjà — le tableau jour par jour de « Période », entre sa courbe et
+   « Réel et calage » — défile dans son propre cadre. Un en-tête ne se fige
+   que dans le cadre qui défile : laissé à la zone de la page, il partait avec
+   elle. Ce cadre n'est jamais plus haut que la zone (70 % de la fenêtre au
+   plus) : il s'y voit en entier.
 3. **Les colonnes prennent la largeur.** Une page ne tient pas dans une
    demi-largeur en laissant l'autre vide : le contenu va d'un bord à l'autre.
    Un champ, lui, garde une largeur de champ. Un petit tableau non plus ne
