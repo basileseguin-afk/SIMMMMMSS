@@ -1,0 +1,104 @@
+/* ==========================================================================
+ *  LE VISUEL DE LA VERSION 1 (évolution 25)
+ *
+ *  Un menu bordeaux sombre, un fond clair chaud, des cartes blanches
+ *  arrondies, une couleur d'action caramel. La direction a été choisie sur
+ *  une maquette (unité fictive, hors dépôt).
+ *
+ *  Cette feuille est chargée par la version 1 seule (index.html, accueil.html),
+ *  après ds.css et les feuilles des vues, juste avant lisible.css qui garde le
+ *  dernier mot sur ses trois règles (aucun texte sous 13 px, la fenêtre ne
+ *  défile pas, les colonnes prennent la largeur). La version 2 est gelée et
+ *  garde son visuel : ds.css et les autres feuilles communes ne sont pas
+ *  modifiées (tests/feuilles-communes.test.cjs).
+ *
+ *  1. Jetons   — les deux thèmes ; les composants de ds.css suivent d'eux-mêmes
+ *
+ *  La force des sélecteurs compte. En sombre, le bloc de ds.css
+ *  (`:root[data-theme="sombre"]`) l'emporte sur le `:root` d'ici : ce que le
+ *  thème sombre de ds.css règle (la navigation branchée sur les surfaces, les
+ *  ombres effacées) reste réglé, sauf ce que le bloc sombre d'ici redéfinit.
+ *  tests/contraste.test.cjs lit les jetons dans cet ordre.
+ * ==========================================================================*/
+
+/* ---- 1. Jetons ------------------------------------------------------------ */
+:root{
+  /* Les surfaces : un fond clair chaud, des cartes blanches posées dessus. */
+  --ds-fond:#FBF8F6; --ds-surface-1:#FFFFFF; --ds-surface-2:#F6F1ED; --ds-surface-3:#FFFFFF; --ds-survol:#F4EEEA;
+  --ds-bordure:#EFE8E3; --ds-bordure-forte:#DDD2CB;
+  /* L'encre : un brun presque noir, à la place du bleu nuit. */
+  --ds-texte-1:#2A1F23; --ds-texte-2:#4A3D42; --ds-texte-3:#6E6166; --ds-texte-4:#9A8E93;
+  /* L'action : caramel. */
+  --ds-accent:#B95B0F; --ds-accent-fort:#9C4A08; --ds-accent-texte:#A8500A;
+  --ds-accent-doux:color-mix(in srgb,#B95B0F 10%,transparent); --ds-accent-trait:color-mix(in srgb,#B95B0F 38%,transparent); --ds-sur-accent:#FFFFFF;
+  --ds-accent-pale:#FFF1E7;
+  /* Le menu : un bordeaux sombre, uni ; un repère pêche pour la page ouverte. */
+  --ds-nav-fond:#2E0F1A; --ds-nav-fond-bas:#2E0F1A; --ds-nav-lueur:#4A1828; --ds-nav-bord:#240B14;
+  --ds-nav-texte-1:#FFFFFF; --ds-nav-texte-2:#E6D9DD; --ds-nav-texte-3:#C9B4BB;
+  --ds-nav-trait:color-mix(in srgb,#FFFFFF 9%,transparent); --ds-nav-trait-fort:color-mix(in srgb,#FFFFFF 22%,transparent);
+  --ds-nav-survol:color-mix(in srgb,#FFFFFF 6%,transparent); --ds-nav-badge:color-mix(in srgb,#FFFFFF 11%,transparent);
+  --ds-nav-actif:color-mix(in srgb,#FFFFFF 10%,transparent); --ds-nav-sous-actif:color-mix(in srgb,#FFFFFF 9%,transparent);
+  --ds-nav-repere:#FF9853; --ds-nav-actif-trait:#FF9853; --ds-heros-ico:#FFC9A3;
+  --ds-nav-attente-fond:#4A3A1C; --ds-nav-attente-texte:#FCD34D; --ds-nav-retard-fond:#5A1F2A; --ds-nav-retard-texte:#FFB4B4;
+  /* Les états. L'accent est caramel : l'ambre de « en attente » lui ressemblerait, l'attente passe au jaune ocre.
+     Un état va toujours avec son mot ou sa forme. */
+  --ds-ok:#2F7A4D; --ds-ok-texte:#25633E; --ds-ok-doux:color-mix(in srgb,#2F7A4D 10%,transparent);
+  --ds-attente:#8A6A00; --ds-attente-texte:#735800; --ds-attente-doux:color-mix(in srgb,#C79A00 14%,transparent);
+  --ds-retard:#C0262D; --ds-retard-texte:#A11D24; --ds-retard-doux:color-mix(in srgb,#C0262D 8%,transparent); --ds-sur-retard:#FFFFFF;
+  --ds-info:#2C5F8A; --ds-info-doux:color-mix(in srgb,#2C5F8A 9%,transparent);
+  /* Les données : bleu, vert, violet, bordeaux, magenta, ocre — distinctes deux à deux, en vision normale comme en
+     deutéranopie et en protanopie. Chacune porte une étiquette blanche à 4,5:1. */
+  --ds-d1:#2464A6; --ds-d2:#1B8364; --ds-d3:#5021A1; --ds-d4:#881E31; --ds-d5:#8A1C69; --ds-d6:#865D24;
+  --ds-chaine:#8A1C69;
+  --ds-sur-donnee:#FFFFFF; --ds-sur-attente:#FFFFFF;
+  --ds-entete-bas:#FBF8F6;
+  /* Les rayons : un champ et un bouton à 8 px, une carte à 14 px. */
+  --ds-r-1:5px; --ds-r-2:8px; --ds-r-3:14px; --ds-r-4:16px;
+  /* Un champ qui porte une valeur saisie : un fond pêche, un trait pêche. */
+  --ds-saisi-fond:#FFF7F0; --ds-saisi-bord:#F0D3BE;
+  /* Les traits du dessin (le contour d'un service sur le plan, un lien entre services) : leur gris d'avant, réchauffé. */
+  --ds-trait-plan:#93878C; --ds-trait-lien:#857980;
+  /* Les ombres, l'anneau du focus et le voile gardent leur forme, reteintés : l'encre à la place du bleu nuit,
+     l'accent pour le focus. Une carte se pose plus doucement. */
+  --ds-ombre-1:0 1px 2px rgba(42,31,35,.06);
+  --ds-ombre-carte:0 1px 2px rgba(42,31,35,.04),0 12px 32px -8px rgba(42,31,35,.08);
+  --ds-ombre-carte-survol:0 1px 2px rgba(42,31,35,.06),0 14px 28px -12px rgba(42,31,35,.24);
+  --ds-ombre-bouton:0 1px 2px rgba(42,31,35,.18),inset 0 1px 0 rgba(255,255,255,.14);
+  --ds-ombre-haut:0 6px 16px -12px rgba(42,31,35,.28);
+  --ds-ombre-heros:0 18px 36px -20px rgba(46,15,26,.55);
+  --ds-ombre-flottant:0 10px 28px -6px rgba(42,31,35,.16),0 2px 6px -2px rgba(42,31,35,.08),0 0 0 1px rgba(42,31,35,.06);
+  --ds-focus:0 0 0 3px color-mix(in srgb,#B95B0F 28%,transparent);
+  --ds-voile:rgba(42,31,35,.32);
+}
+/* Le thème sombre : un brun presque noir, l'accent pêche. La navigation y reste branchée sur les surfaces du thème,
+   et les ombres effacées, comme dans ds.css. */
+:root[data-theme="sombre"]{
+  --ds-fond:#161113; --ds-surface-1:#1E1719; --ds-surface-2:#251D20; --ds-surface-3:#2C2326; --ds-survol:#2A2124;
+  --ds-bordure:rgba(255,255,255,.08); --ds-bordure-forte:rgba(255,255,255,.15);
+  /* Le texte 4 est aussi un remplissage : sur le plan rejoué, un service qui a fini s'en remplit et porte son nom en
+     texte 1 (plan-flux.css). À #75696E, la valeur de la maquette, ce nom tenait 4,44:1 ; à #73676C, 4,57:1 — et le
+     remplissage garde 3:1 sur la carte. */
+  --ds-texte-1:#F2EAEC; --ds-texte-2:#C8BCC0; --ds-texte-3:#A3969B; --ds-texte-4:#73676C;
+  --ds-accent:#F08A4B; --ds-accent-fort:#FFA670; --ds-accent-texte:#FFA670;
+  --ds-accent-doux:color-mix(in srgb,#F08A4B 14%,transparent); --ds-accent-trait:color-mix(in srgb,#F08A4B 42%,transparent); --ds-sur-accent:#2A1204;
+  --ds-accent-pale:#3A261C;
+  --ds-nav-attente-fond:#3A2F16; --ds-nav-retard-fond:#3B1C21;
+  --ds-ok:#4FB477; --ds-ok-texte:#6FCB92; --ds-ok-doux:color-mix(in srgb,#4FB477 14%,transparent);
+  --ds-attente:#D6B13A; --ds-attente-texte:#E6C65C; --ds-attente-doux:color-mix(in srgb,#D6B13A 14%,transparent);
+  --ds-retard:#F2645C; --ds-retard-texte:#FF8A82; --ds-retard-doux:color-mix(in srgb,#F2645C 14%,transparent); --ds-sur-retard:#1A0606;
+  --ds-info:#74AEDC; --ds-info-doux:color-mix(in srgb,#74AEDC 14%,transparent);
+  --ds-d1:#A7C5EB; --ds-d2:#A9EEE0; --ds-d3:#9463E1; --ds-d4:#CC8596; --ds-d5:#B666A4; --ds-d6:#E1D1A3;
+  --ds-chaine:#B666A4;
+  --ds-sur-donnee:#161113; --ds-sur-attente:#1A1206;
+  --ds-entete-bas:#161113;
+  --ds-saisi-fond:#2E2019; --ds-saisi-bord:#5A3A28;
+  --ds-focus:0 0 0 3px color-mix(in srgb,#F08A4B 30%,transparent);
+}
+/* Les classes, dans les deux thèmes : Équipage en bleu, Économie en vert, Premium en violet, Business en bordeaux,
+   repas spéciaux en ocre ; le magenta reste à la chaîne. Les retours de matériel gardent leur violet.
+   Le sélecteur a la force de celui de ds.css (`:root:not([data-theme="sombre"])`), qu'il remplace : un simple
+   `:root` ne l'emporterait pas en thème clair. */
+:root:not([data-theme="sombre"]),:root[data-theme]{
+  --cab-CREW:var(--ds-d1); --cab-YC:var(--ds-d2); --cab-PC:var(--ds-d3); --cab-BC:var(--ds-d4); --cab-SPML:var(--ds-d6);
+  --violet:var(--ds-d3); --edge-retour:var(--ds-d3);
+}

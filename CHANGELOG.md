@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (a) : le nouveau visuel de la version 1, les jetons
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun : elle garde son visuel.
+
+- **Une feuille neuve, `visuel.css`**, chargée par la version 1 seule
+  (`index.html`, juste avant `lisible.css` ; `accueil.html`). Elle redéfinit
+  les jetons `--ds-*` des deux thèmes ; les composants de `ds.css` suivent.
+- **Ce qui change à l’écran** : le menu passe du bleu nuit au bordeaux, le
+  fond devient clair et chaud, l’accent passe du bleu au caramel (pêche en
+  sombre), l’encre devient un brun presque noir, les cartes s’arrondissent
+  (14 px), « en attente » passe de l’ambre au jaune ocre.
+- **Les classes** ont leur couleur dans les deux thèmes : Équipage en bleu,
+  Économie en vert, Premium en violet, Business en bordeaux, repas spéciaux
+  en ocre ; le magenta reste à la chaîne.
+- **Deux jetons neufs** : le fond et le trait d’un champ qui porte une
+  valeur saisie (`--ds-saisi-fond`, `--ds-saisi-bord`), pour la suite.
+
+Fichiers : `visuel.css` (nouveau), `index.html`, `accueil.html` ;
+`tests/contraste.test.cjs`, `tests/parite.test.cjs`,
+`tests/visuel-jetons-browser.cjs` (nouveau), `tests/captures-browser.cjs`,
+`tests/heures-sup-renforts-page-browser.cjs` ; `docs/DESIGN_SYSTEM.md`,
+`README.md`.
+
 ## 2026-11-25 — Correction 23 (k) : le contrôle, les captures et la doc
 
 Aucun fichier de la page ne change : un test de captures, et la doc.

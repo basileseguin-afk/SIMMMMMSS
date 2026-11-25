@@ -3,7 +3,8 @@
  *   1. Le titre de la page (« Détails ») est au-dessus de la rangée d'onglets, comme sur les autres pages — sur les
  *      quatre onglets de « Détails ».
  *   2. Les deux cartes (« Heures supplémentaires », « Renforts ») ont une marge intérieure : aucun texte à moins de
- *      12 px du bord de sa carte ; une bordure fine, un rayon de 8 px (docs/DESIGN_SYSTEM.md).
+ *      12 px du bord de sa carte ; une bordure fine, le rayon d'une carte (docs/DESIGN_SYSTEM.md) : 14 px depuis le
+ *      nouveau visuel (évolution 25 a ; 8 px avant).
  *   3. Un tableau de trois colonnes ne s'étire pas sur toute la largeur : ses colonnes prennent la largeur de leur
  *      contenu ; les nombres sont à droite.
  *   4. Aucun texte sous 13 px ; la fenêtre ne défile pas.
@@ -88,7 +89,7 @@ const MESURER=()=>{
    assert.deepEqual(m.cartes.map(c=>[c.id,c.titre]),[['bilan-heures-sup','Heures supplémentaires'],['bilan-renforts','Renforts']],V+'les deux cartes');
    for(const c of m.cartes){
      assert.deepEqual(c.pres,[],V+c.titre+' : aucun texte à moins de 12 px du bord de sa carte');
-     assert.deepEqual([c.rayon,c.bordure],['8px','1px'],V+c.titre+' : une carte du design system (une bordure fine, un rayon de 8 px)');
+     assert.deepEqual([c.rayon,c.bordure],['14px','1px'],V+c.titre+' : une carte du design system (une bordure fine, un rayon de 14 px)');
    }
 
    /* ---- 3. un tableau de trois colonnes ne s'étire pas ---------------------------------------------------------- */

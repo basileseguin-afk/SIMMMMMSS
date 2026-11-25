@@ -20,10 +20,16 @@ Ce qui le porte :
 | `problemes.js` | Le registre unique des problèmes. |
 | `icones.js` | Les pictogrammes SVG (traits de 1,7 sur 24 × 24). |
 
+Depuis l'évolution 25, **la version 1 a son propre visuel** : une feuille
+neuve, `visuel.css`, chargée par elle seule après `ds.css`, redéfinit les
+jetons et retouche les composants (§ 10). `ds.css` reste la feuille commune,
+identique à sa jumelle de `v2/` : la version 2, gelée, garde le visuel décrit
+dans les sections 1 à 9.
+
 Hors de l'application :
 
 - `accueil.html`, le point d'entrée, charge `ds.css` pour ses jetons, sa
-  police et ses deux thèmes. Il défait la coquille dans sa propre feuille :
+  police et ses deux thèmes, puis `visuel.css` (évolution 25). Il défait la coquille dans sa propre feuille :
   c'est un document qui défile, pas la grille de l'application.
   `accueil-browser` le vérifie.
 - Les pages de secours (`secours.html`, `v2/secours.html`) restent
@@ -461,7 +467,9 @@ ce budget, et `latence-browser` les vérifie sans chronomètre :
 4. L'unité dans le champ, l'heure en 24 h, le refus au champ.
 5. v1 et v2. Les fichiers communs sont identiques, copiés de l'un à
    l'autre ; `tests/parite.test.cjs` en tient la liste et refuse une
-   retouche faite d'un seul côté.
+   retouche faite d'un seul côté. La version 2 est gelée (évolution 25) :
+   une feuille commune ne se modifie plus ; ce qui est propre au visuel de
+   la version 1 va dans `visuel.css` (§ 10).
 6. Aucune clé de stockage nouvelle pour une donnée. Une préférence
    d'affichage prend `ory-ui-…`.
 7. Un test navigateur pour le nouvel écran. `focus-browser`,
@@ -478,3 +486,73 @@ ce budget, et `latence-browser` les vérifie sans chronomètre :
     fiche à droite » : elle tient sur l'écran d'un portable, chaque colonne
     défile seule, texte de 13 px au moins. En lecture seule, elle ne s'ouvre
     pas ; une page de résultats n'y montre aucun geste qui change un réglage.
+
+---
+
+## 10. Version 1 : le visuel de l'évolution 25
+
+Le chef de projet a choisi une direction sur une maquette (unité fictive,
+hors dépôt) : un menu bordeaux sombre, un fond clair chaud, des cartes
+blanches arrondies, une couleur d'action caramel. Elle se pose sur les pages
+qui existent, sans rien changer à leur structure : mêmes pages, mêmes champs,
+mêmes textes, mêmes gestes.
+
+| Fichier | Ce qu'il fait |
+|---|---|
+| `visuel.css` | Les jetons de la version 1, dans les deux thèmes. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
+
+### Les jetons redéfinis
+
+`visuel.css` ne crée pas un second système : elle redonne une valeur aux
+jetons `--ds-*` de `ds.css`, et les composants suivent d'eux-mêmes.
+
+| Jetons | Rôle | Clair | Sombre |
+|---|---|---|---|
+| `--ds-fond`, `--ds-surface-1` à `-3`, `--ds-survol` | le fond de la page, les cartes posées dessus | fond chaud `#FBF8F6`, cartes blanches | brun presque noir `#161113`, cartes `#1E1719` |
+| `--ds-texte-1` à `-4` | l'encre | `#2A1F23` (à la place du bleu nuit) | `#F2EAEC` |
+| `--ds-accent` et sa famille | l'action : bouton principal, lien, focus | caramel `#B95B0F` | pêche `#F08A4B` |
+| `--ds-accent-pale` | l'élément choisi d'une liste | `#FFF1E7` | `#3A261C` |
+| `--ds-nav-*` | le menu et le bandeau de l'accueil | bordeaux `#2E0F1A`, uni, repère pêche `#FF9853` | les surfaces du thème, comme dans `ds.css` |
+| `--ds-ok`, `--ds-attente`, `--ds-retard`, `--ds-info` | les états | l'attente passe au jaune ocre `#8A6A00` : l'ambre ressemblerait au caramel de l'accent | `#D6B13A` |
+| `--ds-d1` à `--ds-d6`, `--ds-chaine` | les données | bleu, vert, violet, bordeaux, magenta, ocre | leurs teintes claires |
+| `--ds-saisi-fond`, `--ds-saisi-bord` | **neufs** : le fond et le trait d'un champ qui porte une valeur saisie | `#FFF7F0`, `#F0D3BE` | `#2E2019`, `#5A3A28` |
+| `--ds-r-1` à `--ds-r-4` | les rayons | 5, 8, 14 et 16 px : un champ et un bouton à 8 px, une carte à 14 px | les mêmes |
+| `--ds-ombre-*`, `--ds-focus`, `--ds-voile`, `--ds-trait-plan`, `--ds-trait-lien` | les ombres, l'anneau du focus, le voile, les traits du dessin | leur forme d'avant, reteintée : l'encre à la place du bleu nuit, l'accent pour le focus | les ombres restent effacées ; le focus à l'accent |
+
+Les échelles (tailles de texte, graisses, grille de 4 px, hauteurs de 28 et
+32 px, mouvements) ne changent pas : aucune page ne doit se mettre à défiler.
+
+**Les couleurs des classes**, dans les deux thèmes : Équipage `d1` (bleu),
+Économie `d2` (vert), Premium `d3` (violet), Business `d4` (bordeaux), repas
+spéciaux `d6` (ocre). `d5` (magenta) reste à la chaîne. Les retours de
+matériel gardent leur violet (`d3`). Ce que dit une couleur dans un dessin ne
+change pas (équipe, robot, chaîne, classe) : seules les teintes changent.
+
+**La cascade décide, et la force des sélecteurs compte.**
+
+- En thème sombre, le bloc de `ds.css` (`:root[data-theme="sombre"]`)
+  l'emporte sur le `:root` de `visuel.css`. C'est voulu : la navigation y
+  reste branchée sur les surfaces du thème, les ombres y restent effacées.
+  Le bloc sombre de `visuel.css` redéfinit le reste.
+- Les classes (`--cab-*`), `--violet` et `--edge-retour` sont redéfinis avec
+  un sélecteur de la force de celui de `ds.css`
+  (`:root:not([data-theme="sombre"])`) : un simple `:root` ne l'emporterait
+  pas en thème clair.
+
+**Une valeur de la maquette a bougé** : le texte 4 du thème sombre,
+`#75696E` → `#73676C`. Sur le plan rejoué, un service qui a fini se remplit
+du texte 4 et porte son nom en texte 1 : à `#75696E`, ce nom tenait 4,44:1 ;
+à `#73676C`, 4,57:1, et le remplissage garde 3:1 sur la carte. Les autres
+valeurs sont celles de la maquette. La feuille y ajoute ce que la maquette ne
+donnait pas : les ombres, le focus, le voile et les traits du dessin,
+reteintés.
+
+**Contraste.** `tests/contraste.test.cjs` lit `visuel.css` par-dessus
+`ds.css`, dans l'ordre de la cascade, et refait pour la version 1 toutes ses
+vérifications (4,5:1 pour un texte, 3:1 pour une forme), plus : l'étiquette
+sur chacune des six couleurs de donnée et sur la chaîne, le texte 1 et le
+texte 3 sur le fond d'un champ saisi, les traits du dessin sur une carte, le
+texte 1 sur le texte 4.
+`tests/visuel-jetons-browser.cjs` lit les valeurs calculées dans la page,
+dans les deux thèmes, et vérifie que la version 2 garde les siennes.
+

@@ -37,7 +37,8 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
    try{
     await page.evaluate(t=>{document.documentElement.dataset.theme=t;},theme);await attendre();
     const fond=await page.evaluate(()=>getComputedStyle(document.getElementById('plan')).backgroundColor);
-    assert.equal(fond,theme==='sombre'?'rgb(17, 20, 24)':'rgb(255, 255, 255)',V+'le thème');
+    // La carte du thème (--ds-surface-1) : blanche en clair ; en sombre, #1E1719 depuis l'évolution 25 (#111418 avant).
+    assert.equal(fond,theme==='sombre'?'rgb(30, 23, 25)':'rgb(255, 255, 255)',V+'le thème');
 
     // Le plan rejoué : à l'ouverture.
     // (Depuis l'évolution 16 e : au moment où le premier goulot du jour commence à coincer ; sans goulot, au pic de travail.)
