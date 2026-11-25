@@ -59,3 +59,6 @@ body[data-sous="mu-pas"] #view-ateliers>#mu-pas{flex:1 1 0;min-height:320px;disp
 .fc-lecture-repli{margin:18px 0 0;padding:10px 0 0;border-top:1px solid var(--ds-bordure)}
 .fc-lecture-repli>summary{cursor:pointer;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
 .fc-lecture-repli[open]>summary{margin-bottom:10px}
+
+/* Correction 23 (c) : un point qui a plusieurs boutons (un par service, ou deux gestes) — le premier est le principal. */
+.ct-gestes .btn{max-width:100%;white-space:normal;text-align:left}

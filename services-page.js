@@ -77,7 +77,61 @@
   const TITRES_TEMPS = { manuel: 'Ses temps par vol', categories: 'Ses minutes par compagnie', robot: 'Ses temps par vol et ses débits',
     lavage: 'Ses durées de lavage', handling: 'Son temps par vol' };
 
-  const api = { resumeEquipe, sousTitre, ouvertureLue, TITRES_TEMPS };
+  /** Les noms qu'une ligne écrit, puis « et n autres » ; les lignes de l'encart, avant « et n autres ». */
+  const NOMS = 4;
+  const nommer = noms => (noms.length > NOMS ? noms.slice(0, NOMS).join(', ') + ' et ' + pl(noms.length - NOMS, 'autre')
+    : noms.length > 1 ? noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1] : (noms[0] || ''));
+
+  /**
+   * Les lignes de l'encart « à compléter » d'un service (correction 23 c) : une par point du bilan, comme avant, mais
+   * chacune nomme les commandes ou les compagnies en cause (quatre au plus, puis « et n autres »), et dit où cela se règle.
+   * Les points sont ceux du bilan (unite.js, commun avec la version 2, non modifié), dans le même ordre ; un point que la
+   * page ne sait pas détailler garde son texte, sans geste.
+   * @param {{points:string[], attendues?:string[], vides?:object[], cases?:object[]}} b  le bilan du service
+   * @param {{libelle?:Function, enClair?:Function, passent?:string[], sansTemps?:string[], compagniesSansTemps?:string[]}} o
+   *   libelle(id) — le nom d'une commande ; passent — les commandes qui passent par un service sans équipe ; sansTemps —
+   *   celles dont le temps par vol manque ; compagniesSansTemps — les compagnies sans heures par vol (un service par compagnie).
+   * @returns {Array<{texte:string, noms?:Array<{nom:string, geste:object}>, geste?:object}>}
+   *   noms  — chaque nom se clique, et mène à son endroit ; geste — toute la ligne se clique.
+   *   Un geste : {genre, texte?, equipe?, commande?, compagnie?} — `cocher` (la case de la commande, dans la fiche de
+   *   l'équipe), `equipe` (la fiche de l'équipe), `ajouter` (« Ajouter une équipe »), `temps` (le champ du temps par vol).
+   */
+  function lignesACompleter(b, o = {}) {
+    const lib = o.libelle || String, clair = o.enClair || (t => t), out = [];
+    const cochent = (b.cases || []).filter(a => !a.type || a.type === 'manuel' || a.type === 'robot');
+    // Plusieurs équipes : la case s'ouvre dans celle qui prépare déjà le plus de commandes de la même compagnie ; à
+    // défaut, dans la première.
+    const cieDe = id => String(id).split('/')[0];
+    const equipeDe = id => cochent.reduce((m, a) => {
+      const n = (a.lots || []).flat().filter(c => cieDe(c) === cieDe(id)).length;
+      return n > m.n ? { n, a } : m;
+    }, { n: 0, a: cochent[0] }).a;
+    // Quatre noms au plus ; le suivant dit combien il en reste, et mène au premier d'entre eux.
+    const nommes = (ids, geste) => ids.slice(0, NOMS).map(id => ({ nom: lib(id), geste: geste(id) }))
+      .concat(ids.length > NOMS ? [{ nom: 'et ' + pl(ids.length - NOMS, 'autre'), geste: geste(ids[NOMS]) }] : []);
+    for (const p of b.points || []) {
+      const attendues = /à cocher dans une équipe$/.test(p) ? (b.attendues || []) : [];
+      if (attendues.length && cochent.length)
+        out.push({ texte: cochent.length === 1 ? 'À cocher dans « ' + cochent[0].nom + ' »' : 'À cocher dans une équipe',
+          noms: nommes(attendues, id => ({ genre: 'cocher', equipe: equipeDe(id).id, commande: id, texte: equipeDe(id).nom })) });
+      // Aucune équipe d'ici ne prépare de commande (une équipe hors tunnel, une mise à disposition) : il en faut une.
+      else if (attendues.length)
+        out.push({ texte: nommer(attendues.map(lib)) + ' : à cocher dans une équipe, et aucune d’ici ne prépare de commande', geste: { texte: 'Ajouter une équipe', genre: 'ajouter' } });
+      else if (/ne prépar(e|ent) rien$/.test(p) && (b.vides || []).length)
+        for (const a of b.vides) out.push({ texte: '« ' + a.nom + ' » ne prépare rien', geste: { texte: 'Cocher ses commandes', genre: 'equipe', equipe: a.id } });
+      else if (/par ici, sans équipe$/.test(p) && (o.passent || []).length)
+        out.push({ texte: nommer(o.passent.map(lib)) + (o.passent.length > 1 ? ' passent' : ' passe') + ' par ici, sans équipe', geste: { texte: 'Ajouter une équipe', genre: 'ajouter' } });
+      else if (/^(temps par vol|heures de travail) à remplir$/.test(p))
+        out.push((o.sansTemps || []).length ? { texte: 'Temps par vol à remplir', noms: nommes(o.sansTemps, id => ({ genre: 'temps', commande: id })) }
+          : { texte: clair(p), geste: { texte: 'Remplir', genre: 'temps' } });
+      else if (p === 'heures par vol à remplir' && (o.compagniesSansTemps || []).length)
+        out.push({ texte: 'Heures par vol à remplir', noms: nommes(o.compagniesSansTemps, cie => ({ genre: 'temps', compagnie: cie })) });
+      else out.push({ texte: clair(p) });
+    }
+    return out;
+  }
+
+  const api = { resumeEquipe, sousTitre, ouvertureLue, TITRES_TEMPS, lignesACompleter };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
   const U = root.OrlyUnite;
   if (!U || !U.MonUnite) { root.OrlyServicesPage = api; return; }
@@ -182,6 +236,82 @@
 
     /** Ce service est-il un fournisseur ? Sans fournisseurs.js (la page d'avant), aucun ne l'est. */
     estFournisseur(s) { const F = root.OrlyFournisseurs; return !!F && F.estFournisseur(this.etat, s, this.optionsFournisseurs()); }
+
+    /* ---- l'encart « à compléter » et l'endroit exact où un point se règle (correction 23 c) ------------------------ */
+
+    /** L'encart « à compléter » d'un service : une ligne par point, qui nomme les commandes ou les compagnies en cause ; chaque nom se clique. */
+    encartACompleter(s, b, classes, motAjout) {
+      const P = root.MoteurProduction, rg = this.a.rg ? this.a.rg() : null;
+      const parCie = b.nature === 'categories', siennes = parCie ? (this.at.classesDe(s.id) || []) : classes;
+      // Une commande d'un service par compagnie (« NORD/@… ») se dit par sa compagnie.
+      const lib = id => { const t = String(id); return !t.includes('/') ? t : t.includes('/@') ? t.slice(0, t.indexOf('/')) : P.libelleClasse(t); };
+      // Sans équipe : les commandes qui passent par ici (la grille du service, comme pour son bilan).
+      const grille = !b.cases.length && b.passent ? PC.grille(this.etat, s.id, '-', siennes) : null;
+      const bloc = b.sansTemps && rg ? rg.blocService({ id: s.id, nom: s.nom }) : null;
+      const lignes = lignesACompleter(b, { libelle: lib, enClair: P.enClair,
+        passent: grille ? siennes.filter(c => grille.get(c.id).etat !== 'hors').map(c => c.id) : [],
+        sansTemps: bloc ? bloc.manquent.map(c => c.id) : [],
+        compagniesSansTemps: parCie ? siennes.filter(c => c.minutes == null).map(c => c.cie) : [] });
+      const attrs = g => ['genre', 'equipe', 'commande', 'compagnie'].filter(k => g[k]).map(k => `data-se-${k === 'genre' ? 'viser' : k}="${esc(g[k])}"`).join(' ');
+      // Ce qu'un nom ouvre, dit au survol : l'équipe où le cocher, ou son champ.
+      const ou = (n, g) => (g.genre === 'cocher' ? 'Ouvrir « ' + g.texte + ' », pour y cocher ' + n : 'Ouvrir le champ de ' + n);
+      const ligne = l => (l.noms
+        // Chaque nom se clique : il ouvre son endroit exact.
+        ? `<li><span class="se-afaire-dit">${esc(l.texte)} :</span>${l.noms.map(x => ` <button type="button" class="se-afaire-nom" ${attrs(x.geste)} title="${esc(ou(x.nom, x.geste))}">${esc(x.nom)} →</button>`).join('')}</li>`
+        // Un seul endroit : toute la ligne se clique. Le geste qui ajoute une équipe porte le nom du bouton de la fiche.
+        : l.geste ? `<li><button type="button" class="se-afaire-ligne" ${attrs(l.geste)}><span>${esc(l.texte)}</span>
+            <span class="se-afaire-vers">${esc(l.geste.genre === 'ajouter' && motAjout ? motAjout : l.geste.texte)} →</span></button></li>`
+        : `<li>${esc(l.texte)}</li>`);
+      return `<ul class="mu-afaire se-afaire">${lignes.map(ligne).join('')}</ul>`;
+    }
+
+    /** Le champ du temps par vol d'une commande (ou d'une compagnie, pour un service par compagnie), dans la fiche. */
+    champDuTemps(fiche, c) {
+      const P = root.MoteurProduction, un = sel => fiche.querySelector('[data-mu-section="temps"] ' + sel);
+      if (c.compagnie) return un(`input[data-mu-cat-min][data-cie="${CSS.escape(c.compagnie)}"]`) || un('input[data-mu-cat-min]');
+      const i = c.commande ? String(c.commande).lastIndexOf('/') : -1;
+      const cle = (cie, cab) => `input[data-rg-champ="heures"][data-cle="${CSS.escape(P.cleBareme(cie, cab))}"]`;
+      return (i > 0 && (un(cle(c.commande.slice(0, i), c.commande.slice(i + 1))) || un(cle(P.TOUTES, c.commande.slice(i + 1)))))
+        || un('input.rg-manque') || un('input:not(:disabled)') || fiche.querySelector('details[data-mu-section="temps"] > summary');
+    }
+
+    /**
+     * Mener à l'endroit exact où un point se règle, le mettre en évidence et y poser le clavier :
+     *   cocher  — la case de la commande, dans la fiche de l'équipe ;
+     *   equipe  — la fiche de l'équipe : son champ `champ`, sinon sa première case à cocher, sinon son premier champ ;
+     *   ajouter — « Ajouter une équipe », dans « Ses équipes » ;
+     *   temps   — le champ du temps par vol de la commande, ou de la compagnie ;
+     *   service — la fiche du service : la première ligne de son encart « à compléter », sinon « Ses équipes ».
+     * @param {{genre:string, service?:string, equipe?:string, commande?:string, compagnie?:string, champ?:string}} c
+     * @returns {Element|null} l'élément qui a le clavier
+     */
+    viser(c) {
+      const box = root.document.getElementById('mu-services'); if (!box || !c) return null;
+      let el = null;
+      if (c.genre === 'cocher' || c.genre === 'equipe') {
+        if (!this.ouvrirEquipe(c.equipe, c.service || this.choisi)) return null;
+        const f = box.querySelector(`.se-equipe [data-at="${CSS.escape(c.equipe)}"]`); if (!f) return null;
+        el = (c.commande && f.querySelector(`input[data-mu-cocher="${CSS.escape(c.commande)}"]:not(:disabled)`))
+          || (c.champ && f.querySelector(`[data-at-champ="${CSS.escape(c.champ)}"]:not(:disabled)`))
+          || (c.genre === 'equipe' && !c.champ && f.querySelector('.mu-grille input[data-mu-cocher]:not(:disabled)'))
+          || f.querySelector('input:not([type="hidden"]):not(:disabled), select:not(:disabled)');
+      } else {
+        const service = c.service && this.a.services().some(x => x.id === c.service) ? c.service : this.choisi;
+        this.equipeOuverte = null; this.panneau = null;
+        if (c.genre === 'temps' || c.genre === 'ajouter') this.sections.set(c.genre === 'temps' ? 'temps' : 'equipes', true);
+        if (service !== this.choisi || this.page() !== 'mu-services') super.ouvrir(service);
+        this.rendreServices();
+        const f = box.querySelector('.se-fiche'); if (!f) return null;
+        el = c.genre === 'temps' ? this.champDuTemps(f, c)
+          : c.genre === 'ajouter' ? f.querySelector('[data-mu-section="equipes"] [data-mu-action="equipe"]')
+          : f.querySelector('.se-afaire button') || f.querySelector('details[data-mu-section="equipes"] > summary');
+      }
+      if (!el) return null;
+      el.scrollIntoView({ block: 'center' });
+      el.focus({ preventScroll: true });
+      (el.closest('td, label') || el).classList.add('se-vise');
+      return el;
+    }
 
     /* La fiche d'avant (unite.js), sans aucun résultat, en morceaux : le calcul n'y est pas passé, et les fiches
      * d'équipe (ateliers.js) le savent — ni heure de fin, ni effectif calculé, ni plan du dernier calcul. */
@@ -292,6 +422,15 @@
         // La phrase d'avant demandait aussi « qui en a besoin » : cela ne se dit plus ici (évolution 24 d, retouche de contrôle).
         const FIN = /, combien de personnes y travaillent sur la journée, et qui en a besoin\.$/;
         for (const n of tous('p.mini-note')) if (FIN.test(n.textContent)) n.textContent = n.textContent.replace(FIN, ' et combien de personnes y travaillent sur la journée.');
+      }
+
+      // Correction 23 (c) : l'encart « à compléter » nomme la commande ou la compagnie, et chaque ligne mène à l'endroit exact.
+      const afaire = un('.mu-afaire');
+      if (afaire) {
+        // Le geste qui ajoute une équipe porte le nom du bouton de la fiche (« Mettre ce service en place », pour une mise à disposition).
+        const ajout = un('[data-mu-section="equipes"] [data-mu-action="equipe"]'), t = root.document.createElement('template');
+        t.innerHTML = this.encartACompleter(s, b, classes, ajout ? ajout.textContent.replace(/^\s*\+\s*/, '').trim() : '');
+        afaire.replaceWith(t.content);
       }
 
       // 1. Son nom et ce qu'il fait : le type se choisit ici, une seule fois.
@@ -418,8 +557,10 @@
     lierPage() {
       const d = root.document;
       d.addEventListener('click', e => {
-        const t = e.target.closest && e.target.closest('#mu-services [data-se-equipe], #mu-services [data-se-retour], #mu-services [data-se-panneau], #mu-services [data-se-resultats], #mu-services [data-fo-ouvrir]');
+        const t = e.target.closest && e.target.closest('#mu-services [data-se-viser], #mu-services [data-se-equipe], #mu-services [data-se-retour], #mu-services [data-se-panneau], #mu-services [data-se-resultats], #mu-services [data-fo-ouvrir]');
         if (!t) return;
+        // Une ligne de l'encart « à compléter » (correction 23 c) : l'endroit exact, en évidence, le clavier dessus.
+        if (t.dataset.seViser) return void this.viser({ genre: t.dataset.seViser, service: this.choisi, equipe: t.dataset.seEquipe, commande: t.dataset.seCommande, compagnie: t.dataset.seCompagnie });
         // La fiche d'un fournisseur : « Régler dans Chemins › Fournisseurs » (évolution 24 a).
         if (t.dataset.foOuvrir !== undefined) return void (this.ouvrirFournisseurs ? this.ouvrirFournisseurs() : this.a.page('mu-flux'));
         // Dans une ligne du tableau, un clic n'importe où ouvre la fiche ; le bouton du nom, au clavier.

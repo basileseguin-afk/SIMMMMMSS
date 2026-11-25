@@ -26,7 +26,8 @@ const AVANT=[
   ['corriger','« Cuisine froide » est sur le chemin de 2 commandes préparées da'],
   ['corriger','« Prépa » est sur le chemin de 1 commande préparée dans d’autres'],
   ['corriger','Montage bis : ZEN · Économie est cochée ici, mais son chemin ne '],
-  ['corriger','Vos services et leurs équipes'],
+  // Correction 23 (c) : « Vos services et leurs équipes » était ici. Chacun de ses services est déjà cité par un autre
+  // point de la page (son étape sans équipe, le point bloquant) : il ne s'affiche plus.
   ['information','Vol ES309 (J-1) dans « Plonge » : le poste se termine avant la f'],
   ['information','Vol NO107 (J-1) dans « Plonge » : le poste se termine avant la f'],
   ['information','Quais : 15 vols chargés après leur départ (le plus en retard : N'],
@@ -61,7 +62,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.equal(await page.locator('#view-title').textContent(),'Contrôles');
   assert.equal(await page.locator('#ariane-partie').textContent(),'Simulation');
   assert.deepEqual(await page.locator(`${C} .ct-niveau`).evaluateAll(s=>s.map(x=>[x.dataset.ctNiveau,x.querySelector('h3 span').textContent,+x.querySelector('.ct-n').textContent])),
-    [['bloquant','Bloquant',1],['corriger','À corriger',6],['information','Information',6]]);
+    [['bloquant','Bloquant',1],['corriger','À corriger',5],['information','Information',6]]);
   for(const n of ['bloquant','corriger','information'])
     assert.deepEqual(await page.locator(`${C} .ct-niveau.${n} .ct-point .ct-corps>b`).evaluateAll(bs=>bs.map(b=>b.textContent)),r.filter(p=>p.niveau===n).map(p=>p.titre),n+' : la colonne montre les avis du registre, dans l’ordre');
   assert.equal(await page.locator(`${C} .ct-point`).count(),AVANT.length,'aucun avis de plus, aucun de moins');
@@ -96,7 +97,10 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.deepEqual(r.map(p=>[p.niveau,lisse(p.titre).slice(0,64)]),AVANT,'revenue à ses réglages, l’unité a les mêmes avis');
 
   /* ---- 3. chaque bouton mène à la bonne page, au bon endroit ---------------------------------------------------- */
-  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),AVANT.length,'un bouton par avis');
+  // Correction 23 (c) : le point bloquant porte sur plusieurs services — un bouton par service, à son nom.
+  const servicesBloquant=await page.evaluate(()=>{const p=Sim.problemes.liste.find(x=>x.etape==='commandes');return {ids:p.services.slice(),noms:p.nomsServices.slice()};});
+  assert.ok(servicesBloquant.ids.length>=2,'le point bloquant porte sur plusieurs services : '+servicesBloquant.noms);
+  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),AVANT.length+servicesBloquant.ids.length-1,'un bouton par avis ; pour le point bloquant, un par service');
   // a. Une étape du chemin que personne ne prépare : « Chemins », le tableau de cette étape, une commande à corriger en évidence.
   // Évolution 24 (a) : la réception est un fournisseur encore sans équipe. Son avis parle de ses liens, qui se règlent une
   // fois pour toute l'unité : il mène au tableau « Qui se fournit où », dont la colonne dit qu'elle est sans équipe.
@@ -126,16 +130,15 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   await point('Montage bis').locator('[data-ct-aller]').click();await attendre(400);
   assert.deepEqual([await sous(),await page.evaluate(()=>Sim.unite.equipeOuverte)],['mu-services',hors.equipe],'la fiche de l’équipe');
   assert.equal(await page.locator(`#mu-services .mu-equipe[data-at="${hors.equipe}"]`).isVisible(),true);
-  // c. « Vos services et leurs équipes » : le premier service à compléter, sa fiche.
+  // c. « Vos services et leurs équipes » ne s'affiche plus (correction 23 c) : ses services sont cités par d'autres points.
   await controles();
-  const etape=r.find(x=>x.titre==='Vos services et leurs équipes');
-  await point('Vos services et leurs équipes').locator('[data-ct-aller]').click();await attendre(400);
-  assert.deepEqual([await sous(),await page.evaluate(()=>Sim.unite.choisi),await page.evaluate(()=>Sim.unite.equipeOuverte||null)],['mu-services',etape.services[0],null],'la fiche du premier service à compléter');
-  // d. Le bloquant : « Services et équipes ».
-  await controles();
-  assert.equal(await point('Chaque commande').locator('[data-ct-aller]').innerText(),'Régler dans Services et équipes →');
-  await point('Chaque commande').locator('[data-ct-aller]').click();await attendre(400);
-  assert.equal(await sous(),'mu-services');
+  assert.equal(r.some(x=>x.titre==='Vos services et leurs équipes'),false);
+  assert.equal(await point('Vos services et leurs équipes').count(),0);
+  // d. Le bloquant : un bouton par service, à son nom ; chacun ouvre la fiche de ce service (correction 23 c ; avant :
+  //    un seul bouton, « Régler dans Services et équipes »).
+  assert.deepEqual(await point('Chaque commande').locator('[data-ct-aller]').evaluateAll(bs=>bs.map(b=>b.textContent)),servicesBloquant.noms.map(n=>n+' →'));
+  await point('Chaque commande').locator('[data-ct-aller]').last().click();await attendre(400);
+  assert.deepEqual([await sous(),await page.evaluate(()=>Sim.unite.choisi),await page.evaluate(()=>Sim.unite.equipeOuverte||null)],['mu-services',servicesBloquant.ids[servicesBloquant.ids.length-1],null],'la fiche du service du bouton');
   // e. Une information : ce que la journée montre se lit dans la Synthèse.
   await controles();
   assert.deepEqual(await page.locator(`${C} .ct-niveau.information [data-ct-aller]`).evaluateAll(bs=>[...new Set(bs.map(b=>b.textContent))]),
@@ -159,8 +162,8 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
 
   /* ---- 4. la pastille : bloquants et « à corriger », jamais les informations ; « C'est voulu » ----------------------- */
   await controles();
-  assert.deepEqual(await pastille(),[['mu-pas',7]],'une seule pastille, sur « Contrôles » : 1 bloquant et 6 à corriger, sans les 5 informations');
-  assert.equal(await page.locator('#menu [data-entree="mu-pas"] .so-badge').getAttribute('title'),'1 bloquant · 6 à corriger');
+  assert.deepEqual(await pastille(),[['mu-pas',6]],'une seule pastille, sur « Contrôles » : 1 bloquant et 5 à corriger, sans les 6 informations');
+  assert.equal(await page.locator('#menu [data-entree="mu-pas"] .so-badge').getAttribute('title'),'1 bloquant · 5 à corriger');
   // Des compagnies qu'aucun handling ne charge : un avis de plus par compagnie, à corriger, chacun avec « C'est voulu ».
   const handling=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type==='handling').id);
   await page.evaluate(id=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).compagnies=['NORD'];},''),handling);
@@ -170,7 +173,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   const problemes=()=>page.evaluate(()=>OrlyAvis.compte(Sim.problemes.liste));
   const n0=await problemes();
   assert.deepEqual(await pastille(),[['mu-pas',n0]],'la pastille suit le registre');
-  assert.ok(n0>=7+k-1,'un avis de plus par compagnie sans handling ('+k+') : '+n0);
+  assert.ok(n0>=6+k-1,'un avis de plus par compagnie sans handling ('+k+') : '+n0);
   assert.equal(await page.locator(`${C} [data-ct-voulu]`).count(),k,'« C’est voulu » sur ces avis seulement');
   const voulu=page.locator(`${C} .ct-point`).filter({has:page.locator(`[data-ct-voulu="${sansHandling[0]}"]`)});
   assert.match(await voulu.locator('.ct-corps>b').innerText(),/aucun handling ne charge cette compagnie/);
@@ -189,7 +192,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.equal(await sous(),'mu-pas','on reste sur la page');
   await page.evaluate(id=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;delete st.ateliers.find(a=>a.id===id).compagnies;delete st.sansChargement;},''),handling);
   await attendre(400);
-  assert.deepEqual(await pastille(),[['mu-pas',7]],'le handling charge de nouveau toutes les compagnies');
+  assert.deepEqual(await pastille(),[['mu-pas',6]],'le handling charge de nouveau toutes les compagnies');
 
   /* ---- 5. les informations repliées au-delà de trois ; une colonne vide le dit -------------------------------------- */
   const infos=page.locator(`${C} .ct-niveau.information`);
@@ -237,7 +240,7 @@ const lisse=t=>String(t).replace(/[\u00a0\u202f]/g,' ').replace(/\u2011/g,'-');
   assert.ok(m.vue<=1,'la vue non plus ('+m.vue+' px)');
   assert.ok(m.bas<=768,'les trois colonnes tiennent dans l’écran ('+m.bas+')');
   assert.deepEqual(m.defile,['auto','auto','auto'],'chaque colonne défile seule');
-  assert.equal(m.deborde[1],true,'six avis à corriger : leur colonne défile');
+  assert.equal(m.deborde[1],true,'cinq avis à corriger : leur colonne défile');
   assert.ok(Math.max(...m.largeurs)-Math.min(...m.largeurs)<=2&&m.largeurs[0]>=300,'trois colonnes égales : '+m.largeurs);
   assert.ok(m.texte>=13,'le texte fait 13 px au moins : '+m.texte+' px');
 

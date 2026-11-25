@@ -65,6 +65,97 @@
   /** Un nombre, dit avec le mot de son niveau : « 2 bloquants », « 3 à corriger », « 1 information ». */
   function dire(n, id) { const nv = niveau(id); return n + ' ' + (n > 1 ? nv.plusieurs : nv.un); }
 
+  /** Quatre noms au plus, puis leur nombre : « A, B, C, D et 3 autres » ; « A et B » (correction 23 c). */
+  function nommer(noms, max = 4) {
+    const l = (noms || []).map(String);
+    if (l.length > max) return l.slice(0, max).join(', ') + ' et ' + pl(l.length - max, 'autre');
+    return l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : (l[0] || '');
+  }
+
+  /**
+   * Le plus grand nombre de paires (étape, groupe) sans élément commun : chaque étape essaie de prendre un de ses
+   * groupes, quitte à faire changer d'étape celui qui le tenait.
+   * @param {number[][]} voisins  pour chaque étape, les rangs de ses groupes
+   * @param {number} n  le nombre de groupes
+   * @returns {{tenu:number[], libres:number[]}}  tenu[g] : l'étape qui tient le groupe g (−1 : aucune) ; libres : les étapes sans groupe
+   */
+  function apparier(voisins, n) {
+    const tenu = new Array(n).fill(-1), libres = [];
+    const prendre = (i, vus) => voisins[i].some(g => {
+      if (vus.has(g)) return false;
+      vus.add(g);
+      if (tenu[g] >= 0 && !prendre(tenu[g], vus)) return false;
+      tenu[g] = i; return true;
+    });
+    voisins.forEach((_, i) => { if (!prendre(i, new Set())) libres.push(i); });
+    return { tenu, libres };
+  }
+
+  /**
+   * Les étapes sans équipe, regroupées (correction 23 c). Le calcul en dit une par étape. Quand une même commande n'a
+   * d'équipe à aucune de plusieurs étapes de son chemin, la cause est la commande — elle suit un chemin qui n'est pas le
+   * sien —, pas ces étapes : un seul point la nomme. On cherche le plus petit nombre de points qui dise tout, un par
+   * étape ou un par groupe de commandes (même chemin, mêmes étapes) ; à égalité, par étape, comme avant : un groupe ne
+   * prend la place de ses étapes que s'il le faut (théorème de König : la plus petite couverture d'un graphe biparti).
+   * Il n'y a donc jamais plus de points qu'avant.
+   * @param {Array<{service:string, classes:string[]}>} trous  les étapes sans équipe, dans l'ordre du calcul
+   * @param {(classe:string)=>({id:string, nom:string}|null)} cheminDe  le chemin que suit une commande
+   * @returns {{etapes:Set<string>, groupes:Array<{chemin:object|null, classes:string[], etapes:string[]}>}}
+   *   etapes : celles qui gardent leur point ; groupes : les commandes qui en font un à elles, avec toutes leurs étapes.
+   */
+  function regrouperTrous(trous, cheminDe) {
+    const parClasse = new Map();
+    trous.forEach((t, i) => { for (const c of t.classes || []) { if (!parClasse.has(c)) parClasse.set(c, []); parClasse.get(c).push(i); } });
+    // Un groupe : les commandes d'un même chemin, sans équipe aux mêmes étapes.
+    const groupes = new Map();
+    for (const [c, rangs] of parClasse) {
+      const chemin = (typeof cheminDe === 'function' && cheminDe(c)) || null;
+      const cle = (chemin ? 'chemin ' + chemin.id : 'commande ' + c) + ' | ' + rangs.join(',');
+      if (!groupes.has(cle)) groupes.set(cle, { chemin, classes: [], rangs });
+      groupes.get(cle).classes.push(c);
+    }
+    const liste = [...groupes.values()];
+    const voisins = trous.map((_, i) => liste.map((g, k) => (g.rangs.includes(i) ? k : -1)).filter(k => k >= 0));
+    const { tenu, libres } = apparier(voisins, liste.length);
+    // Depuis les étapes restées sans groupe : leurs groupes sont en cause, et les étapes qui tenaient ces groupes suivent.
+    const sansPoint = new Set(libres), enCause = new Set(), file = libres.slice();
+    while (file.length) {
+      const i = file.pop();
+      for (const g of voisins[i]) {
+        if (tenu[g] === i || enCause.has(g)) continue;
+        enCause.add(g);
+        if (tenu[g] >= 0 && !sansPoint.has(tenu[g])) { sansPoint.add(tenu[g]); file.push(tenu[g]); }
+      }
+    }
+    return { etapes: new Set(trous.filter((_, i) => !sansPoint.has(i)).map(t => t.service)),
+      groupes: liste.filter((_, k) => enCause.has(k)).map(g => ({ chemin: g.chemin, classes: g.classes, etapes: g.rangs.map(i => trous[i].service) })) };
+  }
+
+  /** Le point d'un groupe : « <commande> n'a pas d'équipe à n étapes du chemin <nom> », et ce qu'il y a à faire. */
+  function pointDuGroupe(g, s) {
+    const lib = typeof s.libelle === 'function' ? s.libelle : (c => c), nomDe = typeof s.nomService === 'function' ? s.nomService : (x => x);
+    const un = g.classes.length === 1, defaut = g.classes.every(c => (s.cheminDe(c) || {}).defaut);
+    const faire = defaut
+      ? (un ? 'Elle suit ce chemin par défaut, celui de sa classe : si ce n’est pas le sien, donnez-lui un autre chemin ; sinon, choisissez son équipe à chaque étape.'
+        : 'Elles suivent ce chemin par défaut, celui de leur classe : si ce n’est pas le leur, donnez-leur un autre chemin ; sinon, choisissez leur équipe à chaque étape.')
+      : (un ? 'Choisissez son équipe à chaque étape, ou donnez-lui un autre chemin.' : 'Choisissez leur équipe à chaque étape, ou donnez-leur un autre chemin.');
+    return { niveau: niveauDuCode('parcours-trou'),
+      titre: nommer(g.classes.map(lib)) + (un ? ' n’a' : ' n’ont') + ' pas d’équipe à ' + g.etapes.length + ' étapes du chemin « ' + (g.chemin ? g.chemin.nom : '') + ' »',
+      detail: 'Étapes sans équipe : ' + nommer(g.etapes.map(nomDe), ETAPES_NOMMEES) + '. ' + faire,
+      page: 'mu-flux', aussi: ['mu-pas'], code: 'parcours-trou', classes: g.classes.slice(), etapes: g.etapes.slice(), chemin: g.chemin ? g.chemin.id : undefined, groupe: true };
+  }
+  /** Les étapes qu'un point regroupé nomme, avant « et n autres ». */
+  const ETAPES_NOMMEES = 6;
+
+  /** Le point bloquant « chaque commande a quelqu'un pour la préparer », qui nomme ce qui manque (correction 23 c). */
+  function direAbsentes(ab) {
+    const c = ab.commandes || [], par = (ab.parService || []).filter(x => (x.compagnies || []).length);
+    const phrases = c.length ? [nommer(c) + (c.length > 1 ? ' ne sont préparées' : ' n’est préparée') + ' par aucune équipe.'] : [];
+    for (const x of par) phrases.push(nommer(x.compagnies) + (x.compagnies.length > 1 ? ' n’ont' : ' n’a') + ' personne à « ' + x.nom + ' ».');
+    const n = c.length + par.reduce((k, x) => k + x.compagnies.length, 0);
+    return phrases.concat(n > 1 ? 'Cochez-les dans l’équipe qui les prépare.' : 'Cochez-la dans l’équipe qui la prépare.').join(' ');
+  }
+
   /* Les étapes de « Prêt à simuler ? » qui bloquent : sans vol, rien ne se
    * calcule ; une commande que personne ne prépare n'est pas dans la journée. */
   const ETAPES_BLOQUANTES = new Set(['vols', 'commandes']);
@@ -78,6 +169,10 @@
    *   etapes    : étapes à faire ({id, titre, texte, page, services?}) ; `information` : elle se lit, rien n'est demandé ;
    *   clientsEnPartie : le nombre de clients d'un fournisseur réglés en partie (évolution 24 a) ;
    *   enClair   : le texte d'une anomalie, avec les mots de la page (facultatif).
+   *   Correction 23 (c), facultatifs — sans eux, le registre d'avant :
+   *   cheminDe(classe) : le chemin que suit une commande ({id, nom, defaut}) — les étapes sans équipe se regroupent ;
+   *   libelle(classe), nomService(id) : de quoi nommer une commande et un service ;
+   *   une étape `commandes` peut porter `absentes` ({commandes:[noms], parService:[{nom, compagnies}]}) : son point les nomme.
    *   Une anomalie marquée `fournisseur` parle d'un lien de fournisseur : elle se règle dans « Chemins › Fournisseurs ».
    * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string,
    *   code?:string, equipe?:string, classes?:string[], etape?:string, services?:string[], fantome?:string, lien?:boolean}>}
@@ -86,6 +181,8 @@
    *   Évolution 22 (d) : de quoi mener à l'endroit précis — le code du point, son équipe, ses commandes ; l'étape et ses
    *   services à compléter ; le service supprimé ; un avis des liens entre services.
    *   Évolution 24 (a) : `fournisseur` — l'avis parle d'un lien de fournisseur, il mène au tableau « Qui se fournit où ».
+   *   Correction 23 (c) : `groupe` — des commandes sans équipe à plusieurs `etapes` de leur `chemin` ; `nomsServices` — les
+   *   noms des `services` d'une étape (un bouton par service) ; `vu` — le service où se lit ce que la journée montre.
    */
   function lister(s = {}) {
     const clair = typeof s.enClair === 'function' ? s.enClair : (t => t);
@@ -98,8 +195,15 @@
         page: 'mu-services', aussi: ['mu-pas'], fantome: f.id });
     }
     // Ce que le calcul dit : son code donne le niveau. Ce que la journée montre se lit dans les résultats.
+    // Les étapes sans équipe se regroupent quand on sait nommer le chemin d'une commande (correction 23 c) ; un
+    // fournisseur sans équipe garde son point : ses liens se règlent pour toute l'unité.
+    const trous = typeof s.cheminDe === 'function' ? (s.anomalies || []).filter(a => a.code === 'parcours-trou' && !a.fournisseur && a.service && Array.isArray(a.classes)) : [];
+    const regroupes = trous.length ? regrouperTrous(trous, s.cheminDe) : null;
     for (const a of s.anomalies || []) {
       const resultat = JOURNEE.includes(a.code);
+      // Un groupe vient à la place de sa première étape ; une étape dont toutes les commandes sont dans un groupe n'a plus de point.
+      const groupes = regroupes && trous.includes(a) ? regroupes.groupes.filter(g => g.etapes[0] === a.service).map(g => pointDuGroupe(g, s)) : [];
+      if (regroupes && trous.includes(a) && !regroupes.etapes.has(a.service)) { out.push(...groupes); continue; }
       out.push({ niveau: niveauDuCode(a.code), titre: clair(a.message || a.code || ''), detail: '',
         // Une étape du chemin que personne ne prépare se règle dans « Chemins » (le tableau de l'étape) ; ce qui touche
         // un service ou une équipe, dans « Services et équipes » ; le reste, dans « Chemins ».
@@ -109,7 +213,10 @@
         // Une compagnie qu'aucun handling ne charge (évolution 21 e) : l'avis propose de dire que c'est voulu.
         ...(a.code === 'handling-sans' && a.compagnie ? { voulu: String(a.compagnie) } : {}),
         // Un fournisseur sans équipe sur le chemin de ses clients (évolution 24 a) : ses liens se règlent pour toute l'unité.
-        ...(!resultat && a.fournisseur ? { fournisseur: true } : {}) });
+        ...(!resultat && a.fournisseur ? { fournisseur: true } : {}),
+        // Ce que la journée montre dans un service : la Synthèse s'ouvre sur sa ligne (correction 23 c).
+        ...(resultat && a.service ? { vu: a.service } : {}) });
+      out.push(...groupes);
     }
     // Les liens de l'unité : ce qui est grave est « à corriger » ; un service en bout de chaîne ne demande rien.
     // (Une boucle qui arrête le calcul, c'est le calcul qui la dit : bloquant.) Ils se règlent dans « Liens entre services ».
@@ -119,10 +226,18 @@
     for (const e of s.etapes || []) {
       const noms = (e.services || []).map(x => x.nom);
       // Une étape qui se lit sans rien demander (les vols d'exemple, évolution 22 d) : une information.
+      // Le point bloquant nomme les commandes et les compagnies que personne ne prépare (correction 23 c).
+      const nomme = e.id === 'commandes' && e.absentes ? direAbsentes(e.absentes) : '';
       out.push({ niveau: e.information ? 'information' : ETAPES_BLOQUANTES.has(e.id) ? 'bloquant' : 'corriger', titre: e.titre,
-        detail: noms.length ? (noms.length > 4 ? noms.slice(0, 4).join(', ') + ' et ' + pl(noms.length - 4, 'autre') : noms.join(', ')) + ' : à corriger.' : (e.texte || ''),
-        page: e.page || 'mu-pas', aussi: ['mu-pas'], etape: e.id, ...(e.services && e.services.length ? { services: e.services.map(x => x.id) } : {}) });
+        detail: nomme || (noms.length ? (noms.length > 4 ? noms.slice(0, 4).join(', ') + ' et ' + pl(noms.length - 4, 'autre') : noms.join(', ')) + ' : à corriger.' : (e.texte || '')),
+        page: e.page || 'mu-pas', aussi: ['mu-pas'], etape: e.id,
+        ...(e.services && e.services.length ? { services: e.services.map(x => x.id), nomsServices: noms } : {}) });
     }
+    // « Vos services et leurs équipes » ne se répète pas : quand un autre point à régler cite déjà chacun de ses
+    // services (son étape, son équipe, le point bloquant, un groupe de commandes), il ne s'affiche pas (correction 23 c).
+    const cites = new Set(out.filter(p => p.etape !== 'services' && estProbleme(p)).flatMap(p => [p.service].concat(p.services || [], p.etapes || [])).filter(x => x != null));
+    const repete = p => p.etape === 'services' && (p.services || []).length > 0 && p.services.every(x => x != null && cites.has(x));
+    for (let i = out.length - 1; i >= 0; i--) if (repete(out[i])) out.splice(i, 1);
     // Les clients d'un fournisseur réglés en partie (évolution 24 a) : une sauvegarde d'avant les porte tels qu'ils
     // étaient dessinés, chemin par chemin. Rien n'est demandé, et rien ne bouge tant qu'on ne choisit pas.
     const partiels = Number.isInteger(s.clientsEnPartie) && s.clientsEnPartie > 0 ? s.clientsEnPartie : 0;
@@ -216,7 +331,7 @@
     }
   }
 
-  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, lister, estProbleme, pages, compte, parNiveau, resume, ton, blocs, facultatif, marquerFacultatifs, Registre };
+  const api = { NIVEAUX, JOURNEE, INFORMATIONS, A_CORRIGER, FACULTATIF, VOULU, niveauDuCode, dire, nommer, regrouperTrous, lister, estProbleme, pages, compte, parNiveau, resume, ton, blocs, facultatif, marquerFacultatifs, Registre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyAvis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

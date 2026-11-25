@@ -64,3 +64,46 @@ test('la section des temps porte le nom de ce qui joue pour le service', () => {
   assert.deepEqual(S.TITRES_TEMPS, { manuel: 'Ses temps par vol', categories: 'Ses minutes par compagnie', robot: 'Ses temps par vol et ses débits',
     lavage: 'Ses durées de lavage', handling: 'Son temps par vol' });
 });
+
+/* ---- correction 23 (c) : l'encart « à compléter » nomme la commande ou la compagnie, et mène à l'endroit exact ---- */
+
+test('correction 23 (c) : l’encart nomme les compagnies ou les commandes à cocher, et chaque nom mène à sa case', () => {
+  const lib = id => ({ 'NEUF/CREW': 'NEUF · Équipage', 'NEUF/BC': 'NEUF · Affaires', 'NEUF/@ARM': 'NEUF', 'ZEN/@ARM': 'ZEN' })[id] || id;
+  // Un service à une seule équipe : la ligne nomme l'équipe ; chaque compagnie mène à sa case, dans la fiche de l'équipe.
+  assert.deepEqual(S.lignesACompleter({ points: ['2 compagnies à cocher dans une équipe', 'heures par vol à remplir'], attendues: ['NEUF/@ARM', 'ZEN/@ARM'], cases: [equipe({ id: 'ar', nom: 'Armement' })] },
+    { libelle: lib, compagniesSansTemps: ['NEUF'] }), [
+    { texte: 'À cocher dans « Armement »', noms: [{ nom: 'NEUF', geste: { genre: 'cocher', equipe: 'ar', commande: 'NEUF/@ARM', texte: 'Armement' } }, { nom: 'ZEN', geste: { genre: 'cocher', equipe: 'ar', commande: 'ZEN/@ARM', texte: 'Armement' } }] },
+    { texte: 'Heures par vol à remplir', noms: [{ nom: 'NEUF', geste: { genre: 'temps', compagnie: 'NEUF' } }] }]);
+  // Plusieurs équipes : la case s'ouvre dans celle qui prépare déjà le plus de commandes de la même compagnie ; à défaut, la première.
+  const matin = equipe({ id: 'cm', nom: 'Cuisine matin', lots: [['NORD/BC']] }), soir = equipe({ id: 'cs', nom: 'Cuisine soir', lots: [['NEUF/YC'], ['NEUF/PC']] });
+  const [deux] = S.lignesACompleter({ points: ['2 commandes à cocher dans une équipe'], attendues: ['NEUF/CREW', 'SUD/BC'], cases: [matin, soir, equipe({ id: 'tri', type: 'appui' })] }, { libelle: lib });
+  assert.equal(deux.texte, 'À cocher dans une équipe');
+  assert.deepEqual(deux.noms.map(x => [x.nom, x.geste.genre, x.geste.equipe, x.geste.commande, x.geste.texte]),
+    [['NEUF · Équipage', 'cocher', 'cs', 'NEUF/CREW', 'Cuisine soir'], ['SUD/BC', 'cocher', 'cm', 'SUD/BC', 'Cuisine matin']]);
+  // Une ligne par point, comme avant ; quatre noms au plus, puis « et n autres », qui mène au premier des autres.
+  const six = S.lignesACompleter({ points: ['6 commandes à cocher dans une équipe'], attendues: ['a', 'b', 'c', 'd', 'e', 'f'], cases: [matin] }, {});
+  assert.equal(six.length, 1);
+  assert.deepEqual(six[0].noms.map(x => [x.nom, x.geste.commande]), [['a', 'a'], ['b', 'b'], ['c', 'c'], ['d', 'd'], ['et 2 autres', 'e']]);
+  // Aucune équipe d'ici ne prépare de commande (une équipe hors tunnel) : il en faut une.
+  assert.deepEqual(S.lignesACompleter({ points: ['2 commandes à cocher dans une équipe'], attendues: ['a', 'b'], cases: [equipe({ id: 'tri', type: 'appui' })] }, {}),
+    [{ texte: 'a et b : à cocher dans une équipe, et aucune d’ici ne prépare de commande', geste: { texte: 'Ajouter une équipe', genre: 'ajouter' } }]);
+});
+
+test('correction 23 (c) : une équipe qui ne prépare rien, un service sans équipe, des temps par vol à remplir', () => {
+  const vide = equipe({ id: 'cv', nom: 'Cuisine nuit' });
+  assert.deepEqual(S.lignesACompleter({ points: ['« Cuisine nuit » ne prépare rien'], vides: [vide], cases: [vide] }, {}),
+    [{ texte: '« Cuisine nuit » ne prépare rien', geste: { texte: 'Cocher ses commandes', genre: 'equipe', equipe: 'cv' } }]);
+  // Sans équipe : les commandes qui passent, quatre noms au plus ; le geste ajoute une équipe.
+  assert.deepEqual(S.lignesACompleter({ points: ['5 commandes passent par ici, sans équipe'], cases: [] }, { passent: ['a', 'b', 'c', 'd', 'e'] }),
+    [{ texte: 'a, b, c, d et 1 autre passent par ici, sans équipe', geste: { texte: 'Ajouter une équipe', genre: 'ajouter' } }]);
+  assert.equal(S.lignesACompleter({ points: ['1 commande passe par ici, sans équipe'], cases: [] }, { passent: ['a'] })[0].texte, 'a passe par ici, sans équipe');
+  // Des temps par vol à remplir : chaque commande mène à son champ.
+  assert.deepEqual(S.lignesACompleter({ points: ['temps par vol à remplir'], cases: [vide] }, { sansTemps: ['NEUF/CREW'], libelle: () => 'NEUF · Équipage' }),
+    [{ texte: 'Temps par vol à remplir', noms: [{ nom: 'NEUF · Équipage', geste: { genre: 'temps', commande: 'NEUF/CREW' } }] }]);
+  // Aucune commande nommée (le service n'a encore aucun temps) : la ligne mène à la section.
+  assert.deepEqual(S.lignesACompleter({ points: ['temps par vol à remplir'], cases: [vide] }, {}), [{ texte: 'temps par vol à remplir', geste: { texte: 'Remplir', genre: 'temps' } }]);
+  // Un point que la page ne sait pas détailler garde son texte, dit avec les mots de la page, sans geste.
+  assert.deepEqual(S.lignesACompleter({ points: ['Cuisine : SUD/YC est cochée deux fois.'], cases: [vide] }, { enClair: t => t.replace('SUD/YC', 'SUD · Économie') }),
+    [{ texte: 'Cuisine : SUD · Économie est cochée deux fois.' }]);
+  assert.deepEqual(S.lignesACompleter({ points: [] }, {}), []);
+});

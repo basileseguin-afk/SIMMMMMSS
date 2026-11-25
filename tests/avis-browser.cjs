@@ -64,7 +64,8 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.equal(calcul.sans,1,'SUD/YC n’est préparée par personne');
   assert.ok(calcul.codes.includes('handling-sans')&&calcul.codes.includes('commande-absente'),JSON.stringify(calcul.codes));
   assert.deepEqual(de(r,'bloquant').map(p=>[p.titre,p.page]),[['Chaque commande a quelqu’un pour la préparer','mu-services']],JSON.stringify(r));
-  assert.match(de(r,'bloquant')[0].detail,/^1 commande n’est préparée par aucune équipe/);
+  // Correction 23 (c) : le point nomme la commande (avant : « 1 commande n’est préparée par aucune équipe… »).
+  assert.equal(de(r,'bloquant')[0].detail,'SUD · Économie n’est préparée par aucune équipe. Cochez-la dans l’équipe qui la prépare.');
   const handling=de(r,'corriger').filter(p=>/aucun handling ne charge cette compagnie/.test(p.titre));
   assert.deepEqual(handling.map(p=>p.titre.slice(0,11)),['1 vol EST :'],'une compagnie qu’aucun handling ne charge : à corriger — '+JSON.stringify(r));
   const sansVol=de(r,'information').filter(p=>/n’ont aucun vol ce jour-là/.test(p.titre));
@@ -107,8 +108,12 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   }
   assert.match(await infos.innerText(),/Montage : .* n’ont aucun vol ce jour-là/);
   // Chaque avis a un bouton nommé par sa destination ; celui d'une information se lit (« Voir dans… »).
-  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),r.length,'un bouton par avis');
-  assert.match(await page.locator(`${C} .ct-niveau.bloquant [data-ct-aller]`).innerText(),/^Régler dans Services et équipes →$/);
+  // Correction 23 (c) : le point bloquant porte sur les services où la commande est attendue — un bouton par service, à
+  // son nom (avant : un seul bouton, « Régler dans Services et équipes »).
+  const services=await page.evaluate(()=>{const p=Sim.problemes.liste.find(x=>x.etape==='commandes');return (p.nomsServices||[]).slice();});
+  assert.ok(services.length>=2,'la commande est attendue dans plusieurs services : '+services);
+  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),r.length+services.length-1,'un bouton par avis ; pour le point bloquant, un par service');
+  assert.deepEqual(await page.locator(`${C} .ct-niveau.bloquant [data-ct-aller]`).evaluateAll(bs=>bs.map(b=>b.textContent)),services.map(n=>n+' →'));
   // Une information mène aussi quelque part : ici, à la fiche de l'équipe qui porte la commande sans vol.
   const sansVolIci=infos.locator('.ct-point',{hasText:'aucun vol ce jour-là'});
   assert.match(await sansVolIci.locator('[data-ct-aller]').innerText(),/^Voir dans Services et équipes →$/);

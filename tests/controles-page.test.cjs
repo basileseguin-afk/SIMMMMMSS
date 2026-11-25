@@ -37,8 +37,9 @@ test('chaque avis mène à la page et à l’endroit où il se règle', () => {
   const d = debut => C.destination(par(l, debut));
   // Une étape du chemin que personne ne prépare : « Chemins », le tableau de l'étape, la première commande en évidence.
   assert.deepEqual(d('« Dotation »'), { page: 'mu-flux', service: 'dotation', commande: 'NO/BC' });
-  // Un point d'une équipe : sa fiche. Un service sans temps par vol : la section des temps de sa fiche.
-  assert.deepEqual(d('Montage bis'), { page: 'mu-services', equipe: 'mob', service: 'montage-bis' });
+  // Un point d'une équipe : sa fiche — sur la case de la commande cochée hors de son chemin (correction 23 c). Un service
+  // sans temps par vol : la section des temps de sa fiche.
+  assert.deepEqual(d('Montage bis'), { page: 'mu-services', equipe: 'mob', service: 'montage-bis', commande: 'ZEN/YC' });
   assert.deepEqual(d('Dressage'), { page: 'mu-services', service: 'dressage', lieu: 'temps' });
   // Une compagnie qu'aucun handling ne charge : l'équipe du handling.
   assert.deepEqual(d('2 vols EST'), { page: 'mu-services', equipe: 'h1', service: 'quais' });
@@ -52,8 +53,9 @@ test('chaque avis mène à la page et à l’endroit où il se règle', () => {
   assert.deepEqual(d('Les chemins de production'), { page: 'mu-flux' });
   assert.deepEqual(d('Vos services'), { page: 'mu-services', service: 'cuisine' });
   assert.deepEqual(d('Chaque commande'), { page: 'mu-services' });
-  // Ce que la journée montre se lit dans la Synthèse ; une commande sans vol, dans la fiche de son équipe.
-  assert.deepEqual(d('Montage : le poste'), { page: 'j-chiffres' });
+  // Ce que la journée montre se lit dans la Synthèse — sur la ligne de son service (correction 23 c) ; une commande sans
+  // vol, dans la fiche de son équipe.
+  assert.deepEqual(d('Montage : le poste'), { page: 'j-chiffres', service: 'montage' });
   assert.deepEqual(d('Montage : SUD/YC'), { page: 'mu-services', equipe: 'mo', service: 'montage' });
   // Un avis qui ne mène nulle part ailleurs : pas de bouton.
   assert.equal(C.destination({ niveau: 'corriger', titre: 'x', page: 'mu-pas' }), null);
@@ -112,8 +114,10 @@ test('la page : la ligne d’état, puis trois colonnes — les mêmes avis, au 
   assert.match(infos, /<details class="ct-plus"><summary>1 autre information<\/summary>/);
   assert.equal((infos.slice(0, infos.indexOf('<details')).match(/class="ct-point"/g) || []).length, 3);
   assert.doesNotMatch(html, /<details[^>]* open/);
-  // Chaque avis a son bouton, nommé par sa destination ; « C'est voulu » quand il en a un.
-  assert.equal((html.match(/data-ct-aller=/g) || []).length, l.length);
+  // Chaque avis a son bouton, nommé par sa destination ; « C'est voulu » quand il en a un. « Vos services et leurs
+  // équipes » porte ici sur deux services : un bouton par service, soit un de plus (correction 23 c).
+  assert.equal((html.match(/data-ct-aller=/g) || []).length, l.length + 1);
+  assert.equal((html.match(/data-ct-aller="\d+" data-ct-page=/g) || []).length, l.length, 'le premier bouton de chaque avis');
   assert.match(html, /data-ct-page="mu-flux">Régler dans Chemins →<\/button>/);
   assert.match(html, /data-ct-page="j-chiffres">Voir dans Synthèse →<\/button>/);
   assert.equal((html.match(/data-ct-voulu=/g) || []).length, 1);
@@ -212,4 +216,54 @@ test('évolution 24 (a) : un avis qui parle d’un lien de fournisseur mène au 
   assert.deepEqual(C.destination(partie), { page: 'mu-flux', lieu: 'fournisseurs' });
   assert.equal(C.bouton(partie, () => 'Chemins').texte, 'Voir dans Chemins › Fournisseurs');
   assert.match(C.html(liste, { etat: 'ok', nomPage: () => 'Chemins' }), /Voir dans Chemins › Fournisseurs →/);
+});
+
+/* ---- correction 23 (c) : chaque point dit quoi faire, et son bouton mène à l'endroit exact ---------------------- */
+
+test('correction 23 (c) : un point qui porte sur plusieurs services a un bouton par service, à son nom', () => {
+  const trois = [{ id: 'cuisine', nom: 'Cuisine' }, { id: 'prepa', nom: 'Prépa' }, { id: 'armement', nom: 'Armement <b>' }];
+  const [p] = A.lister({ etapes: [{ id: 'services', titre: 'Vos services et leurs équipes', texte: '…', page: 'mu-services', services: trois }] });
+  assert.deepEqual(C.boutons(p, nomPage), [
+    { page: 'mu-services', service: 'cuisine', texte: 'Cuisine' },
+    { page: 'mu-services', service: 'prepa', texte: 'Prépa' },
+    { page: 'mu-services', service: 'armement', texte: 'Armement <b>' }]);
+  const html = C.html([p], { etat: 'ok', nomPage });
+  assert.deepEqual([...html.matchAll(/data-ct-aller="0"( data-ct-geste="(\d)")? data-ct-page="mu-services">([^<]*) →<\/button>/g)].map(m => [m[2] || '0', m[3]]),
+    [['0', 'Cuisine'], ['1', 'Prépa'], ['2', 'Armement &lt;b&gt;']], 'trois boutons, chacun au nom de son service (échappé)');
+  // Le point bloquant, de même, quand il sait ses services.
+  const [b] = A.lister({ etapes: [{ id: 'commandes', titre: 'Chaque commande a quelqu’un pour la préparer', texte: '…', page: 'mu-services', services: trois.slice(0, 2) }] });
+  assert.deepEqual(C.boutons(b, nomPage).map(x => [x.service, x.texte]), [['cuisine', 'Cuisine'], ['prepa', 'Prépa']]);
+  // Un seul service : le bouton d'avant, qui ouvre sa fiche.
+  const [un] = A.lister({ etapes: [{ id: 'commandes', titre: 'Chaque commande a quelqu’un pour la préparer', texte: '…', page: 'mu-services', services: trois.slice(2) }] });
+  assert.deepEqual(C.boutons(un, nomPage), [{ page: 'mu-services', service: 'armement', texte: 'Régler dans Services et équipes' }]);
+  // Un avis sans destination : aucun bouton. Les autres : celui d'avant, seul.
+  assert.deepEqual(C.boutons({ niveau: 'corriger', titre: 'x', page: 'mu-pas' }, nomPage), []);
+  for (const x of A.lister(sources()).filter(x => !(x.services || []).length)) assert.deepEqual(C.boutons(x, nomPage), [C.bouton(x, nomPage)], x.titre);
+});
+
+test('correction 23 (c) : des commandes sans équipe à plusieurs étapes — « Choisir ses équipes », « Lui donner un autre chemin »', () => {
+  const trou = (service, classes) => ({ code: 'parcours-trou', service, classes, message: service });
+  const chemin = { id: 'complet', nom: 'Complet', defaut: true };
+  const [g] = A.lister({ anomalies: [trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC']), trou('dotation', ['NEUF/YC'])], cheminDe: () => chemin });
+  // La première étape en cause, sur la ligne de la commande ; et la section « Qui le suit » de son chemin.
+  assert.deepEqual(C.destination(g), { page: 'mu-flux', service: 'cuisine', commande: 'NEUF/YC' });
+  assert.deepEqual(C.boutons(g, nomPage), [
+    { page: 'mu-flux', service: 'cuisine', commande: 'NEUF/YC', texte: 'Choisir ses équipes' },
+    { page: 'mu-flux', chemin: 'complet', commande: 'NEUF/YC', lieu: 'suivi', texte: 'Lui donner un autre chemin' }]);
+  const html = C.html([g], { etat: 'ok', nomPage });
+  assert.match(html, /data-ct-aller="0" data-ct-page="mu-flux">Choisir ses équipes →<\/button><button[^>]*data-ct-aller="0" data-ct-geste="1" data-ct-page="mu-flux">Lui donner un autre chemin →<\/button>/);
+  assert.equal((html.match(/class="ct-point"/g) || []).length, 1, 'un point, pas trois');
+  // Plusieurs commandes : le pluriel.
+  const [gg] = A.lister({ anomalies: [trou('cuisine', ['a/YC', 'b/YC']), trou('prepa', ['a/YC', 'b/YC']), trou('dotation', ['a/YC', 'b/YC'])], cheminDe: () => chemin });
+  assert.deepEqual(C.boutons(gg, nomPage).map(x => x.texte), ['Choisir leurs équipes', 'Leur donner un autre chemin']);
+  // En lecture seule : ses deux boutons sont grisés, leur raison dite une fois.
+  const ferme = C.html([g], { etat: 'ok', nomPage, verrou: true, ferme: () => true });
+  assert.equal((ferme.match(/ disabled aria-describedby="ct-raison-0"/g) || []).length, 2);
+  assert.equal((ferme.match(/class="ct-raison"/g) || []).length, 1);
+});
+
+test('correction 23 (c) : ce que la journée montre dans un service s’ouvre sur sa ligne, dans la Synthèse', () => {
+  const l = A.lister({ anomalies: [{ code: 'poste', message: 'Montage : le poste finit avant le travail.', service: 'montage' }, { code: 'bouchon', message: 'Bouchon.' }] });
+  assert.deepEqual(l.map(C.destination), [{ page: 'j-chiffres', service: 'montage' }, { page: 'j-chiffres' }]);
+  assert.equal(C.bouton(l[0], nomPage).texte, 'Voir dans Synthèse');
 });

@@ -537,6 +537,32 @@ réglage changé et son heure, un lien vers la Synthèse), puis trois colonnes �
 par sa destination (« Régler dans Chemins »). La pastille du menu compte les
 points bloquants et à corriger, jamais les informations.
 
+Correction 23 (c) — **chaque point dit quoi faire, et son bouton mène à
+l'endroit exact** :
+
+- un point nomme ce qui est en cause : les commandes ou les compagnies,
+  quatre au plus, puis « et n autres » ;
+- un point qui porte sur plusieurs services a un bouton par service, au nom
+  du service ; chacun ouvre la fiche de ce service ;
+- dans la fiche d'un service, l'encart « à compléter » nomme les compagnies
+  ou les commandes ; chaque nom ouvre l'endroit exact (la case à cocher, dans
+  la fiche de l'équipe ; le champ du temps par vol), mis en évidence, le
+  clavier dessus ;
+- après le clic d'un bouton, le clavier est sur ce qui règle le point : le
+  choix de l'équipe de la ligne (« Régler dans Chemins »), la case, le champ ;
+  pour un lien de fournisseur, le tableau ;
+- une même commande sans équipe à deux étapes ou plus de son chemin : un seul
+  point, « <commande> n'a pas d'équipe à n étapes du chemin <nom> », avec
+  « Choisir ses équipes » (la première étape en cause) et « Lui donner un
+  autre chemin » (la section « Qui le suit » du chemin). Le niveau ne change
+  pas ; il n'y a jamais plus de points qu'avant ; la pastille suit ;
+- « Vos services et leurs équipes » ne s'affiche pas quand tous ses services
+  sont déjà cités par un autre point de la page.
+
+Rien n'est calculé de plus : le registre range autrement ce que le calcul dit
+déjà. Contrôlé par `tests/avis.test.cjs`, `tests/controles-page.test.cjs`,
+`tests/services-page.test.cjs` et `tests/controles-points-browser.cjs`.
+
 Contrôlé par `tests/onglets.test.cjs`, `tests/menu-browser.cjs`, les tests de
 chaque page (`services-page`, `chemins-page`, `controles-page`,
 `fichiers-page`) et les captures de `tests/captures-evolution-22-browser.cjs`

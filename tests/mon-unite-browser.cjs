@@ -43,8 +43,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(pas,/ne sont préparées par aucune équipe/);
 
   // 3. « Vos services et leurs équipes » mène à « Services et équipes » ; on y ouvre un service.
-  await page.locator('#mu-pas .ct-point',{hasText:'Vos services et leurs équipes'}).locator('[data-ct-aller]').click();await attendre();
+  //    (Correction 23 c : le point porte sur plusieurs services — un bouton par service, à son nom, qui ouvre sa fiche ;
+  //    avant : un seul bouton, « Régler dans Services et équipes ».)
+  const aRegler=page.locator('#mu-pas .ct-point',{hasText:'Vos services et leurs équipes'}).locator('[data-ct-aller]');
+  const sesServices=await page.evaluate(()=>{const p=Sim.problemes.liste.find(x=>x.etape==='services');return {ids:p.services.slice(),noms:p.nomsServices.slice()};});
+  assert.ok(sesServices.ids.length>=2);
+  assert.deepEqual(await aRegler.evaluateAll(bs=>bs.map(b=>b.textContent)),sesServices.noms.map(n=>n+' →'));
+  await aRegler.first().click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
+  assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),sesServices.ids[0],'la fiche du service du bouton');
   await nav.service(page,'prepa');await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
   assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'prepa');

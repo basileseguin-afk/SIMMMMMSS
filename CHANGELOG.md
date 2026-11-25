@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (c) : « Contrôles », chaque point dit quoi faire, et son bouton mène à l’endroit exact
+
+Aucun calcul ne change, ni la sauvegarde : le registre range autrement ce que
+le calcul dit déjà. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Un point nomme ce qui est en cause** : les commandes ou les compagnies,
+  quatre au plus, puis « et n autres ».
+- **Un bouton par service** pour un point qui en cite plusieurs, au nom du
+  service ; chacun ouvre la fiche de ce service.
+- **La fiche d’un service** : l’encart « à compléter » nomme les compagnies ou
+  les commandes ; chaque nom ouvre l’endroit exact — la case à cocher, dans la
+  fiche de l’équipe ; le champ du temps par vol —, mis en évidence, le clavier
+  dessus.
+- **Le clavier suit le bouton** : sur le choix de l’équipe de la ligne après
+  « Régler dans Chemins », sur la case ou le champ en cause, sur le tableau
+  pour un lien de fournisseur, sur la ligne du service dans la Synthèse.
+- **Une commande sans équipe à plusieurs étapes de son chemin** : un point,
+  pas un par étape — « <commande> n’a pas d’équipe à n étapes du chemin
+  <nom> », avec « Choisir ses équipes » et « Lui donner un autre chemin ». Le
+  niveau ne change pas ; le nombre de points baisse, la pastille suit.
+- **« Vos services et leurs équipes »** ne s’affiche pas quand ses services
+  sont déjà cités par un autre point.
+
+Fichiers : `avis.js` (`nommer`, `regrouperTrous`), `controles-page.js`
+(`boutons`, `allerAvis`), `services-page.js` (`lignesACompleter`, `viser`),
+`chemins-page.js` (`ouvrirSuivi`), `sim.js` (les sources du registre),
+`controles-page.css`, `services-page.css`, `chemins-page.css`, `index.html` ;
+`tests/controles-points-browser.cjs` (nouveau), `tests/avis.test.cjs`,
+`tests/controles-page.test.cjs`, `tests/services-page.test.cjs`,
+`tests/controles-page-browser.cjs`, `tests/avis-browser.cjs`,
+`tests/mon-unite-browser.cjs`, `tests/sans-armement-browser.cjs` ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (b) : « Heures sup et renforts », une page mise en forme comme les autres
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

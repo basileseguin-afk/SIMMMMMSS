@@ -814,6 +814,21 @@ function badgeOnglet(cle){
  * l'unité quand ils servent, étapes de « Prêt à simuler ? ») ; rien de plus.
  * avis.js les range en trois niveaux : « bloquant », « à corriger »,
  * « information » (évolution 19 d). */
+/* Les commandes que personne ne prépare (correction 23 c) : leurs noms, les compagnies sans personne à un service par
+ * compagnie, et les services où elles se cochent — ceux dont une équipe les attend. Rien n'est calculé de plus : le
+ * résultat dit lesquelles sont absentes, le bilan de chaque service (unite.js) dit lesquelles il attend. */
+function commandesAbsentes(){
+  const P=MoteurProduction,at=Sim.ateliers,r=at.resultat||{},u=Sim.unite;
+  const ids=Object.values(r.parClasse||{}).filter(c=>c.absente).map(c=>c.id),absentes=new Set(ids);
+  const parService=new Map();
+  for(const id of ids.filter(x=>String(x).includes('/@'))){
+    const [cie,nom='service par compagnie']=P.libelleClasse(id).split(' · ');
+    if(!parService.has(nom))parService.set(nom,[]);
+    parService.get(nom).push(cie);
+  }
+  const services=u.ordre(u.a.services()).filter(s=>u.bilanDuCalcul(s.id,at.classes,r).attendues.some(c=>absentes.has(c))).map(s=>({id:s.id,nom:s.nom}));
+  return {absentes:{commandes:ids.filter(x=>!String(x).includes('/@')).map(id=>P.libelleClasse(id)),parService:[...parService].map(([nom,compagnies])=>({nom,compagnies}))},services};
+}
 function sourcesProblemes(){
   const {corriger}=controlesDuCalcul();
   const duCalcul=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[];
@@ -830,7 +845,9 @@ function sourcesProblemes(){
       services=e.services.filter(x=>x.etat==='afaire'&&x.points.some(p=>!anomalies.has(p)));
       if(!services.length)continue;
     }
-    etapes.push({id:e.id,titre:e.titre,texte:e.texte,page:(e.geste||{}).page,services});
+    // Le point bloquant nomme les commandes et les compagnies que personne ne prépare, et dit ses services (correction 23 c).
+    const absentes=e.id==='commandes'?commandesAbsentes():null;
+    etapes.push({id:e.id,titre:e.titre,texte:e.texte,page:(e.geste||{}).page,services:absentes?absentes.services:services,...(absentes?{absentes:absentes.absentes}:{})});
   }
   // Les liens de l'unité ne comptent que s'ils servent au calcul (une commande sans chemin) : un service qui fournit
   // sans équipe est à corriger, un service en bout de chaîne est une information.
@@ -844,7 +861,11 @@ function sourcesProblemes(){
   return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
     clientsEnPartie:U&&U.tableauFournisseurs?U.tableauFournisseurs().enPartie:0,
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
-    etapes,enClair:MoteurProduction.enClair};
+    etapes,enClair:MoteurProduction.enClair,
+    // Correction 23 (c) : de quoi regrouper les étapes sans équipe d'une même commande, et nommer ce qui est en cause.
+    cheminDe:c=>{const PC=window.OrlyParcours,st=Sim.ateliers.state,p=PC?PC.fluxDe(st,Sim.ateliers.classes.find(x=>x.id===c)||c):null;
+      return p?{id:p.id,nom:p.nom,defaut:!PC.cheminDe(st,c)}:null;},
+    libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService};
 }
 /* Le dernier réglage changé, et son heure (évolution 22 d) : « Contrôles » le dit. Un historique qui avance (les équipes et
  * les chemins, les temps par vol, les liens, le plan) est un réglage changé ; ce que la page annonce dans le même geste dit

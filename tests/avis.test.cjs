@@ -203,3 +203,127 @@ test('évolution 24 (a) : « n clients réglés en partie », une information, t
   const l = A.lister({ anomalies: [{ code: 'parcours-trou', message: 'x', service: 'reception', fournisseur: true }, { code: 'bouchon', message: 'y', service: 'plonge', fournisseur: true }] });
   assert.deepEqual(l.map(p => !!p.fournisseur), [true, false]);
 });
+
+/* ---- correction 23 (c) : chaque point dit quoi faire ------------------------------------------------------------ */
+
+test('correction 23 (c) : quatre noms au plus, puis « et n autres »', () => {
+  assert.equal(A.nommer([]), '');
+  assert.equal(A.nommer(['NORD']), 'NORD');
+  assert.equal(A.nommer(['NORD', 'SUD']), 'NORD et SUD');
+  assert.equal(A.nommer(['NORD', 'SUD', 'EST', 'OUEST']), 'NORD, SUD, EST et OUEST');
+  assert.equal(A.nommer(['NORD', 'SUD', 'EST', 'OUEST', 'ZEN']), 'NORD, SUD, EST, OUEST et 1 autre');
+  assert.equal(A.nommer(['a', 'b', 'c', 'd', 'e', 'f', 'g']), 'a, b, c, d et 3 autres');
+});
+
+const COMPLET = { id: 'complet', nom: 'Complet' }, COURT = { id: 'court', nom: 'Court' };
+const trou = (service, classes) => ({ code: 'parcours-trou', service, classes, message: '« ' + service + ' » est sur le chemin de ' + classes.length + ' commandes (' + classes.join(', ') + ')' });
+
+test('correction 23 (c) : une commande sans équipe à plusieurs étapes fait un groupe, et ses étapes n’ont plus de point', () => {
+  // Le constat : une commande ajoutée, qui suit par défaut un long chemin — seule en cause à quatre étapes.
+  const r = A.regrouperTrous([trou('reception', ['NEUF/YC']), trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC']), trou('dotation', ['NEUF/YC'])], () => COMPLET);
+  assert.deepEqual([...r.etapes], [], 'aucune étape ne garde son point');
+  assert.deepEqual(r.groupes, [{ chemin: COMPLET, classes: ['NEUF/YC'], etapes: ['reception', 'cuisine', 'prepa', 'dotation'] }]);
+  // Deux commandes du même chemin, sans équipe aux mêmes étapes : un seul groupe, qui les nomme toutes les deux.
+  const deux = A.regrouperTrous([trou('cuisine', ['NEUF/YC', 'NEUF/BC']), trou('prepa', ['NEUF/YC', 'NEUF/BC']), trou('dotation', ['NEUF/YC', 'NEUF/BC'])], () => COMPLET);
+  assert.deepEqual([[...deux.etapes], deux.groupes.map(g => [g.classes, g.etapes.length])], [[], [[['NEUF/YC', 'NEUF/BC'], 3]]]);
+});
+
+test('correction 23 (c) : le plus petit nombre de points ; à égalité, un point par étape, comme avant', () => {
+  const seize = ['a', 'b', 'c', 'd', 'e', 'f'].map(x => x + '/YC');
+  const chacunLeSien = c => (c === 'NEUF/YC' ? COMPLET : { id: 'chemin-' + c, nom: c });
+  // Deux étapes sans aucune équipe, pour les commandes de plusieurs chemins : la cause est l'étape. Rien ne change.
+  let r = A.regrouperTrous([trou('reception', seize), trou('dotation', seize)], chacunLeSien);
+  assert.deepEqual([[...r.etapes], r.groupes], [['reception', 'dotation'], []]);
+  // Les mêmes, toutes du même chemin : un point les nomme, au lieu de deux.
+  r = A.regrouperTrous([trou('reception', seize), trou('dotation', seize)], () => COMPLET);
+  assert.deepEqual([[...r.etapes], r.groupes], [[], [{ chemin: COMPLET, classes: seize, etapes: ['reception', 'dotation'] }]]);
+  // Une commande, une étape : son point d'étape, comme avant.
+  r = A.regrouperTrous([trou('prepa', ['EST/YC'])], () => COMPLET);
+  assert.deepEqual([[...r.etapes], r.groupes], [['prepa'], []]);
+  // Deux commandes de deux chemins, aux deux mêmes étapes : deux points d'un côté comme de l'autre — par étape.
+  r = A.regrouperTrous([trou('cuisine', ['x/YC', 'y/BC']), trou('prepa', ['x/YC', 'y/BC'])], c => (c === 'x/YC' ? COMPLET : COURT));
+  assert.deepEqual([[...r.etapes], r.groupes], [['cuisine', 'prepa'], []]);
+  // Les mêmes, à trois étapes : deux groupes valent mieux que trois étapes.
+  r = A.regrouperTrous([trou('cuisine', ['x/YC', 'y/BC']), trou('prepa', ['x/YC', 'y/BC']), trou('dotation', ['x/YC', 'y/BC'])], c => (c === 'x/YC' ? COMPLET : COURT));
+  assert.deepEqual([[...r.etapes], r.groupes.map(g => [g.chemin.id, g.classes])], [[], [['complet', ['x/YC']], ['court', ['y/BC']]]]);
+  // Un mélange : deux étapes sans équipe pour tout le monde, et une commande de plus, seule en cause à trois autres.
+  r = A.regrouperTrous([trou('reception', seize.concat('NEUF/YC')), trou('dotation', seize.concat('NEUF/YC')),
+    trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC']), trou('montage', ['NEUF/YC'])], chacunLeSien);
+  assert.deepEqual([...r.etapes], ['reception', 'dotation'], 'les deux étapes gardent leur point');
+  assert.deepEqual(r.groupes, [{ chemin: COMPLET, classes: ['NEUF/YC'], etapes: ['reception', 'dotation', 'cuisine', 'prepa', 'montage'] }], 'la commande a le sien, qui dit toutes ses étapes');
+  // Jamais plus de points qu'avant.
+  for (const cas of [[trou('a', ['1', '2']), trou('b', ['2', '3']), trou('c', ['3', '1'])], [trou('a', ['1']), trou('b', ['1']), trou('c', ['2']), trou('d', ['2'])]]) {
+    const x = A.regrouperTrous(cas, c => ({ id: 'p' + c, nom: c }));
+    assert.ok(x.etapes.size + x.groupes.length <= cas.length);
+    // Tout est dit : chaque (étape, commande) est dans une étape gardée ou dans un groupe.
+    for (const t of cas) for (const c of t.classes) assert.ok(x.etapes.has(t.service) || x.groupes.some(g => g.classes.includes(c) && g.etapes.includes(t.service)), t.service + ' ' + c);
+  }
+});
+
+test('correction 23 (c) : le registre regroupe les étapes sans équipe d’une même commande en un point', () => {
+  const noms = { reception: 'Réception', cuisine: 'Cuisine', prepa: 'Prépa', dotation: 'Dotation' };
+  const s = {
+    anomalies: [trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC']), trou('dotation', ['NEUF/YC']), { code: 'bareme', message: 'Dressage : aucun temps par vol.', service: 'dressage' }],
+    cheminDe: () => ({ ...COMPLET, defaut: true }), libelle: c => c.replace('/YC', ' · Économie'), nomService: id => noms[id] || id
+  };
+  const l = A.lister(s), avant = A.lister({ anomalies: s.anomalies });
+  // Sans de quoi nommer le chemin (les sources d'avant), rien ne change : un point par étape.
+  assert.deepEqual(avant.map(p => p.code), ['parcours-trou', 'parcours-trou', 'parcours-trou', 'bareme']);
+  assert.equal(A.compte(avant), 4);
+  // Avec : un point, pas trois ; le niveau ne change pas, le compte baisse.
+  assert.deepEqual(l.map(p => [p.niveau, p.code]), [['corriger', 'parcours-trou'], ['corriger', 'bareme']]);
+  assert.equal(A.compte(l), 2);
+  const g = l[0];
+  assert.equal(g.titre, 'NEUF · Économie n’a pas d’équipe à 3 étapes du chemin « Complet »');
+  assert.equal(g.detail, 'Étapes sans équipe : Cuisine, Prépa et Dotation. Elle suit ce chemin par défaut, celui de sa classe : '
+    + 'si ce n’est pas le sien, donnez-lui un autre chemin ; sinon, choisissez son équipe à chaque étape.');
+  assert.deepEqual([g.page, g.aussi, g.classes, g.etapes, g.chemin, g.groupe], ['mu-flux', ['mu-pas'], ['NEUF/YC'], ['cuisine', 'prepa', 'dotation'], 'complet', true]);
+  // Plusieurs commandes : quatre noms au plus, et le pluriel.
+  const cinq = ['a', 'b', 'c', 'd', 'e'].map(x => x + '/YC');
+  const p = A.lister({ ...s, anomalies: [trou('cuisine', cinq), trou('prepa', cinq), trou('dotation', cinq)], cheminDe: () => COMPLET })[0];
+  assert.equal(p.titre, 'a · Économie, b · Économie, c · Économie, d · Économie et 1 autre n’ont pas d’équipe à 3 étapes du chemin « Complet »');
+  assert.match(p.detail, /^Étapes sans équipe : Cuisine, Prépa et Dotation\. Choisissez leur équipe à chaque étape, ou donnez-leur un autre chemin\.$/);
+  // Un fournisseur sans équipe garde son point : ses liens se règlent pour toute l'unité.
+  const f = A.lister({ ...s, anomalies: [{ ...trou('reception', ['NEUF/YC']), fournisseur: true }, trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC'])] });
+  assert.deepEqual(f.map(x => [!!x.fournisseur, !!x.groupe, x.service || null]), [[true, false, 'reception'], [false, true, null]]);
+});
+
+test('correction 23 (c) : le point bloquant nomme les commandes et les compagnies, et dit ses services', () => {
+  const etape = { id: 'commandes', titre: 'Chaque commande a quelqu’un pour la préparer', texte: '5 commandes ne sont préparées par aucune équipe…', page: 'mu-services' };
+  // Sans les noms (les sources d'avant) : le texte d'avant.
+  assert.equal(A.lister({ etapes: [etape] })[0].detail, etape.texte);
+  const l = A.lister({ etapes: [{ ...etape, absentes: { commandes: ['ZEN · Économie', 'NEUF · Affaires', 'NEUF · Équipage', 'NEUF · Premium', 'NEUF · Spéciaux'],
+    parService: [{ nom: 'Armement', compagnies: ['NEUF', 'ZEN'] }, { nom: 'Presse', compagnies: ['NEUF'] }] },
+    services: [{ id: 'prepa', nom: 'Prépa' }, { id: 'dotation', nom: 'Dotation' }, { id: 'armement', nom: 'Armement' }] }] });
+  assert.equal(l[0].niveau, 'bloquant');
+  assert.equal(l[0].detail, 'ZEN · Économie, NEUF · Affaires, NEUF · Équipage, NEUF · Premium et 1 autre ne sont préparées par aucune équipe. '
+    + 'NEUF et ZEN n’ont personne à « Armement ». NEUF n’a personne à « Presse ». Cochez-les dans l’équipe qui les prépare.');
+  assert.deepEqual([l[0].services, l[0].nomsServices], [['prepa', 'dotation', 'armement'], ['Prépa', 'Dotation', 'Armement']]);
+  const une = A.lister({ etapes: [{ ...etape, absentes: { commandes: ['ZEN · Économie'], parService: [] } }] })[0];
+  assert.equal(une.detail, 'ZEN · Économie n’est préparée par aucune équipe. Cochez-la dans l’équipe qui la prépare.');
+});
+
+test('correction 23 (c) : « Vos services et leurs équipes » ne s’affiche pas quand tous ses services sont déjà cités', () => {
+  const services = { id: 'services', titre: 'Vos services et leurs équipes', texte: '…', page: 'mu-services',
+    services: [{ id: 'cuisine', nom: 'Cuisine' }, { id: 'prepa', nom: 'Prépa' }, { id: 'armement', nom: 'Armement' }] };
+  const bloquant = { id: 'commandes', titre: 'Chaque commande a quelqu’un pour la préparer', texte: '…', page: 'mu-services', services: [{ id: 'armement', nom: 'Armement' }] };
+  // Cités par un point d'étape (la cuisine), par un point d'équipe (la prépa) et par le point bloquant (l'armement).
+  const tous = A.lister({ anomalies: [trou('cuisine', ['EST/YC']), { code: 'lots', message: 'Prépa matin : …', service: 'prepa', atelier: 'pm' }], etapes: [services, bloquant] });
+  assert.deepEqual(tous.map(p => p.etape || p.code), ['commandes', 'parcours-trou', 'lots']);
+  // Un de ses services n'est cité nulle part ailleurs : le point reste, avec tous ses services et leurs noms.
+  const reste = A.lister({ anomalies: [trou('cuisine', ['EST/YC'])], etapes: [services, bloquant] });
+  const p = reste.find(x => x.etape === 'services');
+  assert.deepEqual([p.services, p.nomsServices, p.detail], [['cuisine', 'prepa', 'armement'], ['Cuisine', 'Prépa', 'Armement'], 'Cuisine, Prépa, Armement : à corriger.']);
+  // Une information ne cite pas : ce que la journée montre dans un service ne règle rien.
+  const info = A.lister({ anomalies: [{ code: 'poste', message: 'Cuisine : le poste finit avant le travail.', service: 'cuisine' }], etapes: [{ ...services, services: [{ id: 'cuisine', nom: 'Cuisine' }] }] });
+  assert.equal(info.filter(x => x.etape === 'services').length, 1);
+  // Les étapes d'un groupe citent leurs services.
+  const groupe = A.lister({ anomalies: [trou('cuisine', ['NEUF/YC']), trou('prepa', ['NEUF/YC'])], cheminDe: () => COMPLET,
+    etapes: [{ ...services, services: [{ id: 'cuisine', nom: 'Cuisine' }, { id: 'prepa', nom: 'Prépa' }] }] });
+  assert.deepEqual(groupe.map(x => [!!x.groupe, x.etape || null]), [[true, null]]);
+});
+
+test('correction 23 (c) : ce que la journée montre dans un service garde ce service, pour y mener dans la Synthèse', () => {
+  const l = A.lister({ anomalies: [{ code: 'poste', message: 'Montage : le poste finit avant le travail.', service: 'montage' }, { code: 'bouchon', message: 'Bouchon à la plonge.' }] });
+  assert.deepEqual(l.map(p => [p.page, p.service, p.vu]), [['j-chiffres', undefined, 'montage'], ['j-chiffres', undefined, undefined]]);
+});

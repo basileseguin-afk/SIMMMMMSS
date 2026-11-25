@@ -44,7 +44,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Plus de colonne « Armée ».
    assert.deepEqual((await f.locator('.mu-cat-table thead th').allInnerTexts()).map(t=>t.trim()),['Compagnie','Heures par vol','Vols du jour','Sur la journée']);
    assert.equal(await f.locator('[data-mu-cat-arme]').count(),0);
-   const aCocher=async()=>{const m=(await f.innerText()).match(/(\d+) compagnies? à cocher dans une équipe/);return m?+m[1]:0;};
+   // Version 1 (correction 23 c) : l'encart ne compte plus (« n compagnies à cocher dans une équipe »), il nomme —
+   // « À cocher dans « Armement » : NORD → SUD → », quatre noms au plus, puis « et n autres ».
+   const aCocher=async()=>{
+     const noms=await f.locator('.se-afaire [data-se-viser="cocher"]').evaluateAll(bs=>bs.map(b=>b.textContent.replace(' →','')));
+     if(noms.length)return noms.reduce((n,t)=>n+(/^et (\d+) autres?$/.test(t)?+t.match(/\d+/)[0]:1),0);
+     const m=(await f.innerText()).match(/(\d+) compagnies? à cocher dans une équipe/);return m?+m[1]:0;};
    const avant=await aCocher();
 
    // 2. Décochée dans l'équipe : ni chemin, ni équipe — pas d'armement. Pas de case, rien à cocher

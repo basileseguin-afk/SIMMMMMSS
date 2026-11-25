@@ -147,9 +147,32 @@
       if (this.graphe) this.graphe.selection = this.fluxSel;
       if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
       // Arrivé pour une étape : son tableau en vue, sous le diagramme — la ligne de la commande, si l'on vient pour elle.
+      // Le clavier va alors sur le choix de son équipe (correction 23 c) : c'est lui qui règle le point.
       if (service) (root.requestAnimationFrame || (f => setTimeout(f, 0)))(() => {
-        const l = root.document.querySelector('#mu-flux .ch-etape tr.ch-vise') || root.document.querySelector('#mu-flux .ch-etape-tete');
+        const vise = root.document.querySelector('#mu-flux .ch-etape tr.ch-vise'), l = vise || root.document.querySelector('#mu-flux .ch-etape-tete');
         if (l && l.scrollIntoView) l.scrollIntoView({ block: 'center' });
+        const choix = vise && vise.querySelector('select[data-ch-equipe], button.ch-equipe');
+        if (choix) choix.focus({ preventScroll: true });
+      });
+    }
+
+    /**
+     * Ouvrir un chemin sur « Qui le suit » (correction 23 c) : la liste où chaque commande choisit son chemin. Le clavier
+     * va sur le choix de la commande `cmd`, mise en évidence — pour lui donner un autre chemin.
+     */
+    ouvrirSuivi(id, cmd) {
+      const p = (this.etat.parcours || []).find(x => x.id === id) || (cmd ? PC.fluxDe(this.etat, (this.at.classes || []).find(c => c.id === cmd) || cmd) : null);
+      if (!p) return void this.a.page('mu-flux');
+      this.cheminSections.set('suivi', true);
+      this.cheminPanneau = null; this.cheminCmd = cmd || null; this.fluxChoisi = p.id; this.fluxSel = null;
+      if (this.graphe) this.graphe.selection = null;
+      if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
+      (root.requestAnimationFrame || (f => setTimeout(f, 0)))(() => {
+        const box = root.document.getElementById('mu-flux'); if (!box) return;
+        const choix = (cmd && box.querySelector(`[data-ch-section="suivi"] select[data-mu-cmd-chemin="${CSS.escape(cmd)}"]`)) || box.querySelector('[data-ch-section="suivi"] > summary');
+        if (!choix) return;
+        choix.scrollIntoView({ block: 'center' });
+        choix.focus({ preventScroll: true });
       });
     }
 
@@ -464,7 +487,7 @@
     cheminDeChacune(x) {
       if (x.genre === 'apart' || !x.commandes.length) return '';
       return `<p class="mu-sous-titre">Ses commandes <small>chacune peut suivre un autre chemin : à choisir dans sa liste</small></p>
-        <div class="ch-suivent">${x.commandes.map(c => `<label class="ch-suit"><span><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</span>
+        <div class="ch-suivent">${x.commandes.map(c => `<label class="ch-suit${c.id === this.cheminCmd ? ' ch-vise' : ''}"><span><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</span>
           ${PC.selectChemin(this.etat, c, 'data-mu-cmd-chemin')}</label>`).join('')}</div>`;
     }
 
