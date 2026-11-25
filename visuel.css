@@ -15,6 +15,7 @@
  *  1. Jetons      — les deux thèmes ; les composants de ds.css suivent d'eux-mêmes
  *  2. Coquille    — le menu, la barre du haut, le haut d'une page
  *  3. Composants  — cartes, boutons, choix parmi quelques-uns, tableaux
+ *  4. Valeurs     — saisi, repris, calculé : trois allures, partout
  *
  *  La force des sélecteurs compte. En sombre, le bloc de ds.css
  *  (`:root[data-theme="sombre"]`) l'emporte sur le `:root` d'ici : ce que le
@@ -187,4 +188,45 @@ body[data-defile-sous-la-barre] .haut{box-shadow:var(--ds-ombre-haut)}
 /* Une carte ne s'élève au survol que si elle se clique (une tuile de l'accueil, un service de la liste) : un bilan
    qui se lit ne bouge pas. */
 .bilan-cle:not(button):not(a):hover{box-shadow:var(--ds-ombre-carte)}
+
+/* ---- 4. Saisi, repris, calculé --------------------------------------------- */
+/* « On ne distingue pas les données rentrées du texte brut » : une valeur a trois allures, les mêmes partout.
+     — saisie : un champ au fond pêche, cerné de pêche, en gras ;
+     — reprise (le défaut, la valeur de l'étage au-dessus) : un champ vide, sur le fond de carte, qui la montre en
+       texte d'attente, en italique gris ;
+     — calculée, qui ne se modifie pas : du texte, sans cadre ni fond.
+   Un champ vide se reconnaît à son texte d'attente (`:placeholder-shown`) ; visuel.js en donne un, vide, au champ qui
+   n'en a pas.
+   La force des sélecteurs : des feuilles de vues règlent leurs champs sous un identifiant (`#view-ateliers input…`).
+   `:is(#workspace,body)` vaut pour toute la page et donne à ces règles la force d'un identifiant, sans `!important` ;
+   `:where()` écarte sans rien peser. Le champ de la palette, qui est sa fenêtre, garde son dessin. */
+:is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):not(:where(#pal-texte)){
+  background-color:var(--ds-surface-1);border-color:var(--ds-bordure-forte);font-weight:var(--ds-g-normal)}
+:is(#workspace,body) :is(input,textarea)::placeholder{font-style:italic;color:var(--ds-texte-3);opacity:1}
+/* La valeur saisie. Une liste porte une valeur dès que son choix n'est plus l'option vide (« comme… », « choisir… »).
+   Ce qui commande une vue n'est pas une donnée — une recherche, le jour affiché, la mesure, un filtre : le fond de
+   carte, même rempli. En lecture seule, aucun champ n'a le fond du saisi. */
+:is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=search]):not(:placeholder-shown),
+    textarea:not(:placeholder-shown),select:not(:has(option:checked[value=""]))):not(:disabled):not([readonly]):not(:where(#pal-texte,#periode-jour,#periode-mesure,#flight-filter,#fc-map-filter,#fc-graphe-type,#zone-picker,body[data-lecture="seule"] *)){
+  background-color:var(--ds-saisi-fond);border-color:var(--ds-saisi-bord);font-weight:var(--ds-g-fort)}
+/* Un champ désactivé, et tout champ en lecture seule : le fond en retrait, graisse normale, pas de pêche. */
+:is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):is(:disabled,[readonly]):not(:where(#pal-texte)),
+:is(#workspace,body)[data-lecture="seule"] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):not(:where(#pal-texte)),
+body[data-lecture="seule"] :is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):not(:where(#pal-texte)){
+  background-color:var(--ds-surface-2);border-color:var(--ds-bordure);font-weight:var(--ds-g-normal)}
+/* Le survol, le focus et le refus gardent leur dessin : ils passent après. */
+:is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):hover:not(:disabled):not(:where(#pal-texte)){
+  border-color:color-mix(in srgb,var(--ds-texte-3) 45%,var(--ds-bordure-forte))}
+:is(#workspace,body) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea):focus:not(:where(#pal-texte)){
+  border-color:var(--ds-accent);box-shadow:var(--ds-focus)}
+:is(#workspace,body) :is(input,select)[aria-invalid="true"]{border-color:var(--ds-retard)}
+/* Une case à cocher, un bouton radio, un curseur : à l'accent. */
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--ds-accent)}
+/* Un nombre calculé : du texte. */
+output,.at-pers-calc output,.rgr-calc{border:0;background:none}
+
+/* La légende du tableau de tous les temps par vol reprend ce code : la valeur propre sur le fond du saisi, la valeur
+   de toutes les compagnies en italique gris. */
+.rg-recap-legende .rgr.propre{padding:1px 8px;border:1px solid var(--ds-saisi-bord);border-radius:var(--ds-r-1);background:var(--ds-saisi-fond);font-weight:var(--ds-g-fort)}
+.rg-recap-legende .rgr.commun{font-style:italic;color:var(--ds-texte-3)}
 

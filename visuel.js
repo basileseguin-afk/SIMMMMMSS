@@ -5,6 +5,9 @@
  *
  *  (b) L'ombre de la barre du haut n'apparaît que quand un contenu défile
  *      dessous : `data-defile-sous-la-barre` sur <body>, que la feuille lit.
+ *  (c) Un champ vide se reconnaît, dans la feuille, à son texte d'attente
+ *      (`:placeholder-shown`) : un champ qui n'en a pas en reçoit un, vide.
+ *      Sa valeur, son nom et ce que la page en lit ne changent pas.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -21,7 +24,16 @@
     return zones.some(z => z.defile > 0 && Math.abs(z.haut - barre.bas) <= 1);
   }
 
-  const api = { defileSousLaBarre };
+  /**
+   * Les champs qui peuvent être vides sans le montrer : ceux qui se remplissent au clavier et n'ont pas de texte
+   * d'attente. Une case, un curseur, un fichier, une couleur ne sont pas des champs de texte.
+   */
+  const SANS_ATTENTE = 'input:not([placeholder]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color])'
+    + ':not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]),textarea:not([placeholder])';
+  /** Le texte d'attente donné à ces champs : une espace — rien ne se lit, et `:placeholder-shown` dit quand le champ est vide. */
+  const ATTENTE_VIDE = ' ';
+
+  const api = { defileSousLaBarre, SANS_ATTENTE, ATTENTE_VIDE };
   if (NODE) { module.exports = api; return; }
   root.OrlyVisuel = api;
 
@@ -43,4 +55,14 @@
   // Une autre page s'ouvre, la fenêtre change de taille : la zone qui avait défilé n'est peut-être plus là.
   root.addEventListener('resize', dire);
   d.addEventListener('click', () => root.requestAnimationFrame(dire), true);
+
+  /* (c) Un texte d'attente vide pour les champs qui n'en ont pas : ceux de la page, puis ceux que chaque rendu ajoute. */
+  function donnerAttente(racine) {
+    if (racine.matches && racine.matches(SANS_ATTENTE)) racine.setAttribute('placeholder', ATTENTE_VIDE);
+    if (racine.querySelectorAll) for (const e of racine.querySelectorAll(SANS_ATTENTE)) e.setAttribute('placeholder', ATTENTE_VIDE);
+  }
+  donnerAttente(d);
+  if (root.MutationObserver) new root.MutationObserver(liste => {
+    for (const m of liste) for (const n of m.addedNodes) if (n.nodeType === 1) donnerAttente(n);
+  }).observe(d.documentElement, { childList: true, subtree: true });
 })(typeof window !== 'undefined' ? window : globalThis);

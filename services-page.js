@@ -477,7 +477,10 @@
       if (titre) titre.insertAdjacentHTML('afterend', `<p class="mini-note se-temps-dit">Une seconde vue des champs de « Ses temps par vol », dans la fiche
         de chaque service : une valeur changée ici se lit là-bas, et l’inverse.
         <button type="button" class="lien-discret" data-page="u-sauvegarde" data-lieu="classeurs">Importer ou exporter ce tableau : Fichiers →</button></p>`);
-      if (aide) aide.insertAdjacentHTML('beforeend', `<p>Les temps sont comptés pour <b>une seule personne</b>. Pour chaque service : la valeur,
+      // Le code des champs (évolution 25 c) : la légende le montre (ses deux premières pastilles), l'aide le dit.
+      if (aide) aide.insertAdjacentHTML('beforeend', `<p class="se-temps-code"><b>Fond pêche : une valeur saisie ; italique gris : la valeur reprise.</b>
+        Une cellule vide montre, en italique, la valeur de toutes les compagnies : elle la reprend tant qu’on n’y saisit rien.</p>
+        <p>Les temps sont comptés pour <b>une seule personne</b>. Pour chaque service : la valeur,
         l’effectif de l’équipe qui prépare et la durée — le temps divisé par les personnes ; pour un robot, les plateaux divisés par le débit.
         Un effectif souligné en pointillé est celui d’une équipe partagée par plusieurs commandes : il vaut pour toutes.</p>`);
     }

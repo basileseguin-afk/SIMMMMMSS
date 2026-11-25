@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (c) : saisi, repris, calculé — trois allures, partout
+
+Aucun calcul ne change, ni la sauvegarde, ni aucune valeur ni aucun texte de
+la page. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Une valeur saisie** : un champ au fond pêche, cerné de pêche, en gras.
+- **Une valeur reprise** (le défaut, la valeur de l’étage au-dessus) : un
+  champ laissé vide, sur le fond de carte, qui la montre en texte d’attente,
+  en italique gris.
+- **Une valeur calculée** : du texte, sans cadre ni fond.
+- **Une liste déroulante** garde le fond de carte sur son option vide
+  (« comme… », « choisir… ») et prend l’allure du saisi pour tout autre
+  choix.
+- Un champ désactivé, et tout champ en lecture seule : en retrait, sans
+  pêche. Une recherche, le jour affiché, un filtre : le fond de carte.
+- **La légende du tableau de tous les temps par vol** reprend ce code ; son
+  aide le dit.
+
+Fichiers : `visuel.css`, `visuel.js`, `services-page.js`, `index.html`,
+`accueil.html` ; `tests/visuel-champs-browser.cjs` (nouveau) ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (b) : la coquille et les composants
 
 Aucun calcul ne change, ni la sauvegarde, ni le balisage des pages. La

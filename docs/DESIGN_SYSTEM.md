@@ -500,7 +500,7 @@ mêmes textes, mêmes gestes.
 | Fichier | Ce qu'il fait |
 |---|---|
 | `visuel.css` | Les jetons de la version 1, dans les deux thèmes, puis la coquille et les composants. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
-| `visuel.js` | Ce que la feuille ne sait pas dire seule : l'ombre de la barre du haut quand un contenu défile dessous. Il ne lit ni n'écrit aucune donnée, et ne change aucun texte. |
+| `visuel.js` | Ce que la feuille ne sait pas dire seule : l'ombre de la barre du haut quand un contenu défile dessous ; un texte d'attente vide pour les champs qui n'en ont pas, afin que la feuille reconnaisse un champ vide. Il ne lit ni n'écrit aucune donnée, et ne change aucun texte. |
 
 ### Les jetons redéfinis
 
@@ -585,4 +585,49 @@ d'une page tiennent, aucun élément visible n'est en capitales forcées, le
 fond du menu et l'accent sont ceux de la feuille.
 `tests/visuel-coquille-browser.cjs` vérifie chaque composant de ce tableau,
 dans les deux thèmes.
+
+### Les trois allures d'une valeur (évolution 25 c)
+
+Le constat du chef de projet : « on ne distingue pas les données rentrées du
+texte brut ». Une valeur a trois allures, les mêmes sur toutes les pages.
+
+| Une valeur… | Son allure |
+|---|---|
+| **saisie** | Un champ au fond `--ds-saisi-fond`, au trait `--ds-saisi-bord`, graisse 600. |
+| **reprise** — le défaut, la valeur de l'étage au-dessus | Un champ laissé vide, sur le fond de carte, au trait `--ds-bordure-forte`, qui la montre en texte d'attente : en italique, à `--ds-texte-3` (4,5:1 au moins). |
+| **calculée**, qui ne se modifie pas | Du texte, sans cadre ni fond. |
+
+Et, avec elles :
+
+- **Une liste déroulante** : fond de carte quand son choix est l'option vide
+  (« comme… », « choisir… », « aucun ») ; allure de champ saisi pour tout
+  autre choix. En CSS : `select:has(option:checked[value=""])`. Une liste
+  dont chaque option est une valeur (ce que fait un service, le service
+  d'une équipe, son jour de travail…) n'a pas d'option vide : elle a
+  toujours l'allure du saisi.
+- **Un champ désactivé**, et tout champ **en lecture seule** : le fond en
+  retrait (`--ds-surface-2`), graisse normale, pas de pêche.
+- **Ce qui commande une vue n'est pas une donnée** : une recherche, le jour
+  affiché, la mesure d'une période, un filtre gardent le fond de carte, même
+  remplis.
+- **Une case à cocher, un bouton radio, un curseur** : `accent-color` à
+  l'accent.
+- **Une légende** reprend ce code. Celle du tableau de tous les temps par
+  vol : « valeur propre » sur le fond du saisi, « toutes compagnies » en
+  italique gris ; son aide le dit (« Fond pêche : une valeur saisie ;
+  italique gris : la valeur reprise »).
+
+Comment un champ vide se reconnaît : à son texte d'attente
+(`:placeholder-shown`), qui suit la frappe sans attendre un rendu.
+`visuel.js` donne un texte d'attente vide (une espace) aux champs qui n'en
+ont pas ; il ne change ni leur valeur ni ce que la page en lit.
+
+La force des sélecteurs : des feuilles de vues règlent leurs champs sous un
+identifiant (`#view-ateliers input…`). Les règles de `visuel.css` commencent
+par `:is(#workspace,body)`, qui vaut pour toute la page et leur donne la
+force d'un identifiant, sans `!important` ; `:where()` écarte sans rien
+peser (le champ de la palette, les commandes de vue, la lecture seule).
+
+`tests/visuel-champs-browser.cjs` le vérifie dans les deux thèmes, sur une
+fiche de service et sur le tableau de tous les temps par vol.
 
