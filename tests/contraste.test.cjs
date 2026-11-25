@@ -116,6 +116,13 @@ for (const version of VERSIONS) for (const nom of ['clair', 'sombre']) {
     // Le plan rejoué (plan-flux.css) : un service qui a fini se remplit du texte 4 et porte son nom en texte 1.
     verifier('ds-texte-1', couleur(t, 'ds-texte-4'), 'ds-texte-4');
     verifier('ds-texte-4', blanc, 'ds-surface-1', 3);
+    // Évolution 25 (b). Le choix retenu parmi quelques-uns, une pastille pleine : son texte sur son fond ; son trait, une
+    // forme, sur la carte.
+    verifier('ds-choix-texte', couleur(t, 'ds-choix-fond'), 'ds-choix-fond');
+    verifier('ds-choix-trait', blanc, 'ds-surface-1', 3);
+    // Un compteur du menu, et la lettre de la marque : à la couleur du menu, sur la pastille au repère.
+    assert.ok(ratio(couleur(t, 'ds-nav-fond'), couleur(t, 'ds-nav-repere')) >= 4.5,
+      nom + ' : le chiffre d’un compteur sur le repère = ' + ratio(couleur(t, 'ds-nav-fond'), couleur(t, 'ds-nav-repere')).toFixed(2) + ':1');
   });
 }
 

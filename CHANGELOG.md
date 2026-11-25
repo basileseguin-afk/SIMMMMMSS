@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (b) : la coquille et les composants
+
+Aucun calcul ne change, ni la sauvegarde, ni le balisage des pages. La
+version 2 n’est pas touchée, ni aucun fichier commun.
+
+- **Le menu** : un fond uni, sans dégradé ; l’entrée ouverte éclairée, un
+  trait pêche à gauche ; « Lire » et « Régler » en minuscules ; un compteur
+  en pastille pêche ; la marque, un carré arrondi pêche.
+- **Le haut d’une page** : plus de bandeau ni d’ombre derrière le titre
+  (22 px), qui se pose sur le fond. L’ombre de la barre du haut n’apparaît
+  que quand un contenu défile dessous.
+- **Les cartes** : le même rayon partout (14 px) ; elles ne s’élèvent au
+  survol que si elles se cliquent. **Les boutons** : 8 px.
+- **Un choix parmi quelques-uns** (onglets de « Détails », jours et zooms du
+  planning, « Par vol / Sur la journée ») : des pastilles arrondies ; celle
+  qui est choisie est pleine.
+- **Les tableaux** : des en-têtes en minuscules. Plus aucun titre en
+  capitales espacées, nulle part.
+- L’en-tête d’une page garde sa hauteur au pixel : aucune page ne se met à
+  défiler.
+
+Fichiers : `visuel.css`, `visuel.js` (nouveau), `index.html`,
+`accueil.html` ; `tests/visuel-coquille-browser.cjs` (nouveau),
+`tests/visuel.test.cjs` (nouveau), `tests/pages-menu-browser.cjs`,
+`tests/contraste.test.cjs` ; `docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (a) : le nouveau visuel de la version 1, les jetons
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

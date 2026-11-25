@@ -12,7 +12,9 @@
  *  garde son visuel : ds.css et les autres feuilles communes ne sont pas
  *  modifiées (tests/feuilles-communes.test.cjs).
  *
- *  1. Jetons   — les deux thèmes ; les composants de ds.css suivent d'eux-mêmes
+ *  1. Jetons      — les deux thèmes ; les composants de ds.css suivent d'eux-mêmes
+ *  2. Coquille    — le menu, la barre du haut, le haut d'une page
+ *  3. Composants  — cartes, boutons, choix parmi quelques-uns, tableaux
  *
  *  La force des sélecteurs compte. En sombre, le bloc de ds.css
  *  (`:root[data-theme="sombre"]`) l'emporte sur le `:root` d'ici : ce que le
@@ -56,6 +58,9 @@
   --ds-r-1:5px; --ds-r-2:8px; --ds-r-3:14px; --ds-r-4:16px;
   /* Un champ qui porte une valeur saisie : un fond pêche, un trait pêche. */
   --ds-saisi-fond:#FFF7F0; --ds-saisi-bord:#F0D3BE;
+  /* Le choix retenu parmi quelques-uns (un onglet de page, un filtre, un jour du planning) : une pastille pleine,
+     au bordeaux du menu. */
+  --ds-choix-fond:#2E0F1A; --ds-choix-texte:#FFFFFF; --ds-choix-trait:#2E0F1A;
   /* Les traits du dessin (le contour d'un service sur le plan, un lien entre services) : leur gris d'avant, réchauffé. */
   --ds-trait-plan:#93878C; --ds-trait-lien:#857980;
   /* Les ombres, l'anneau du focus et le voile gardent leur forme, reteintés : l'encre à la place du bleu nuit,
@@ -92,6 +97,8 @@
   --ds-sur-donnee:#161113; --ds-sur-attente:#1A1206;
   --ds-entete-bas:#161113;
   --ds-saisi-fond:#2E2019; --ds-saisi-bord:#5A3A28;
+  /* En sombre, le choix retenu : la surface la plus haute, cernée de l'accent. */
+  --ds-choix-fond:var(--ds-surface-3); --ds-choix-texte:var(--ds-texte-1); --ds-choix-trait:var(--ds-accent);
   --ds-focus:0 0 0 3px color-mix(in srgb,#F08A4B 30%,transparent);
 }
 /* Les classes, dans les deux thèmes : Équipage en bleu, Économie en vert, Premium en violet, Business en bordeaux,
@@ -102,3 +109,82 @@
   --cab-CREW:var(--ds-d1); --cab-YC:var(--ds-d2); --cab-PC:var(--ds-d3); --cab-BC:var(--ds-d4); --cab-SPML:var(--ds-d6);
   --violet:var(--ds-d3); --edge-retour:var(--ds-d3);
 }
+
+/* ---- 2. Coquille ----------------------------------------------------------- */
+/* Le menu : un fond uni, sans dégradé ni lueur. */
+.barre{background:var(--ds-nav-fond)}
+/* La marque : un carré arrondi, à l'accent pêche ; sa lettre à la couleur du menu. */
+.brand-mark{border-radius:9px;background:var(--ds-nav-repere);color:var(--ds-nav-fond)}
+.barre .marque:hover .brand-mark{background:color-mix(in srgb,var(--ds-nav-repere) 84%,#FFFFFF)}
+/* Les titres de bloc (« Lire », « Régler ») : en minuscules, sans lettres espacées. */
+.menu-bloc-titre{font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);letter-spacing:0;text-transform:none}
+/* L'entrée ouverte : texte blanc, fond blanc à 10 %, trait pêche de 3 px à gauche. */
+.menu-entree.actif,.menu-entree.actif:hover:not(:disabled){background:var(--ds-nav-actif);color:var(--ds-nav-texte-1);box-shadow:inset 3px 0 0 var(--ds-nav-repere)}
+/* Un compteur : une pastille pêche, son chiffre à la couleur du menu. Ce qu'il compte se dit dans sa bulle et sur la
+   page qu'il ouvre : il ne change plus de couleur avec l'état. */
+.barre :is(.so-badge,.so-badge.attente,.so-badge.retard,.so-badge.neutre,.pb-compte){background:var(--ds-nav-repere);color:var(--ds-nav-fond);
+  border:0;box-shadow:none;font-weight:var(--ds-g-fort)}
+
+/* La barre du haut : son ombre n'apparaît que quand un contenu défile dessous (visuel.js le dit sur <body>). */
+.haut{box-shadow:none}
+body[data-defile-sous-la-barre] .haut{box-shadow:var(--ds-ombre-haut)}
+
+/* Le haut d'une page : plus de bandeau ni d'ombre derrière le titre, qui se pose sur le fond de la page. */
+/* L'en-tête garde sa hauteur, au pixel : le titre grandit de 2 px dans son interligne d'avant (24 px), et le trait
+   retiré rend son pixel à la marge du bas. Aucune page ne se met à défiler. */
+.workspace-heading{background:none;border-bottom:0;box-shadow:none;padding-bottom:11px}
+.tete-titre{font-size:22px;line-height:24px;font-weight:var(--ds-g-fort);letter-spacing:-.01em}
+
+/* ---- 3. Composants --------------------------------------------------------- */
+/* Un choix parmi quelques-uns — les onglets d'une page, un filtre, les jours du planning : des pastilles arrondies.
+   Celle qui est choisie est pleine (les jetons du choix, § 1). */
+.onglets-internes{gap:6px;border-bottom:0}
+.oi-onglet{display:inline-flex;align-items:center;box-sizing:border-box;min-height:var(--ds-h-compact);margin:0;padding:0 12px;border:1px solid var(--ds-bordure-forte);
+  border-radius:999px;background:var(--ds-surface-1);color:var(--ds-texte-2)}
+.oi-onglet:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.oi-onglet.actif{background:var(--ds-choix-fond);border-color:var(--ds-choix-trait);color:var(--ds-choix-texte)}
+.oi-onglet:focus-visible{border-radius:999px}
+/* Les jours du planning, ses trois zooms ; « Par vol / Sur la journée » ; « Référence / Essai » : les mêmes pastilles. */
+.pg-onglet,.pg-zooms .btn,.pg-zooms .btn:first-child,.pg-zooms .btn:last-child,.rg-mode .btn,.dq-essais .btn,.so-outils .direct-choix .btn{
+  margin-left:0;border:1px solid var(--ds-bordure-forte);border-radius:999px;background:var(--ds-surface-1);box-shadow:none;color:var(--ds-texte-2);font-weight:var(--ds-g-moyen)}
+:is(.pg-onglet,.pg-zooms .btn,.rg-mode .btn,.dq-essais .btn,.so-outils .direct-choix .btn):hover:not([aria-pressed="true"]):not(:disabled){
+  background:var(--ds-survol);border-color:var(--ds-bordure-forte);color:var(--ds-texte-1)}
+:is(.pg-onglet,.pg-zooms .btn,.rg-mode .btn,.dq-essais .btn,.so-outils .direct-choix .btn)[aria-pressed="true"]{
+  background:var(--ds-choix-fond);border-color:var(--ds-choix-trait);color:var(--ds-choix-texte);font-weight:var(--ds-g-moyen);box-shadow:none}
+.pg-zooms,.dq-essais,.direct-choix{gap:4px;border:0;border-radius:0;overflow:visible;background:none}
+.dq-essais .btn+.btn,.so-outils .direct-choix .btn+.btn{border-left:1px solid var(--ds-bordure-forte)}
+/* Le compte d'un jour, dans sa pastille : il suit la pastille choisie. */
+.pg-onglet[aria-pressed="true"] .pg-compte{background:color-mix(in srgb,var(--ds-choix-texte) 18%,transparent);color:inherit}
+
+/* Un tableau : des en-têtes en minuscules, sans capitales espacées. (`:root` donne au sélecteur la force de ceux des
+   feuilles des vues, qui écrivaient ces en-têtes en capitales.) Une ligne fine entre les rangées ; le survol ; la
+   rangée choisie sur l'accent pâle, un trait d'accent de 3 px à gauche. Les chiffres restent tabulaires, à droite. */
+:root table thead th{font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);letter-spacing:0;text-transform:none;color:var(--ds-texte-3)}
+:root table :is(td,th){border-color:var(--ds-bordure)}
+:root table thead th{border-bottom-color:var(--ds-bordure-forte)}
+:is(.flight-table,.svc-table,.planche-table,.rc-table,.qf-table,.pv-table,.fo-table,.dp-table) tbody tr:hover{background:var(--ds-survol)}
+:root table tbody tr:is([aria-selected="true"],[aria-current="true"],.sel,.ch-vise)>:is(td,th){background:var(--ds-accent-pale)}
+:root table tbody tr:is([aria-selected="true"],[aria-current="true"],.sel,.ch-vise)>:first-child{box-shadow:inset 3px 0 0 var(--ds-accent)}
+
+/* Plus aucune capitale forcée : un titre de bloc, un surtitre, une étiquette s'écrivent comme la page les écrit, sans
+   lettres espacées. Les sélecteurs reprennent ceux des feuilles (communes ou propres) qui posaient ces capitales. */
+.demo-badge,.flight-table th,.flight-table .status,.pe-groupe-tete,#pe-properties h4,.fc-list-title,.fc-table thead th,
+.at-titre,.at-table thead th,.at-source,.at-bilan-debit em,.at-mat-table thead th,.qf-g,.rc-ens-tete,
+.rg-occupe,.rg-table thead th,.rg-herite,.rg-zero,.compare-tab tr.compare-groupe th,.compare-tab td small,.rgr.case small,
+.mu-groupe,.pb-groupe h3,details.pb-groupe.information>summary,.pal-groupe,.rac-corps h3,.tete-partie,.bilan-q,.bilan-groupe h4,
+.sy-carte h4,.sy-bloc>h4,.acc-bloc-titre{text-transform:none;letter-spacing:0}
+/* Un titre de bloc : le même partout — 13 px, graisse 500, le troisième gris. */
+.mu-groupe,.pb-groupe h3,details.pb-groupe.information>summary,.pal-groupe,.rac-corps h3,.bilan-groupe h4,.sy-carte h4,.sy-bloc>h4,.acc-bloc-titre{
+  font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+
+/* Une carte : rayon de 14 px, trait fin, l'ombre du § 1. Celles que ds.css arrondissait au plus grand rayon (une
+   tuile de l'accueil, la fiche d'un service, le cadre d'un schéma) prennent celui des cartes ; ce plus grand rayon
+   reste aux fenêtres (une question, la palette) et au bandeau de l'accueil. */
+.acc-tuile,.acc-pages,.mu-fiche,.gr-cadre{border-radius:var(--ds-r-3)}
+/* Et celles qu'une feuille de vue arrondissait à sa façon (8, 10 ou 12 px) : le programme des vols, la planche des
+   retours, un tableau posé en carte, le tableau de tous les temps, une carte de la Synthèse, une colonne de « Contrôles ». */
+.vols-donnees .panneau,.reglages-grille .panneau,.panneau.planche,.svc-table,.rg-recap-scroll,.pc-panneau,.sy-carte,.ct-niveau,.ct-etat{border-radius:var(--ds-r-3)}
+/* Une carte ne s'élève au survol que si elle se clique (une tuile de l'accueil, un service de la liste) : un bilan
+   qui se lit ne bouge pas. */
+.bilan-cle:not(button):not(a):hover{box-shadow:var(--ds-ombre-carte)}
+

@@ -499,7 +499,8 @@ mêmes textes, mêmes gestes.
 
 | Fichier | Ce qu'il fait |
 |---|---|
-| `visuel.css` | Les jetons de la version 1, dans les deux thèmes. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
+| `visuel.css` | Les jetons de la version 1, dans les deux thèmes, puis la coquille et les composants. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
+| `visuel.js` | Ce que la feuille ne sait pas dire seule : l'ombre de la barre du haut quand un contenu défile dessous. Il ne lit ni n'écrit aucune donnée, et ne change aucun texte. |
 
 ### Les jetons redéfinis
 
@@ -555,4 +556,33 @@ texte 3 sur le fond d'un champ saisi, les traits du dessin sur une carte, le
 texte 1 sur le texte 4.
 `tests/visuel-jetons-browser.cjs` lit les valeurs calculées dans la page,
 dans les deux thèmes, et vérifie que la version 2 garde les siennes.
+
+### La coquille et les composants (évolution 25 b)
+
+Tout vient de `visuel.css` : le balisage des pages ne change pas.
+
+| | |
+|---|---|
+| Le menu | Un fond uni (`--ds-nav-fond`), sans dégradé ni lueur. L'entrée ouverte : le texte du menu, un fond éclairci (`--ds-nav-actif` : blanc à 10 % en clair), un trait de 3 px au repère à gauche. Les titres de bloc (« Lire », « Régler ») en minuscules : 13 px, graisse 500, sans lettres espacées. |
+| Un compteur | Une pastille au repère (`--ds-nav-repere`, pêche), son chiffre à la couleur du menu. Il ne change plus de couleur avec l'état : ce qu'il compte se dit dans sa bulle et sur la page qu'il ouvre. |
+| La marque | Un carré arrondi (rayon de 9 px) au repère. |
+| Le haut d'une page | Plus de bandeau ni d'ombre derrière le titre, qui se pose sur le fond de la page : 22 px, graisse 600, `letter-spacing:-0.01em`. L'en-tête garde sa hauteur au pixel. |
+| La barre du haut | Son ombre n'apparaît que quand un contenu défile dessous (`visuel.js` pose `data-defile-sous-la-barre` sur `<body>`) : l'accueil, ou une page qui défile en entier sur un écran étroit. Une zone sous le titre d'une page défile sous ce qui la précède, pas sous la barre. |
+| Une carte | Rayon de 14 px (`--ds-r-3`), trait `--ds-bordure`, l'ombre `--ds-ombre-carte`. Elle ne s'élève au survol que si elle se clique (une tuile de l'accueil, un service de la liste). Le plus grand rayon (16 px) reste aux fenêtres (une question, la palette) et au bandeau de l'accueil. |
+| Un bouton | Rayon de 8 px. Le principal : plein, à l'accent, son texte en `--ds-sur-accent`. Les autres : fond de carte, trait `--ds-bordure-forte`. Le geste qui détruit garde sa couleur. Les hauteurs ne changent pas : 28 et 32 px. |
+| Un choix parmi quelques-uns | Les onglets d'une page, un filtre, les jours et les zooms du planning, « Par vol / Sur la journée », « Référence / Essai » : des pastilles arrondies (`border-radius:999px`), 28 px de haut. Celle qui est choisie est pleine : `--ds-choix-fond`, `--ds-choix-texte`, `--ds-choix-trait` — le bordeaux du menu et du blanc en clair ; en sombre, `--ds-surface-3` et `--ds-texte-1`, cernés de l'accent. |
+| Un tableau | Des en-têtes en minuscules : 13 px, graisse 500, `--ds-texte-3`, sans capitales espacées. Une ligne fine entre les rangées, le survol à `--ds-survol` ; la rangée choisie sur `--ds-accent-pale`, un trait d'accent de 3 px à gauche. Les chiffres tabulaires, à droite, comme avant. |
+
+**Plus aucune capitale forcée.** Un titre de bloc, un surtitre, une étiquette
+s'écrivent comme la page les écrit, sans lettres espacées : `visuel.css`
+reprend, sélecteur par sélecteur, les règles des feuilles (communes ou
+propres) qui posaient `text-transform:uppercase`. Un titre de bloc est le
+même partout : 13 px, graisse 500, le troisième gris.
+
+Aucun mouvement n'est ajouté. `tests/pages-menu-browser.cjs` parcourt chaque
+page du menu aux deux tailles et dans les deux thèmes : les trois règles
+d'une page tiennent, aucun élément visible n'est en capitales forcées, le
+fond du menu et l'accent sont ceux de la feuille.
+`tests/visuel-coquille-browser.cjs` vérifie chaque composant de ce tableau,
+dans les deux thèmes.
 

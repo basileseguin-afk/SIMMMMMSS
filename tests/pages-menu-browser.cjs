@@ -13,6 +13,11 @@
  *
  * Et, avec elles : un champ ne coupe ni sa valeur ni son texte d'attente (dans la fiche d'une équipe aussi : « Postes
  * de travail » montre « sans limite » en entier).
+ *
+ * Évolution 25 (b) — le nouveau visuel : le parcours se fait dans les deux thèmes, et vérifie en plus, sur chaque page,
+ *   4. LES CAPITALES. Aucun élément visible n'a de `text-transform:uppercase` : un titre, un en-tête de tableau, une
+ *      étiquette s'écrivent comme la page les écrit.
+ *   5. LA COQUILLE. Le fond du menu (uni, sans dégradé) et l'accent calculés sont ceux de la feuille du visuel.
  * Unité, vols, compagnies et équipes fictifs. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
@@ -20,7 +25,9 @@ const F=require('./plan-rejoue-fictif.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL_V1=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
-const TAILLES=[[1366,768],[1920,1080]];
+const TAILLES=[[1366,768],[1920,1080]],THEMES=['clair','sombre'];
+/** Le fond du menu et l'accent de chaque thème (visuel.css, évolution 25 a) : en sombre, le menu est sur la carte du thème. */
+const COQUILLE={clair:{menu:'rgb(46, 15, 26)',accent:'rgb(185, 91, 15)'},sombre:{menu:'rgb(30, 23, 25)',accent:'rgb(240, 138, 75)'}};
 /** Un texte de page : 13 px ; un texte de dessin : 12 px à l'écran. (Au vingtième de pixel près : les arrondis du navigateur.) */
 const TEXTE_MIN=13,DESSIN_MIN=12,TOLERANCE=0.05;
 
@@ -93,7 +100,13 @@ function mesurer([texteMin,dessinMin,tolerance]){
     const fleches=e.type==='number'&&s.appearance!=='textfield'?16:0;
     const place=e.getBoundingClientRect().width-parseFloat(s.borderLeftWidth)-parseFloat(s.borderRightWidth)-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)-fleches,besoin=toile.measureText(texte).width;
     return besoin>place+1?{ou:ou(e),texte:texte.slice(0,30),besoin:Math.round(besoin),place:Math.round(place),attente:!e.value}:null;}).filter(Boolean);
-  return {petits,fenetre,zones:zonesDites,imbriquees,memeColonne,coupees,pageDefile:vue?vue.scrollHeight-vue.clientHeight:0,pageEstZone:!!vue&&defile(vue),largeur,coupes};
+  /* 4. les capitales forcées : tout élément visible qui porte lui-même un texte */
+  const majuscules=[...document.querySelectorAll('body *')].filter(e=>vu(e)&&!e.closest('svg')&&getComputedStyle(e).textTransform==='uppercase'&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()))
+    .map(e=>ou(e)+' « '+e.textContent.trim().slice(0,20)+' »');
+  /* 5. la coquille : le fond du menu, l'accent */
+  const barre=getComputedStyle(document.querySelector('body>.barre')),sonde=document.createElement('i');sonde.style.color='var(--ds-accent)';document.body.appendChild(sonde);
+  const coquille={menu:barre.backgroundColor,degrade:barre.backgroundImage,accent:getComputedStyle(sonde).color,theme:document.documentElement.dataset.theme==='sombre'?'sombre':'clair'};sonde.remove();
+  return {petits,fenetre,zones:zonesDites,imbriquees,memeColonne,coupees,pageDefile:vue?vue.scrollHeight-vue.clientHeight:0,pageEstZone:!!vue&&defile(vue),largeur,coupes,majuscules,coquille};
 }
 
 (async()=>{
@@ -103,12 +116,14 @@ function mesurer([texteMin,dessinMin,tolerance]){
  const releve=!!process.env.PAGES_MENU_RELEVE;
  const dire=(ou,quoi)=>{manques.push(ou+' — '+quoi);};
  try{
-  for(const [w,h] of TAILLES){
-   const T=w+' × '+h;
+  for(const [w,h] of TAILLES)for(const theme of THEMES){
+   const T=w+' × '+h+', thème '+theme;
    const ctx=await browser.newContext({viewport:{width:w,height:h}});
    const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(T+' : '+e.message));page.on('dialog',d=>d.accept());
    const site=await F.charger(page,nav,URL_V1,{csv:F.volsDatesCsv(3,'2031-03-03'),pageId:'j-chiffres'});
    await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.onglets);
+   // Le thème : celui de l'application (une préférence d'affichage), posé comme le fait son bouton.
+   if(theme==='sombre')await page.evaluate(()=>{document.documentElement.dataset.theme='sombre';});
    await page.waitForTimeout(500);
    // Les pages du menu : chaque entrée (une page, ou chaque onglet de son groupe), puis « Fichiers ».
    const pages=await page.evaluate(()=>OrlyOnglets.entrees().flatMap(o=>o.pages||[o.id]));
@@ -130,6 +145,12 @@ function mesurer([texteMin,dessinMin,tolerance]){
      if(!m.largeur)dire(ou,'LARGEUR : la page ne montre rien');
      else if(m.largeur.videADroite>0.12*m.largeur.libre||m.largeur.prise<0.85*m.largeur.libre)
        dire(ou,'LARGEUR : le contenu prend '+m.largeur.prise+' px sur '+m.largeur.libre+' ('+m.largeur.videADroite+' px vides à droite) — '+m.largeur.vue);
+     /* 4. les capitales */
+     if(m.majuscules.length)dire(ou,'CAPITALES : '+m.majuscules.length+' élément(s) en capitales forcées — '+[...new Set(m.majuscules)].slice(0,4).join(' ; '));
+     /* 5. la coquille */
+     if(m.coquille.theme!==theme)dire(ou,'COQUILLE : le thème est '+m.coquille.theme);
+     if(m.coquille.menu!==COQUILLE[theme].menu||m.coquille.degrade!=='none')dire(ou,'COQUILLE : le fond du menu est '+m.coquille.menu+(m.coquille.degrade!=='none'?' avec '+m.coquille.degrade.slice(0,40):'')+', attendu '+COQUILLE[theme].menu+', uni');
+     if(m.coquille.accent!==COQUILLE[theme].accent)dire(ou,'COQUILLE : l’accent est '+m.coquille.accent+', attendu '+COQUILLE[theme].accent);
      /* un champ ne coupe ni sa valeur ni son texte d'attente */
      if(m.coupes.length)dire(ou,'CHAMPS : '+m.coupes.length+' coupé(s) — '+m.coupes.slice(0,4).map(c=>c.ou.split(' > ').slice(-2).join(' > ')+' « '+c.texte+' »'+(c.attente?' (texte d’attente)':'')+' : '+c.besoin+' px pour '+c.place).join(' ; '));
      pagesVues++;
@@ -165,9 +186,9 @@ function mesurer([texteMin,dessinMin,tolerance]){
    await site.effacer();await ctx.close();
   }
   if(releve){console.log(manques.join('\n'));console.log('— '+manques.length+' manque(s) sur '+pagesVues+' pages vues.');}
-  else assert.deepEqual(manques,[],'les trois règles tiennent sur chaque page du menu, aux deux tailles :\n'+manques.join('\n'));
+  else assert.deepEqual(manques,[],'les trois règles tiennent sur chaque page du menu, aux deux tailles et dans les deux thèmes :\n'+manques.join('\n'));
   assert.deepEqual(erreurs,[],'aucune erreur de page');
-  if(!releve)console.log('pages-menu-browser : ok — '+pagesVues+' pages vues (les seize pages du menu, les dix sections de « Réglages », la fiche d’un service, celle d’une équipe, un chemin), à 1 366 × 768 et à 1 920 × 1 080 : '
-    +'aucun texte sous 13 px (12 px à l’écran dans un dessin) ; la fenêtre et la page ne défilent pas, seules défilent des zones, une par colonne, jamais l’une dans l’autre ; le contenu prend la largeur ; aucun champ ne coupe sa valeur ni son texte d’attente.');
+  if(!releve)console.log('pages-menu-browser : ok — '+pagesVues+' pages vues (les seize pages du menu, les dix sections de « Réglages », la fiche d’un service, celle d’une équipe, un chemin), à 1 366 × 768 et à 1 920 × 1 080, en thème clair et en thème sombre : '
+    +'aucun texte sous 13 px (12 px à l’écran dans un dessin) ; la fenêtre et la page ne défilent pas, seules défilent des zones, une par colonne, jamais l’une dans l’autre ; le contenu prend la largeur ; aucun champ ne coupe sa valeur ni son texte d’attente ; aucune capitale forcée ; le menu uni et l’accent du nouveau visuel.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
