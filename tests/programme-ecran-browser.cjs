@@ -6,7 +6,8 @@
  *   1. Le compte rendu tient en deux lignes : le fichier ; la période, le nombre de jours et de vols, la fourchette par
  *      jour. Le détail jour par jour est replié ; déplié, il porte les phrases d'avant.
  *   2. À 1 366 × 768, les six premiers vols du jour se voient sans défiler ; la fenêtre et la page ne défilent pas.
- *   3. Le tableau des vols du jour occupe le reste de l'écran et défile dans son cadre, en-tête figé.
+ *   3. Le tableau des vols du jour occupe le reste de l'écran, jusqu'à la carte « Couleurs des compagnies » qui finit la
+ *      page (repliée : une ligne — évolution 25 d), et défile dans son cadre, en-tête figé.
  *   4. Un jour sans vol se lit sur la deuxième ligne, sans rien déplier ; un programme sans date garde sa phrase.
  *   5. « Retours » suit la même forme : la planche défile dans son cadre, en-tête figé ; ses six premières lignes se
  *      voient sans défiler.
@@ -27,9 +28,11 @@ const URL_V1=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
  /** La page, mesurée : le compte rendu, le cadre du tableau, ses lignes, ce qui défile. `cadre`, `lignes` : leurs sélecteurs. */
  const mesure=(cadre,lignes)=>page.evaluate(([c,l])=>{const r=e=>e.getBoundingClientRect(),v=document.getElementById('view-vols'),k=document.querySelector(c),th=k.querySelector('thead th');
    const rapport=document.getElementById('import-report'),trs=[...document.querySelectorAll(l)];
+   // Sous le tableau des vols, la carte « Couleurs des compagnies » finit la page (évolution 25 d) : repliée, une ligne.
+   const carte=[document.getElementById('couleurs-compagnies')].find(e=>e&&e.getClientRects().length)||null;
    return {fenetre:document.scrollingElement.scrollHeight-innerHeight,page:v.scrollHeight-v.clientHeight,
      rapport:rapport&&rapport.getClientRects().length?Math.round(r(rapport).height):0,
-     cadre:{haut:Math.round(r(k).top),bas:Math.round(r(k).bottom),reste:Math.round(innerHeight-r(k).bottom),defile:k.scrollHeight-k.clientHeight,position:k.scrollTop,largeur:Math.round(r(k).width),libre:Math.round(r(v).width)},
+     cadre:{haut:Math.round(r(k).top),bas:Math.round(r(k).bottom),reste:Math.round((carte?r(carte).top:innerHeight)-r(k).bottom),sousLaCarte:carte?Math.round(innerHeight-r(carte).bottom):0,defile:k.scrollHeight-k.clientHeight,position:k.scrollTop,largeur:Math.round(r(k).width),libre:Math.round(r(v).width)},
      entete:{haut:Math.round(r(th).top),bas:Math.round(r(th).bottom),fige:getComputedStyle(th).position},
      lignes:trs.length,vues:trs.filter(t=>r(t).top>=r(th).bottom-1&&r(t).bottom<=Math.min(innerHeight,r(k).bottom)+1).length,
      six:trs.slice(0,6).map(t=>[Math.round(r(t).top),Math.round(r(t).bottom)])};},[cadre,lignes]);
@@ -90,7 +93,8 @@ const URL_V1=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
 
   /* ---- 3. le tableau occupe le reste de l'écran et défile dans son cadre, en-tête figé ------------------------------ */
   assert.ok(m.cadre.defile>50,'le tableau est plus haut que son cadre : il y défile ('+m.cadre.defile+' px)');
-  assert.ok(m.cadre.reste<=16&&m.cadre.reste>=0,'son cadre va jusqu’au bas de l’écran ('+m.cadre.reste+' px du bord)');
+  assert.ok(m.cadre.reste<=16&&m.cadre.reste>=0,'son cadre va jusqu’à la carte « Couleurs des compagnies » ('+m.cadre.reste+' px)');
+  assert.ok(m.cadre.sousLaCarte<=16&&m.cadre.sousLaCarte>=0,'qui finit la page, repliée ('+m.cadre.sousLaCarte+' px du bord)');
   assert.ok(m.cadre.largeur>=m.cadre.libre-52,'et prend la largeur de la page ('+m.cadre.largeur+' px sur '+m.cadre.libre+')');
   assert.equal(m.entete.fige,'sticky');
   await page.locator('#vp-tableau .vp-cadre').evaluate(k=>{k.scrollTop=k.scrollHeight;});await attendre(150);

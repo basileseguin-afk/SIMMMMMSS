@@ -147,3 +147,29 @@ test('version 1 (visuel.css) : les jetons de départ de la maquette, dans les de
   // Aucune ressource venue d'ailleurs : ni police, ni image, ni feuille importée.
   assert.equal(/url\(|@import|@font-face|https?:/i.test(VISUEL), false, 'la feuille ne charge rien');
 });
+
+/* Évolution 25 (d) : les douze couleurs au choix pour une compagnie, dans l'ordre de la demande. Le texte de la pastille
+ * (blanc en clair, sombre en sombre) tient 4,5:1 sur chacune. Le module (pastilles.js) n'en connaît que le rang. */
+test('version 1 (visuel.css) : les douze couleurs des compagnies, 4,5:1 sous le texte de la pastille, dans les deux thèmes', () => {
+  const pastilles = selecteur => {
+    const i = VISUEL.indexOf(selecteur + '{\n  --pa-1:');
+    assert.ok(i >= 0, 'bloc des couleurs des compagnies introuvable : ' + selecteur);
+    return Object.fromEntries([...VISUEL.slice(i, VISUEL.indexOf('\n}', i)).matchAll(/--(pa-[a-z0-9]+)\s*:\s*(#[0-9A-Fa-f]{6})/g)].map(m => [m[1], m[2].toUpperCase()]));
+  };
+  const attendu = {
+    clair: ['#39778B', '#B54A65', '#846A36', '#654AB5', '#337D3F', '#AE4794', '#4A65B5', '#A35B43', '#327979', '#9A4AB5', '#647630', '#327B63'],
+    sombre: ['#5CAEC9', '#DA90A3', '#C59E51', '#AB9ADD', '#40BF55', '#D88AC5', '#90A3DA', '#D59681', '#40BFBF', '#C890DA', '#9FBF40', '#40BF95']
+  };
+  const encre = { clair: '#FFFFFF', sombre: '#161113' };
+  for (const [theme, selecteur] of [['clair', ':root'], ['sombre', SOMBRE]]) {
+    const t = pastilles(selecteur);
+    assert.deepEqual(attendu[theme].map((_, i) => t['pa-' + (i + 1)]), attendu[theme], theme + ' : les douze couleurs, dans l’ordre');
+    assert.equal(Object.keys(t).filter(k => /^pa-\d+$/.test(k)).length, 12, theme + ' : douze, pas une de plus');
+    assert.equal(t['pa-texte'], encre[theme], theme + ' : le texte de la pastille');
+    for (let i = 1; i <= 12; i++) {
+      const r = ratio(hex(t['pa-' + i]), hex(t['pa-texte']));
+      assert.ok(r >= 4.5, theme + ' : couleur ' + i + ' (' + t['pa-' + i] + ') = ' + r.toFixed(2) + ':1');
+    }
+    assert.equal(new Set(attendu[theme]).size, 12, theme + ' : douze couleurs différentes');
+  }
+});

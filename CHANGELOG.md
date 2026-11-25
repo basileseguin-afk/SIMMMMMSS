@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (d) : la compagnie et la classe — une pastille et une étiquette, partout les mêmes
+
+Aucun calcul ne change. Aucun texte de la page ne change. Sans couleur
+choisie, la sauvegarde est celle d’avant, octet pour octet. La version 2
+n’est pas touchée, ni aucun fichier commun.
+
+- **Une compagnie** porte une pastille pleine à sa couleur ; un nom de plus
+  de quatre caractères y laisse ses deux premières lettres et suit en entier.
+- **Une classe** porte une étiquette arrondie, avec le point de sa couleur ;
+  une commande, la pastille puis l’étiquette.
+- Posées là où une compagnie ou une commande se lit seule (tête de rangée,
+  liste, fiche), sur toutes les pages ; jamais dans une phrase, une liste
+  déroulante, un export ni un dessin.
+- **Douze couleurs au choix** par compagnie, dans la carte « Couleurs des
+  compagnies », au bas de « Programme ». Sans choix, elles suivent l’ordre
+  alphabétique des compagnies. « Garder ces couleurs », « Revenir aux
+  couleurs automatiques » ; « Annuler » dans la notification.
+- Les choix se gardent dans une entrée à part (`ory-couleurs-compagnies-v1`),
+  sauvegardée et restaurée avec le reste, que le calcul ne lit pas.
+
+Fichiers : `pastilles.js` (nouveau), `visuel.css`, `sim.js`, `index.html`,
+`accueil.html` ; `tests/pastilles.test.cjs` (nouveau),
+`tests/pastilles-browser.cjs` (nouveau), `tests/contraste.test.cjs`,
+`tests/plusieurs-onglets.test.cjs`, `tests/programme-ecran-browser.cjs` ;
+`docs/DESIGN_SYSTEM.md`, `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (c) : saisi, repris, calculé — trois allures, partout
 
 Aucun calcul ne change, ni la sauvegarde, ni aucune valeur ni aucun texte de

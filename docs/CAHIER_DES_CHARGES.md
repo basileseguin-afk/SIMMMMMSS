@@ -778,6 +778,67 @@ main), `tests/fournisseurs-browser.cjs`,
 schéma sans et avec les fournisseurs, le tableau, la fiche d'un
 fournisseur).
 
+### La couleur des compagnies (version 1, évolution 25)
+
+Le constat du chef de projet : « les compagnies ont le même texte que le
+reste de la page ». Chaque compagnie a une couleur, portée par sa pastille
+partout où elle est nommée seule (`docs/DESIGN_SYSTEM.md`, « La pastille et
+l'étiquette »).
+
+**La couleur est un réglage de l'utilisateur, jamais une valeur du code.**
+Douze couleurs au choix, les mêmes pour toutes les unités ; le choix porte le
+rang de la couleur (de 1 à 12), pas sa teinte : il vaut dans les deux thèmes.
+
+**Sans choix, la couleur est automatique.** Les compagnies de l'unité —
+celles du programme chargé, et celles des réglages : les commandes de la
+journée, ajoutées ou retirées, celles que les équipes préparent, les
+compagnies d'un handling ou d'un service par compagnie, celles qui ont un
+temps par vol propre — sont rangées par ordre alphabétique et prennent les
+douze couleurs dans l'ordre ; la treizième reprend la première. Rien n'est
+écrit : la sauvegarde est celle d'avant, octet pour octet. Une compagnie qui
+s'ajoute déplace donc les couleurs de celles qui la suivent : c'est ce que
+« Garder ces couleurs » arrête.
+
+**La carte « Couleurs des compagnies »**, au bas de « Programme » (la page
+qui charge les compagnies). Repliée, c'est une ligne : les pastilles des
+compagnies. Dépliée : une rangée par compagnie, sa pastille, et les douze
+couleurs à cliquer. Deux boutons :
+
+- « Garder ces couleurs » écrit pour chaque compagnie de l'unité sa couleur
+  du moment : elle ne bouge plus quand une compagnie s'ajoute ;
+- « Revenir aux couleurs automatiques » efface les choix.
+
+Chaque geste se dit dans une notification, qui propose « Annuler ». En
+lecture seule, la page « Programme » est fermée, et aucun de ces gestes
+n'écrit.
+
+**Où les choix se gardent.** Avec les réglages de l'unité, dans une entrée
+neuve et à part, `ory-couleurs-compagnies-v1` :
+
+```json
+{ "schema": "ory-couleurs-compagnies", "version": 1, "couleurs": { "NORD": 9, "SUD": 4 } }
+```
+
+- Elle n'existe que s'il y a un choix ; « Tout sauvegarder » l'exporte,
+  « Restaurer » la relit.
+- Elle est validée avant d'être lue (le schéma, la version, un rang de 1 à
+  12 par compagnie) : une entrée invalide refuse la sauvegarde entière, en
+  disant pourquoi ; abîmée dans le navigateur, elle se lit comme « aucun
+  choix ».
+- Une sauvegarde sans cette entrée se charge comme avant ; si des couleurs
+  étaient choisies dans le navigateur, elles s'effacent, et la question de la
+  restauration le dit.
+- Une compagnie qui n'est plus dans l'unité garde son choix dans la
+  sauvegarde.
+- **Le calcul ne la lit pas.** Une sauvegarde qui la porte, rejouée par le
+  code d'avant, par les outils (`outils/simuler-journee.cjs`) ou par la
+  version 2, donne le même résultat, champ par champ : ils l'ignorent.
+
+Contrôlé par `tests/pastilles.test.cjs` (les compagnies de l'unité, les
+rangs, l'entrée, le même résultat avec et sans elle) et
+`tests/pastilles-browser.cjs` (la carte, « Annuler », sauvegarder puis
+restaurer, les deux thèmes).
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

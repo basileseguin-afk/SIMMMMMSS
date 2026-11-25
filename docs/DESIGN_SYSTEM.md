@@ -631,3 +631,61 @@ peser (le champ de la palette, les commandes de vue, la lecture seule).
 `tests/visuel-champs-browser.cjs` le vérifie dans les deux thèmes, sur une
 fiche de service et sur le tableau de tous les temps par vol.
 
+### La pastille et l'étiquette (évolution 25 d)
+
+Le constat du chef de projet : « les compagnies ont le même texte que le
+reste de la page ». Une compagnie et une commande (une compagnie et une
+classe) ont une allure, la même sur toutes les pages. Un module de la
+version 1 la pose : `pastilles.js`.
+
+| Ce qui est nommé | Son allure |
+|---|---|
+| **Une compagnie** | Une pastille pleine à sa couleur : rayon 6 px, hauteur 22 px, graisse 700. Un nom de quatre caractères au plus tient dedans, sans être répété. Un nom plus long y laisse ses deux premières lettres, en capitales, et suit en entier, en graisse 500 (« CI » puis « Ciel Charter »). |
+| **Une classe** | Une étiquette arrondie : hauteur 22 px, fond `--ds-survol`, texte `--ds-texte-1`, un point de 8 px à la couleur de la classe (`--cab-*`, § « Les jetons redéfinis »), puis le nom de la classe tel que la page l'écrit (« Business », « BC »). |
+| **Une commande** | La pastille de sa compagnie, puis l'étiquette de sa classe. Ce qui les liait dans le texte (« · », une espace, « / ») reste dans le texte et devient l'écart entre les deux. |
+
+**Le texte lu ne change pas.** Les pages écrivent leurs noms comme avant ;
+le module enveloppe les nœuds de texte, sans en réécrire un caractère :
+`textContent`, le lecteur d'écran et le copier-coller rendent ce qu'ils
+rendaient. Les deux lettres et le point sont des pseudo-éléments (un décor).
+Les deux lettres sont écrites en capitales par le module : aucun
+`text-transform`.
+
+**Où.** Là où une compagnie ou une commande se lit seule : la tête d'une
+rangée, une cellule qui la nomme, une liste (et, le jour où une page en
+aura, une légende ou le titre d'une fiche). La liste des endroits est dans
+le module (`LIEUX`) ; un texte n'y est habillé que s'il nomme, à lui seul,
+une compagnie de l'unité ou une de ses commandes. Jamais dans une phrase, une
+énumération, une `<option>`, un fichier exporté ni un dessin.
+
+| Page | Endroit |
+|---|---|
+| Détails › Commandes | la tête de rangée d'une commande ; les commandes retirées ; « Étapes de chaque commande » |
+| Détails › Vols | la compagnie sous le numéro du vol |
+| Détails › Stocks et retours | la commande qui attend le plus longtemps |
+| Programme | la colonne « Compagnie » ; la carte « Couleurs des compagnies » |
+| Services et équipes | ce qu'une équipe prépare (la rangée d'une compagnie, « Dans l'ordre ») ; ce qui reste à faire dans un service ; les compagnies d'un service par compagnie ; le tableau de tous les temps par vol (la compagnie, ses classes) |
+| Chemins | les commandes qui suivent un chemin ; qui passe par une étape |
+
+**Les douze couleurs.** La couleur d'une compagnie est un réglage de
+l'utilisateur, jamais une valeur du code : le module ne connaît qu'un rang,
+de 1 à 12, et la feuille porte les teintes, une par thème (`--pa-1` à
+`--pa-12`, `--pa-texte`). Le rang vaut donc dans les deux thèmes.
+
+| Rang | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Clair (texte `#FFFFFF`) | `#39778B` | `#B54A65` | `#846A36` | `#654AB5` | `#337D3F` | `#AE4794` | `#4A65B5` | `#A35B43` | `#327979` | `#9A4AB5` | `#647630` | `#327B63` |
+| Sombre (texte `#161113`) | `#5CAEC9` | `#DA90A3` | `#C59E51` | `#AB9ADD` | `#40BF55` | `#D88AC5` | `#90A3DA` | `#D59681` | `#40BFBF` | `#C890DA` | `#9FBF40` | `#40BF95` |
+
+Le texte de la pastille tient 4,5:1 sur chacune (de 5,0 à 6,6:1 en clair, de
+7,4 à 8,9:1 en sombre) : `tests/contraste.test.cjs`.
+
+**Sans choix, la couleur est automatique** : les compagnies de l'unité —
+celles du programme chargé et celles des réglages —, rangées par ordre
+alphabétique, prennent les douze couleurs dans l'ordre, puis recommencent.
+Rien n'est écrit. Le choix, la carte « Couleurs des compagnies » et la
+sauvegarde : `docs/CAHIER_DES_CHARGES.md`, « La couleur des compagnies ».
+
+`tests/pastilles.test.cjs` et `tests/pastilles-browser.cjs` le vérifient :
+le texte de chaque page du menu est celui d'avant, une compagnie a la même
+pastille sur toutes les pages, dans les deux thèmes.

@@ -3242,7 +3242,10 @@ const PARTIES = [
   // sont retirées à la restauration, et les règles par défaut reviennent.
   { cle:'ory-import-winrest-v1', nom:'règles d’import Winrest', valider:r => window.OrlyWinrest.lireEnveloppe(r), siAbsente:'retirer' },
   // Les seuils d'alerte des résultats (évolution 15 a) : absents d'une sauvegarde d'avant, ils sont retirés, et les défauts reviennent.
-  { cle:'ory-seuils-v1',    nom:'seuils d’alerte',         valider:r => window.OrlyReponses.lireEnveloppe(r), siAbsente:'retirer' }
+  { cle:'ory-seuils-v1',    nom:'seuils d’alerte',         valider:r => window.OrlyReponses.lireEnveloppe(r), siAbsente:'retirer' },
+  // Les couleurs choisies pour les compagnies (évolution 25 d) : un rang de couleur par compagnie, que le calcul ne lit pas.
+  // Absentes d'une sauvegarde (aucun choix, ou une sauvegarde d'avant), elles sont retirées : les couleurs automatiques reviennent.
+  { cle:'ory-couleurs-compagnies-v1', nom:'couleurs des compagnies', valider:r => window.OrlyPastilles.lireEnveloppe(r), siAbsente:'retirer' }
 ];
 
 function sauvegardeComplete() {
@@ -3307,6 +3310,8 @@ async function restaurerSauvegarde(e) {
       // Une sauvegarde d'avant, sans les règles d'import Winrest : elles reviennent aux défauts, et la question le dit.
       + (aRetirer.includes(CLE_WINREST) ? ' Elle n’a pas de règles d’import Winrest : les règles d’import Winrest par défaut reviennent.' : '')
       + (aRetirer.includes(CLE_SEUILS) ? ' Elle n’a pas de seuils d’alerte : les seuils par défaut reviennent.' : '')
+      // Des couleurs de compagnies choisies ici, et aucune dans la sauvegarde : elles s'effacent, et la question le dit.
+      + (aRetirer.includes(CLE_COULEURS) && localStorage.getItem(CLE_COULEURS) ? ' Elle n’a pas de couleurs de compagnies : les couleurs automatiques reviennent.' : '')
       + (stockagesRetires ? ' ' + OrlyPlanMenage.phrase(stockagesRetires) + ' : rattachés à aucune zone, ils ne disaient rien.' : '')
       + ' La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
       { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
@@ -3349,6 +3354,20 @@ function enregistrerReglesWinrest(regles){
  *  pas. Réglés dans « Réglages de la simulation » (seuils-vue.js).
  * ==========================================================================*/
 const CLE_SEUILS='ory-seuils-v1';
+/* Les couleurs des compagnies (évolution 25 d, pastilles.js) : la page dit ses compagnies — celles du programme chargé et
+ * celles des réglages —, ses classes telles qu'elle les écrit, et quand elles changent. Le calcul ne lit pas ces couleurs. */
+const CLE_COULEURS='ory-couleurs-compagnies-v1';
+function initPastilles(){
+  if(!window.OrlyPastilles||!OrlyPastilles.brancher)return;
+  const P=window.MoteurProduction;
+  OrlyPastilles.brancher({
+    signature:signaturePeriode,
+    compagnies:()=>OrlyPastilles.compagnies({vols:Sim.dataCourante,classes:Sim.ateliers&&Sim.ateliers.classes,
+      etat:Sim.ateliers&&Sim.ateliers.state,bareme:Sim.reglages&&Sim.reglages.etat&&Sim.reglages.etat.bareme}),
+    classes:()=>['BC','PC','YC','CREW','SPML'].map(cabine=>({cabine,nom:P.libelleClasse('_/'+cabine).slice(4)}))
+  });
+  OrlyPastilles.poserCarte(document.getElementById('couleurs-compagnies'));
+}
 /** Les seuils gardés : { seuils (complets), erreur (null, ou pourquoi les défauts) }. */
 function seuilsAlerte(){
   const R=window.OrlyReponses;if(!R)return{seuils:null,erreur:null};
@@ -4230,6 +4249,7 @@ etape('palette',initPalette);
 etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
 // Après les reprises des données d'avant (elles ne sont pas des gestes) : les portes des réglages se gardent ensuite.
 etape('lecture seule',initLectureSeule);
+etape('couleurs des compagnies',initPastilles);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}

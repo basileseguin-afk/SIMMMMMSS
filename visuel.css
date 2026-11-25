@@ -230,3 +230,85 @@ output,.at-pers-calc output,.rgr-calc{border:0;background:none}
 .rg-recap-legende .rgr.propre{padding:1px 8px;border:1px solid var(--ds-saisi-bord);border-radius:var(--ds-r-1);background:var(--ds-saisi-fond);font-weight:var(--ds-g-fort)}
 .rg-recap-legende .rgr.commun{font-style:italic;color:var(--ds-texte-3)}
 
+
+/* ---- 5. La compagnie et la classe ------------------------------------------ */
+/* Douze couleurs au choix pour une compagnie (pastilles.js n'en connaît que le rang) : celles du thème clair portent un
+   texte blanc, celles du thème sombre un texte sombre, à 4,5:1 au moins (tests/contraste.test.cjs). */
+:root{
+  --pa-1:#39778B; --pa-2:#B54A65; --pa-3:#846A36; --pa-4:#654AB5; --pa-5:#337D3F; --pa-6:#AE4794;
+  --pa-7:#4A65B5; --pa-8:#A35B43; --pa-9:#327979; --pa-10:#9A4AB5; --pa-11:#647630; --pa-12:#327B63;
+  --pa-texte:#FFFFFF;
+}
+:root[data-theme="sombre"]{
+  --pa-1:#5CAEC9; --pa-2:#DA90A3; --pa-3:#C59E51; --pa-4:#AB9ADD; --pa-5:#40BF55; --pa-6:#D88AC5;
+  --pa-7:#90A3DA; --pa-8:#D59681; --pa-9:#40BFBF; --pa-10:#C890DA; --pa-11:#9FBF40; --pa-12:#40BF95;
+  --pa-texte:#161113;
+}
+[data-pa-rang="1"]{--pa-fond:var(--pa-1)} [data-pa-rang="2"]{--pa-fond:var(--pa-2)} [data-pa-rang="3"]{--pa-fond:var(--pa-3)}
+[data-pa-rang="4"]{--pa-fond:var(--pa-4)} [data-pa-rang="5"]{--pa-fond:var(--pa-5)} [data-pa-rang="6"]{--pa-fond:var(--pa-6)}
+[data-pa-rang="7"]{--pa-fond:var(--pa-7)} [data-pa-rang="8"]{--pa-fond:var(--pa-8)} [data-pa-rang="9"]{--pa-fond:var(--pa-9)}
+[data-pa-rang="10"]{--pa-fond:var(--pa-10)} [data-pa-rang="11"]{--pa-fond:var(--pa-11)} [data-pa-rang="12"]{--pa-fond:var(--pa-12)}
+
+/* La compagnie : une pastille pleine, à sa couleur. Un nom de quatre caractères au plus tient dedans ; un nom plus long
+   y laisse ses deux premières lettres (un décor : elles ne se lisent ni ne se copient), et suit en entier. */
+.pa{white-space:nowrap}
+.pa-cie:not(.pa-long),.pa-cie.pa-long::before{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  height:22px;min-width:22px;margin-block:-1px;padding:0 7px;border-radius:6px;background:var(--pa-fond,var(--ds-texte-3));color:var(--pa-texte);
+  font-size:13px;line-height:1;font-weight:700;font-style:normal;letter-spacing:.01em;text-decoration:none;vertical-align:middle}
+.pa-cie.pa-long{font-weight:500}
+.pa-cie.pa-long::before{content:attr(data-pa-court);content:attr(data-pa-court) / "";margin-right:6px}
+/* La classe : une étiquette arrondie, le point de sa couleur (§ 1), puis son nom tel que la page l'écrit. */
+.pa-classe{display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;height:22px;margin-block:-1px;padding:0 9px 0 8px;border-radius:999px;
+  background:var(--ds-survol);color:var(--ds-texte-1);font-size:13px;line-height:1;font-weight:500;font-style:normal;vertical-align:middle}
+.pa-classe::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--pa-point,var(--ds-texte-4))}
+.pa-classe[data-cab="BC"]{--pa-point:var(--cab-BC)} .pa-classe[data-cab="PC"]{--pa-point:var(--cab-PC)} .pa-classe[data-cab="YC"]{--pa-point:var(--cab-YC)}
+.pa-classe[data-cab="CREW"]{--pa-point:var(--cab-CREW)} .pa-classe[data-cab="SPML"]{--pa-point:var(--cab-SPML)}
+/* Ce qui lie la compagnie à sa classe (« · », une espace, « / ») reste dans le texte, et devient l'écart entre les deux. */
+.pa-lien{display:inline-block;width:6px;overflow:hidden;color:transparent;white-space:pre;vertical-align:middle}
+/* Le point que la page posait devant la commande : l'étiquette porte le sien. */
+.puce-classe.pa-remplacee{display:none}
+
+/* La carte « Couleurs des compagnies », au bas du programme des vols. Repliée, c'est une ligne : son titre, et les
+   pastilles des compagnies. Dépliée (une rangée par compagnie, les douze couleurs à cliquer), elle prend sa place sur
+   le tableau des vols, qui défile dans ce qui reste ; elle défile elle-même au-delà. */
+.pa-carte{margin-top:8px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);
+  box-shadow:var(--ds-ombre-carte);overflow:hidden}
+.pa-carte[open]{overflow:auto;overscroll-behavior:contain}
+.pa-carte-tete{display:flex;align-items:center;gap:12px;min-height:36px;padding:0 16px;cursor:pointer;color:var(--ds-texte-1)}
+/* Un en-tête posé en ligne perd son triangle : il le retrouve, tourné quand la carte est dépliée. */
+.pa-carte-tete::-webkit-details-marker{display:none}
+.pa-carte-tete::before{content:"";flex:none;width:0;height:0;border-style:solid;border-width:4px 0 4px 6px;border-color:transparent transparent transparent var(--ds-texte-3)}
+.pa-carte[open]>.pa-carte-tete::before{transform:rotate(90deg)}
+.pa-carte-titre{margin:0;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pa-carte-etat{color:var(--ds-texte-3);font-size:13px;white-space:nowrap}
+.pa-apercu{display:flex;flex:1 1 0;min-width:0;gap:6px;overflow:hidden;justify-content:flex-end}
+.pa-carte[open] .pa-apercu{visibility:hidden}
+/* Sur la page « Programme », qui tient en un écran : la carte est la dernière à céder sa hauteur, repliée ; dépliée,
+   c'est le tableau des vols qui lui fait place. */
+body[data-sous="v-programme"] #view-vols>.pa-carte{flex:0 1 auto;min-height:24px}
+body[data-sous="v-programme"] #view-vols>.pa-carte[open]{flex:none;max-height:46%}
+body[data-sous="v-programme"] #view-vols:has(>.pa-carte[open])>#vols-jour{min-height:118px}
+/* Un écran court (un portable) : la ligne de la carte repliée se prend sur les marges de la page — ni sur l'import, qui
+   garde sa hauteur, ni sur les six premiers vols du jour (évolution 23 f). */
+@media (min-width:861px) and (min-height:561px) and (max-height:820px){
+  body[data-sous="v-programme"] #view-vols:not([hidden]){padding-top:10px;padding-bottom:8px}
+  body[data-sous="v-programme"] #view-vols>.vols-source{margin-bottom:8px}
+  body[data-sous="v-programme"] #view-vols>#vols-jour{margin-top:8px;min-height:260px}
+  body[data-sous="v-programme"] #view-vols:has(>.pa-carte[open])>#vols-jour{min-height:104px}
+  body[data-sous="v-programme"] #vols-jour>.vp-tete{margin-bottom:6px}
+  body[data-sous="v-programme"] #view-vols>.pa-carte{margin-top:6px}
+  body[data-sous="v-programme"] .pa-carte-tete{min-height:30px}
+}
+.pa-liste{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:6px 24px;margin:0;padding:4px 16px 0;list-style:none}
+.pa-rangee{display:flex;align-items:center;gap:10px;min-height:28px}
+.pa-nom{flex:0 0 132px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pa-teintes{display:flex;gap:4px;flex:none}
+.pa-teinte{box-sizing:border-box;width:20px;height:20px;padding:0;border:2px solid var(--ds-surface-1);border-radius:6px;background:var(--pa-fond);cursor:pointer;
+  outline:1px solid transparent}
+.pa-teinte:hover{outline-color:var(--ds-texte-3)}
+.pa-teinte[aria-checked="true"]{outline:2px solid var(--ds-texte-1)}
+.pa-teinte:focus-visible{box-shadow:var(--ds-focus)}
+.pa-etat{color:var(--ds-texte-3);font-size:13px;white-space:nowrap}
+.pa-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;padding:10px 16px 12px}
+.pa-apercu .pa-nom{flex:none}
+.pa-vide{margin:0;padding:4px 16px 0}
