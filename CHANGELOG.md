@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Correction 23 (k) : le contrôle, les captures et la doc
+
+Aucun fichier de la page ne change : un test de captures, et la doc.
+
+- **Quatorze captures de contrôle**, sur une unité fictive, à 1 366 × 768
+  et 1 920 × 1 080 : le Planning (a), « Heures sup et renforts » avec des
+  heures sup et des renforts (b), « Contrôles » avec une commande sans équipe
+  à trois étapes puis la fiche ouverte par son bouton (c), la fiche d’un
+  service par compagnie (e), « Tous les temps par vol » (g), « Chemins » (j).
+  Chacune est vérifiée ; elles restent hors du dépôt.
+- **Les tests dont la valeur attendue change dans la correction 23** :
+  - (c) `tests/controles-page.test.cjs`, `tests/controles-page-browser.cjs`,
+    `tests/avis-browser.cjs`, `tests/mon-unite-browser.cjs`,
+    `tests/sans-armement-browser.cjs` : un point de moins (« Vos services et
+    leurs équipes » ne s’affiche plus quand ses services sont déjà cités), un
+    bouton par service, le détail qui nomme les commandes ;
+  - (d) `tests/synthese-browser.cjs`, `tests/lecture-seule-browser.cjs` : le
+    bandeau de la Synthèse mène à « Contrôles » ;
+  - (e) `tests/categories-browser.cjs`, `tests/armement-chemins-browser.cjs`,
+    `tests/armement-integre-browser.cjs` : la phrase de l’encart « Lié au
+    handling », plus de bouton qui relie tous les chemins ;
+  - (g) `tests/onglets.test.cjs`, `tests/services-page-browser.cjs`,
+    `tests/menu-browser.cjs`, `tests/recap-browser.cjs` : « Temps par vol »
+    mène à l’entrée « Tous les temps par vol » ;
+  - (j) `tests/chemins-fournisseurs-browser.cjs` : la pastille dit le nom
+    entier, la ligne des fournisseurs précède le schéma.
+  Aucun dans (a), (b), (f), (h), (i). Le détail, ancienne valeur → nouvelle,
+  est dans le corps du commit de chaque partie.
+
+Fichiers : `tests/captures-correction-23-browser.cjs` (nouveau) ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-25 — Correction 23 (j) : « Chemins », deux retouches de l’évolution 24
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

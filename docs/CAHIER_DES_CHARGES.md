@@ -606,6 +606,17 @@ au-dessus du schéma, avec le compte du chemin : à 1 366 × 768, l'interrupteur
 se voit sans défiler (`tests/chemins-retouches-browser.cjs`,
 `tests/chemins-page.test.cjs`).
 
+Correction 23 (k) — **le contrôle.** Quatorze captures, sur une unité
+fictive, à 1 366 × 768 et 1 920 × 1 080 : le Planning (a), « Heures sup et
+renforts » avec des heures sup et des renforts (b), « Contrôles » avec une
+commande sans équipe à trois étapes puis la fiche ouverte par son bouton
+(c), la fiche d'un service par compagnie (e), « Tous les temps par vol »
+(g), « Chemins » (j). Chacune est vérifiée par le test qui la fait
+(`tests/captures-correction-23-browser.cjs`) ; elles restent hors du dépôt.
+Dans toute la correction, aucun calcul ne change : pour une même sauvegarde
+et les mêmes vols, le résultat et les cinq réponses sont les mêmes, champ
+par champ ; le format de la sauvegarde ne change pas.
+
 Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
 chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par
 compagnie : courrier et trajet du camion » ; elle reste dans la liste
