@@ -136,6 +136,9 @@ body[data-defile-sous-la-barre] .haut{box-shadow:var(--ds-ombre-haut)}
 .workspace-heading{background:none;border-bottom:0;box-shadow:none;padding-bottom:11px}
 .tete-titre{font-size:22px;line-height:24px;font-weight:var(--ds-g-fort);letter-spacing:-.01em}
 
+/* Le bandeau de l'accueil de l'application prend le bordeaux du menu, uni comme lui (évolution 25 f) : plus de lueur. */
+.acc-histoire{background:var(--ds-nav-fond)}
+
 /* ---- 3. Composants --------------------------------------------------------- */
 /* Un choix parmi quelques-uns — les onglets d'une page, un filtre, les jours du planning : des pastilles arrondies.
    Celle qui est choisie est pleine (les jetons du choix, § 1). */

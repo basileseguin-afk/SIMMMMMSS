@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (f) : l'accueil et les pages hors application
+
+Aucun calcul ne change, ni aucune donnée, ni aucun texte, ni le titre de
+l'onglet. La version 2 n’est pas touchée, ni aucun fichier commun ; les
+pages de secours non plus.
+
+- **La page d'entrée** (`accueil.html`) suit la coquille : ses cartes ont
+  l'ombre des cartes, une application s'élève au survol ; ses titres de bloc
+  sont en minuscules, à 13 px ; aucun texte sous 13 px.
+- **Le bandeau de l'accueil de l'application** prend le bordeaux du menu,
+  uni comme lui.
+
+Fichiers : `accueil.html`, `visuel.css`, `index.html` (empreintes) ;
+`tests/accueil-browser.cjs`, `tests/visuel-coquille-browser.cjs` ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (e) : les dessins prennent leurs couleurs dans les jetons
 
 Aucun calcul ne change, ni aucune donnée, ni aucun dessin : c'est un contrôle

@@ -2425,6 +2425,13 @@ d'une zone du plan selon son type, celle d'un lien selon ce qui circule) :
 ils ne sont pas touchés, et `docs/DESIGN_SYSTEM.md`, « Les dessins », en
 donne la liste et dit où elles se voient.
 
+**L'accueil et les pages hors application** (évolution 25 f). La page
+d'entrée (`accueil.html`) a le visuel de l'application : ses cartes et ses
+titres de bloc suivent la coquille, dans les deux thèmes. Le bandeau de
+l'accueil de l'application prend le bordeaux du menu, uni comme lui. Les
+pages de secours restent autonomes et gardent leur visuel. Aucun texte ne
+change, ni le titre de l'onglet.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |

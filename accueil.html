@@ -10,7 +10,7 @@
 <!-- Le design system du site (refonte, étape 11) : mêmes jetons, même police, les deux thèmes. -->
 <link href="ds.css?v=10e3eb8c" rel="stylesheet"/>
 <!-- Le visuel de la version 1 (évolution 25) : les mêmes jetons que l'application, redéfinis par-dessus ds.css. -->
-<link href="visuel.css?v=78df9c7f" rel="stylesheet"/>
+<link href="visuel.css?v=885d4050" rel="stylesheet"/>
 <style>
 /* ds.css cadre l'application sur un écran (grille, rien ne défile hors des vues) :
    cette page est un simple document, qui défile. */
@@ -23,20 +23,22 @@ body{display:block;height:auto;overflow:visible;margin:0;background:var(--ds-fon
 .ap-sous{color:var(--ds-texte-3);margin:0 0 24px}
 .ap-apps{display:grid;gap:12px;margin-bottom:24px}
 a.ap-app{display:flex;gap:16px;align-items:flex-start;text-decoration:none;color:inherit;background:var(--ds-surface-1);
-  border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:18px 20px;box-shadow:var(--ds-ombre-1);
+  border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:18px 20px;box-shadow:var(--ds-ombre-carte);
   transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
-a.ap-app:hover{border-color:var(--ds-accent-trait)}
+/* Une carte qui se clique s'élève au survol (évolution 25 b). */
+a.ap-app:hover{border-color:var(--ds-accent-trait);box-shadow:var(--ds-ombre-carte-survol)}
 a.ap-app:focus-visible{outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
 .ap-ico{flex:none;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--ds-r-3);background:var(--ds-accent-doux);color:var(--ds-accent)}
 .ap-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .ap-app h2{margin:0 0 2px;font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
 .ap-app p{margin:0;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
-.ap-bloc{background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:16px 20px;margin-bottom:12px}
-.ap-bloc h3{margin:0 0 8px;font-size:var(--ds-t-11);text-transform:uppercase;letter-spacing:.05em;color:var(--ds-texte-3);font-weight:var(--ds-g-fort)}
+.ap-bloc{background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:16px 20px;margin-bottom:12px;box-shadow:var(--ds-ombre-carte)}
+/* Un titre de bloc : en minuscules, 13 px, graisse 500 (évolution 25 b) — plus de capitales espacées. */
+.ap-bloc h3{margin:0 0 8px;font-size:13px;color:var(--ds-texte-3);font-weight:var(--ds-g-moyen)}
 .ap-bloc p{margin:6px 0;color:var(--ds-texte-2)}
 .ap-bloc code{background:var(--ds-surface-2);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-1);padding:1px 5px;font-family:var(--ds-mono);
-  font-size:var(--ds-t-12);color:var(--ds-texte-1);overflow-wrap:anywhere}
-.ap-avert{box-shadow:inset 3px 0 0 var(--ds-attente)}
+  font-size:13px;color:var(--ds-texte-1);overflow-wrap:anywhere}
+.ap-avert{box-shadow:inset 3px 0 0 var(--ds-attente),var(--ds-ombre-carte)}
 .ap-avert h3{color:var(--ds-attente-texte)}
 .ap-fin{color:var(--ds-texte-3);font-size:var(--ds-t-13)}
 </style>

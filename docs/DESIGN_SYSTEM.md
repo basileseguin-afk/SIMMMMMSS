@@ -727,3 +727,22 @@ d'une classe, un état) tient 3:1 sur chacune des trois surfaces
 `tests/visuel-dessins-browser.cjs` le vérifie sur chaque page du menu, sur
 un chemin ouvert et sur « En direct » en relief, dans les deux thèmes ;
 `tests/contraste.test.cjs`, pour les formes.
+
+### L'accueil et les pages hors application (évolution 25 f)
+
+- **La page d'entrée** (`accueil.html`) charge `ds.css` puis `visuel.css` :
+  elle a les jetons de l'application, dans les deux thèmes. Ses cartes
+  suivent la coquille — 14 px, trait fin, l'ombre des cartes ; une
+  application, qui se clique, s'élève au survol, un bloc non. Ses titres de
+  bloc sont en minuscules, à 13 px, graisse 500, au troisième gris ; aucun
+  texte sous 13 px. Le titre de l'onglet et les textes ne changent pas.
+- **Le bandeau de l'accueil de l'application** prend le bordeaux du menu, uni
+  comme lui : plus de lueur. En thème sombre, il est sur la surface du menu.
+  Il garde son rayon de 16 px ; les tuiles et les boutons de l'accueil
+  suivaient déjà la coquille.
+- **Les pages de secours** (`secours.html`, `v2/secours.html`) restent
+  autonomes : elles ne chargent aucune feuille du site, pour s'ouvrir même
+  quand le site ne se charge plus. Elles gardent leur visuel.
+
+`tests/accueil-browser.cjs` (la page d'entrée, aux deux thèmes) et
+`tests/visuel-coquille-browser.cjs` (le bandeau) le vérifient.

@@ -6,6 +6,7 @@
  *   2. LE HAUT D'UNE PAGE : plus de bandeau ni d'ombre derrière le titre (22 px, graisse 600, −0,01 em) ; l'ombre de la
  *      barre du haut n'apparaît que quand un contenu défile dessous.
  *   3. UNE CARTE : rayon de 14 px, trait fin ; elle ne s'élève au survol que si elle se clique.
+ *      Le bandeau de l'accueil de l'application prend le bordeaux du menu, uni comme lui (évolution 25 f).
  *   4. UN BOUTON : rayon de 8 px ; le principal plein, à l'accent ; les autres sur le fond de carte ; le geste qui
  *      détruit garde sa couleur. Les hauteurs ne changent pas (28 et 32 px).
  *   5. UN CHOIX PARMI QUELQUES-UNS (les onglets d'une page, les jours et les zooms du planning) : des pastilles ; celle
@@ -91,6 +92,12 @@ const JETONS=['ds-nav-fond','ds-nav-repere','ds-nav-texte-1','ds-nav-actif','ds-
     assert.deepEqual(await barreHaut(),{ombre:'none',dit:false},V+'revenu en haut : l’ombre s’efface');
 
     /* ---- 3. une carte ---------------------------------------------------------------------------------------------- */
+    // Le bandeau de l'accueil prend le bordeaux du menu, uni comme lui (évolution 25 f) ; en sombre, la surface du menu.
+    const bandeau=await page.evaluate(()=>{const b=getComputedStyle(document.querySelector('#view-accueil .acc-histoire')),m=getComputedStyle(document.querySelector('body>.barre'));
+      return {fond:b.backgroundColor,image:b.backgroundImage,rayon:b.borderTopLeftRadius,titre:getComputedStyle(document.querySelector('#view-accueil .acc-histoire h1')).color,menu:m.backgroundColor,menuImage:m.backgroundImage};});
+    assert.deepEqual([bandeau.fond,bandeau.image],[bandeau.menu,'none'],V+'le bandeau de l’accueil : le fond du menu, uni');
+    assert.equal(bandeau.menuImage,'none');
+    assert.equal(bandeau.rayon,'16px',V+'le bandeau garde son rayon');
     // Une tuile de l'accueil se clique : elle s'élève au survol.
     const tuile=page.locator('#view-accueil .acc-tuile').first();
     s=await tuile.evaluate(e=>{const c=getComputedStyle(e);return {r:c.borderRadius,b:c.borderTopColor,o:c.boxShadow};});
