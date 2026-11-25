@@ -2413,6 +2413,18 @@ le reste de la page ».
 Le détail : `docs/DESIGN_SYSTEM.md`, « La pastille et l'étiquette », et
 `docs/CAHIER_DES_CHARGES.md`, « La couleur des compagnies ».
 
+**Les dessins** (évolution 25 e). Le plan, « En direct », les graphes, les
+courbes et le planning prennent leurs couleurs dans les jetons : ils ont
+suivi le nouveau visuel sans être retouchés. Plus aucun bleu nuit ni bleu
+océan, sur aucune page du menu, dans les deux thèmes ; les classes ont leurs
+couleurs partout ; un texte dans un dessin tient 4,5:1 sur son fond, une
+forme 3:1. La vue en trois dimensions d'« En direct » reste telle qu'elle
+est : seules ses teintes, lues dans les jetons, ont changé. Deux scripts
+communs avec la version 2 écrivent encore des couleurs en dur (la couleur
+d'une zone du plan selon son type, celle d'un lien selon ce qui circule) :
+ils ne sont pas touchés, et `docs/DESIGN_SYSTEM.md`, « Les dessins », en
+donne la liste et dit où elles se voient.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2752,6 +2764,7 @@ Le détail : `docs/DESIGN_SYSTEM.md`, « La pastille et l'étiquette », et
 | `tests/visuel-champs-browser.cjs` | Saisi, repris, calculé (v1, évolution 25 c), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur une fiche de service, un champ rempli a le fond et le trait du saisi (graisse 600) ; vidé, il reprend le fond de carte dès la frappe et son texte d’attente est en italique, au troisième gris, à 4,5:1 au moins ; un champ sans texte d’attente aussi ; une liste sur son option vide garde le fond de carte, sur un autre choix elle prend l’allure du saisi ; un nombre calculé est du texte ; un champ désactivé est en retrait ; une case à cocher est à l’accent ; dans le tableau de tous les temps, la valeur propre et la valeur reprise suivent ce code, la légende et l’aide le disent, la recherche reste neutre ; le jour affiché et le filtre des vols restent neutres ; en lecture seule, aucun champ n’a le fond du saisi sur les pages restées ouvertes |
 | `tests/pastilles.test.cjs` | `pastilles.js` sans navigateur (v1, évolution 25 d), sur des compagnies fictives : les compagnies de l’unité (programme et réglages, par ordre alphabétique) ; sans choix, les douze couleurs dans l’ordre, puis elles recommencent ; un choix porte un rang de 1 à 12 ; « Garder ces couleurs » arrête le décalage quand une compagnie s’ajoute ; un nom de quatre caractères au plus tient dans la pastille, un nom plus long y laisse ses deux premières lettres ; un texte n’est découpé que s’il nomme à lui seul une compagnie ou une commande, sans perdre un caractère ; l’entrée des choix, validée ; une sauvegarde qui la porte rend le même résultat ; aucune teinte dans le module ; chargé par la version 1 seule |
 | `tests/pastilles-browser.cjs` | La pastille et l’étiquette dans la page (v1, évolution 25 d), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : le `textContent` de chaque page du menu, d’une fiche de service, d’une fiche d’équipe et du tableau de tous les temps est celui de la page d’avant (sans `pastilles.js`) ; la pastille (6 px, 22 px, graisse 700 ; deux lettres en pseudo-élément pour un nom long) et l’étiquette (22 px, le point de la classe) ; une compagnie a la même pastille sur toutes les pages ; sans choix, « Tout sauvegarder » rend la sauvegarde d’avant, octet pour octet ; la carte « Couleurs des compagnies » (un choix, « Annuler », « Garder ces couleurs », « Revenir aux couleurs automatiques ») ; le même résultat et les mêmes réponses avec et sans choix ; un choix survit à sauvegarder puis restaurer, une entrée abîmée refuse la sauvegarde, la version 2 l’ignore ; douze couleurs à 4,5:1 dans les deux thèmes ; rien ne s’écrit en lecture seule |
+| `tests/visuel-dessins-browser.cjs` | Les dessins prennent leurs couleurs dans les jetons (v1, évolution 25 e), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, sur un chemin ouvert et sur « En direct » en relief, aucune couleur calculée d’un élément visible (texte, fond, bordure, contour, remplissage, trait, ombre, dégradé ; pseudo-éléments compris) n’est l’un des anciens bleus (`#0B1A2E`, `#0D2036`, `#0B6E99`, `#38BDF8`) ; chaque remplissage et chaque trait d’un dessin est la valeur d’un jeton ou un mélange de la feuille, sauf les zones libres du plan (leur couleur est une donnée du plan, `plan-editor.js`) ; un texte dans un dessin tient 4,5:1 sur le fond réellement dessous ; les classes ont leurs cinq couleurs de donnée ; les teintes de la scène en relief (`--dv-…`) sont définies, et aucune n’est un ancien bleu |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

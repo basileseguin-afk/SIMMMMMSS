@@ -689,3 +689,41 @@ sauvegarde : `docs/CAHIER_DES_CHARGES.md`, « La couleur des compagnies ».
 `tests/pastilles.test.cjs` et `tests/pastilles-browser.cjs` le vérifient :
 le texte de chaque page du menu est celui d'avant, une compagnie a la même
 pastille sur toutes les pages, dans les deux thèmes.
+
+### Les dessins (évolution 25 e)
+
+Le plan, « En direct », les graphes, les courbes et le planning prennent
+leurs couleurs dans les jetons : aucune feuille de vue n'écrit une teinte.
+Ils ont donc suivi les jetons redéfinis, sans qu'un dessin soit retouché.
+
+| Dessin | Ce qu'il lit |
+|---|---|
+| Le plan rejoué (« En direct », à plat) | un service au travail : `--ds-accent` ; qui attend : `--ds-attente` ; qui a fini : `--ds-texte-4` ; pas commencé : la carte, en tirets ; son contour : `--ds-trait-plan` ; un lien : `--ds-trait-lien` |
+| La vue en trois dimensions | ses teintes `--dv-…` (`direct.css`), toutes des jetons ou des mélanges de jetons : le sol et les murs depuis `--ds-texte-1` et `--ds-surface-1`, le travail `--ds-accent`, l'attente `--ds-attente`, ce qui coince `--ds-retard`, les repas `--ds-d1`, l'équipement `--ds-d5`. Sa scène, sa caméra, ses gestes, son panneau et sa barre du temps ne changent pas |
+| Le planning, la charge | la courbe « au travail » : `--ds-d1` ; « présents » : `--ds-texte-3` ; un lot : `--ds-accent` ; un lot en retard : `--ds-retard` |
+| Le schéma d'un chemin | une étape : la carte ; un lien : `--ds-trait-lien` ; une chaîne : `--ds-chaine` ; le ton d'une étape : `--ds-ok`, `--ds-attente` |
+| Les courbes (Synthèse, Période, stocks) | la série : `--ds-d1` (le travail, la période), `--ds-d6` (un stock) ; une alerte : `--ds-retard` |
+| Une classe, partout | `--cab-*` : Équipage d1, Économie d2, Premium d3, Business d4, repas spéciaux d6 |
+
+**Plus aucun bleu nuit ni bleu océan** : sur chaque page du menu, aucune
+couleur calculée d'un élément visible n'est l'un des anciens bleus
+(`#0B1A2E`, `#0D2036`, `#0B6E99`, `#38BDF8`), dans les deux thèmes.
+
+**Le contraste d'un dessin.** Un texte posé dans un dessin tient 4,5:1 sur le
+fond réellement dessous ; une forme (une courbe, un trait, un lien, le point
+d'une classe, un état) tient 3:1 sur chacune des trois surfaces
+(`--ds-fond`, `--ds-surface-1`, `--ds-surface-2`).
+
+**Les couleurs écrites en dur dans un script commun** ne sont pas touchées
+(la version 2 les partage). Leur liste, et où elles se voient :
+
+| Script | Couleurs | Où elles se voient |
+|---|---|---|
+| `plan-editor.js`, l. 7 (`COLORS`) | la couleur d'une zone selon son type, écrite dans le plan à sa création et modifiable par zone : service `#0b6fa4`, annexe `#0e8aa8`, pièce `#087f75`, chambre froide `#3178c6`, équipement `#9659b5`, circulation `#bd7621` | « En direct », à plat : le contour et la teinte des zones libres du plan (annexes, pièces) ; « Modifier le plan » : toutes les zones, et le choix de la couleur. Les services, eux, sont dessinés par le plan rejoué, aux jetons |
+| `plan-editor.js`, l. 376 | la grille de l'éditeur : `#91a0ac` | « Modifier le plan », grille affichée |
+| `plan-editor.js`, l. 394 | les points d'une forme en cours de tracé : `#d36e12` (le premier), `#087f75`, cernés de `#fff` | « Modifier le plan », pendant un tracé |
+| `flow-center.js`, l. 4 (`TYPES`) | la couleur d'un lien selon ce qui circule : personnel et runner `#167b76`, matériel `#7552ac`, matières premières `#b16b10`, matières transformées `#ce532c`, OF et kanban `#2769ac`, à classer `#74818b` | « Liens entre services » (hors du menu) : le trait d'un lien d'un seul type sur son diagramme |
+
+`tests/visuel-dessins-browser.cjs` le vérifie sur chaque page du menu, sur
+un chemin ouvert et sur « En direct » en relief, dans les deux thèmes ;
+`tests/contraste.test.cjs`, pour les formes.

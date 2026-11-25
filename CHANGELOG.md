@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Évolution 25 (e) : les dessins prennent leurs couleurs dans les jetons
+
+Aucun calcul ne change, ni aucune donnée, ni aucun dessin : c'est un contrôle
+et sa doc. La version 2 n’est pas touchée, ni aucun fichier commun.
+
+- Le plan, « En direct », les graphes, les courbes et le planning lisent
+  leurs couleurs dans les jetons : ils ont suivi le nouveau visuel.
+- **Plus aucun bleu nuit ni bleu océan** sur les pages du menu, dans les
+  deux thèmes ; les classes aux couleurs de (a) ; un texte dans un dessin à
+  4,5:1, une forme à 3:1.
+- La vue en trois dimensions reste telle qu’elle est ; seules ses teintes,
+  lues dans les jetons, ont changé.
+- La liste des couleurs écrites en dur dans les deux scripts communs
+  (`plan-editor.js`, `flow-center.js`), et où elles se voient :
+  `docs/DESIGN_SYSTEM.md`, « Les dessins ».
+
+Fichiers : `tests/visuel-dessins-browser.cjs` (nouveau),
+`tests/contraste.test.cjs` ; `docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-25 — Évolution 25 (d) : la compagnie et la classe — une pastille et une étiquette, partout les mêmes
 
 Aucun calcul ne change. Aucun texte de la page ne change. Sans couleur

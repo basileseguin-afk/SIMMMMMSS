@@ -120,6 +120,10 @@ for (const version of VERSIONS) for (const nom of ['clair', 'sombre']) {
     // forme, sur la carte.
     verifier('ds-choix-texte', couleur(t, 'ds-choix-fond'), 'ds-choix-fond');
     verifier('ds-choix-trait', blanc, 'ds-surface-1', 3);
+    // Évolution 25 (e). Les dessins prennent leurs couleurs dans les jetons : une forme (une courbe, un trait du plan, un
+    // lien, le point d'une classe, un état) tient 3:1 sur chacune des trois surfaces où elle se pose.
+    for (const [s, fond] of surfaces) for (const forme of ['ds-d1', 'ds-d2', 'ds-d3', 'ds-d4', 'ds-d5', 'ds-d6', 'ds-chaine', 'ds-accent',
+      'ds-ok', 'ds-attente', 'ds-retard', 'ds-texte-3', 'ds-trait-plan', 'ds-trait-lien']) verifier(forme, fond, s, 3);
     // Un compteur du menu, et la lettre de la marque : à la couleur du menu, sur la pastille au repère.
     assert.ok(ratio(couleur(t, 'ds-nav-fond'), couleur(t, 'ds-nav-repere')) >= 4.5,
       nom + ' : le chiffre d’un compteur sur le repère = ' + ratio(couleur(t, 'ds-nav-fond'), couleur(t, 'ds-nav-repere')).toFixed(2) + ':1');
