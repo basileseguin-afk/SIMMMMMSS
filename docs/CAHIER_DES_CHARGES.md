@@ -563,6 +563,11 @@ Rien n'est calculé de plus : le registre range autrement ce que le calcul dit
 déjà. Contrôlé par `tests/avis.test.cjs`, `tests/controles-page.test.cjs`,
 `tests/services-page.test.cjs` et `tests/controles-points-browser.cjs`.
 
+Correction 23 (d) — dans la Synthèse, le bandeau « n commandes que personne
+ne prépare » mène à « Contrôles » (« Voir dans Contrôles »), où le point
+bloquant est en tête, avec ses boutons ; en lecture seule aussi, puisque
+« Contrôles » se lit (`tests/synthese-controles-browser.cjs`).
+
 Contrôlé par `tests/onglets.test.cjs`, `tests/menu-browser.cjs`, les tests de
 chaque page (`services-page`, `chemins-page`, `controles-page`,
 `fichiers-page`) et les captures de `tests/captures-evolution-22-browser.cjs`

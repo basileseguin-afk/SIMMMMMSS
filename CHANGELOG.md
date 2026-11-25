@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-24 — Correction 23 (d) : Synthèse, le bandeau « n commandes que personne ne prépare » mène à « Contrôles »
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- Le bouton du bandeau s’appelle **« Voir dans Contrôles »** (avant :
+  « Cocher dans un service », qui ouvrait « Services et équipes » sans dire
+  quel service). Il ouvre « Contrôles », où le point bloquant est en tête,
+  nomme les commandes et a un bouton par service (correction 23 c).
+- **En lecture seule, il s’ouvre aussi** : « Contrôles » se lit.
+
+Fichiers : `synthese-vue.js`, `resultats-vue.js`, `index.html` ;
+`tests/synthese-controles-browser.cjs` (nouveau), `tests/synthese-browser.cjs`,
+`tests/lecture-seule-browser.cjs` ; `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (c) : « Contrôles », chaque point dit quoi faire, et son bouton mène à l’endroit exact
 
 Aucun calcul ne change, ni la sauvegarde : le registre range autrement ce que

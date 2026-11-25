@@ -143,11 +143,19 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   await nav.aller(page,'j-chiffres');await attendre(300);await fermerAvis();
   const liens=page.locator('#journee-chiffres [data-page]:visible');
   const vers=await liens.evaluateAll(bs=>bs.map(b=>[b.dataset.page,getComputedStyle(b,'::after').content]));
-  assert.ok(vers.some(([id])=>id==='mu-services'),'la Synthèse de l’unité fictive a un lien vers « Services et équipes »');
+  // Correction 23 (d) : le bandeau « n commandes que personne ne prépare » de la Synthèse menait à « Services et équipes »
+  // (fermée) ; il mène à « Contrôles », qui se lit. La Synthèse de l'unité fictive n'a donc plus de lien vers un réglage.
+  assert.ok(vers.some(([id])=>id==='mu-pas'),'le bandeau de la Synthèse mène à « Contrôles »');
+  assert.equal(vers.some(([id])=>id==='mu-services'),false,'la Synthèse de l’unité fictive n’a plus de lien vers « Services et équipes »');
   for(const [id,apres] of vers)assert.equal(apres==='" · '+MOT+'"',REGLER.includes(id),id+' : le mot suit le lien vers un réglage, et lui seul');
-  await page.locator('#journee-chiffres [data-page=mu-services]:visible').first().click();await attendre(150);
+  // Un lien vers un réglage, posé ici pour l'essai : il dit le mot, et ne s'ouvre pas.
+  await page.evaluate(()=>{const b=document.createElement('button');b.type='button';b.id='ls-lien-essai';b.dataset.page='mu-services';b.textContent='Services et équipes';
+    document.querySelector('#journee-chiffres .bilan-probleme').append(b);});
+  assert.equal(await page.locator('#ls-lien-essai').evaluate(b=>getComputedStyle(b,'::after').content),'" · '+MOT+'"','un lien vers un réglage dit le mot');
+  await page.locator('#ls-lien-essai').click();await attendre(150);
   assert.equal(await sous(),'j-chiffres');
   assert.equal(await dernierAvis(),MOT+' : « Services et équipes » ne s’ouvre pas en lecture seule.');
+  await page.evaluate(()=>document.getElementById('ls-lien-essai').remove());
   // Un lien entre deux résultats marche comme avant.
   await page.locator('#journee-chiffres [data-page=j-plan]:visible').first().click();await attendre(300);
   assert.equal(await sous(),'j-plan');
@@ -254,7 +262,9 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   for(const sel of ['#imp-vols','#sauvegarde-import','#at-import','#fc-import'])assert.equal(await page.locator(sel).isDisabled(),false,sel);
   await nav.aller(page,'j-chiffres');await attendre(300);
   assert.equal(await page.locator('#menu').innerHTML(),menuAvant,'le menu d’avant, à l’octet près');
-  assert.equal(await page.locator('#journee-chiffres [data-page=mu-services]:visible').first().evaluate(e=>getComputedStyle(e,'::after').content),'none');
+  // Hors lecture seule, un lien vers un réglage (posé ici pour l'essai : la Synthèse n'en a plus, correction 23 d) ne dit rien.
+  assert.equal(await page.evaluate(()=>{const b=document.createElement('button');b.type='button';b.dataset.page='mu-services';b.textContent='Services et équipes';
+    document.querySelector('#journee-chiffres .bilan-probleme').append(b);const c=getComputedStyle(b,'::after').content;b.remove();return c;}),'none');
   for(const id of REGLER.filter(i=>i!=='u-plan')){await page.evaluate(i=>Sim.onglets.choisir(i),id);await attendre(150);assert.equal(await sous(),id,id+' s’ouvre de nouveau');}
   await nav.aller(page,'at-repas');await attendre(300);
   assert.equal(await page.locator('#at-classes .at-ajout-ouvrir').isVisible(),true);

@@ -467,13 +467,15 @@
 
   /* ---- la page --------------------------------------------------------------------- */
 
-  /** Des commandes que personne ne prépare : un problème à compléter, avec son lien (pas parmi les commandes comptées). */
+  /** Des commandes que personne ne prépare : un problème bloquant, avec son lien (pas parmi les commandes comptées).
+   *  Correction 23 (d) : le lien mène à « Contrôles », où le point bloquant est en tête, avec un bouton par service —
+   *  « Cocher dans un service » ouvrait « Services et équipes » sans dire lequel. En lecture seule, il s'ouvre aussi. */
   function probleme(k) {
     if (!k || !k.classesAbsentes) return '';
     const I = root.OrlyIcones, n = k.classesAbsentes;
     return '<p class="bilan-probleme" role="note">' + (I ? I.ico('alerte') : '') + '<span><b>' + n + (n > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')
       + '</b> — un problème bloquant : elles ne sont pas parmi les commandes comptées ici.</span>'
-      + '<button type="button" class="btn btn-sm" data-page="mu-services">Cocher dans un service ' + (I ? I.ico('droite') : '→') + '</button></p>';
+      + '<button type="button" class="btn btn-sm" data-page="mu-pas">Voir dans Contrôles ' + (I ? I.ico('droite') : '→') + '</button></p>';
   }
 
   /**

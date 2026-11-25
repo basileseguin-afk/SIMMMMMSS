@@ -111,8 +111,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual(await page.locator('#bilan-journee .sy-carte h4').allTextContents(),['Où ça coince','Ce qui part en retard'],V+'deux cartes sans essais');
    assert.ok(k.classesAbsentes>0);
    assert.match(await page.locator('#bilan-journee .bilan-probleme').innerText(),new RegExp(k.classesAbsentes+' commandes que personne ne prépare'),V+'le problème');
+   // Correction 23 (d) : le bandeau mène à « Contrôles », où le point bloquant a un bouton par service (avant : à
+   // « Services et équipes », sans dire quel service).
    await page.locator('#bilan-journee .bilan-probleme [data-page]').click();await attendre(200);
-   assert.equal(await actif(),'mu-services',V+'le problème mène où il se règle');
+   assert.equal(await actif(),'mu-pas',V+'le problème mène à « Contrôles », qui dit où il se règle');
    await nav.aller(page,'j-chiffres');await attendre(150);
    const vers=await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-vers').getAttribute('data-page');
    await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-vers').click();await attendre(200);
