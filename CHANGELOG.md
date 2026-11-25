@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-25 — Correction 23 (h) : « En direct », les chiffres cumulés à l’heure rejouée
+
+Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni
+aucun fichier commun.
+
+- **Une ligne en tête du panneau « En ce moment »** : les chiffres cumulés
+  jusqu’à l’heure rejouée, que seule la bande de la vue à plat montrait.
+  « À 05:10 · commandes prêtes jusqu’ici : 7 sur 17, dont 3 en retard ·
+  2 commandes en retard à cette heure · 9 services au travail, 2 attendent
+  le service d’avant ».
+- **Quatre chiffres**, avec les mots de la bande : les commandes prêtes
+  jusqu’ici sur le total (dont celles prêtes en retard), les commandes en
+  retard à cette heure, les services au travail, ceux qui attendent le
+  service d’avant.
+- **Elle suit l’heure rejouée** et reste en tête avec le détail d’un service
+  ou un vol suivi ; elle lit la journée que rejoue la scène.
+
+Fichiers : `direct-panneau.js`, `direct.css`, `sim.js`, `index.html` ;
+`tests/direct-cumul-browser.cjs` (nouveau), `tests/direct-lire.test.cjs` ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-24 — Correction 23 (g) : le tableau de tous les temps par vol revient
 
 Aucun calcul ne change, ni la sauvegarde. La version 2 n’est pas touchée, ni

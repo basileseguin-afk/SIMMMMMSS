@@ -578,6 +578,17 @@ vol » ouvre cette entrée. L'import et l'export du classeur restent dans
 « Fichiers ». En lecture seule, comme le reste de « Régler »
 (`tests/tous-les-temps-browser.cjs`).
 
+Correction 23 (h) — **« En direct » : les chiffres cumulés à l'heure
+rejouée.** Seule la vue à plat les montrait, dans sa bande au-dessus du
+plan. Ils se lisent maintenant en une ligne, en tête du panneau « En ce
+moment » : les commandes prêtes jusqu'ici sur le total de la journée (et
+combien l'ont été en retard), les commandes en retard à cette heure, les
+services au travail et ceux qui attendent le service d'avant. Les mêmes
+chiffres et les mêmes mots que la bande (`chiffresCumules` et `morceaux`,
+`plan-rejoue.js`) : rien n'est calculé de plus. La ligne suit l'heure
+rejouée et reste en tête avec le détail d'un service
+(`tests/direct-cumul-browser.cjs`, `tests/direct-lire.test.cjs`).
+
 Correction 23 (f) — la fiche du handling : une compagnie déclarée « sans
 chargement » (évolution 21 e) n'a plus de ligne dans le tableau « Par
 compagnie : courrier et trajet du camion » ; elle reste dans la liste

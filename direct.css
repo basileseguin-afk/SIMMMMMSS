@@ -229,6 +229,12 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 .dp-suivi{margin:0 0 var(--ds-e-4);padding:8px 10px;border-radius:var(--ds-r-2);border-left:4px solid var(--ds-accent);background:var(--ds-surface-2);font-size:var(--ds-t-12);line-height:1.45}
 .dp-suivi.dp-critique{border-left-color:var(--ds-retard)}
 .dp-suivi p{margin:0 0 var(--ds-e-1)}
+/* Correction 23 (h) : les chiffres cumulés à l'heure rejouée, en une ligne en tête du panneau — ceux de la bande de la
+   vue à plat, avec ses mots et ses couleurs d'état. */
+.dp-cumul{margin:0 0 var(--ds-e-3);padding:6px 10px;border-radius:var(--ds-r-2);background:var(--ds-surface-2);font-size:var(--ds-t-13);line-height:1.45;color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+.dp-cumul-quand{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.dp-cumul .dp-chiffre[data-etat="retard"]{color:var(--ds-retard-texte);font-weight:var(--ds-g-moyen)}
+.dp-cumul .dp-chiffre[data-etat="attente"]{color:var(--ds-attente-texte)}
 
 /* ==========================================================================
  *  Les cinq réponses, à côté de la scène (évolution 16 f) : le panneau répond

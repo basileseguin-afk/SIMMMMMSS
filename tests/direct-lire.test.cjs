@@ -463,3 +463,29 @@ test('correction 23 (a) : l’heure rejouée choisie se garde d’une journée �
   assert.equal(L.heureChoisie(-900, 600, 420), 600, 'un nouveau choix le remplace');
   assert.equal(L.heureChoisie(-900, 600, null), -900, 'rien n’avait été placé : rien à comparer');
 });
+
+/* ---- correction 23 (h) : les chiffres cumulés à l'heure rejouée, en une ligne du panneau « En ce moment » -------- */
+
+test('correction 23 (h) : la ligne des chiffres cumulés reprend les morceaux de la bande de la vue à plat', () => {
+  const PR = require('../plan-rejoue.js');
+  const dit = html => html.replace(/<[^>]+>/g, '').replace(/&#39;/g, '’').replace(/\s+/g, ' ').trim();
+  const c = { pretes: 7, total: 17, pretesEnRetard: 3, enRetard: 2, auTravail: 9, enAttente: 2 };
+  const html = PN.cumul({ quand: '05:10', morceaux: PR.morceaux(c) });
+  assert.equal(dit(html), 'À 05:10 · commandes prêtes jusqu’ici : 7 sur 17, dont 3 en retard · 2 commandes en retard à cette heure · 9 services au travail, 2 attendent le service d’avant');
+  // Une ligne : un paragraphe, l'heure puis un morceau par chiffre ; ce qui est en retard ou attend le dit par son état.
+  assert.match(html, /^<p class="dp-cumul" data-direct-cumul><b class="dp-cumul-quand">À 05:10<\/b>/);
+  assert.deepEqual([...html.matchAll(/<span class="dp-chiffre"( data-etat="(\w+)")?>/g)].map(m => m[2] || null), ['retard', 'retard', 'attente']);
+  // Tout à l'heure, rien n'attend : aucun état.
+  const calme = PN.cumul({ quand: 'J 08:00', morceaux: PR.morceaux({ pretes: 2, total: 3, pretesEnRetard: 0, enRetard: 0, auTravail: 4, enAttente: 0 }) });
+  assert.equal(dit(calme), 'À J 08:00 · commandes prêtes jusqu’ici : 2 sur 3, toutes à l’heure · 4 services au travail');
+  assert.doesNotMatch(calme, /data-etat/);
+  // Sans chiffres (pas de journée à rejouer) : pas de ligne.
+  assert.equal(PN.cumul(null), '');
+  assert.equal(PN.cumul({ quand: '05:10', morceaux: [] }), '');
+  // Le texte est échappé.
+  assert.doesNotMatch(PN.cumul({ quand: '<b>x', morceaux: [{ texte: '<img src=x>', etat: '"><i>' }] }), /<img|<b>x|"><i>/);
+  // Dans le panneau : après le vol suivi, avant le corps.
+  const tout = PN.rendu({ cumul: { quand: '05:10', morceaux: PR.morceaux(c) }, suivi: { vol: 'NO101', phrase: 'Parti à l’heure.', enRetard: false }, sansEquipe: { service: 'x', nom: 'Service fictif' } });
+  assert.ok(tout.indexOf('dp-suivi') < tout.indexOf('dp-cumul') && tout.indexOf('dp-cumul') < tout.indexOf('dp-detail'), 'le vol suivi, la ligne, puis le corps');
+  assert.doesNotMatch(PN.rendu({ sansEquipe: { service: 'x', nom: 'Service fictif' } }), /dp-cumul/);
+});

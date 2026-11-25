@@ -107,12 +107,24 @@
   }
 
   /**
+   * Les chiffres cumulés jusqu'à l'heure rejouée, en une ligne (correction 23 h) : ceux que seule la bande de la vue à
+   * plat montrait — les commandes prêtes jusqu'ici sur le total (dont celles prêtes en retard), les commandes en retard à
+   * cette heure, les services au travail et ceux qui attendent le service d'avant. `c` : { quand, morceaux } — l'heure
+   * écrite, et les morceaux de la bande (plan-rejoue.js, `morceaux`) : les mêmes mots aux deux endroits.
+   */
+  function cumul(c) {
+    if (!c || !(c.morceaux || []).length) return '';
+    return '<p class="dp-cumul" data-direct-cumul><b class="dp-cumul-quand">À ' + esc(c.quand) + '</b>'
+      + c.morceaux.map(m => ' · <span class="dp-chiffre"' + (m.etat === 'retard' || m.etat === 'attente' ? ' data-etat="' + m.etat + '"' : '') + '>' + esc(m.texte) + '</span>').join('') + '</p>';
+  }
+
+  /**
    * Le corps du panneau : le détail du service choisi ; sinon les cinq réponses (`x.questions`, mises en page par
    * direct-questions.js, évolution 16 f) ; à défaut, la liste des services.
    */
   const corps = x => (!x ? VIDE : x.detail ? detail(x.detail) : x.sansEquipe ? sansEquipe(x.sansEquipe) : x.questions || services(x.site, x.etat, x.tons, x.noms, x.selection));
-  /** Le panneau : le vol suivi s'il y en a un, puis son corps. `x` : { site, etat, tons, noms, selection, detail, questions, suivi }. */
-  function rendu(x) { return suivi(x.suivi) + corps(x); }
+  /** Le panneau : le vol suivi s'il y en a un, la ligne des chiffres cumulés, puis son corps. `x` : { site, etat, tons, noms, selection, detail, questions, suivi, cumul }. */
+  function rendu(x) { return suivi(x.suivi) + cumul(x.cumul) + corps(x); }
 
   /** Pendant la lecture, le panneau se réécrit au plus toutes les 250 ms : un bouton reste là le temps d'un clic. */
   const CADENCE = 250;
@@ -124,8 +136,8 @@
    * de souris appuyé (le clic aboutit) ; le bouton qui avait le clavier le garde.
    */
   function creer(hote, a) {
-    hote.innerHTML = '<div class="dp-zone-suivi"></div><div class="dp-zone-corps"></div>';
-    const zoneSuivi = hote.firstChild, zoneCorps = hote.lastChild, vu = { suivi: '', corps: null };
+    hote.innerHTML = '<div class="dp-zone-suivi"></div><div class="dp-zone-cumul"></div><div class="dp-zone-corps"></div>';
+    const zoneSuivi = hote.firstChild, zoneCumul = zoneSuivi.nextSibling, zoneCorps = hote.lastChild, vu = { suivi: '', cumul: '', corps: null };
     let dernierService = null, dernier = -Infinity, plusTard = 0, appui = false;
     const maintenant = () => (root.performance && root.performance.now ? root.performance.now() : Date.now());
     function rendre() {
@@ -134,8 +146,10 @@
       const attente = appui ? CADENCE : a.enLecture && a.enLecture() ? dernier + CADENCE - maintenant() : 0;
       if (attente > 0) { if (!plusTard) plusTard = root.setTimeout(() => { plusTard = 0; rendre(); }, Math.min(CADENCE, attente)); return; }
       dernier = maintenant();
-      const x = a.lire(), suiviNeuf = x ? suivi(x.suivi) : '', corpsNeuf = corps(x);
+      const x = a.lire(), suiviNeuf = x ? suivi(x.suivi) : '', cumulNeuf = x ? cumul(x.cumul) : '', corpsNeuf = corps(x);
       if (suiviNeuf !== vu.suivi) { vu.suivi = suiviNeuf; zoneSuivi.innerHTML = suiviNeuf; }
+      // La ligne des chiffres cumulés : elle ne porte aucun bouton, elle se réécrit dès qu'elle change.
+      if (cumulNeuf !== vu.cumul) { vu.cumul = cumulNeuf; zoneCumul.innerHTML = cumulNeuf; }
       if (corpsNeuf === vu.corps) return;
       const actif = zoneCorps.contains(root.document.activeElement) ? root.document.activeElement : null;
       const cle = actif ? (actif.dataset.directService ? '[data-direct-service="' + root.CSS.escape(actif.dataset.directService) + '"]' : actif.hasAttribute('data-direct-retour') ? '[data-direct-retour]'
@@ -168,10 +182,10 @@
     hote.addEventListener('pointerleave', () => { const lu = hote.querySelector('.dp-lu'); if (lu) lu.textContent = ''; });
     // Caché, le panneau ne se réécrit pas : il se relit dès qu'il reprend sa place (sa taille change).
     if (typeof root.ResizeObserver === 'function') new root.ResizeObserver(() => rendre()).observe(hote);
-    return { rendre, html: () => vu.suivi + (vu.corps || '') };
+    return { rendre, html: () => vu.suivi + vu.cumul + (vu.corps || '') };
   }
 
-  const api = { MOT_DU_TON, CADENCE, services, courbe, detail, sansEquipe, suivi, corps, rendu, creer };
+  const api = { MOT_DU_TON, CADENCE, services, courbe, detail, sansEquipe, suivi, cumul, corps, rendu, creer };
   if (enNode) module.exports = api;
   else root.OrlyDirectPanneau = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

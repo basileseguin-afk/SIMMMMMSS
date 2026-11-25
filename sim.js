@@ -2752,7 +2752,11 @@ function initLireDirect() {
       // Sans service choisi : les cinq réponses, à l'heure rejouée (évolution 16 f).
       const questions = !detail && window.OrlyDirectQuestions
         ? OrlyDirectQuestions.rendu({ site: m.site, noms, etat, tons, selection, t, lu: x.lu, reponses: x.j.reponses, essais: essaisRetenus(), montre: m.essai }) : null;
-      return { site: m.site, etat, tons, noms, selection, detail, sansEquipe, questions, suivi: suiviDirect() };
+      // Les chiffres cumulés jusqu'à cette heure (correction 23 h) : ceux de la bande de la vue à plat, avec ses mots —
+      // lus dans la journée que rejoue la scène.
+      const v = Sim.vue, cumul = window.OrlyPlanRejoue && x.j.r ? { quand: (v && v.debut < 0 && t >= 0 ? 'J ' : '') + MoteurProduction.hhmm(t),
+        morceaux: OrlyPlanRejoue.morceaux(OrlyPlanRejoue.chiffresCumules(x.j.r, t)) } : null;
+      return { site: m.site, etat, tons, noms, selection, detail, sansEquipe, questions, suivi: suiviDirect(), cumul };
     },
     choisir: id => choisirServiceDirect(id), retour: () => { if (selection) selectionner(selection); }, neSuivrePlus: () => { volSuivi = null; rendreDirect(); },
     essai: cle => montrerEssai(cle),

@@ -1614,6 +1614,29 @@ de la Synthèse :
 La mise en page des cinq réponses est dans `direct-questions.js` (sans
 navigateur). La vue à plat montre toujours la journée en cours.
 
+**En tête du panneau, les chiffres cumulés à l'heure rejouée** (correction
+23 h), en une ligne : ceux que seule la bande de la vue à plat montrait, avec
+ses mots. « À 05:10 · commandes prêtes jusqu'ici : 7 sur 17, dont 3 en retard
+· 2 commandes en retard à cette heure · 9 services au travail, 2 attendent le
+service d'avant » :
+
+- **les commandes prêtes jusqu'ici**, sur le total de la journée, et combien
+  l'ont été en retard (« toutes à l'heure » sinon) ;
+- **les commandes en retard à cette heure** : leur échéance est passée et
+  elles ne sont pas prêtes ;
+- **les services au travail** à cet instant, et **ceux qui attendent le
+  service d'avant**.
+
+La ligne suit le curseur, la lecture et les flèches du temps ; elle reste en
+tête avec le détail d'un service ou un vol suivi, et lit la journée que rejoue
+la scène (« Référence » ou « Essai »). Rien n'est calculé de plus : ce sont
+`chiffresCumules` et `morceaux` de `plan-rejoue.js`, ceux de la bande. Un
+service est « au travail » dès qu'une de ses tâches est en cours ; le tableau
+« Les personnes », dessous, compte les personnes à leur poste : les deux
+lectures ne se recouvrent pas toujours (pendant qu'un vol est livré, le
+handling est « au travail » dans la ligne, et ses chauffeurs « en chemin »
+dans le tableau).
+
 **Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
@@ -2453,6 +2476,7 @@ aucun vol.
 | `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
 | `tests/direct-questions.test.cjs` | Les cinq réponses à côté de la scène (v1, évolution 16 f), sans navigateur, sur l’unité fictive : les cinq questions dans l’ordre ; à huit heures de la journée, les personnes par service et par état égales à celles des indicateurs, l’unité leur somme ; ce qui coince à cette heure (les goulots du moment, leur phrase) et sur la journée (la carte de la Synthèse) ; la fin, l’horaire et les heures sup de chaque ligne du module ; les exceptions et leur cause ; le choix « Référence / Essai » ; dans le panneau, les cinq réponses ou le détail du service ; tout texte de l’unité échappé. |
 | `tests/direct-questions-browser.cjs` | Les cinq réponses, dans la page (v1, évolution 16 f) : à six heures de la journée, les chiffres du panneau égaux à ceux du module ; le nom d’un service ouvre son détail ; avec deux essais retenus, « Référence » et « Essai » rejouent l’un ou l’autre à la même heure (ses ateliers, ses personnes, ses réponses), en lecture aussi ; la scène dit quelle journée elle rejoue ; les essais effacés, la journée en cours ; sur un écran étroit, le panneau sous la scène ; rien à plat ni en version 2. |
+| `tests/direct-cumul-browser.cjs` | Les chiffres cumulés dans « En ce moment » (v1, correction 23 h), sur l’unité fictive et ses vols fictifs, à 1 366 × 768 : la ligne est en tête du panneau, en 13 px au moins ; à douze heures de la journée rejouée, elle dit ce que calcule le module et ce que dit la bande de la vue à plat, mot pour mot — les commandes prêtes jusqu’ici sur le total (dont en retard), les commandes en retard à cette heure, les services au travail et ceux qui attendent le service d’avant ; elle reste en tête avec le détail d’un service et suit l’heure ; la fenêtre ne défile pas. |
 | `tests/direct-portable-browser.cjs` | La vue en direct sur un portable (v1, évolution 16, retouches), sur l’unité fictive de 15 services, à 1 366 × 768 et 1 920 × 1 080 : à l’ouverture, après « Tout voir » et après un changement de taille, ce qu’on cadre (le bâtiment et les avions présents) remplit la toile (sa marge, 5 % au plus, du côté qui le limite ; les parts de la toile sont affichées) ; à 1 366 × 768 la toile fait au moins 560 px de haut et le bâtiment en occupe au moins 70 % de la largeur ou de la hauteur ; le titre et « En relief / À plat » sur une ligne, la légende dans un coin de la toile, repliable ; « Plein écran » puis Échap (évolution 19, retouche) ; « En ce moment » replié sous 1 500 px, ouvert par son bouton, le choix retenu après un rechargement ; les étiquettes, le nom seul sauf le goulot, moins de 15 % de la toile ; les chiffres au survol et sur le service choisi ; les vols étiquetés à chaque heure (chargés ou dans l’heure, six au plus), un autre au survol ; la somme des trois colonnes des personnes égale aux présents à trois heures, dont une où des chauffeurs sont en route ; le détail du service avec les mêmes mots. Six captures de contrôle, hors du dépôt (`ORY_CAPTURES`) Depuis la correction 21 (d), la légende y est repliée à l’ouverture à 1 366 × 768 (dépliée d’un clic), dépliée à 1 920 × 1 080. |
 | `tests/captures-direct-browser.cjs` | Les captures de contrôle de la vue en direct (v1, évolution 16 g), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : à l’ouverture, pendant un goulot (cadré sur son service, son détail dans le panneau), en suivant un vol chargé en retard, sous deux autres angles (au pic de travail ; pendant une tournée du handling) — la scène entière à 24 px des bords, aucune étiquette sur une autre, les traits des étiquettes tracés avant tous les cartouches (aucun ne barre une étiquette). Et la non-régression dans la page : le résultat, les indicateurs, les réponses et l’export de la journée identiques, octet pour octet, avant et après ; « À plat » montre les mêmes personnes au travail, à la même heure. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-direct-browser.cjs`, sinon un dossier temporaire, dit à la fin |
 | `tests/direct-dessin.test.cjs` | Le dessin d’une étiquette de la vue en direct (v1, évolution 16 g), sans navigateur : son trait et son cartouche en deux passes, les deux ensemble égales au dessin d’un coup ; pas de trait pour une étiquette posée sur son ancre |
