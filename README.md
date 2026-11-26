@@ -2523,6 +2523,18 @@ panneau est ouvert, la barre passe sous le titre. La bande des chiffres
 cumulés de la vue à plat passe sur deux lignes au lieu de se couper par
 « … ». `tests/barre-une-ligne-browser.cjs` le vérifie.
 
+**Des listes plates, moins de cadres** (correction 24 f). Les listes de
+gauche (les services, les chemins, les sections des réglages) : un seul
+cadre, des rangées séparées par un trait fin, sans ombre par rangée ; la
+rangée choisie a le fond pâle de l'accent et un trait d'accent de 3 px à
+gauche. « Stocks et retours » : son tableau dans une carte. Le Planning :
+les rangées et la colonne des équipes au fond de la carte, plus de rangées
+beiges. Le menu : « Lire » et « Régler » en titres de bloc, « Vols »,
+« L'unité », « Simulation » en sous-titres, leurs entrées en retrait ; le
+numéro de version au bas du menu, sous le thème. Le fil du haut ne répète
+pas un mot (« Fichiers », pas « Fichiers › Fichiers »).
+`tests/listes-plates-browser.cjs` le vérifie.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2872,6 +2884,7 @@ cumulés de la vue à plat passe sur deux lignes au lieu de se couper par
 | `tests/caramel-action-browser.cjs` | Le caramel pour l’action seule (v1, correction 24 d), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, « En direct » à plat, la fiche d’un service et celle d’une équipe, au plus un bouton au fond de l’accent (« Contrôles » à part) ; « Simuler la période » plein dans « Période » seulement, une fois, et bouton de carte dans la barre ; « Importer des vols », « Rejouer », « + Ajouter une équipe » pleins ; « + Ajouter un service » et « + Ajouter un chemin » en boutons de carte (fond de carte, trait, 13 px, 24 px de haut) ; « Contrôles » : plein pour le premier bouton d’un point bloquant, boutons de carte pour les autres points ; aucun lien n’a la couleur de l’accent au repos — l’encre du texte, souligné du trait fin — et passe à l’accent, texte et trait, au survol et au focus |
 | `tests/barre-une-ligne.test.cjs` | L’étiquette d’état de la barre « Journée de vols » sans navigateur (v1, correction 24 e) : « période non simulée », « période simulée », « période à relancer », « simulation en cours, 12 sur 30 » ; la barre n’a plus de bouton pour simuler ni annuler, la page « Période » a le seul |
 | `tests/barre-une-ligne-browser.cjs` | La barre « Journée de vols » sur une ligne (v1, correction 24 e), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : sur chaque page qui la porte et dans ses trois états, une ligne, 44 px au plus, le libellé, ‹, la liste, ›, l’étiquette, « La période → », sans bouton « Simuler la période » ; la phrase entière en infobulle et en texte lu, et écrite dans « Période » ; 13 px au moins, la fenêtre ne défile pas, la barre d’un bord à l’autre ; « En direct » en relief (panneau ouvert, fermé) et à plat : rien de coupé dans l’en-tête, la liste de la journée entière, rien ne se recouvre ; la bande des chiffres cumulés passe sur deux lignes ; le tableau de la Synthèse montre au moins quatre services |
+| `tests/listes-plates-browser.cjs` | Des listes plates, moins de cadres (v1, correction 24 f), sur l’unité et les vols fictifs, à 1 366 × 768 : au plus 6 cadres ombrés sur « Services et équipes », « Chemins » et « Réglages » ; leur liste de gauche plate (un cadre par suite de rangées, des rangées qui se touchent, un trait fin, aucune ombre, la hauteur d’avant, l’icône et la pastille d’état) ; la rangée choisie au fond pâle de l’accent avec un trait d’accent de 3 px à gauche, et celle qu’on choisit ensuite ; « Stocks et retours » sur le fond de la page, son tableau dans une carte ; le Planning au fond de la carte, un trait fin entre deux équipes, plus de beige ; le menu (deux titres de bloc en 600, trois sous-titres en 400, leurs entrées en retrait, la version au bas du menu, lisible et copiable, le texte lu inchangé hors sa place) ; le fil du haut sans mot répété |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

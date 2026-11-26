@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (f) : des listes plates, moins de cadres
+
+Mesuré : 7 cadres ombrés par écran en moyenne, 12 dans « Services et
+équipes ».
+
+- **Les listes de gauche** (les services, les chemins, les sections des
+  réglages) : un seul cadre, des rangées séparées par un trait fin, sans
+  ombre par rangée. La rangée choisie : le fond `--ds-accent-pale` et un
+  trait d'accent de 3 px à gauche. Même hauteur de rangée, mêmes icônes,
+  mêmes pastilles d'état.
+- **« Stocks et retours »** : son tableau dans une carte, comme les autres
+  pages.
+- **Le Planning** : les rangées et la colonne des équipes au fond de la
+  carte, séparées par des traits fins ; plus de rangées beiges.
+- **Le menu** : « Lire » et « Régler » sont des titres de bloc (graisse 600,
+  plus d'air au-dessus) ; « Vols », « L'unité », « Simulation » des
+  sous-titres (graisse 400), leurs entrées en retrait. Le numéro de version
+  descend au bas du menu, sous le thème ; il reste lisible et copiable.
+- **Le fil du haut** ne répète pas un mot : « Fichiers », pas « Fichiers ›
+  Fichiers ».
+
+Aucun calcul ne change, ni aucune donnée, ni aucun texte. La version 2 n'est
+pas touchée, ni aucun fichier commun.
+
+Fichiers : `visuel.css`, `lisible.css`, `planning-vue.css`, `sim.js`,
+`index.html` et `accueil.html` (empreintes) ;
+`tests/listes-plates-browser.cjs` (nouveau),
+`tests/visuel-coquille-browser.cjs` ; `docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (e) : la barre « Journée de vols » sur une ligne
 
 Le constat : sur neuf pages, la barre prenait deux à trois lignes pour dire

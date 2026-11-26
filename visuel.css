@@ -130,6 +130,35 @@
 .barre :is(.so-badge,.so-badge.attente,.so-badge.retard,.so-badge.neutre,.pb-compte){background:var(--ds-nav-repere);color:var(--ds-nav-fond);
   border:0;box-shadow:none;font-weight:var(--ds-g-fort)}
 
+/* ---- Des listes plates, moins de cadres (correction 24 f) -------------------------------------------------------- */
+/* Les listes de gauche — les services, les chemins, les sections des réglages : un seul cadre par liste, des rangées
+   séparées par un trait fin, sans ombre par rangée. La rangée choisie : le fond pâle de l'accent et un trait d'accent de
+   3 px à gauche. Même hauteur de rangée, mêmes icônes, mêmes pastilles d'état. */
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc{margin-top:-4px;border:1px solid var(--ds-bordure);border-radius:0;background:var(--ds-surface-1);box-shadow:none}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc:has(+ .mu-svc){border-bottom-color:transparent}
+:is(.se-liste,.ch-liste,.rs-liste) :is(.mu-svc:first-child,:not(.mu-svc) + .mu-svc){margin-top:0;border-top-left-radius:var(--ds-r-3);border-top-right-radius:var(--ds-r-3)}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc:not(:has(+ .mu-svc)){border-bottom-left-radius:var(--ds-r-3);border-bottom-right-radius:var(--ds-r-3)}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc:hover{background:var(--ds-survol);border-color:var(--ds-bordure);box-shadow:none}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc:has(+ .mu-svc):hover{border-bottom-color:transparent}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc.actif{padding:8px 10px;border-color:var(--ds-bordure);background:var(--ds-accent-pale);box-shadow:inset 3px 0 0 var(--ds-accent)}
+.rs-liste .mu-svc.actif{padding:6px 10px}
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc.actif:has(+ .mu-svc){border-bottom-color:transparent}
+/* Au clavier, la rangée garde son anneau de focus, au-dessus de ses voisines. */
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc:focus-visible,:is(.se-liste,.ch-liste,.rs-liste) .mu-svc.actif:focus-visible{position:relative;z-index:1;box-shadow:var(--ds-focus)}
+/* Un service à la chaîne garde son trait (unite.css) ; choisi, c'est le trait d'accent qui se voit. */
+:is(.se-liste,.ch-liste,.rs-liste) .mu-svc.en-chaine:not(.actif){box-shadow:inset 3px 0 0 var(--ds-chaine)}
+
+/* Le menu : « Lire » et « Régler » sont des titres de bloc (graisse 600, plus d'air au-dessus) ; « Vols », « L'unité »,
+   « Simulation » des sous-titres (graisse 400), leurs entrées en retrait. */
+.menu-bloc-titre{margin:4px 0 4px;font-weight:var(--ds-g-fort);color:var(--ds-nav-texte-2)}
+.menu-bloc+.menu-bloc{margin-top:14px;padding-top:14px}
+.menu-espace-titre{font-weight:var(--ds-g-normal);color:var(--ds-nav-texte-3)}
+.menu-espace:has(>.menu-espace-titre) .menu-entree{padding-left:20px}
+/* Le numéro de version, au bas du menu, sous le thème : petit, lisible, copiable. */
+.barre-pied .marque-version{padding:6px 10px 2px;font-size:var(--ds-t-13);color:var(--ds-nav-texte-3);user-select:text;-webkit-user-select:text;cursor:text;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.plan-editing .barre-pied .marque-version{display:none}
+
 /* ---- Le caramel pour l'action seule (correction 24 d) ------------------------------------------------------------- */
 /* Le lien — dans le texte, en fin de carte, « lien-fort », « lien-discret » (les noms d'équipe et de service ont le leur,
    services-page.css, direct.css) : l'encre du texte, souligné d'un trait fin ; au survol et au focus, le texte et le

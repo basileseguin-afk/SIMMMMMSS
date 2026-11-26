@@ -112,6 +112,11 @@ body[data-vue="plan"]:not(.editing):not([data-sous="j-plan"]):not([data-sous="u-
    trois colonnes ne s'étire pas sur toute la largeur : ses colonnes prennent la largeur de leur contenu. */
 #journee-details .panneau{margin:0;padding:var(--ds-e-4) var(--ds-e-5) var(--ds-e-5);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
   background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
+/* « Stocks et retours » (correction 24 f) : sur le fond de la page, comme les autres ; son tableau et ses courbes dans des cartes. */
+#journee-stocks{background:none}
+#journee-stocks>.page-zone{display:flex;flex-direction:column;gap:var(--ds-e-4)}
+#journee-stocks .tp-sec{flex:none;margin:0;padding:var(--ds-e-4) var(--ds-e-5) var(--ds-e-5);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+  background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
 #journee-details .panneau>h3{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:0;text-transform:none;color:var(--ds-texte-1)}
 #journee-details .panneau>.mini-note{margin:0 0 var(--ds-e-3)}
 #journee-details .panneau>:last-child{margin-bottom:0}

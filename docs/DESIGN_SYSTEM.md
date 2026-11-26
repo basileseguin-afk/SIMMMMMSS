@@ -904,3 +904,40 @@ coupait la liste de la journée.
 
 `tests/barre-une-ligne-browser.cjs` et `tests/barre-une-ligne.test.cjs` le
 vérifient.
+
+### Des listes plates, moins de cadres (correction 24 f)
+
+Mesuré : 7 cadres ombrés par écran en moyenne, 12 dans « Services et
+équipes ». Une ombre par rangée ne dit rien de plus qu'un trait.
+
+**La liste plate** — les listes de gauche : les services, les chemins, les
+sections des réglages.
+
+- **Un seul cadre** par suite de rangées : elles se touchent, séparées par
+  un trait fin (`--ds-bordure`) ; les coins ne s'arrondissent qu'aux deux
+  bouts ; aucune ombre par rangée.
+- **La rangée choisie** : le fond `--ds-accent-pale` et un trait d'accent de
+  3 px à gauche (`box-shadow: inset 3px 0 0 var(--ds-accent)`).
+- Même hauteur de rangée, mêmes icônes, mêmes pastilles d'état ; un service
+  à la chaîne garde son trait, sauf choisi.
+
+**Moins de cadres ailleurs.**
+
+- « Stocks et retours » : la page est sur le fond des pages ; son tableau et
+  ses courbes sont dans des cartes, comme « Heures sup et renforts ».
+- Le Planning : les rangées de service, la colonne des équipes et les
+  rangées des équipes sont au fond de la carte, séparées par des traits
+  fins ; plus de rangées beiges, plus de zébrures.
+
+**Le menu.** « Lire » et « Régler » sont des titres de bloc (graisse 600,
+plus d'air au-dessus) ; « Vols », « L'unité », « Simulation » des sous-titres
+(graisse 400, `--ds-nav-texte-3`), leurs entrées en retrait. Le numéro de
+version est au bas du menu, sous le thème : petit, lisible, copiable.
+
+**Le fil du haut** ne répète pas un mot : « Fichiers », pas « Fichiers ›
+Fichiers ».
+
+`tests/listes-plates-browser.cjs` le vérifie : au plus 6 cadres ombrés sur
+« Services et équipes », « Chemins » et « Réglages » (2, 4 et 2 sur l'unité
+fictive) ; la rangée choisie ; le texte lu du menu, inchangé hors la place
+du numéro de version.

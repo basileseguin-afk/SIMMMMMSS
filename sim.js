@@ -1278,7 +1278,9 @@ function afficherTitre(){
   const lien=document.getElementById('ariane-partie'),sep=document.querySelector('#ariane .ariane-sep');
   const premiere=partie?O.pagesDe(partie.id)[0]:null;
   if(lien){
-    lien.hidden=!premiere;if(sep)sep.hidden=!premiere;
+    // Il ne répète pas un mot (correction 24 f) : « Fichiers », pas « Fichiers › Fichiers ».
+    const redit=!!premiere&&!accueil&&partie.nom===titre;
+    lien.hidden=!premiere||redit;if(sep)sep.hidden=!premiere||redit;
     if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
   }
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg&&!pg.sansIntro?pg.intro:'';
@@ -4282,9 +4284,10 @@ if(pannes.length){
  * Simulation). C'est elle qu'on compare pour savoir si le navigateur sert la
  * dernière mise en ligne. */
 (function versionVisible(){
-  const v=document.querySelector('meta[name="ory-version"]'),t=document.querySelector('.marque-txt');
+  // Correction 24 (f) : au bas du menu, sous le thème — petit, lisible, copiable ; il n'est plus sous la marque.
+  const v=document.querySelector('meta[name="ory-version"]'),t=document.querySelector('.barre-pied')||document.querySelector('.marque-txt');
   if(!t||!v||!/^[0-9a-f]{4,}$/.test(v.content)||t.querySelector('.marque-version'))return;
-  const e=document.createElement('span');e.className='marque-version';e.textContent='version '+v.content;
+  const e=document.createElement('p');e.className='marque-version';e.textContent='version '+v.content;
   e.title='La version servie par le site : si elle ne change pas après une mise en ligne, rechargez la page (Ctrl+F5).';
   t.appendChild(e);
 })();

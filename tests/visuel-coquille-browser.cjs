@@ -54,7 +54,8 @@ const JETONS=['ds-nav-fond','ds-nav-repere','ds-nav-texte-1','ds-nav-actif','ds-
     s=await style('.barre .brand-mark','borderRadius','backgroundColor','backgroundImage','color');
     assert.deepEqual(s,{borderRadius:'9px',backgroundColor:j['ds-nav-repere'],backgroundImage:'none',color:j['ds-nav-fond']},V+'la marque : un carré arrondi, au repère');
     const titres=await page.evaluate(()=>[...document.querySelectorAll('.barre .menu-bloc-titre')].map(t=>{const c=getComputedStyle(t);return [t.textContent.trim(),c.fontSize,c.fontWeight,c.letterSpacing,c.textTransform];}));
-    assert.deepEqual(titres,[['Lire','13px','500','normal','none'],['Régler','13px','500','normal','none']],V+'les titres de bloc : en minuscules, 13 px, graisse 500, sans lettres espacées');
+    // Correction 24 (f) : les titres de bloc passent en graisse 600 (500 avant) ; les sous-titres « Vols », « L'unité », « Simulation » en 400.
+    assert.deepEqual(titres,[['Lire','13px','600','normal','none'],['Régler','13px','600','normal','none']],V+'les titres de bloc : en minuscules, 13 px, graisse 600, sans lettres espacées');
     s=await style('.barre .menu-entree.actif','color','backgroundColor','boxShadow');
     assert.equal(s.color,j['ds-nav-texte-1'],V+'l’entrée ouverte : le texte du menu');
     assert.equal(s.backgroundColor,j['ds-nav-actif'],V+'l’entrée ouverte : son fond éclairci');
