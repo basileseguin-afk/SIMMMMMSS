@@ -795,6 +795,19 @@ ne sait plus où est l'action ; un même état n'a pas la même couleur d'une
 page à l'autre. Tout passe par les fichiers propres à la version 1 ; les
 feuilles et les scripts communs avec la version 2 ne changent pas.
 
+**Les règles, d'un coup d'œil** (chacune a sa section, plus bas) :
+
+| Règle | En un mot | Où |
+|---|---|---|
+| Le jeton du travail | « au travail » prend `--ds-travail` (le bleu `--ds-d1`), partout ; jamais l'accent | (c) |
+| Le bouton plein | au plus un par écran : l'action principale ; les autres sont des boutons de carte | (d) |
+| Le lien | texte `--ds-lien`, souligné d'un trait fin ; l'accent au survol et au focus | (d) |
+| La barre « Journée de vols » | une ligne, 44 px au plus ; l'état de la période d'un mot | (e) |
+| La liste plate | un seul cadre, des rangées séparées d'un trait fin ; la rangée choisie : fond pâle, trait d'accent de 3 px | (f) |
+| Les douze teintes | douze couleurs de compagnie bien écartées, 4,5:1 chacune ; un panneau pour choisir | (g) |
+| La cible | 24 px au moins, sans déplacer la page | (h) |
+| L'état de sauvegarde | dans la barre du haut, par le mot et par le point : `docs/CAHIER_DES_CHARGES.md`, « La confiance » | (b) |
+
 ### Un état, une couleur : le jeton du travail (correction 24 c)
 
 Depuis que l'accent est caramel, « au travail » était caramel dans « En
@@ -1037,3 +1050,54 @@ avant et après un défilement de 500 px ; la notification au-dessus et
 au-dessous de chaque seuil ; aucune cible de moins de 24 px sur les pages du
 menu, la fiche d'un service et celle d'une équipe ; « Dans l'ordre » à 1 366
 et à 1 024 px.
+
+### Contrôle (correction 24 i)
+
+`tests/captures-correction-24-browser.cjs` prend les captures de contrôle,
+sur l'unité fictive et un programme daté fictif, aux deux tailles
+(1 366 × 768 et 1 920 × 1 080) et dans les deux thèmes — 17 vues, 68
+captures :
+
+- la barre du haut dans ses trois états de sauvegarde (« Jamais
+  sauvegardé », « Sauvegardé à… », « Non sauvegardé depuis… ») ;
+- « En direct » en relief et à plat ; la Synthèse ; « Période », simulée ;
+- « Services et équipes », « Chemins », « Réglages » ; « Stocks et
+  retours » ; le Planning ;
+- « Contrôles », avec un point bloquant et un point à corriger ;
+- la carte « Couleurs des compagnies » repliée, dépliée, et son panneau
+  ouvert ;
+- le tableau de tous les temps par vol, défilé à droite.
+
+Chaque capture est vérifiée : sa taille, le thème, la fenêtre qui ne défile
+pas, aucun texte sous 13 px, et ce qu'elle doit montrer. Les captures restent
+hors du dépôt (`$ORY_CAPTURES`, sinon un dossier temporaire).
+
+### Ce que la correction laisse
+
+Faute de pouvoir toucher un fichier commun avec la version 2 :
+
+- **Les boutons pleins dessinés par un script commun** (`unite.js`,
+  `plan-editor.js`, `flow-center.js`) gardent leur classe `btn-play` : c'est
+  `visuel.css` qui leur donne l'allure d'un bouton de carte, par une liste
+  des seuls boutons qui restent pleins. Un bouton plein de plus se déclare
+  dans cette liste.
+- **Les couleurs écrites en dur** dans `plan-editor.js` et `flow-center.js`
+  restent (décision de l'évolution 25).
+- **Les pastilles d'état du panneau « En ce moment »** sont dessinées par un
+  script commun : leur couleur « au travail » est redonnée par `visuel.css`.
+- **Le tableau de tous les temps par vol** : la règle commune qui fige la
+  première cellule de chaque rangée d'en-tête reste ; `services-page.css` la
+  corrige pour la deuxième rangée.
+- **Une valeur inhabituelle** : les champs sont écoutés par des scripts
+  communs ; `inhabituel.js` écoute à côté d'eux, et complète leur
+  notification.
+- **`effectifs.<équipe>.saisi`, dans le résultat** : c'est l'effectif que
+  l'équipe portait quand le moteur l'a lue (celui qui a été calculé, une
+  fois reporté), pas le nombre tapé. Rendre le nombre tapé demanderait de
+  changer `moteur/journee.js` : non fait (correction 24 a).
+
+Et, par choix de la demande : la vue en relief ne change pas hors la couleur
+de « au travail » ; « Contrôles » peut montrer plusieurs boutons pleins (un
+par point bloquant) ; une question posée par-dessus une page a son propre
+bouton plein.
+

@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (i) : contrôle et doc
+
+- **Les captures de contrôle** (`tests/captures-correction-24-browser.cjs`),
+  sur l'unité fictive et un programme daté fictif, aux deux tailles et dans
+  les deux thèmes — 17 vues, 68 captures, gardées hors du dépôt : la barre du
+  haut dans ses trois états de sauvegarde ; « En direct » en relief et à
+  plat ; la Synthèse ; « Période » ; « Services et équipes », « Chemins »,
+  « Réglages » ; « Stocks et retours » ; le Planning ; « Contrôles » avec un
+  point bloquant et un point à corriger ; la carte des couleurs repliée,
+  dépliée et son panneau ouvert ; le tableau des temps défilé à droite.
+- **La doc** : `docs/DESIGN_SYSTEM.md`, § 11 — les règles de la correction
+  en une table (le jeton du travail, le bouton plein, le lien, la barre, la
+  liste plate, les douze teintes, la cible), le contrôle par captures, et ce
+  que la correction laisse faute de toucher un fichier commun.
+
+Aucun code de l'application ne change dans cette partie.
+
+Fichiers : `tests/captures-correction-24-browser.cjs` (nouveau) ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (h) : finition
 
 - **« Tous les temps par vol », défilé vers la droite** : seule la colonne
