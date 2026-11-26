@@ -502,6 +502,7 @@ mêmes textes, mêmes gestes.
 | `visuel.css` | Les jetons de la version 1, dans les deux thèmes, puis la coquille et les composants. Chargée par `index.html` (après `ds.css` et les feuilles des vues, juste avant `lisible.css`, qui garde ses trois règles) et par `accueil.html`. Aucune police, aucune image, aucune ressource venue du réseau. |
 | `visuel.js` | Ce que la feuille ne sait pas dire seule : l'ombre de la barre du haut quand un contenu défile dessous ; un texte d'attente vide pour les champs qui n'en ont pas, afin que la feuille reconnaisse un champ vide. Il ne lit ni n'écrit aucune donnée, et ne change aucun texte. |
 | `pastilles.js` | La compagnie et la classe, partout les mêmes : il habille leur nom là où il se lit seul (une pastille, une étiquette), dit le rang de couleur de chaque compagnie (automatique ou choisi) et dessine la carte « Couleurs des compagnies ». Chargé par la version 1 seule |
+| `inhabituel.js` | Une valeur inhabituelle se dit (correction 24 h) : les deux seuils (`SEUILS`), et l'avis ajouté à la notification de la saisie. Chargé par la version 1 seule |
 
 ### Les jetons redéfinis
 
@@ -994,3 +995,45 @@ anciennes, dans cet ordre :
 leur contraste dans la page ; le panneau au clavier et à la souris ; l'entrée
 écrite, celle d'avant pour le même rang, octet pour octet ; la carte repliée
 avec 3, 12 et 20 compagnies, à 1 366 et à 1 024 px.
+
+### Finition (correction 24 h)
+
+**Une cible fait 24 px au moins** (hors cases et boutons radio) : un lien, un
+nom d'équipe, un tri de colonne, une commande de « Dans l'ordre », la bulle
+d'aide « ? », un curseur, un champ.
+
+- **La cible grandit, la page ne bouge pas.** Le cadre de la cible gagne ce
+  qui lui manque en haut et en bas (`padding-block`), et une marge négative
+  le reprend (`margin-block`) : la ligne garde sa hauteur. Un lien de 20 px
+  de haut dans sa ligne a ainsi un cadre de 24 px.
+- Les deux cibles de « Services et équipes » qui manquaient : « Voir ce
+  service dans les résultats → » et « Régler dans Chemins › Fournisseurs → »
+  (20 px). Les autres pages avaient les mêmes liens-boutons : la règle les
+  prend tous (`.lien-fort`, `.lien-discret`, `.se-eq-nom`, `.se-afaire-nom`,
+  `.tp-tri`, `.pg-replier`, `.mu-ordre-cmd button`).
+- La bulle d'aide « ? » passe de 18 à 24 px ; les curseurs (l'heure rejouée,
+  la vitesse, le décalage des horaires) de 16 ou 20 à 24 px de haut ; un vol
+  de la frise des départs a une cible de 24 px (son cercle transparent).
+- Le lien d'évitement reste caché tant qu'il n'a pas le focus.
+
+**Le tableau de tous les temps par vol : seule la colonne des compagnies se
+fige.** La feuille commune fige à gauche la première cellule de chaque rangée
+d'en-tête ; dans la deuxième, c'est « h/vol 1 pers. » du premier service, qui
+n'est pas en première colonne : défilée vers la droite, elle recouvrait
+« Compagnie · classe ». `services-page.css` lui rend sa place de cellule
+ordinaire (elle n'est plus figée, ni plus large que ses voisines).
+
+**« Dans l'ordre », sur la fiche d'une équipe.** Un lot (« 1 », « 2 »…) tient
+sur une ligne quand il le peut, pastilles comprises ; trop long, il passe à
+la ligne entre deux commandes, jamais au milieu d'une (la pastille et sa
+classe restent ensemble), et rien n'est coupé à droite.
+
+**Une valeur inhabituelle se dit** dans la notification de la saisie :
+`docs/CAHIER_DES_CHARGES.md`, « La confiance : une valeur inhabituelle se
+dit ».
+
+`tests/finition-browser.cjs` le vérifie : la place des en-têtes du tableau
+avant et après un défilement de 500 px ; la notification au-dessus et
+au-dessous de chaque seuil ; aucune cible de moins de 24 px sur les pages du
+menu, la fiche d'un service et celle d'une équipe ; « Dans l'ordre » à 1 366
+et à 1 024 px.

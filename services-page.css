@@ -147,3 +147,7 @@ body[data-sous="mu-services"] #view-ateliers{padding-bottom:12px}
    la feuille commune, elle se figeait au même endroit et la recouvrait). */
 .se-temps .rg-recap-table thead .rg-recap-t1 th{height:32px;padding-top:4px;padding-bottom:2px}
 .se-temps .rg-recap-table thead .rg-recap-t2 th{top:32px}
+/* Correction 24 (h) : seule la colonne des compagnies se fige à gauche. La feuille commune fige la première cellule de
+   chaque rangée d'en-tête ; dans la deuxième, c'est « h/vol 1 pers. » du premier service, qui n'est pas en première
+   colonne : défilée vers la droite, elle recouvrait « Compagnie · classe ». Elle redevient une cellule comme les autres. */
+.se-temps .rg-recap-table thead .rg-recap-t2 th:first-child{left:auto;z-index:2;min-width:0;text-align:center}

@@ -933,6 +933,28 @@ rend ; le site sait ensuite que tout est sauvegardé. Elle reste autonome.
 Contrôlé par `tests/etat-sauvegarde.test.cjs` et
 `tests/etat-sauvegarde-browser.cjs`.
 
+### La confiance : une valeur inhabituelle se dit (version 1, correction 24 h)
+
+Un zéro de trop, des minutes tapées dans un champ en heures : la valeur est
+prise — rien n'est refusé —, mais elle se dit.
+
+- **Quelles valeurs.** Un temps par vol de plus de 24 heures pour une
+  personne (la fiche d'un service, le tableau de tous les temps par vol, un
+  service par compagnie, une équipe d'appui) ; une équipe de plus de
+  200 personnes (sa fiche). Au seuil et en dessous, rien ne se dit.
+- **Comment.** La notification de la saisie ajoute « valeur inhabituelle, à
+  vérifier » et garde « Annuler », qui défait la saisie. Une saisie qui n'a
+  pas de notification à elle (un enregistrement de routine ne s'affiche
+  pas) reçoit la sienne : « 250 personnes dans une équipe : valeur
+  inhabituelle, à vérifier. », « 30 h par vol pour une personne : valeur
+  inhabituelle, à vérifier. »
+- **Les deux seuils sont à valider.** Ils sont écrits en un seul endroit :
+  `SEUILS`, dans `inhabituel.js`.
+- Un import (un classeur, une sauvegarde) n'est pas une saisie : il a ses
+  propres contrôles, et ne passe pas par cet avis.
+
+Contrôlé par `tests/inhabituel.test.cjs` et `tests/finition-browser.cjs`.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

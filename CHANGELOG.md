@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (h) : finition
+
+- **« Tous les temps par vol », défilé vers la droite** : seule la colonne
+  des compagnies se fige. La première cellule de la deuxième rangée
+  d'en-tête (« h/vol 1 pers. » du premier service) se figeait à gauche et
+  recouvrait « Compagnie · classe » : elle part maintenant avec sa colonne.
+- **Une valeur inhabituelle se dit** : un temps par vol de plus de 24 heures
+  pour une personne, ou une équipe de plus de 200 personnes. La notification
+  de la saisie ajoute « valeur inhabituelle, à vérifier » et garde
+  « Annuler ». Rien n'est refusé. Les deux seuils, à valider, sont en un
+  seul endroit (`SEUILS`, `inhabituel.js`).
+- **Une cible fait 24 px au moins** sur les pages du menu, hors cases et
+  boutons radio. Les deux de « Services et équipes » : « Voir ce service
+  dans les résultats → » et « Régler dans Chemins › Fournisseurs → ». Les
+  mêmes liens-boutons des autres pages, les tris, la bulle d'aide « ? », les
+  curseurs et les vols de la frise des départs suivent. La page ne bouge
+  pas : seul le cadre de la cible grandit.
+- **« Dans l'ordre »**, sur la fiche d'une équipe : un lot trop long passe à
+  la ligne entre deux commandes, jamais au milieu d'une ; rien n'est coupé à
+  droite.
+
+Aucun calcul ne change, ni aucune donnée, ni le format de la sauvegarde. La
+version 2 n'est pas touchée, ni aucun fichier commun.
+
+Fichiers : `inhabituel.js` (nouveau), `sim.js`, `visuel.css`,
+`services-page.css`, `index.html` et `accueil.html` (empreintes) ;
+`tests/inhabituel.test.cjs` et `tests/finition-browser.cjs` (nouveaux) ;
+`docs/DESIGN_SYSTEM.md`, `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (g) : les couleurs des compagnies — douze teintes refaites, un petit panneau pour choisir
 
 Le constat : les douze teintes de l'évolution 25 se ressemblaient (trois

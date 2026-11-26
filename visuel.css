@@ -423,3 +423,21 @@ body[data-sous="v-programme"] #view-vols:has(>.pa-carte[open])>#vols-jour{min-he
 .pa-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;padding:10px 16px 12px}
 .pa-apercu .pa-nom{flex:none;overflow:visible}
 .pa-vide{margin:0;padding:4px 16px 0}
+
+/* ---- Correction 24 (h) : finition -----------------------------------------------------------------------------------
+   Une cible fait 24 px au moins (hors cases et boutons radio). Le cadre de la cible gagne ce qui lui manque en haut et
+   en bas, et une marge négative le reprend : la ligne garde sa hauteur, rien ne se déplace. */
+.lien-fort,.lien-discret,button:is(.se-eq-nom,.tp-tri),.mu-ordre-cmd button{padding-block:2px;margin-block:-2px}
+button.se-afaire-nom,.pg-replier{padding-block:2px;margin-block:-1px}
+/* La bulle d'aide « ? » : 24 px, sans pousser sa ligne. */
+.aide>summary{width:24px;height:24px;margin-block:-3px}
+/* Les curseurs (l'heure rejouée, la vitesse, le décalage des horaires) et les deux heures d'un ETP de « Période ». */
+.lecteur .pr-temps #sim-curseur{height:24px;margin-block:-4px}
+#vitesse{height:24px;margin-block:-2px}
+#shift{height:24px;margin-block:0}
+.pc-base input{height:24px;min-height:24px;margin-block:-2px}
+
+/* « Dans l'ordre », sur la fiche d'une équipe : un lot trop long pour la ligne passe à la ligne entre deux commandes,
+   jamais au milieu d'une (la pastille et sa classe restent ensemble), et rien n'est coupé à droite. */
+.mu-ordre-cmd{flex-wrap:wrap;max-width:100%;box-sizing:border-box;row-gap:2px;border-radius:13px}
+.mu-ordre-cmd>*{flex:none;white-space:nowrap}

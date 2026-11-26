@@ -4145,7 +4145,7 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
         const y = 20 + p.c * PAS_C;
         return '<g class="vf-vol vf-' + p.e + (p.ecrit ? ' ecrit' : '') + '" tabindex="0" data-vol="' + escapeHTML(p.d.id) + '" transform="translate(' + p.x.toFixed(1) + ',' + y + ')"'
           + ' data-info="' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + '\n' + mot[p.e]) + '" aria-label="' + escapeHTML(p.d.id + ', départ ' + hh(p.d.depart) + ', ' + mot[p.e]) + '">'
-          + '<circle class="vf-cible" cx="0" cy="0" r="9"/><circle cx="0" cy="0" r="' + (RV ? RV.RAYON : 5) + '"/>'
+          + '<circle class="vf-cible" cx="0" cy="0" r="12"/><circle cx="0" cy="0" r="' + (RV ? RV.RAYON : 5) + '"/>'
           + '<text x="9" y="4">' + escapeHTML(p.d.id) + '</text></g>';
       }).join('')
     + '</svg></div><p class="mini-note ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</p>';
@@ -4243,6 +4243,9 @@ const pannes=[];
 const etape=(nom,fn)=>{try{fn();}catch(e){pannes.push(nom+' : '+(e&&e.message||e));console.error('Démarrage — '+nom,e);}};
 etape('plan',()=>{chargerZones();construirePlan();});
 etape('vols',()=>chargerVols(SAMPLE));
+// Correction 24 (h) : une valeur inhabituelle se dit (inhabituel.js). Avant « dernier réglage », qui enveloppe aussi
+// les notifications : l'avis passe par le `notifier` d'origine, et ne change pas ce que « Contrôles » dit du dernier réglage.
+etape('valeur inhabituelle',()=>{if(window.OrlyInhabituel)OrlyInhabituel.brancher();});
 etape('dernier réglage',initDernierReglage); etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('équipes et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); etape('robot',migrerRobot); etape('armement',migrerArmement);
