@@ -328,15 +328,18 @@ output,.at-pers-calc output,.rgr-calc{border:0;background:none}
 
 /* ---- 5. La compagnie et la classe ------------------------------------------ */
 /* Douze couleurs au choix pour une compagnie (pastilles.js n'en connaît que le rang) : celles du thème clair portent un
-   texte blanc, celles du thème sombre un texte sombre, à 4,5:1 au moins (tests/contraste.test.cjs). */
+   texte blanc, celles du thème sombre un texte sombre, à 4,5:1 au moins (tests/contraste.test.cjs). Refaites à la
+   correction 24 (g) : les douze de l'évolution 25 se ressemblaient (trois bleu-vert, deux violets). Celles-ci
+   s'écartent d'au moins 35 (ΔE CIE76) en clair et 23 en sombre, contre 13 ; 15 et 10 en deutéranopie et protanopie
+   simulées, contre 1. Un choix gardé reste au même rang : il prend la teinte de ce rang. */
 :root{
-  --pa-1:#39778B; --pa-2:#B54A65; --pa-3:#846A36; --pa-4:#654AB5; --pa-5:#337D3F; --pa-6:#AE4794;
-  --pa-7:#4A65B5; --pa-8:#A35B43; --pa-9:#327979; --pa-10:#9A4AB5; --pa-11:#647630; --pa-12:#327B63;
+  --pa-1:#BE3C92; --pa-2:#747914; --pa-3:#2D2DDD; --pa-4:#244451; --pa-5:#DA2F5C; --pa-6:#5A0F1B;
+  --pa-7:#C323CF; --pa-8:#1A8465; --pa-9:#1B57A8; --pa-10:#6B5535; --pa-11:#191687; --pa-12:#3B1650;
   --pa-texte:#FFFFFF;
 }
 :root[data-theme="sombre"]{
-  --pa-1:#5CAEC9; --pa-2:#DA90A3; --pa-3:#C59E51; --pa-4:#AB9ADD; --pa-5:#40BF55; --pa-6:#D88AC5;
-  --pa-7:#90A3DA; --pa-8:#D59681; --pa-9:#40BFBF; --pa-10:#C890DA; --pa-11:#9FBF40; --pa-12:#40BF95;
+  --pa-1:#F87ABA; --pa-2:#BED37A; --pa-3:#9897FA; --pa-4:#26C0F4; --pa-5:#DBABAF; --pa-6:#F18E8F;
+  --pa-7:#F7CFFC; --pa-8:#25F49D; --pa-9:#DDE7EE; --pa-10:#F0C044; --pa-11:#AAAECC; --pa-12:#C98BD9;
   --pa-texte:#161113;
 }
 [data-pa-rang="1"]{--pa-fond:var(--pa-1)} [data-pa-rang="2"]{--pa-fond:var(--pa-2)} [data-pa-rang="3"]{--pa-fond:var(--pa-3)}
@@ -376,7 +379,11 @@ output,.at-pers-calc output,.rgr-calc{border:0;background:none}
 .pa-carte[open]>.pa-carte-tete::before{transform:rotate(90deg)}
 .pa-carte-titre{margin:0;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
 .pa-carte-etat{color:var(--ds-texte-3);font-size:13px;white-space:nowrap}
-.pa-apercu{display:flex;flex:1 1 0;min-width:0;gap:6px;overflow:hidden;justify-content:flex-end}
+/* Repliée, la carte montre les pastilles depuis la gauche, sans jamais couper un nom : celles qui ne tiennent pas se
+   disent « + 3 » (pastilles.js les compte). */
+.pa-apercu{display:flex;flex:1 1 0;min-width:0;gap:6px;overflow:hidden;justify-content:flex-start;align-items:center}
+.pa-plus{flex:none;padding:0 4px;color:var(--ds-texte-2);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pa-apercu [hidden]{display:none}
 .pa-carte[open] .pa-apercu{visibility:hidden}
 /* Sur la page « Programme », qui tient en un écran : la carte est la dernière à céder sa hauteur, repliée ; dépliée,
    c'est le tableau des vols qui lui fait place. */
@@ -394,16 +401,25 @@ body[data-sous="v-programme"] #view-vols:has(>.pa-carte[open])>#vols-jour{min-he
   body[data-sous="v-programme"] #view-vols>.pa-carte{margin-top:6px}
   body[data-sous="v-programme"] .pa-carte-tete{min-height:30px}
 }
-.pa-liste{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:6px 24px;margin:0;padding:4px 16px 0;list-style:none}
+/* Une rangée par compagnie : sa pastille (un bouton, qui ouvre le petit panneau des douze teintes) et « automatique »
+   ou « gardée » (correction 24 g ; avant, douze carrés par rangée : un mur de 144 carrés pour douze compagnies). */
+.pa-liste{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 24px;margin:0;padding:4px 16px 0;list-style:none}
 .pa-rangee{display:flex;align-items:center;gap:10px;min-height:28px}
-.pa-nom{flex:0 0 132px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pa-teintes{display:flex;gap:4px;flex:none}
-.pa-teinte{box-sizing:border-box;width:20px;height:20px;padding:0;border:2px solid var(--ds-surface-1);border-radius:6px;background:var(--pa-fond);cursor:pointer;
+.pa-choisir{display:inline-flex;align-items:center;gap:6px;min-height:28px;max-width:100%;padding:2px 8px 2px 4px;border:1px solid transparent;border-radius:8px;background:none;
+  font:inherit;color:var(--ds-texte-1);cursor:pointer}
+.pa-choisir::after{content:"";flex:none;width:0;height:0;border-style:solid;border-width:5px 4px 0 4px;border-color:var(--ds-texte-3) transparent transparent transparent}
+.pa-choisir:hover,.pa-choisir[aria-expanded="true"]{background:var(--ds-survol);border-color:var(--ds-bordure-forte)}
+.pa-choisir:focus-visible{outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.pa-nom{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Le panneau : ancré sous la pastille (pastilles.js le place), douze teintes en deux rangs de six. */
+.pa-panneau{position:fixed;z-index:60;padding:8px;border:1px solid var(--ds-bordure-forte);border-radius:10px;background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte-survol)}
+.pa-teintes{display:grid;grid-template-columns:repeat(6,24px);gap:6px}
+.pa-teinte{box-sizing:border-box;width:24px;height:24px;padding:0;border:2px solid var(--ds-surface-1);border-radius:6px;background:var(--pa-fond);cursor:pointer;
   outline:1px solid transparent}
 .pa-teinte:hover{outline-color:var(--ds-texte-3)}
 .pa-teinte[aria-checked="true"]{outline:2px solid var(--ds-texte-1)}
 .pa-teinte:focus-visible{box-shadow:var(--ds-focus)}
 .pa-etat{color:var(--ds-texte-3);font-size:13px;white-space:nowrap}
 .pa-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;padding:10px 16px 12px}
-.pa-apercu .pa-nom{flex:none}
+.pa-apercu .pa-nom{flex:none;overflow:visible}
 .pa-vide{margin:0;padding:4px 16px 0}

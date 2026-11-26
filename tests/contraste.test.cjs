@@ -161,8 +161,9 @@ test('version 1 (visuel.css) : les douze couleurs des compagnies, 4,5:1 sous le 
     return Object.fromEntries([...VISUEL.slice(i, VISUEL.indexOf('\n}', i)).matchAll(/--(pa-[a-z0-9]+)\s*:\s*(#[0-9A-Fa-f]{6})/g)].map(m => [m[1], m[2].toUpperCase()]));
   };
   const attendu = {
-    clair: ['#39778B', '#B54A65', '#846A36', '#654AB5', '#337D3F', '#AE4794', '#4A65B5', '#A35B43', '#327979', '#9A4AB5', '#647630', '#327B63'],
-    sombre: ['#5CAEC9', '#DA90A3', '#C59E51', '#AB9ADD', '#40BF55', '#D88AC5', '#90A3DA', '#D59681', '#40BFBF', '#C890DA', '#9FBF40', '#40BF95']
+    // Correction 24 (g) : les douze teintes refaites (celles de l'évolution 25 se ressemblaient), dans l'ordre de la demande.
+    clair: ['#BE3C92', '#747914', '#2D2DDD', '#244451', '#DA2F5C', '#5A0F1B', '#C323CF', '#1A8465', '#1B57A8', '#6B5535', '#191687', '#3B1650'],
+    sombre: ['#F87ABA', '#BED37A', '#9897FA', '#26C0F4', '#DBABAF', '#F18E8F', '#F7CFFC', '#25F49D', '#DDE7EE', '#F0C044', '#AAAECC', '#C98BD9']
   };
   const encre = { clair: '#FFFFFF', sombre: '#161113' };
   for (const [theme, selecteur] of [['clair', ':root'], ['sombre', SOMBRE]]) {

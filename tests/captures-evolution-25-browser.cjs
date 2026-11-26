@@ -121,7 +121,9 @@ const A_L_ECRAN=sel=>{const e=document.querySelector(sel);if(!e)return null;cons
     assert.equal(await page.locator('#couleurs-compagnies .pa-rangee').count(),5,V+'une rangée par compagnie');
     assert.equal(await page.evaluate(A_L_ECRAN,'#couleurs-compagnies'),true,V+'la carte se voit en entier');
     await capturer('couleurs-des-compagnies');
-    await page.locator('#couleurs-compagnies [data-pa-compagnie="NORD"] [data-pa-teinte="9"]').click();
+    // Correction 24 (g) : la pastille de la rangée ouvre le panneau des douze teintes.
+    await page.locator('#couleurs-compagnies [data-pa-compagnie="NORD"] [data-pa-ouvrir]').click();
+    await page.locator('#couleurs-compagnies .pa-panneau [data-pa-teinte="9"]').click();
     await page.waitForFunction(()=>!!document.querySelector('#notifs .notif .notif-annuler'));
     assert.match(await page.locator('#notifs .notif').last().textContent(),/NORD\s: couleur 9\.Annuler/,V+'la notification, avec « Annuler »');
     await capturer('notification',{notifs:true});

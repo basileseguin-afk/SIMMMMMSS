@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (g) : les couleurs des compagnies — douze teintes refaites, un petit panneau pour choisir
+
+Le constat : les douze teintes de l'évolution 25 se ressemblaient (trois
+bleu-vert, deux violets) ; la carte dépliée était un mur de 144 carrés ;
+repliée, son aperçu était coupé à gauche, au milieu d'un nom.
+
+- **Les douze teintes**, à la place des anciennes, dans l'ordre de la
+  demande (`--pa-1` à `--pa-12`, dans les deux thèmes) : 4,5:1 chacune sous
+  le texte de la pastille. Un choix déjà gardé reste au même rang : il prend
+  la nouvelle teinte de ce rang.
+- **La carte « Couleurs des compagnies »** : une rangée par compagnie, sa
+  pastille, et « automatique » ou « gardée ». La pastille est un bouton : un
+  clic ouvre un petit panneau ancré à elle, avec les douze teintes (un
+  groupe de boutons radio, la teinte du moment cochée). Choisir ferme le
+  panneau ; Échap aussi, et rend le focus à la pastille. Les deux boutons
+  « Garder ces couleurs » et « Revenir aux couleurs automatiques » restent.
+- **Repliée**, la carte montre les pastilles depuis la gauche, sans jamais
+  en couper une : celles qui ne tiennent pas se disent « + 3 ».
+- **La pastille se pose aussi** sur les compagnies à cocher de la fiche
+  d'une équipe.
+
+Le format de la sauvegarde ne change pas : un choix écrit la même entrée
+qu'avant pour le même rang, octet pour octet. Aucun calcul ne change. La
+version 2 n'est pas touchée, ni aucun fichier commun.
+
+Tests dont la valeur attendue change : `tests/contraste.test.cjs` et
+`tests/pastilles-browser.cjs` (les vingt-quatre teintes de l'évolution 25 →
+celles de la demande ; la rangée de la carte : douze couleurs à cliquer → sa
+pastille, qui ouvre le panneau) ; `tests/captures-evolution-25-browser.cjs`
+(le choix d'une couleur passe par le panneau).
+
+Fichiers : `pastilles.js`, `visuel.css`, `index.html` et `accueil.html`
+(empreintes) ; `tests/couleurs-panneau-browser.cjs` (nouveau),
+`tests/pastilles-browser.cjs`, `tests/contraste.test.cjs`,
+`tests/captures-evolution-25-browser.cjs` ; `docs/DESIGN_SYSTEM.md`,
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (f) : des listes plates, moins de cadres
 
 Mesuré : 7 cadres ombrés par écran en moyenne, 12 dans « Services et

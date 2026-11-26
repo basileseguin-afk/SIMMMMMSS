@@ -665,7 +665,7 @@ une compagnie de l'unité ou une de ses commandes. Jamais dans une phrase, une
 | Détails › Vols | la compagnie sous le numéro du vol |
 | Détails › Stocks et retours | la commande qui attend le plus longtemps |
 | Programme | la colonne « Compagnie » ; la carte « Couleurs des compagnies » |
-| Services et équipes | ce qu'une équipe prépare (la rangée d'une compagnie, « Dans l'ordre ») ; ce qui reste à faire dans un service ; les compagnies d'un service par compagnie ; le tableau de tous les temps par vol (la compagnie, ses classes) |
+| Services et équipes | ce qu'une équipe prépare (la rangée d'une compagnie, « Dans l'ordre ») ; ce qui reste à faire dans un service ; les compagnies d'un service par compagnie ; les compagnies à cocher d'un service à un seul atelier (correction 24 g) ; le tableau de tous les temps par vol (la compagnie, ses classes) |
 | Chemins | les commandes qui suivent un chemin ; qui passe par une étape |
 
 **Les douze couleurs.** La couleur d'une compagnie est un réglage de
@@ -675,11 +675,13 @@ de 1 à 12, et la feuille porte les teintes, une par thème (`--pa-1` à
 
 | Rang | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Clair (texte `#FFFFFF`) | `#39778B` | `#B54A65` | `#846A36` | `#654AB5` | `#337D3F` | `#AE4794` | `#4A65B5` | `#A35B43` | `#327979` | `#9A4AB5` | `#647630` | `#327B63` |
-| Sombre (texte `#161113`) | `#5CAEC9` | `#DA90A3` | `#C59E51` | `#AB9ADD` | `#40BF55` | `#D88AC5` | `#90A3DA` | `#D59681` | `#40BFBF` | `#C890DA` | `#9FBF40` | `#40BF95` |
+| Clair (texte `#FFFFFF`) | `#BE3C92` | `#747914` | `#2D2DDD` | `#244451` | `#DA2F5C` | `#5A0F1B` | `#C323CF` | `#1A8465` | `#1B57A8` | `#6B5535` | `#191687` | `#3B1650` |
+| Sombre (texte `#161113`) | `#F87ABA` | `#BED37A` | `#9897FA` | `#26C0F4` | `#DBABAF` | `#F18E8F` | `#F7CFFC` | `#25F49D` | `#DDE7EE` | `#F0C044` | `#AAAECC` | `#C98BD9` |
 
-Le texte de la pastille tient 4,5:1 sur chacune (de 5,0 à 6,6:1 en clair, de
-7,4 à 8,9:1 en sombre) : `tests/contraste.test.cjs`.
+Ce sont les teintes de la correction 24 (g), qui a refait les douze de
+l'évolution 25 : voir § 11, « Les douze teintes ». Le texte de la pastille
+tient 4,5:1 sur chacune (de 4,6 à 14,8:1 en clair, de 7,2 à 14,9:1 en
+sombre) : `tests/contraste.test.cjs`.
 
 **Sans choix, la couleur est automatique** : les compagnies de l'unité —
 celles du programme chargé et celles des réglages —, rangées par ordre
@@ -941,3 +943,54 @@ Fichiers ».
 « Services et équipes », « Chemins » et « Réglages » (2, 4 et 2 sur l'unité
 fictive) ; la rangée choisie ; le texte lu du menu, inchangé hors la place
 du numéro de version.
+
+### Les douze teintes, et un petit panneau pour choisir (correction 24 g)
+
+Le constat : les douze teintes de l'évolution 25 se ressemblaient (trois
+bleu-vert, deux violets) ; la carte dépliée était un mur de 144 carrés ;
+repliée, son aperçu était coupé à gauche, au milieu d'un nom.
+
+**Les douze teintes** (`--pa-1` à `--pa-12`, `visuel.css`), à la place des
+anciennes, dans cet ordre :
+
+| Rang | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Clair (texte `#FFFFFF`) | `#BE3C92` | `#747914` | `#2D2DDD` | `#244451` | `#DA2F5C` | `#5A0F1B` | `#C323CF` | `#1A8465` | `#1B57A8` | `#6B5535` | `#191687` | `#3B1650` |
+| Sombre (texte `#161113`) | `#F87ABA` | `#BED37A` | `#9897FA` | `#26C0F4` | `#DBABAF` | `#F18E8F` | `#F7CFFC` | `#25F49D` | `#DDE7EE` | `#F0C044` | `#AAAECC` | `#C98BD9` |
+
+- Chacune tient 4,5:1 sous le texte de la pastille (4,6:1 au plus bas en
+  clair, 7,2:1 en sombre).
+- L'écart minimal entre deux teintes (ΔE CIE76) est de 35 en clair et de 23
+  en sombre, contre 13 pour les anciennes ; en deutéranopie et en protanopie
+  simulées, 15 et 10, contre 1 (mesure faite hors dépôt, avec la demande).
+- **Un choix déjà gardé reste au même rang** : la sauvegarde garde un rang,
+  pas une teinte ; il prend la nouvelle teinte de ce rang, sans migration.
+
+**La carte « Couleurs des compagnies ».**
+
+- **Dépliée** : une rangée par compagnie — sa pastille, et « automatique »
+  ou « gardée ». La pastille est un bouton (`aria-haspopup`,
+  `aria-expanded`) : son nom lu dit la compagnie, sa couleur et son état.
+  Douze compagnies : 14 boutons, 26 panneau ouvert (au plus 30).
+- **Le panneau** : ancré sous la pastille (au-dessus faute de place),
+  toujours dans la fenêtre ; douze teintes de 24 px sur deux lignes, un
+  groupe de boutons radio (`role="radiogroup"`, `role="radio"`,
+  `aria-checked`), la teinte du moment cochée, un seul arrêt de tabulation.
+  À l'ouverture le focus va à la teinte cochée ; les flèches vont de l'une à
+  l'autre (haut et bas changent de ligne), Début et Fin aux deux bouts, sans
+  rien choisir. Entrée, Espace ou un clic choisit : le panneau se ferme, le
+  focus revient à la pastille. Échap ferme sans choisir et rend le focus à
+  la pastille ; un clic ailleurs, un second clic sur la pastille ou la carte
+  repliée le ferment aussi. Un seul panneau à la fois.
+- **Repliée** : les pastilles depuis la gauche, sur une ligne, jamais
+  coupées ; celles qui ne tiennent pas se disent « + 3 ».
+- Les deux boutons « Garder ces couleurs » et « Revenir aux couleurs
+  automatiques » restent.
+
+**La pastille se pose aussi** sur les compagnies à cocher de la fiche d'une
+équipe (un service à un seul atelier).
+
+`tests/couleurs-panneau-browser.cjs` le vérifie : les vingt-quatre teintes et
+leur contraste dans la page ; le panneau au clavier et à la souris ; l'entrée
+écrite, celle d'avant pour le même rang, octet pour octet ; la carte repliée
+avec 3, 12 et 20 compagnies, à 1 366 et à 1 024 px.

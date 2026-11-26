@@ -198,7 +198,8 @@
     '.se-afaire-nom', '.mu-cat-table tbody th[scope="row"]',                      // la fiche d'un service : ce qui reste à faire, ses compagnies
     '.rg-cie-code',                                                               // le tableau de tous les temps par vol
     '.ch-suit > span', '.ch-table th[scope="row"]',                               // les chemins : qui suit le chemin, qui passe par l'étape
-    '.pa-nom'                                                                     // la carte « Couleurs des compagnies »
+    '.pa-nom',                                                                    // la carte « Couleurs des compagnies »
+    '.mu-atelier-cies label > b'                                                  // les compagnies à cocher d'un service à un seul atelier (correction 24 g)
   ];
   /** Où le nom d'une classe, seul, nomme une commande : sous la rangée de sa compagnie. */
   const LIEUX_CLASSE = ['.rg-recap-classe > th[scope="row"]'];
@@ -282,6 +283,7 @@
     // La carte d'abord : ses pastilles s'habillent avec le reste de la page.
     dessinerCarte();
     habiller(d.body);
+    ajusterApercu(); placerPanneau();
   }
 
   let observateur = null;
@@ -358,15 +360,24 @@
   const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let carte = null;
 
-  /** Une rangée : la pastille de la compagnie, puis les douze couleurs à cliquer (celle du moment est cochée). */
+  /** La compagnie dont le petit panneau des douze teintes est ouvert (une seule à la fois). */
+  let ouvert = null;
+
+  /** Une rangée : la pastille de la compagnie — un bouton, qui ouvre le panneau de ses douze teintes — et son état. */
   function rangee(nom, u) {
-    const rang = u.rangs.get(nom), choisie = estRang(choix[nom]);
+    const rang = u.rangs.get(nom), etat = estRang(choix[nom]) ? 'gardée' : 'automatique';
+    return `<li class="pa-rangee" data-pa-compagnie="${esc(nom)}"><button type="button" class="pa-choisir" data-pa-ouvrir aria-haspopup="true" aria-expanded="${nom === ouvert}"`
+      + ` aria-label="${esc(nom)} : couleur ${rang}, ${etat}. Choisir sa couleur" title="Choisir la couleur de ${esc(nom)}"><span class="pa-nom">${esc(nom)}</span></button>`
+      + `<small class="pa-etat">${etat}</small></li>`;
+  }
+
+  /** Le panneau d'une compagnie : douze teintes, un groupe de boutons radio ; celle du moment est cochée. */
+  function panneau(nom, u) {
+    const rang = u.rangs.get(nom);
     const teintes = Array.from({ length: NOMBRE }, (_, i) => i + 1).map(r =>
       `<button type="button" class="pa-teinte" role="radio" data-pa-teinte="${r}" data-pa-rang="${r}" aria-checked="${r === rang}"`
       + ` tabindex="${r === rang ? 0 : -1}" aria-label="${esc(nom)} : couleur ${r}" title="Couleur ${r}"></button>`).join('');
-    return `<li class="pa-rangee" data-pa-compagnie="${esc(nom)}"><span class="pa-nom">${esc(nom)}</span>`
-      + `<span class="pa-teintes" role="radiogroup" aria-label="Couleur de ${esc(nom)}">${teintes}</span>`
-      + `<small class="pa-etat">${choisie ? 'gardée' : 'automatique'}</small></li>`;
+    return `<div class="pa-panneau" data-pa-panneau="${esc(nom)}"><span class="pa-teintes" role="radiogroup" aria-label="Couleur de ${esc(nom)}">${teintes}</span></div>`;
   }
 
   /** Ce que la carte dit d'un mot, dans son en-tête : combien de compagnies, et si leurs couleurs sont gardées. */
@@ -381,32 +392,86 @@
   function carteHTML(u) {
     const n = u.noms.length;
     return `<summary class="pa-carte-tete"><h2 class="pa-carte-titre">Couleurs des compagnies</h2><span class="pa-carte-etat">${esc(etatDesCouleurs(u.noms))}</span>`
-      + `<span class="pa-apercu" aria-hidden="true">${u.noms.map(nom => `<span class="pa-nom">${esc(nom)}</span>`).join('')}</span></summary>`
+      + `<span class="pa-apercu" aria-hidden="true">${u.noms.map(nom => `<span class="pa-nom">${esc(nom)}</span>`).join('')}<span class="pa-plus" hidden></span></span></summary>`
       + (n ? `<ul class="pa-liste">${u.noms.map(nom => rangee(nom, u)).join('')}</ul>` : '<p class="mini-note pa-vide">Les compagnies de vos vols et de vos réglages viendront ici.</p>')
+      + (ouvert && u.noms.includes(ouvert) ? panneau(ouvert, u) : '')
       + `<p class="pa-actions"><button type="button" class="btn btn-sm" data-pa-action="garder"${n ? '' : ' disabled'}>Garder ces couleurs</button>`
       + `<button type="button" class="btn btn-sm" data-pa-action="automatiques"${Object.keys(choix).length ? '' : ' disabled'}>Revenir aux couleurs automatiques</button>`
       + '<span class="mini-note">Sans choix, les compagnies prennent les douze couleurs dans l’ordre alphabétique.</span></p>';
   }
 
   let dessinee = '';
-  /** La carte, redessinée quand elle change ; ouverte ou repliée, elle le reste, et le focus revient sur la même couleur. */
+  const rangeeDe = nom => (carte ? [...carte.querySelectorAll('[data-pa-compagnie]')].find(e => e.dataset.paCompagnie === nom) : null);
+  const pastilleDe = nom => { const li = rangeeDe(nom); return li ? li.querySelector('[data-pa-ouvrir]') : null; };
+  /** La carte, redessinée quand elle change ; ouverte ou repliée, elle le reste, et le focus revient où il était. */
   function dessinerCarte() {
     if (!carte) return;
-    const html = carteHTML(unite());
+    const u = unite();
+    if (ouvert && !u.noms.includes(ouvert)) ouvert = null;
+    const html = carteHTML(u);
     if (html === dessinee) return;
     const actif = carte.contains(d.activeElement) ? d.activeElement : null;
-    const ou = actif && actif.matches('[data-pa-teinte]') ? [actif.closest('[data-pa-compagnie]').dataset.paCompagnie, actif.dataset.paTeinte] : null;
+    const teinte = actif && actif.matches('[data-pa-teinte]') ? [actif.closest('[data-pa-panneau]').dataset.paPanneau, actif.dataset.paTeinte] : null;
+    const surPastille = actif && actif.matches('[data-pa-ouvrir]') ? actif.closest('[data-pa-compagnie]').dataset.paCompagnie : null;
     const action = actif && actif.dataset.paAction;
     carte.innerHTML = dessinee = html;
-    const retour = ou ? [...carte.querySelectorAll('[data-pa-compagnie]')].find(e => e.dataset.paCompagnie === ou[0]) : null;
-    const cible = retour ? retour.querySelector(`[data-pa-teinte="${ou[1]}"]`) : action ? carte.querySelector(`[data-pa-action="${action}"]:not(:disabled)`) : null;
+    const p = carte.querySelector('.pa-panneau');
+    const cible = teinte ? (p && p.dataset.paPanneau === teinte[0] ? p.querySelector(`[data-pa-teinte="${teinte[1]}"]`) : pastilleDe(teinte[0]))
+      : surPastille ? pastilleDe(surPastille) : action ? carte.querySelector(`[data-pa-action="${action}"]:not(:disabled)`) : null;
     if (cible) cible.focus({ preventScroll: true });
   }
 
-  /** Au clavier, les douze couleurs d'une compagnie sont un seul arrêt : les flèches vont de l'une à l'autre. */
+  /** Le panneau, ancré sous sa pastille ; faute de place en bas, au-dessus ; jamais hors de la fenêtre. */
+  function placerPanneau() {
+    const p = carte && carte.querySelector('.pa-panneau'), b = p && pastilleDe(p.dataset.paPanneau);
+    if (!p || !b) return;
+    const q = b.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight, marge = 4;
+    const haut = q.bottom + marge + h <= root.innerHeight - marge ? q.bottom + marge : Math.max(marge, q.top - marge - h);
+    p.style.left = Math.round(Math.max(marge, Math.min(q.left, root.innerWidth - w - marge))) + 'px';
+    p.style.top = Math.round(haut) + 'px';
+  }
+
+  /** Ouvrir le panneau d'une compagnie : le focus va à sa teinte cochée. */
+  function ouvrirPanneau(nom) {
+    if (verrouille()) return;
+    ouvert = nom; dessinerCarte(); habiller(carte); placerPanneau();
+    const coche = carte.querySelector('.pa-panneau [aria-checked="true"]') || carte.querySelector('.pa-panneau [data-pa-teinte]');
+    if (coche) coche.focus({ preventScroll: true });
+  }
+  /**
+   * Le fermer ; `rendre` : le focus revient à sa pastille. La carte n'est pas redessinée : le panneau s'en va, rien
+   * d'autre ne bouge — un clic en cours (sur le titre de la carte, sur un de ses boutons) garde sa cible.
+   */
+  function fermerPanneau(rendre) {
+    if (!ouvert) return;
+    const p = carte.querySelector('.pa-panneau'), b = pastilleDe(ouvert);
+    ouvert = null;
+    if (p) p.remove();
+    if (b) b.setAttribute('aria-expanded', 'false');
+    dessinee = carteHTML(unite());
+    if (rendre && b) b.focus({ preventScroll: true });
+  }
+
+  /** Repliée, la carte montre les pastilles qui tiennent en entier, depuis la gauche ; les autres se disent « + 3 ». */
+  function ajusterApercu() {
+    const ap = carte && carte.querySelector('.pa-apercu'), plus = ap && ap.querySelector('.pa-plus');
+    if (!ap || !plus) return;
+    const noms = [...ap.querySelectorAll(':scope > .pa-nom')];
+    for (const n of noms) n.hidden = false;
+    plus.hidden = true; plus.textContent = '';
+    if (carte.open || !noms.length || !ap.clientWidth) return;
+    let vus = noms.length;
+    while (vus > 0 && ap.scrollWidth > ap.clientWidth + 1) {
+      noms[--vus].hidden = true;
+      plus.hidden = false; plus.textContent = '+ ' + (noms.length - vus);
+    }
+  }
+
+  /** Au clavier, les douze teintes sont un seul arrêt : les flèches vont de l'une à l'autre ; Échap ferme le panneau. */
   function auClavier(e) {
+    if (e.key === 'Escape' && ouvert) { e.preventDefault(); e.stopPropagation(); fermerPanneau(true); return; }
     const t = e.target.closest && e.target.closest('[data-pa-teinte]');
-    const pas = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const pas = { ArrowRight: 1, ArrowDown: 6, ArrowLeft: -1, ArrowUp: -6 }[e.key];
     if (!t || (!pas && e.key !== 'Home' && e.key !== 'End')) return;
     const toutes = [...t.parentElement.querySelectorAll('[data-pa-teinte]')], i = toutes.indexOf(t);
     const vers = e.key === 'Home' ? 0 : e.key === 'End' ? toutes.length - 1 : (i + pas + toutes.length) % toutes.length;
@@ -419,11 +484,25 @@
     if (!hote || carte === hote) return;
     carte = hote;
     carte.addEventListener('click', e => {
-      const t = e.target.closest('[data-pa-teinte]'), a = e.target.closest('[data-pa-action]');
-      if (t) choisirCouleur(t.closest('[data-pa-compagnie]').dataset.paCompagnie, +t.dataset.paTeinte);
+      const t = e.target.closest('[data-pa-teinte]'), a = e.target.closest('[data-pa-action]'), o = e.target.closest('[data-pa-ouvrir]');
+      if (o) { const nom = o.closest('[data-pa-compagnie]').dataset.paCompagnie; if (ouvert === nom) fermerPanneau(true); else ouvrirPanneau(nom); }
+      else if (t) {
+        // Choisir ferme le panneau, et rend le focus à la pastille.
+        const nom = t.closest('[data-pa-panneau]').dataset.paPanneau, rang = +t.dataset.paTeinte;
+        ouvert = null; choisirCouleur(nom, rang); dessinerCarte(); habiller(carte);
+        const b = pastilleDe(nom);
+        if (b) b.focus({ preventScroll: true });
+      }
       else if (a) (a.dataset.paAction === 'garder' ? garderCouleurs : revenirAuxAutomatiques)();
     });
     carte.addEventListener('keydown', auClavier);
+    // Le panneau se ferme quand on clique ailleurs, quand le focus quitte la carte, quand la carte se replie.
+    d.addEventListener('pointerdown', e => { if (ouvert && !(e.target.closest && e.target.closest('.pa-panneau,[data-pa-ouvrir]'))) fermerPanneau(false); }, true);
+    carte.addEventListener('focusout', e => { if (ouvert && e.relatedTarget && !carte.contains(e.relatedTarget)) fermerPanneau(false); });
+    carte.addEventListener('toggle', () => { if (!carte.open) fermerPanneau(false); ajusterApercu(); });
+    carte.addEventListener('scroll', placerPanneau);
+    root.addEventListener('resize', () => { placerPanneau(); ajusterApercu(); });
+    if (root.ResizeObserver) new root.ResizeObserver(() => ajusterApercu()).observe(carte);
     dessinerCarte();
   }
 

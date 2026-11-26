@@ -801,8 +801,16 @@ s'ajoute déplace donc les couleurs de celles qui la suivent : c'est ce que
 
 **La carte « Couleurs des compagnies »**, au bas de « Programme » (la page
 qui charge les compagnies). Repliée, c'est une ligne : les pastilles des
-compagnies. Dépliée : une rangée par compagnie, sa pastille, et les douze
-couleurs à cliquer. Deux boutons :
+compagnies depuis la gauche, jamais coupées ; celles qui ne tiennent pas se
+disent « + 3 ». Dépliée : une rangée par compagnie, sa pastille, et
+« automatique » ou « gardée ». La pastille est un bouton : un clic ouvre un
+petit panneau ancré à elle, avec les douze couleurs (un groupe de boutons
+radio, la couleur du moment cochée). Choisir ferme le panneau ; Échap aussi,
+sans choisir, et rend le focus à la pastille (correction 24 g ; avant, les
+douze couleurs de chaque compagnie étaient étalées dans sa rangée). Les
+douze teintes ont été refaites par la même correction, pour mieux se
+distinguer : un choix déjà gardé reste au même rang et prend la nouvelle
+teinte de ce rang ; la sauvegarde ne change pas. Deux boutons :
 
 - « Garder ces couleurs » écrit pour chaque compagnie de l'unité sa couleur
   du moment : elle ne bouge plus quand une compagnie s'ajoute ;
