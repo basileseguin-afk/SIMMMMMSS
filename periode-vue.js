@@ -319,7 +319,8 @@
           <button type="button" class="btn btn-sm" data-pv="suivant" aria-label="Journée suivante"${jour === d.fin ? ' disabled' : ''}>›</button></div>
         <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d)}</p>
         <div class="pj-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
-          : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
+          // Un bouton de carte : le bouton plein est dans la page « Période », une seule fois (correction 24 d).
+          : `<button type="button" class="btn btn-sm" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           <button type="button" class="lien-fort" data-pv="voir">La période →</button></div>`);
       if (change && this.a.mesurer) this.a.mesurer();
     }

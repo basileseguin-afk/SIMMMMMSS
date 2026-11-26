@@ -829,3 +829,51 @@ ne change dans la vue en relief : sa scène, sa caméra, ses gestes.
 `tests/travail-couleur-browser.cjs` le vérifie dans les deux thèmes : le
 jeton, chaque élément qui dit « au travail », la même couleur calculée dans
 le Planning et dans « En direct », le contraste du nom sur chaque zone.
+
+### Le caramel pour l'action seule (correction 24 d)
+
+Mesuré sur 16 écrans : deux boutons pleins sur 9 d'entre eux ; tous les
+liens, les noms d'équipe et les flèches « … → » en caramel. L'œil ne savait
+plus où était l'action.
+
+**Le lien.** Dans le texte, en fin de carte, un nom d'équipe ou de service
+dans un tableau, « lien-fort », « lien-discret » :
+
+| | Au repos | Au survol, au focus |
+|---|---|---|
+| Le texte | `--ds-lien` (= `--ds-texte-1`) | `--ds-accent-texte` |
+| Le trait | souligné, 1 px, `--ds-bordure-forte` | la couleur du texte |
+
+Un lien qui dit où l'on est (`aria-current`), un service choisi
+(`aria-pressed`) gardent l'accent : c'est un choix. Un lien qui détruit
+(« .danger ») et un service qui coince gardent leur couleur d'état. Le titre
+de ce qui se déplie (`summary`) n'est pas une action : l'encre du texte, sans
+soulignement, l'accent au survol ; l'aide dépliée ne se remplit plus de
+l'accent.
+
+**Le bouton plein.** Au plus un par écran : l'action principale de la page.
+Les autres sont des boutons de carte (fond de carte, trait
+`--ds-bordure-forte`). Une page peut n'en avoir aucun.
+
+| Page | Le bouton plein |
+|---|---|
+| « En direct » | « Rejouer » |
+| « Période » | « Simuler la période » (ou « Relancer »), une seule fois : dans la page, pas dans la barre « Journée de vols » |
+| « Programme » | « Importer des vols » |
+| « Retours » | « Utiliser la planche retour », tant qu'elle ne l'est pas |
+| « Comparer » | « Retenir comme essai A » |
+| La fiche d'un service | « + Ajouter une équipe » (« + Mettre ce service en place » s'il n'en a pas) |
+| « Contrôles » | le premier bouton d'un point **bloquant** ; les points à corriger et les informations n'ont que des boutons de carte. C'est la seule page qui peut en montrer plusieurs |
+| Le plan qu'on modifie | « Terminer » |
+| « Synthèse », « Planning », « Détails », « Chemins », « Réglages », « Fichiers », la fiche d'une équipe | aucun |
+
+Comment : `.btn-play` reste le bouton plein. Dans la zone de travail, tout
+`.btn-play` qui n'est pas l'une de ces actions prend l'allure d'un bouton de
+carte (`visuel.css`) — des scripts communs avec la version 2 en dessinent, on
+ne les touche pas ; les scripts propres à la version 1 ne posent plus la
+classe (« + Ajouter un service », « + Ajouter un chemin », leur « + Créer »,
+« Simuler la période » dans la barre). Une question (`dialog`) garde son
+bouton plein : c'est son propre écran.
+
+`tests/caramel-action-browser.cjs` le vérifie dans les deux thèmes, sur
+chaque page du menu, la fiche d'un service et celle d'une équipe.

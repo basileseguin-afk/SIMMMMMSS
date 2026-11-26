@@ -130,6 +130,46 @@
 .barre :is(.so-badge,.so-badge.attente,.so-badge.retard,.so-badge.neutre,.pb-compte){background:var(--ds-nav-repere);color:var(--ds-nav-fond);
   border:0;box-shadow:none;font-weight:var(--ds-g-fort)}
 
+/* ---- Le caramel pour l'action seule (correction 24 d) ------------------------------------------------------------- */
+/* Le lien — dans le texte, en fin de carte, « lien-fort », « lien-discret » (les noms d'équipe et de service ont le leur,
+   services-page.css, direct.css) : l'encre du texte, souligné d'un trait fin ; au survol et au focus, le texte et le
+   trait passent à l'accent. Un lien qui dit où l'on est (aria-current) garde l'accent : c'est un choix. */
+:root{--ds-lien:var(--ds-texte-1)}
+.lien-fort,.lien-discret,:is(#workspace,#view-accueil) a:not(.btn){color:var(--ds-lien);text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:3px;text-decoration-color:var(--ds-bordure-forte)}
+:is(.lien-fort,.lien-discret):is(:hover,:focus-visible),:is(#workspace,#view-accueil) a:not(.btn):is(:hover,:focus-visible),
+:is(.lien-fort,.lien-discret)[aria-current]:not([aria-current="false"]){color:var(--ds-accent-texte);text-decoration-color:currentColor}
+/* Ce qui se déplie n'est pas une action : son titre a l'encre du texte, l'accent au survol. */
+summary{color:var(--ds-texte-1)}
+summary:hover{color:var(--ds-accent-texte)}
+.mu-plus>summary{color:var(--ds-texte-1)}
+.mu-plus>summary:hover{color:var(--ds-accent-texte)}
+/* L'aide dépliée : son titre reste un bouton de carte, il ne se remplit plus de l'accent ; son texte, un trait neutre. */
+.aide>summary{color:var(--ds-texte-3)}
+.aide[open]>summary{background:var(--ds-survol);border-color:var(--ds-bordure-forte);color:var(--ds-texte-1)}
+.aide.bloc[open]>summary::before{background:var(--ds-texte-1);color:var(--ds-surface-1)}
+.aide[open] .aide-corps{border-left-color:var(--ds-bordure-forte)}
+/* Une commande à cocher, une étiquette : un trait neutre, l'encre du texte ; l'accent au survol de ce qui se clique. */
+.at-chip{border-color:var(--ds-bordure-forte);color:var(--ds-texte-1)}
+.at-chip:hover{background:var(--ds-survol);border-color:var(--ds-accent);color:var(--ds-accent-texte)}
+.at-source{color:var(--ds-texte-2);border-color:var(--ds-bordure-forte)}
+/* Une note qui informe (le handling des départs, ce qu'il faut regarder sur le plan) : un trait neutre, pas l'accent. */
+.vols-handling,#goulot-info{border-left-color:var(--ds-bordure-forte)}
+
+/* Au plus un bouton plein par écran : l'action principale de la page — « Rejouer », « Importer des vols », « Simuler la
+   période » dans « Période », « + Ajouter une équipe » dans la fiche d'un service, le premier bouton d'un point bloquant
+   de « Contrôles », « Retenir comme essai A », « Utiliser la planche retour », « Terminer » pendant qu'on modifie le plan.
+   Tout autre bouton plein de la zone de travail (des scripts communs avec la version 2 en dessinent) prend l'allure d'un
+   bouton de carte : fond de carte, trait. */
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done){
+  background:var(--ds-surface-1);border-color:var(--ds-bordure-forte);color:var(--ds-texte-1);box-shadow:var(--ds-ombre-1)}
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done) .ico{color:var(--ds-texte-2)}
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done):hover:not(:disabled){
+  background:var(--ds-survol);border-color:color-mix(in srgb,var(--ds-texte-3) 45%,var(--ds-bordure-forte));color:var(--ds-texte-1)}
+/* Son anneau de focus reste celui d'un bouton (la règle ci-dessus pose une ombre : elle ne doit pas l'effacer). */
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done):focus-visible{
+  outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+
 /* « En ce moment » : un état, une couleur (correction 24 c). La pastille d'un service au travail prend le bleu du
    travail, jamais l'accent ; celle d'un service qui a fini, le gris des zones qui ont fini. « Attend » garde l'ocre. */
 .stat-atelier.etat-travail .stat-etat{background:color-mix(in srgb,var(--ds-travail) 15%,var(--ds-surface-1));color:var(--ds-travail)}

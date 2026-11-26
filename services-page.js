@@ -387,13 +387,13 @@
       const lies = id => ch.filter(g => g.service === id).map(g => '+ ' + this.nom(g.avant)).concat(ch.filter(g => g.avant === id).map(g => 'avec ' + this.nom(g.service)));
       const sup = this.a.supprimes ? this.a.supprimes() : { n: 0, html: '' };
       const liste = `<nav class="mu-liste se-liste" aria-label="Les services">
-        <details class="se-ajout" data-se-ajout${this.ajout ? ' open' : ''}><summary class="btn btn-sm btn-play">+ Ajouter un service</summary>
+        <details class="se-ajout" data-se-ajout${this.ajout ? ' open' : ''}><summary class="btn btn-sm">+ Ajouter un service</summary>
           <form class="mu-nouveau" data-mu-nouveau>
           <label>Nom <input name="nom" maxlength="120" placeholder="ex. Conditionnement" required></label>
           <label>Sur le plan, près de <select name="parent">${this.a.racines().map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>
           <label title="À part entière : ses propres temps par vol et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les temps et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
             <option value="salle">une salle de plus de ce service</option></select></label>
-          <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form></details>
+          <button class="btn btn-sm" type="submit">+ Créer</button></form></details>
         ${this.entreeTousLesTemps()}
         ${services.map(x => { const bx = bilans.get(x.id), on = x.id === this.choisi && !this.panneau, l = lies(x.id);
           return `<button type="button" class="mu-svc ${bx.etat}${l.length ? ' en-chaine' : ''}${on ? ' actif' : ''}" data-mu-choisir="${esc(x.id)}" aria-current="${on}">

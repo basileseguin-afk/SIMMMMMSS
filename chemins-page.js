@@ -270,11 +270,11 @@
           pl(sans.length, 'commande')} sans chemin →</button>`
         : '<span class="ch-tous">Toutes les commandes ont un chemin</span>';
       const liste = `<nav class="mu-liste ch-liste" aria-label="Les chemins">
-        <details class="se-ajout" data-ch-ajout${this.cheminAjout ? ' open' : ''}><summary class="btn btn-sm btn-play">+ Ajouter un chemin</summary>
+        <details class="se-ajout" data-ch-ajout${this.cheminAjout ? ' open' : ''}><summary class="btn btn-sm">+ Ajouter un chemin</summary>
           <form class="mu-nouveau" data-mu-flux-nouveau>
           <label>Nom <input name="nom" maxlength="76" placeholder="ex. Économie robot" required></label>
           <label>Partir de <select name="source"><option value="">rien (vide)</option>${PC.types(st).map(t => `<option value="${esc(t.id)}"${t.id === this.fluxChoisi ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</select></label>
-          <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form></details>
+          <button class="btn btn-sm" type="submit">+ Créer</button></form></details>
         ${this.entreeFournisseurs()}${groupe('chemin')}${groupe('variante')}${groupe('apart')}${tous.some(y => y.genre === 'apart' && y.commandes.length)
           ? `<button type="button" class="lien-discret ch-regrouper" data-mu-flux-action="regrouper" title="Chaque classe aura son chemin ; les commandes qui s’en écartent, leur variante">Regrouper les chemins à part</button>` : ''}
         <p class="ch-bas">${bas}</p>

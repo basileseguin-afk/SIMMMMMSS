@@ -252,8 +252,9 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 .dq-table .num{text-align:right;white-space:nowrap}
 .dq-table tr.dq-avertissement>th{box-shadow:inset 3px 0 0 var(--ds-attente);padding-left:8px}
 .dq-table tr.dq-critique>th{box-shadow:inset 3px 0 0 var(--ds-retard);padding-left:8px}
-.dq-service{margin:0;padding:1px 2px;border:0;border-radius:var(--ds-r-1,4px);background:none;font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-accent-texte);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:2px}
-.dq-service:hover{text-decoration-color:currentColor}
+.dq-service{margin:0;padding:1px 2px;border:0;border-radius:var(--ds-r-1,4px);background:none;font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-lien);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-thickness:1px;text-decoration-color:var(--ds-bordure-forte);text-underline-offset:2px}
+/* Un service est un lien (correction 24 d) : l'encre du texte, l'accent au survol et au focus ; choisi, il garde l'accent. */
+.dq-service:is(:hover,:focus-visible),.dq-service[aria-pressed="true"]{color:var(--ds-accent-texte);text-decoration-color:currentColor}
 .dq-service:focus-visible{outline:0;box-shadow:var(--ds-focus)}
 .dq-service[aria-pressed="true"]{background:var(--ds-accent-pale)}
 .dq-ton{display:inline-block;padding:0 6px;border-radius:999px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);white-space:nowrap}

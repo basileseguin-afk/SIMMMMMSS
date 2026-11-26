@@ -41,8 +41,10 @@ body[data-sous="mu-services"] #view-ateliers{padding-bottom:12px}
 .se-equipes td.se-eq-prepare{white-space:normal;min-width:160px;color:var(--ds-texte-2)}
 .se-equipes tbody tr{cursor:pointer}
 .se-equipes tbody tr:hover{background:var(--ds-survol)}
-.se-eq-nom{all:unset;cursor:pointer;font-weight:var(--ds-g-fort);color:var(--ds-accent-texte)}
-.se-eq-nom:hover{text-decoration:underline}
+/* Un nom d'équipe est un lien (correction 24 d) : l'encre du texte, un trait fin ; l'accent au survol et au focus. */
+.se-eq-nom{all:unset;cursor:pointer;font-weight:var(--ds-g-fort);color:var(--ds-lien);text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:3px;text-decoration-color:var(--ds-bordure-forte)}
+.se-eq-nom:is(:hover,:focus-visible){color:var(--ds-accent-texte);text-decoration-color:currentColor}
 .se-eq-nom:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
 .se-chaine{font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
 .se-effectif{margin-top:8px;padding-top:8px;border-top:1px solid var(--ds-bordure)}
@@ -111,11 +113,13 @@ body[data-sous="mu-services"] #view-ateliers{padding-bottom:12px}
 .se-afaire>li{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
 .se-afaire-dit{font-weight:var(--ds-g-moyen)}
 .se-afaire-nom,.se-afaire-ligne{border:0;border-radius:var(--ds-r-1);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.se-afaire-nom{padding:1px 6px;white-space:nowrap;color:var(--ds-accent-texte,var(--ds-accent));text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:3px}
+.se-afaire-nom{padding:1px 6px;white-space:nowrap;color:var(--ds-lien);text-decoration:underline;text-decoration-thickness:1px;text-decoration-color:var(--ds-bordure-forte);text-underline-offset:3px}
+.se-afaire-nom:is(:hover,:focus-visible){color:var(--ds-accent-texte);text-decoration-color:currentColor}
 .se-afaire-ligne{display:flex;align-items:baseline;gap:10px;width:100%;padding:1px 6px;margin:0 -6px}
 .se-afaire-nom:hover,.se-afaire-ligne:hover{background:color-mix(in srgb,var(--ds-attente) 16%,transparent)}
 .se-afaire-nom:focus-visible,.se-afaire-ligne:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
-.se-afaire-vers{margin-left:auto;white-space:nowrap;color:var(--ds-accent-texte,var(--ds-accent));font-weight:var(--ds-g-moyen)}
+.se-afaire-vers{margin-left:auto;white-space:nowrap;color:var(--ds-lien);font-weight:var(--ds-g-moyen)}
+.se-afaire-ligne:is(:hover,:focus-visible) .se-afaire-vers{color:var(--ds-accent-texte)}
 /* L'endroit visé : la case à cocher, le champ du temps par vol. */
 #mu-services .se-vise{outline:2px solid var(--ds-accent);outline-offset:-2px;border-radius:var(--ds-r-1);background:var(--ds-accent-doux)}
 

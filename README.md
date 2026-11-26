@@ -2498,6 +2498,20 @@ plat, le nom du service tient 4,5:1 dans les deux thèmes. Le détail :
 `docs/DESIGN_SYSTEM.md`, § 11. `tests/travail-couleur-browser.cjs` le
 vérifie.
 
+**Le caramel pour l'action seule** (correction 24 d). Un lien (dans le
+texte, en fin de carte, un nom d'équipe ou de service, « lien-fort »,
+« lien-discret ») a l'encre du texte (`--ds-lien`), souligné d'un trait fin ;
+au survol et au focus, le texte et le trait passent à l'accent. Au plus un
+bouton plein par écran, l'action principale de la page : « Rejouer » dans
+« En direct », « Simuler la période » dans « Période » seulement (plus dans
+la barre « Journée de vols »), « Importer des vols » dans « Programme »,
+« + Ajouter une équipe » dans la fiche d'un service ; « + Ajouter un
+service » et « + Ajouter un chemin » sont des boutons de carte. « Contrôles »
+est la seule page qui peut en montrer plusieurs : un par point bloquant, les
+points à corriger et les informations n'ayant que des boutons de carte. Le
+détail : `docs/DESIGN_SYSTEM.md`, § 11. `tests/caramel-action-browser.cjs` le
+vérifie.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2844,6 +2858,7 @@ vérifie.
 | `tests/etat-sauvegarde.test.cjs` | `etat-sauvegarde.js` sans navigateur (v1, correction 24 b) : la mémoire relue (absente, abîmée), celle d’un navigateur d’avant, les trois états et leurs mots (l’heure, la date un autre jour), ce qui compte comme un changement (un réglage oui ; l’effectif calculé reporté et les commandes d’une équipe « par compagnie » non) ; `stockage.js` signale chaque donnée vraiment écrite ; la page de secours a les neuf entrées de « Tout sauvegarder », dans l’ordre, et reste autonome |
 | `tests/etat-sauvegarde-browser.cjs` | L’état de sauvegarde dans la page (v1, correction 24 b), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : première visite « Jamais sauvegardé » sans question ; restaurée « Sauvegardé à HH:MM », et le reste après un import de vols, un autre jour, des pages ouvertes, un thème, une section ; un réglage → « Non sauvegardé depuis HH:MM », l’écouteur de fermeture posé une seule fois, la question du navigateur au rechargement et en quittant le site, pas en lecture seule ; « Tout sauvegarder » par la barre du haut (sans changer de page) et par « Fichiers » → « Sauvegardé », le même fichier octet pour octet à la date près ; sous un navigateur piloté, jamais d’écouteur ; la page de secours rend les neuf entrées ; le bouton à 13 px, 24 px de haut, 4,5:1 et 3:1 dans les deux thèmes, son mot gardé à 1 100 px |
 | `tests/travail-couleur-browser.cjs` | Un état, une couleur (v1, correction 24 c), sur l’unité et les vols fictifs, à 1 366 × 768, dans les deux thèmes : `--ds-travail` vaut `--ds-d1` et n’est pas l’accent, son texte s’y lit à 4,5:1 ; « En direct » à plat (la légende, les zones au travail, en attente, finies ; le nom du service à 4,5:1 sur chaque zone colorée ; les pastilles du panneau) ; en relief (la légende, le jeton des personnages, la courbe du temps, la courbe de charge d’un service et sa clé) ; le Planning (la courbe, les barres, leurs clés, le trait d’un lot, l’étiquette d’une barre) ; la Synthèse ; la même couleur calculée dans le Planning et dans « En direct » ; aucun élément qui dit « au travail » n’a la couleur de l’accent |
+| `tests/caramel-action-browser.cjs` | Le caramel pour l’action seule (v1, correction 24 d), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, « En direct » à plat, la fiche d’un service et celle d’une équipe, au plus un bouton au fond de l’accent (« Contrôles » à part) ; « Simuler la période » plein dans « Période » seulement, une fois, et bouton de carte dans la barre ; « Importer des vols », « Rejouer », « + Ajouter une équipe » pleins ; « + Ajouter un service » et « + Ajouter un chemin » en boutons de carte (fond de carte, trait, 13 px, 24 px de haut) ; « Contrôles » : plein pour le premier bouton d’un point bloquant, boutons de carte pour les autres points ; aucun lien n’a la couleur de l’accent au repos — l’encre du texte, souligné du trait fin — et passe à l’accent, texte et trait, au survol et au focus |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

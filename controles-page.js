@@ -162,8 +162,10 @@
       const bs = boutons(p, o.nomPage);
       const allerGris = bs.some(b => ferme(b.page)), vouluGris = verrou && !!p.voulu;
       const gris = ` disabled aria-describedby="ct-raison-${i}"`;
-      // Le premier bouton d'un point est le principal ; les suivants (un autre service, un autre geste) sont discrets.
-      const aller = (b, k) => `<button type="button" class="btn btn-sm${AV.estProbleme(p) && !k ? ' btn-play' : ''}" data-ct-aller="${i}"${k ? ` data-ct-geste="${k}"` : ''} data-ct-page="${esc(b.page)}"${ferme(b.page) ? gris : ''}>${esc(b.texte)} →</button>`;
+      // Le premier bouton d'un point bloquant est plein ; ceux d'un point à corriger ou d'une information, et les suivants
+      // (un autre service, un autre geste), sont des boutons de carte (correction 24 d).
+      const bloquant = (AV.NIVEAUX.some(n => n.id === p.niveau) ? p.niveau : AV.NIVEAUX[0].id) === 'bloquant';
+      const aller = (b, k) => `<button type="button" class="btn btn-sm${bloquant && !k ? ' btn-play' : ''}" data-ct-aller="${i}"${k ? ` data-ct-geste="${k}"` : ''} data-ct-page="${esc(b.page)}"${ferme(b.page) ? gris : ''}>${esc(b.texte)} →</button>`;
       return `<li class="ct-point" data-ct-point="${i}"><div class="ct-corps"><b>${esc(p.titre)}</b>${p.detail ? `<span>${esc(p.detail)}</span>` : ''}</div>
         <div class="ct-gestes">${bs.map(aller).join('')}${
           p.voulu ? `<button type="button" class="btn btn-sm" data-ct-voulu="${esc(p.voulu)}"${vouluGris ? gris : ''} aria-label="${esc(AV.VOULU + ' (' + p.voulu + ')')}" title="${esc(AV.VOULU)}">C’est voulu</button>` : ''}${

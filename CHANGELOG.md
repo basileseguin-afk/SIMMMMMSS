@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (d) : le caramel pour l'action seule
+
+Mesuré sur 16 écrans : deux boutons pleins sur 9 d'entre eux ; tous les
+liens, les noms d'équipe et les flèches « … → » en caramel.
+
+- **Un lien** (dans le texte, en fin de carte, un nom d'équipe ou de service
+  dans un tableau, « lien-fort », « lien-discret ») : l'encre du texte
+  (`--ds-lien`), souligné d'un trait fin `--ds-bordure-forte` ; au survol et
+  au focus, le texte et le trait passent à l'accent.
+- **Au plus un bouton plein par écran**, l'action principale de la page ; les
+  autres sont des boutons de carte. « Simuler la période » : plein dans
+  « Période » seulement, une seule fois (bouton de carte dans la barre
+  « Journée de vols »). « + Ajouter une équipe » plein dans la fiche d'un
+  service ; « + Ajouter un service » et « + Ajouter un chemin » en boutons
+  de carte. « Importer des vols » dans « Programme », « Rejouer » dans « En
+  direct ». « Contrôles » : plein pour un point bloquant, bouton de carte
+  pour les autres points.
+- Le titre de ce qui se déplie, l'aide dépliée, une commande à cocher, une
+  étiquette de source : l'encre du texte et un trait neutre, plus l'accent.
+
+Aucun calcul ne change, ni aucune donnée, ni aucun texte, ni aucun geste. La
+version 2 n'est pas touchée, ni aucun fichier commun.
+
+Fichiers : `visuel.css`, `services-page.css`, `direct.css`,
+`periode-vue.js`, `services-page.js`, `chemins-page.js`,
+`controles-page.js`, `index.html` et `accueil.html` (empreintes) ;
+`tests/caramel-action-browser.cjs` (nouveau) ; `docs/DESIGN_SYSTEM.md`,
+`README.md`.
+
 ## 2026-11-26 — Correction 24 (c) : un état, une couleur — « au travail » en bleu, partout
 
 Le constat : depuis que l'accent est caramel, « au travail » était caramel
