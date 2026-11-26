@@ -3270,6 +3270,8 @@ function sauvegardeComplete() {
   r.textContent = parties + (parties > 1 ? ' parties enregistrées' : ' partie enregistrée') + '. Ce fichier contient le plan réel : gardez-le hors du dépôt.';
   // La date de la dernière sauvegarde (évolution 22 e) : une préférence de ce navigateur, hors de la sauvegarde.
   try{localStorage.setItem(CLE_DERNIERE_SAUVEGARDE,new Date().toISOString());}catch(e){/* stockage indisponible */}
+  // L'état de sauvegarde, dans la barre du haut (correction 24 b) : il ne reste plus de changement à sauvegarder.
+  if(window.OrlyEtatSauvegarde)OrlyEtatSauvegarde.sauvegarde();
   majFichiers();
   toast('Sauvegarde complète téléchargée');
 }
@@ -3318,6 +3320,9 @@ async function restaurerSauvegarde(e) {
     if (enRetard()) throw new Error(RETARD);
     aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
     aRetirer.forEach(cle => localStorage.removeItem(cle));
+    // Ce qui est dans le navigateur est ce que le fichier porte : rien à sauvegarder, et le rechargement ne pose pas de
+    // question (correction 24 b).
+    if (window.OrlyEtatSauvegarde) OrlyEtatSauvegarde.restauration();
     location.reload();
   } catch (err) { refuser(err.message); }
   finally { e.target.value = ''; }
@@ -3356,6 +3361,13 @@ function enregistrerReglesWinrest(regles){
 const CLE_SEUILS='ory-seuils-v1';
 /* Les couleurs des compagnies (évolution 25 d, pastilles.js) : la page dit ses compagnies — celles du programme chargé et
  * celles des réglages —, ses classes telles qu'elle les écrit, et quand elles changent. Le calcul ne lit pas ces couleurs. */
+/* L'état de sauvegarde, dans la barre du haut (correction 24 b, etat-sauvegarde.js) : il reste, ou non, des changements
+ * depuis le dernier « Tout sauvegarder » ou la dernière restauration ; un clic fait ce que fait « Tout sauvegarder ». */
+function initEtatSauvegarde(){
+  if(!window.OrlyEtatSauvegarde)return;
+  OrlyEtatSauvegarde.brancher({parties:PARTIES.map(p=>p.cle),bouton:document.getElementById('etat-sauvegarde'),
+    sauvegarder:sauvegardeComplete,lectureSeule:()=>lectureSeule});
+}
 const CLE_COULEURS='ory-couleurs-compagnies-v1';
 function initPastilles(){
   if(!window.OrlyPastilles||!OrlyPastilles.brancher)return;
@@ -4250,9 +4262,12 @@ etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
 // Après les reprises des données d'avant (elles ne sont pas des gestes) : les portes des réglages se gardent ensuite.
 etape('lecture seule',initLectureSeule);
 etape('couleurs des compagnies',initPastilles);
+etape('état de sauvegarde',initEtatSauvegarde);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}
+// Ce que la page a écrit en s'ouvrant n'était pas un geste : les changements se comptent à partir d'ici (correction 24 b).
+if(window.OrlyEtatSauvegarde)OrlyEtatSauvegarde.pret();
 if(pannes.length){
   const b=document.createElement('div');b.className='panne-demarrage';b.setAttribute('role','alert');
   b.innerHTML='<b>Une partie du site n’a pas pu se charger</b> ('+escapeHTML(pannes.join(' ; '))+'). Le reste fonctionne. '

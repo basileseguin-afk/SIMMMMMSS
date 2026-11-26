@@ -203,9 +203,14 @@ async function contexte(){const b=await lancer();lances.push(b);return b.newCont
   assert.deepEqual(Object.keys(donnees).sort(),Object.keys(sans.cles).sort(),'les mêmes clés');
   // (Évolution 22 d : « le dernier réglage changé », que dit « Contrôles », est une préférence d'affichage qui porte
   //  une heure ; elle se compare à l'heure près.)
+  //  Correction 24 b : de même la mémoire de l'état de sauvegarde, qui porte l'heure du premier changement en attente —
+  //  avec ou sans le garde, le parcours laisse un changement à sauvegarder.)
   const sansHeure=x=>{const d=JSON.parse(x);return [typeof d.a,d.domaine,d.texte];};
+  const sansInstant=x=>{const d=JSON.parse(x);return [d.fait,d.par,typeof d.change];};
+  assert.deepEqual(sansInstant(donnees['ory-ui-etat-sauvegarde']),[null,null,'string'],'le parcours laisse un changement à sauvegarder');
   for(const k of Object.keys(sans.cles)){
     if(k==='ory-ui-dernier-reglage'){assert.deepEqual(sansHeure(donnees[k]),sansHeure(sans.cles[k]),'« '+k+' », à l’heure près');continue;}
+    if(k==='ory-ui-etat-sauvegarde'){assert.deepEqual(sansInstant(donnees[k]),sansInstant(sans.cles[k]),'« '+k+' », à l’heure près');continue;}
     assert.equal(donnees[k],sans.cles[k],'« '+k+' », champ par champ');
   }
   assert.ok(['ory-ateliers-v1','orly-plan-v3','orly-flows-v1','ory-modele-v1'].every(k=>k in donnees),'chaque module a enregistré');

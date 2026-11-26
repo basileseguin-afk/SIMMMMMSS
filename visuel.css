@@ -129,6 +129,18 @@
 /* La barre du haut : son ombre n'apparaît que quand un contenu défile dessous (visuel.js le dit sur <body>). */
 .haut{box-shadow:none}
 body[data-defile-sous-la-barre] .haut{box-shadow:var(--ds-ombre-haut)}
+/* L'état de sauvegarde, à côté de « Calcul à jour » (correction 24 b) : un bouton, un point et un mot. Le mot reste à
+   toute largeur : l'état ne se dit jamais par la couleur seule ; sur une barre étroite, seule l'heure se retire. */
+.sauve{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border:0;border-radius:99px;background:none;
+  font:inherit;font-size:var(--ds-t-13);color:var(--ds-texte-2);cursor:pointer;white-space:nowrap;
+  transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
+.sauve:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.sauve:focus-visible{outline:none;box-shadow:var(--ds-focus)}
+.sauve-point{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ds-attente)}
+.sauve[data-etat="sauvegarde"]{color:var(--ds-texte-3)}
+.sauve[data-etat="sauvegarde"] .sauve-point{background:var(--ds-ok)}
+.sauve[data-etat="non-sauvegarde"]{color:var(--ds-texte-1);font-weight:var(--ds-g-moyen)}
+@media (max-width:1180px){.sauve-quand{display:none}}
 
 /* Le haut d'une page : plus de bandeau ni d'ombre derrière le titre, qui se pose sur le fond de la page. */
 /* L'en-tête garde sa hauteur, au pixel : le titre grandit de 2 px dans son interligne d'avant (24 px), et le trait

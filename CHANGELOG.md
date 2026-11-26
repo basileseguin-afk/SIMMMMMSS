@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (b) : ne pas perdre son travail
+
+Le constat : tout vit dans le navigateur, rien ne prévient à la fermeture,
+et « Aucune sauvegarde faite depuis ce navigateur » ne se lit que dans
+« Fichiers ».
+
+- **L'outil sait s'il reste des changements non sauvegardés** : une entrée de
+  la sauvegarde a été écrite depuis le dernier « Tout sauvegarder » ou la
+  dernière restauration. Ce que le calcul écrit de lui-même dans les équipes
+  en suivant les vols (l'effectif calculé reporté, les commandes d'une équipe
+  « par compagnie ») n'est pas un réglage et ne compte pas, ni ce que la page
+  écrit en s'ouvrant, ni une préférence d'affichage. La mémoire est
+  elle-même une préférence d'affichage (`ory-ui-etat-sauvegarde`), hors de
+  la sauvegarde.
+- **Dans la barre du haut**, à côté de « Calcul à jour », un bouton d'état :
+  « Sauvegardé à 14:32 » (point vert), « Non sauvegardé depuis 14:32 » (point
+  ocre), « Jamais sauvegardé » (point ocre) ; un autre jour, la date se dit.
+  Un clic fait ce que fait « Tout sauvegarder », sans changer de page. Sur
+  une barre étroite, l'heure se retire, le mot reste.
+- **À la fermeture ou au rechargement de l'onglet**, s'il reste des
+  changements, le navigateur pose sa question. Pas de question s'il ne reste
+  rien, ni en lecture seule, ni pour le rechargement que l'outil fait
+  lui-même (après « Restaurer un fichier », ou par le « Recharger » du
+  bandeau d'un onglet en retard), ni sous un navigateur piloté par un
+  programme (`navigator.webdriver` : les tests).
+- **La page de secours** rend les neuf entrées de « Tout sauvegarder » (elle
+  oubliait les règles d'import, les seuils d'alerte et les couleurs des
+  compagnies) ; le site sait ensuite que tout est sauvegardé. Elle reste
+  autonome.
+- `stockage.js` signale chaque donnée vraiment écrite ou retirée
+  (`OrlyStockage.surEcriture`) ; ce qu'il écrit ne change pas.
+
+Aucun calcul ne change, ni le format de la sauvegarde, ni son contenu. La
+version 2 n'est pas touchée, ni aucun fichier commun.
+
+Fichiers : `etat-sauvegarde.js` (nouveau), `stockage.js`, `sim.js`,
+`index.html`, `visuel.css`, `secours.html`, `accueil.html` (empreinte) ;
+`tests/etat-sauvegarde.test.cjs`, `tests/etat-sauvegarde-browser.cjs`
+(nouveaux) ; `docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (a) : ouvrir une page ne change jamais le résultat
 
 Le constat : ouvrir « Planning » changeait `effectifs.<équipe>.saisi` dans

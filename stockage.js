@@ -41,11 +41,13 @@
   /**
    * Le garde d'un onglet sur le stockage `vrai`. Il lit la révision une fois,
    * à l'ouverture de l'onglet ; `surRetard` est appelé à chaque écriture
-   * refusée et au signal d'un autre onglet.
+   * refusée et au signal d'un autre onglet ; `surEcriture(clé, avant, après)`
+   * après chaque donnée vraiment écrite ou retirée (correction 24 b).
    * @returns {{stockage:Storage, enRetard:()=>boolean, signaler:()=>void, revision:()=>string|null}}
    */
   function creerGarde(vrai, o) {
     var lue = vrai.getItem(REVISION), retard = false, surRetard = (o && o.surRetard) || function () {};
+    var surEcriture = (o && o.surEcriture) || function () {};
     // Tout effacer ôte la révision : la suivante repart au-dessus de la dernière connue, jamais d'un numéro déjà lu ailleurs.
     var plancher = 0;
     function signaler() { retard = true; surRetard(); }
@@ -69,13 +71,15 @@
       key: function (i) { return vrai.key(i); },
       setItem: function (k, v) {
         if (!estDonnee(k)) return vrai.setItem(k, v);
-        if (!permis() || vrai.getItem(k) === String(v)) return undefined;
-        vrai.setItem(k, v); suivante(); return undefined;
+        var avant = vrai.getItem(k);
+        if (!permis() || avant === String(v)) return undefined;
+        vrai.setItem(k, v); suivante(); surEcriture(k, avant, String(v)); return undefined;
       },
       removeItem: function (k) {
         if (!estDonnee(k)) return vrai.removeItem(k);
-        if (!permis() || vrai.getItem(k) === null) return undefined;
-        vrai.removeItem(k); suivante(); return undefined;
+        var avant = vrai.getItem(k);
+        if (!permis() || avant === null) return undefined;
+        vrai.removeItem(k); suivante(); surEcriture(k, avant, null); return undefined;
       },
       clear: function () {
         if (!permis()) return;
@@ -115,7 +119,8 @@
     // page, l'a déjà fait : ce garde ne dépend pas de lui.)
     try { void win.document.cookie; } catch (e) { /* un document sans témoins : rien à attendre */ }
     try { vrai = win.localStorage; if (!vrai) return null; } catch (e) { return null; } // stockage indisponible : le site fait déjà sans
-    var g = creerGarde(vrai, { surRetard: function () { montrerBandeau(win.document); } });
+    var g = creerGarde(vrai, { surRetard: function () { montrerBandeau(win.document); },
+      surEcriture: function (k, avant, apres) { ecoutes.forEach(function (f) { f(k, avant, apres); }); } });
     try { Object.defineProperty(win, 'localStorage', { value: g.stockage, configurable: true }); } catch (e) { return null; }
     if (win.localStorage !== g.stockage) return null;
     win.addEventListener('storage', function (e) {
@@ -130,8 +135,12 @@
 
   var api = { REVISION: REVISION, TEXTE: TEXTE, estDonnee: estDonnee, concerne: concerne, creerGarde: creerGarde };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
+  // Qui veut savoir qu'une donnée vient d'être écrite (l'état de sauvegarde, correction 24 b).
+  var ecoutes = [];
   var g = installer(root);
   root.OrlyStockage = {
+    /** Appeler `f(clé, avant, après)` après chaque donnée vraiment écrite ou retirée par cet onglet. */
+    surEcriture: function (f) { if (typeof f === 'function') ecoutes.push(f); },
     /** Un autre onglet a écrit depuis l'ouverture de celui-ci (la révision enregistrée relue) : il n'écrit plus rien. */
     enRetard: function () { return !!g && g.enRetard(); },
     installe: !!g,

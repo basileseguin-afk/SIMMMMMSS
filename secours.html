@@ -77,7 +77,11 @@
   // charge aucun fichier du site.)
   try { void document.cookie; } catch (e) { /* un document sans témoins : rien à attendre */ }
   // Les parties d'une sauvegarde complète (sim.js, PARTIES), dans le même ordre.
-  var PARTIES = ['orly-plan-v3', 'ory-ateliers-v1', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1', 'ory-calage-v1'];
+  // Toutes : les règles d'import, les seuils d'alerte et les couleurs des compagnies aussi (correction 24 b).
+  var PARTIES = ['orly-plan-v3', 'ory-ateliers-v1', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1', 'ory-calage-v1',
+    'ory-import-winrest-v1', 'ory-seuils-v1', 'ory-couleurs-compagnies-v1'];
+  // Ce que le site retient de la dernière sauvegarde (sim.js, etat-sauvegarde.js) : des préférences, hors des données.
+  var DERNIERE = 'ory-ui-derniere-sauvegarde', ETAT_SAUVEGARDE = 'ory-ui-etat-sauvegarde';
   var CASES = ['ory-ateliers-v1', 'ory-ateliers-v1-avant-fonte'];
   var COPIE = 'ory-secours-copie', DEMARRAGE = 'ory-demarrage-en-cours';
   // Le numéro de révision des données (stockage.js, correction 14) : il n'est pas une donnée à mettre de côté ;
@@ -114,6 +118,12 @@
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'ory-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    // Le site le saura : tout est dans ce fichier, il ne reste rien à sauvegarder.
+    try {
+      var fait = new Date().toISOString();
+      localStorage.setItem(DERNIERE, fait);
+      localStorage.setItem(ETAT_SAUVEGARDE, JSON.stringify({ fait: fait, par: 'sauvegarde', change: null }));
+    } catch (e) { /* stockage indisponible : le fichier est là */ }
     dire(n + (n > 1 ? ' parties téléchargées.' : ' partie téléchargée.'));
   });
 

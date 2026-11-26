@@ -79,6 +79,13 @@ dépôt. Plusieurs onglets ouverts ne s'écrasent pas : quand un autre onglet
 enregistre, celui-ci le dit par un bandeau et n'enregistre plus rien tant qu'il
 n'est pas rechargé (correction 14, [§ 11 du banc d'essai](docs/BANC_ESSAI.md)).
 
+Dans la version 1, la barre du haut dit **s'il reste des changements non
+sauvegardés** (correction 24 b) : « Sauvegardé à 14:32 », « Non sauvegardé
+depuis 14:32 » ou « Jamais sauvegardé », à côté de « Calcul à jour ». Un clic
+sur ce bouton fait ce que fait « Tout sauvegarder », sans changer de page.
+S'il reste des changements, le navigateur pose sa question avant de fermer
+ou de recharger l'onglet.
+
 ### Afficher le fond de plan
 
 Créez un dossier `plan-prive/` à la racine et déposez-y les 12 tuiles nommées
@@ -2452,6 +2459,33 @@ rejoue maintenant aussitôt sur l'état enregistré (`ateliers.js`,
 rend pour la sauvegarde exportée. Le moteur n'est pas touché.
 `tests/ouvrir-sans-changer-browser.cjs` le vérifie.
 
+**Ne pas perdre son travail** (correction 24 b, `etat-sauvegarde.js`).
+L'outil sait s'il reste des changements non sauvegardés : une entrée de la
+sauvegarde a été écrite depuis le dernier « Tout sauvegarder » ou la dernière
+restauration (`stockage.js` signale chaque donnée écrite). Ne comptent pas :
+une préférence d'affichage (le thème, une section repliée) ; ce que la page
+écrit en s'ouvrant ; ce que le calcul écrit de lui-même dans les équipes en
+suivant les vols — l'effectif calculé reporté, les commandes d'une équipe
+« par compagnie » : importer des vols ou changer de journée ne fait rien
+perdre. La mémoire (`ory-ui-etat-sauvegarde` : quand on a sauvegardé, depuis
+quand un changement attend) est une préférence d'affichage, hors de la
+sauvegarde.
+
+- **Le bouton d'état**, dans la barre du haut : « Sauvegardé à 14:32 » (point
+  vert), « Non sauvegardé depuis 14:32 » (point ocre ; l'heure est celle de
+  la dernière sauvegarde), « Jamais sauvegardé » (point ocre). Un autre jour,
+  la date se dit. L'état se dit par le mot : sur une barre étroite, seule
+  l'heure se retire. Son infobulle dit depuis quand un changement attend.
+- **La question à la fermeture** (`beforeunload`) : l'écouteur n'est posé que
+  s'il reste des changements. Jamais en lecture seule, ni pour le
+  rechargement que l'outil fait lui-même après « Restaurer un fichier », ni
+  sous un navigateur piloté par un programme (`navigator.webdriver`) : les
+  tests ferment et rechargent des pages sans cesse, aucune question ne les
+  bloque. `tests/etat-sauvegarde-browser.cjs` fait croire à la page qu'elle
+  n'est pas pilotée pour vérifier la question.
+- **La page de secours** (`secours.html`) rend les mêmes entrées que « Tout
+  sauvegarder », les neuf ; le site sait ensuite que tout est sauvegardé.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2469,6 +2503,7 @@ rend pour la sauvegarde exportée. Le moteur n'est pas touché.
 | `visuel.css` | Le visuel de la version 1 (évolution 25), chargée par elle seule, après `ds.css` et les feuilles des vues, juste avant `lisible.css` ; par `accueil.html` aussi. (a) Les jetons `--ds-*` des deux thèmes, redéfinis : le fond chaud, l’encre, l’accent caramel, le menu bordeaux, les états (l’attente en jaune ocre), les six couleurs de donnée, les rayons, le fond et le trait d’un champ saisi, les ombres reteintées ; les classes aux couleurs de donnée, dans les deux thèmes. (b) La coquille et les composants : le menu uni, son entrée ouverte, ses titres de bloc, son compteur, la marque ; le titre de la page sur le fond, sans bandeau ; l’ombre de la barre du haut au seul défilement ; les cartes à 14 px ; les pastilles de choix (`--ds-choix-*`) ; les en-têtes de tableau en minuscules ; plus aucune capitale forcée. (c) Les trois allures d’une valeur : le champ saisi (fond et trait pêche, gras), le champ vide et son texte d’attente en italique gris, les listes sur leur option vide, les champs désactivés ou en lecture seule, les commandes de vue neutres ; la légende du tableau de tous les temps. `ds.css`, commune avec la version 2, n’est pas modifiée |
 | `visuel.js` | Ce que la feuille du visuel ne sait pas dire seule (v1, évolution 25 b) : `defileSousLaBarre` dit si un contenu défile sous la barre du haut, et la page le porte sur `<body>` (`data-defile-sous-la-barre`) pour que l’ombre de la barre n’apparaisse qu’alors. (c) Un texte d’attente vide (une espace) pour les champs qui n’en ont pas — ceux de la page, puis ceux que chaque rendu ajoute — : la feuille reconnaît ainsi un champ vide (`:placeholder-shown`). Il ne lit ni n’écrit aucune donnée |
 | `pastilles.js` | La compagnie et la classe, partout les mêmes (v1, évolution 25 d) : il habille le nom d’une compagnie (une pastille à sa couleur) et celui d’une commande (la pastille, puis l’étiquette de la classe) là où il se lit seul, en enveloppant les nœuds de texte sans en changer un caractère ; il dit les compagnies de l’unité (le programme chargé, les réglages), leur rang de couleur (1 à 12 : automatique par ordre alphabétique, ou choisi), garde les choix dans `ory-couleurs-compagnies-v1` (validés, annulables) et dessine la carte « Couleurs des compagnies ». Aucune teinte : la feuille seule les connaît. Le calcul ne lit pas ces couleurs |
+| `etat-sauvegarde.js` | Ne pas perdre son travail (v1, correction 24 b) : l’état de sauvegarde dans la barre du haut (« Sauvegardé à… », « Non sauvegardé depuis… », « Jamais sauvegardé »), ce qui compte comme un changement (une entrée de la sauvegarde écrite, hors ce que le calcul écrit de lui-même dans les équipes), la mémoire `ory-ui-etat-sauvegarde` (une préférence d’affichage), la question du navigateur à la fermeture s’il reste des changements. Une partie pure, testée sans navigateur, et le branchement sur la page |
 | `lecture-seule.js` / `lecture-seule.css` | « Lecture seule » (v1, évolution 22 f) : le choix gardé comme le thème (`lire`, `ecrire`, clé `ory-ui-lecture-seule`), les pages que la lecture seule ferme (`fermee` : celles du bloc « Régler », et les pages d’avant qu’elles ont reprises), les règles qui font dire « Paramétrage verrouillé » à un lien vers une page fermée (`regles`), la garde d’une méthode qui change un réglage (`garder`), l’interrupteur (`interrupteur`). Le module ne dessine rien : `onglets.js` replie le bloc et refuse d’ouvrir une page fermée (`ferme`, `refus`), `demarrage.js` replie le bloc sur l’accueil, `fichiers-page.js` grise les imports (`verrouiller`), `sim.js` pose l’interrupteur. La feuille : l’interrupteur, la ligne du bloc replié, et les gestes de réglage retirés des pages de résultats (tout tient à `body[data-lecture="seule"]`) Évolution 23 (d) : une page de « Régler » qui se lit (`lisible`, dans `onglets.js` : « Contrôles ») n’est pas fermée ; `onglets.js` range son entrée à la suite de « Lire » (`menu(choix, ouverte, ferme)`), `demarrage.js` de même sur l’accueil |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | `stockage.js` | Plusieurs onglets ne s’écrasent plus (correction 14) : chargé avant les autres scripts, un garde à la place de `localStorage` ; les données du site portent un numéro de révision, un onglet en retard n’écrit rien et le dit par un bandeau (« Recharger »), averti aussi par l’événement `storage` |
@@ -2794,6 +2829,8 @@ rend pour la sauvegarde exportée. Le moteur n'est pas touché.
 | `tests/visuel-dessins-browser.cjs` | Les dessins prennent leurs couleurs dans les jetons (v1, évolution 25 e), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, sur un chemin ouvert et sur « En direct » en relief, aucune couleur calculée d’un élément visible (texte, fond, bordure, contour, remplissage, trait, ombre, dégradé ; pseudo-éléments compris) n’est l’un des anciens bleus (`#0B1A2E`, `#0D2036`, `#0B6E99`, `#38BDF8`) ; chaque remplissage et chaque trait d’un dessin est la valeur d’un jeton ou un mélange de la feuille, sauf les zones libres du plan (leur couleur est une donnée du plan, `plan-editor.js`) ; un texte dans un dessin tient 4,5:1 sur le fond réellement dessous ; les classes ont leurs cinq couleurs de donnée ; les teintes de la scène en relief (`--dv-…`) sont définies, et aucune n’est un ancien bleu |
 | `tests/captures-evolution-25-browser.cjs` | Les captures de contrôle du nouveau visuel (v1, évolution 25 g), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre : chaque page du menu (« En direct » en relief), « En direct » à plat, l’accueil de l’application (son bandeau au fond du menu), la fiche d’un service par compagnie avec des champs saisis et des champs vides, le tableau de tous les temps par vol (une compagnie dépliée), un chemin ouvert, la carte « Couleurs des compagnies » dépliée, une notification avec « Annuler », une question, la palette « Aller à… », la page d’entrée. Chaque capture est vérifiée : sa taille, le fond de la page et celui du menu pour le thème, ce qu’elle doit montrer, la fenêtre qui ne défile pas, aucun texte sous 13 px (12 px à l’écran dans un dessin). Les captures restent hors du dépôt (`$ORY_CAPTURES`, ou un dossier temporaire) |
 | `tests/ouvrir-sans-changer-browser.cjs` | Ouvrir une page ne change jamais le résultat (v1, correction 24 a), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : après le chargement, puis une fois la période simulée, puis après un réglage, toutes les pages du menu une à une (sections dépliées, survol), chaque onglet de « Détails » et du Planning (jours de travail, échelles, rangées), dans l’ordre puis dans l’ordre inverse — le résultat champ par champ, les réponses de la Synthèse, chaque entrée de la sauvegarde et la révision des données sont les mêmes avant et après ; un recalcul rend le même résultat sans rien écrire ; un réglage, lui, les change |
+| `tests/etat-sauvegarde.test.cjs` | `etat-sauvegarde.js` sans navigateur (v1, correction 24 b) : la mémoire relue (absente, abîmée), celle d’un navigateur d’avant, les trois états et leurs mots (l’heure, la date un autre jour), ce qui compte comme un changement (un réglage oui ; l’effectif calculé reporté et les commandes d’une équipe « par compagnie » non) ; `stockage.js` signale chaque donnée vraiment écrite ; la page de secours a les neuf entrées de « Tout sauvegarder », dans l’ordre, et reste autonome |
+| `tests/etat-sauvegarde-browser.cjs` | L’état de sauvegarde dans la page (v1, correction 24 b), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : première visite « Jamais sauvegardé » sans question ; restaurée « Sauvegardé à HH:MM », et le reste après un import de vols, un autre jour, des pages ouvertes, un thème, une section ; un réglage → « Non sauvegardé depuis HH:MM », l’écouteur de fermeture posé une seule fois, la question du navigateur au rechargement et en quittant le site, pas en lecture seule ; « Tout sauvegarder » par la barre du haut (sans changer de page) et par « Fichiers » → « Sauvegardé », le même fichier octet pour octet à la date près ; sous un navigateur piloté, jamais d’écouteur ; la page de secours rend les neuf entrées ; le bouton à 13 px, 24 px de haut, 4,5:1 et 3:1 dans les deux thèmes, son mot gardé à 1 100 px |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

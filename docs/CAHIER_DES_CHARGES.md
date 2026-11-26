@@ -869,6 +869,62 @@ menu, chaque onglet de « Détails » et du Planning, dans l'ordre puis dans
 l'ordre inverse, après le chargement, une fois la période simulée et après
 un réglage.
 
+### La confiance : ne pas perdre son travail (version 1, correction 24 b)
+
+Tout vit dans le navigateur. L'outil dit donc, à tout moment, s'il reste des
+changements non sauvegardés, et prévient avant qu'on ne les perde.
+
+**Ce qu'est un changement non sauvegardé.** Une entrée de la sauvegarde (le
+plan, les équipes, les chemins, les temps par vol, la disposition des
+diagrammes, le calage, les règles d'import, les seuils, les couleurs des
+compagnies) a été écrite ou retirée depuis le dernier « Tout sauvegarder »
+ou la dernière restauration. Ne comptent pas :
+
+- une préférence d'affichage (le thème, une section repliée, la page
+  ouverte, la lecture seule) ;
+- ce que la page écrit en s'ouvrant (elle reprend d'anciennes données, elle
+  recalcule) : ce n'est pas un geste ;
+- ce que le calcul écrit de lui-même dans les équipes en suivant les vols :
+  l'effectif calculé reporté (le nombre tapé reste à part) et les commandes
+  d'une équipe « par compagnie ». Importer des vols ou changer de journée ne
+  fait donc rien perdre.
+
+La mémoire — quand on a sauvegardé, depuis quand un changement attend — est
+elle-même une préférence d'affichage (`ory-ui-etat-sauvegarde`) : hors de la
+sauvegarde, dont le format ne change pas.
+
+**L'état de sauvegarde**, dans la barre du haut, à côté de « Calcul à jour ».
+Un bouton, un point et un mot :
+
+| État | Le mot | Le point |
+|---|---|---|
+| Rien n'a changé depuis la dernière sauvegarde ou restauration | « Sauvegardé à 14:32 » | vert |
+| Un réglage a changé depuis | « Non sauvegardé depuis 14:32 » (l'heure de la dernière sauvegarde) | ocre |
+| Aucune sauvegarde n'a jamais été faite | « Jamais sauvegardé » | ocre |
+
+Un autre jour, la date se dit (« Sauvegardé le 02/03 à 17:05 »). L'état se
+dit par le mot, jamais par la couleur seule : sur une barre étroite, seule
+l'heure se retire. L'infobulle dit depuis quand un changement attend. Un clic
+fait ce que fait « Tout sauvegarder » de « Fichiers », sans changer de page ;
+le fichier est le même, octet pour octet à la date près.
+
+**La question à la fermeture.** À la fermeture ou au rechargement de
+l'onglet, s'il reste des changements non sauvegardés, le navigateur pose sa
+question habituelle. Pas de question :
+
+- s'il ne reste rien (une première visite où l'on n'a rien changé non plus) ;
+- en lecture seule ;
+- pour le rechargement que l'outil fait lui-même, après « Restaurer un
+  fichier » ou par le « Recharger » du bandeau d'un onglet en retard ;
+- sous un navigateur piloté par un programme (`navigator.webdriver`) : les
+  tests ne sont jamais bloqués.
+
+**La page de secours** rend toutes les entrées que « Tout sauvegarder »
+rend ; le site sait ensuite que tout est sauvegardé. Elle reste autonome.
+
+Contrôlé par `tests/etat-sauvegarde.test.cjs` et
+`tests/etat-sauvegarde-browser.cjs`.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |
