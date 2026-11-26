@@ -1,7 +1,8 @@
 /* Évolution 23 (b) — la barre « Journée de vols » seulement là où le jour compte ; sur l'unité fictive et un programme
  * daté fictif de trois jours, à 1 366 × 768.
  *   1. Sans programme daté : aucune barre, nulle part (comme avant).
- *   2. Avec un programme daté : la barre (le sélecteur du jour, « Simuler la période ») est présente sur les pages du
+ *   2. Avec un programme daté : la barre (le sélecteur du jour, l'état de la période — correction 24 e : une étiquette
+ *      courte, plus de bouton « Simuler la période », qui est dans « Période ») est présente sur les pages du
  *      bloc « Lire », sur « Programme », « Retours » et « Contrôles » ; absente sur « Services et équipes », « Chemins »,
  *      « Liens entre services », « Réglages », « Fichiers » et le plan.
  *   3. Là où elle est absente, elle ne prend pas de place : le contenu commence plus haut.
@@ -24,7 +25,7 @@ const SANS=['mu-services','mu-flux','u-liens','rg-simulation','u-sauvegarde'];
  const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=(ms=300)=>page.waitForTimeout(ms);
  const barre=()=>page.evaluate(()=>{const b=document.getElementById('periode-bandeau'),r=b.getBoundingClientRect();
-   return {visible:b.getClientRects().length>0&&r.height>0,jour:(document.getElementById('periode-jour')||{}).value||null,bouton:!!b.querySelector('[data-pv=lancer]')&&b.querySelector('[data-pv=lancer]').getClientRects().length>0,
+   return {visible:b.getClientRects().length>0&&r.height>0,jour:(document.getElementById('periode-jour')||{}).value||null,bouton:!!b.querySelector('[data-pv=lancer]'),etiquette:(b.querySelector('.pj-mot .pj-court')||{}).textContent||null,
      sous:document.body.dataset.sous,tete:Math.round(document.getElementById('tete-page').getBoundingClientRect().height)};});
  try{
   const site=await F.charger(page,nav,URL_V1,{pageId:'j-chiffres'});
@@ -48,7 +49,8 @@ const SANS=['mu-services','mu-flux','u-liens','rg-simulation','u-sauvegarde'];
     assert.equal(b.sous,id);
     assert.equal(b.visible,true,id+' : la barre du jour est là');
     assert.equal(b.jour,'2031-03-03',id+' : son sélecteur, sur le premier jour');
-    assert.equal(b.bouton,true,id+' : « Simuler la période »');
+    assert.equal(b.bouton,false,id+' : plus de bouton « Simuler la période » dans la barre');
+    assert.equal(b.etiquette,'période non simulée',id+' : l’état de la période, en une étiquette');
     hauteurs[id]=b.tete;
   }
   for(const id of SANS){

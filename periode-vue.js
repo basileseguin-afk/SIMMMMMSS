@@ -301,8 +301,21 @@
       const vue = document.getElementById('pv-periode') ? 'pv-periode' : 'journee-periode';
       for (const [boite, sel] of [['periode-bandeau', '.pj-etat'], [vue, '.pv-etat']]) {
         const box = document.getElementById(boite), el = box && box.querySelector(sel);
-        if (el) { el.innerHTML = this.texteProgression(); dessins.delete(box); }
+        if (el) { el.innerHTML = boite === 'periode-bandeau' ? this.etiquetteEtat(this.description()) : this.texteProgression(); dessins.delete(box); }
       }
+    }
+
+    /**
+     * L'étiquette d'état de la barre « Journée de vols » (correction 24 e) : un mot court sur une ligne — « période
+     * simulée », « période non simulée », « période à relancer », « simulation en cours, 12 sur 30 ». La phrase entière
+     * est son infobulle et son texte lu ; elle reste écrite dans la page « Période ».
+     */
+    etiquetteEtat(d) {
+      const e = this.erreur ? 'erreur' : this.etat(), c = this.calcul;
+      const mot = motDeLaBarre(e, c && c.p);
+      const phrase = e === 'en-cours' && c ? 'Simulation en cours : journée ' + Math.min(c.p.fait + 1, c.p.total) + ' sur ' + c.p.total + '.'
+        : d ? this.texteEtat(d).replace(/<[^>]+>/g, '') : '';
+      return `<span class="pj-mot" data-etat="${e}" title="${phrase.replace(/"/g, '&quot;')}"><span class="pj-court" aria-hidden="true">${esc(mot)}</span><span class="pj-lu">${phrase}</span></span>`;
     }
 
     rendreBandeau() {
@@ -310,18 +323,15 @@
       const d = this.description(), cache = !d;
       if (box.hidden !== cache) { box.hidden = cache; if (cache) dessiner(box, ''); if (this.a.mesurer) this.a.mesurer(); }
       if (!d) return;
-      const jour = this.a.jour(), e = this.etat();
+      const jour = this.a.jour();
       const options = d.parJour.map(j => `<option value="${j.date}"${j.date === jour ? ' selected' : ''}>${jourDeSemaine(j.date)} ${PE().dateLongue(j.date)} — ${
         j.departs + j.retours ? j.departs + ' départ' + (j.departs > 1 ? 's' : '') + ', ' + j.retours + ' retour' + (j.retours > 1 ? 's' : '') : 'aucun vol'}</option>`).join('');
       const change = dessiner(box, `<div class="pj-jour"><label for="periode-jour">Journée de vols</label>
           <button type="button" class="btn btn-sm" data-pv="precedent" aria-label="Journée précédente"${jour === d.debut ? ' disabled' : ''}>‹</button>
           <select id="periode-jour">${options}</select>
           <button type="button" class="btn btn-sm" data-pv="suivant" aria-label="Journée suivante"${jour === d.fin ? ' disabled' : ''}>›</button></div>
-        <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d)}</p>
-        <div class="pj-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
-          // Un bouton de carte : le bouton plein est dans la page « Période », une seule fois (correction 24 d).
-          : `<button type="button" class="btn btn-sm" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
-          <button type="button" class="lien-fort" data-pv="voir">La période →</button></div>`);
+        <p class="pj-etat" role="status" aria-live="polite">${this.etiquetteEtat(d)}</p>
+        <div class="pj-actions"><button type="button" class="lien-fort" data-pv="voir">La période →</button></div>`);
       if (change && this.a.mesurer) this.a.mesurer();
     }
 
@@ -434,7 +444,13 @@
     }
   }
 
-  const api = { VuePeriode, MESURES, valeurService, valeurUnite, lignesDeCumul, comptesDesJours, servicesOrdonnes };
+  /** Le mot court de la barre « Journée de vols » pour un état de la période ; `p` : { fait, total } pendant le calcul. */
+  function motDeLaBarre(etat, p) {
+    if (etat === 'en-cours') return 'simulation en cours' + (p && p.total ? ', ' + Math.min(p.fait + 1, p.total) + ' sur ' + p.total : '');
+    return { 'a-jour': 'période simulée', 'a-relancer': 'période à relancer' }[etat] || 'période non simulée';
+  }
+
+  const api = { VuePeriode, MESURES, valeurService, valeurUnite, lignesDeCumul, comptesDesJours, servicesOrdonnes, motDeLaBarre };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriodeVue = api;
 })(typeof window !== 'undefined' ? window : globalThis);

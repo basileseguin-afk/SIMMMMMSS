@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (e) : la barre « Journée de vols » sur une ligne
+
+Le constat : sur neuf pages, la barre prenait deux à trois lignes pour dire
+« Période de 30 jours : pas encore simulée… » ; l'en-tête d'« En direct » en
+relief était coupé.
+
+- **La barre** : le libellé, ‹, la liste, ›, une étiquette d'état courte
+  (« période simulée », « période non simulée », « période à relancer »,
+  « simulation en cours, 12 sur 30 »), puis « La période → ». Une ligne,
+  44 px de haut au plus à 1 366 px. La phrase entière est l'infobulle et le
+  texte lu de l'étiquette ; elle reste écrite dans la page « Période ».
+- **Plus de bouton** « Simuler la période » (ni « Annuler ») dans la barre :
+  ils sont dans « Période ».
+- **« En direct » en relief** : le titre, la barre et « En ce moment »
+  tiennent sans rien couper, la liste de la journée comprise ; panneau
+  ouvert à 1 366 px, la barre passe sous le titre.
+- **La bande des chiffres cumulés** de la vue à plat passe sur deux lignes
+  au lieu de se couper par « … ».
+
+Aucun calcul ne change, ni aucune donnée. La version 2 n'est pas touchée, ni
+aucun fichier commun.
+
+Fichiers : `periode-vue.js`, `periode.css`, `direct.css`,
+`plan-rejoue.css`, `index.html` (empreintes) ;
+`tests/barre-une-ligne.test.cjs`, `tests/barre-une-ligne-browser.cjs`
+(nouveaux), `tests/periode-browser.cjs`, `tests/barre-jour-browser.cjs` ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (d) : le caramel pour l'action seule
 
 Mesuré sur 16 écrans : deux boutons pleins sur 9 d'entre eux ; tous les

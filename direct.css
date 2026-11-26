@@ -99,19 +99,21 @@
 /* En relief, la bande au-dessus de la scène n'a plus rien à dire : la scène remonte d'autant. */
 body[data-direct="relief"][data-sous="j-plan"] #plan-bande{display:none!important}
 
-/* L'en-tête de « En direct », en relief, sur une seule ligne (évolution 19, retouche) : le titre de la page, le choix de
- * la journée de vols (un programme daté) et « En relief / À plat ». La phrase d'introduction n'est plus à l'écran : les
- * lecteurs d'écran la lisent encore. */
-body[data-direct="relief"][data-sous="j-plan"] #tete-page{display:flex;align-items:center;flex-wrap:nowrap;gap:var(--ds-e-4);min-height:0;padding-top:6px;padding-bottom:6px}
+/* L'en-tête de « En direct », en relief (évolution 19, retouche ; correction 24 e) : le titre de la page, le choix de
+ * la journée de vols (un programme daté) et « En ce moment ». Rien n'y est coupé : large, tout tient sur une ligne ;
+ * plus étroit (le panneau ouvert, à 1 366 px), la barre « Journée de vols » passe sur sa ligne, sous le titre. La
+ * phrase d'introduction n'est plus à l'écran : les lecteurs d'écran la lisent encore. */
+body[data-direct="relief"][data-sous="j-plan"] #tete-page{display:flex;align-items:center;flex-wrap:wrap;gap:6px var(--ds-e-4);min-height:0;padding-top:6px;padding-bottom:6px;
+  container:tete/inline-size}
 body[data-direct="relief"][data-sous="j-plan"] #tete-page>.tete-partie{display:none}
 body[data-direct="relief"][data-sous="j-plan"] #tete-page>.tete-titre{flex:none;margin:0}
 body[data-direct="relief"][data-sous="j-plan"] #tete-page>.view-intro{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body[data-direct="relief"][data-sous="j-plan"] #tete-page>.periode-bandeau{order:1;flex:1 1 auto;min-width:0;flex-wrap:nowrap;margin:0;padding:0;border:0;background:none;overflow:hidden}
-body[data-direct="relief"][data-sous="j-plan"] #tete-page>.so-outils{order:2;flex:none;flex-wrap:nowrap;margin-left:auto;align-self:center}
-body[data-direct="relief"][data-sous="j-plan"] .periode-bandeau .pj-jour{flex:none}
-body[data-direct="relief"][data-sous="j-plan"] .periode-bandeau .pj-jour select{max-width:22ch}
-body[data-direct="relief"][data-sous="j-plan"] .periode-bandeau .pj-etat{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body[data-direct="relief"][data-sous="j-plan"] .periode-bandeau .pj-actions{flex:none;white-space:nowrap}
+body[data-direct="relief"][data-sous="j-plan"] #tete-page>.so-outils{order:1;flex:none;flex-wrap:nowrap;margin-left:auto;align-self:center}
+body[data-direct="relief"][data-sous="j-plan"] #tete-page>.periode-bandeau{order:2;flex:1 0 100%;min-width:0;flex-wrap:nowrap;margin:0;padding:0;border:0;background:none}
+@container tete (min-width:1060px){
+  body[data-direct="relief"][data-sous="j-plan"] #tete-page>.periode-bandeau{order:1;flex:1 1 0}
+  body[data-direct="relief"][data-sous="j-plan"] #tete-page>.so-outils{order:2;margin-left:0}
+}
 /* Ses boutons et sa liste à la hauteur des boutons voisins : la ligne ne grandit pas. */
 body[data-direct="relief"][data-sous="j-plan"] #tete-page .periode-bandeau .btn,
 body[data-direct="relief"][data-sous="j-plan"] #tete-page .periode-bandeau select{min-height:var(--ds-h-compact);height:var(--ds-h-compact);padding-top:0;padding-bottom:0}

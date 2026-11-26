@@ -877,3 +877,30 @@ bouton plein : c'est son propre écran.
 
 `tests/caramel-action-browser.cjs` le vérifie dans les deux thèmes, sur
 chaque page du menu, la fiche d'un service et celle d'une équipe.
+
+### La barre « Journée de vols » sur une ligne (correction 24 e)
+
+Sur neuf pages, la barre prenait deux à trois lignes pour dire « Période de
+30 jours : pas encore simulée… » ; l'en-tête d'« En direct » en relief
+coupait la liste de la journée.
+
+- **La barre** : le libellé, ‹, la liste, ›, une **étiquette d'état** courte,
+  puis « La période → ». Une seule ligne, 44 px de haut au plus à 1 366 px.
+  Plus de bouton « Simuler la période » ni « Annuler » : ils sont dans la
+  page « Période ».
+- **L'étiquette** : un point et un mot — « période non simulée » (point
+  gris), « période simulée » (vert), « période à relancer » (ocre),
+  « simulation en cours, 12 sur 30 ». La phrase entière d'avant est son
+  infobulle et son texte lu (le mot court est caché aux lecteurs d'écran) ;
+  elle reste écrite dans la page « Période ».
+- **« En direct », en relief** : rien n'est coupé. Large, le titre, la barre
+  et « En ce moment » tiennent sur une ligne ; plus étroit (le panneau
+  ouvert, à 1 366 px), la barre passe sur sa ligne, sous le titre. La liste
+  de la journée montre toujours son texte en entier.
+- **« En direct », panneau ouvert, à 1 366 px** : la barre n'a que 736 px ;
+  elle quitte son cadre et serre ses blancs, sans rien couper.
+- **La bande des chiffres cumulés** de la vue à plat ne se coupe plus par
+  « … » : trop longue, elle passe sur deux lignes.
+
+`tests/barre-une-ligne-browser.cjs` et `tests/barre-une-ligne.test.cjs` le
+vérifient.

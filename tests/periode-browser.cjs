@@ -57,6 +57,13 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
  const pagesResultats=()=>page.evaluate(()=>OrlyOnglets.pagesDe('resultats').map(x=>x.id));
  const telecharger=async fn=>{const [d]=await Promise.all([page.waitForEvent('download'),fn()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
  const finir=()=>page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:60000});
+ // Correction 24 (e) : la barre « Journée de vols » n'a plus de bouton — « Simuler la période » et « Annuler » sont dans
+ // la page « Période » ; la barre dit l'état par une étiquette courte, la phrase entière en texte lu.
+ // `revenir()` ramène à la page d'où l'on venait : la suite du parcours s'y lit, comme avant.
+ const versPeriode=async()=>{const avant=await page.evaluate(()=>document.body.dataset.sous);
+   if(avant!=='j-periode')await nav.aller(page,'j-periode');return async()=>{if(avant!=='j-periode')await nav.aller(page,avant);};};
+ const cliquer=quoi=>page.locator('#journee-periode [data-pv='+quoi+']').click();
+ const dansPeriode=async quoi=>{const revenir=await versPeriode();await cliquer(quoi);await revenir();};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(500);
@@ -102,10 +109,11 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   //    chaque journée est ralentie ici de 20 ms, pour voir passer les étapes.
   await page.evaluate(()=>{const creer=OrlyPeriode.creerPeriode;window.__creer=creer;
     OrlyPeriode.creerPeriode=(...x)=>{const p=creer(...x),suivant=p.suivant;p.suivant=()=>{const t=Date.now();while(Date.now()-t<20);return suivant();};return p;};});
-  await page.locator('#periode-bandeau [data-pv=lancer]').click();
-  await page.waitForFunction(()=>/Journée \d+ sur 20…/.test(document.querySelector('#periode-bandeau .pj-etat').textContent));
+  assert.equal(await page.locator('#periode-bandeau [data-pv=lancer],#periode-bandeau [data-pv=annuler]').count(),0,'plus de bouton dans la barre');
+  let revenir=await versPeriode();await cliquer('lancer');
+  await page.waitForFunction(()=>/^simulation en cours, \d+ sur 20$/.test(document.querySelector('#periode-bandeau .pj-court').textContent));
   assert.equal(await etat(),'en-cours');
-  await page.locator('#periode-bandeau [data-pv=annuler]').click();await attendre(300);
+  await cliquer('annuler');await attendre(300);await revenir();
   assert.equal(await etat(),'jamais','annulé : pas de période');
   assert.equal(await page.evaluate(()=>Sim.periode.resultat),null);
   assert.match(await page.evaluate(()=>document.body.innerText),/Calcul de la période annulé/);
@@ -113,13 +121,14 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
 
   // Le calcul jusqu'au bout : on voit passer les journées une à une, la page répond entre deux.
   const vues=new Set();
-  await page.locator('#periode-bandeau [data-pv=lancer]').click();
+  revenir=await versPeriode();await cliquer('lancer');
   while(await etat()==='en-cours'){
-    const t=await page.evaluate(()=>(document.querySelector('#periode-bandeau .pj-progression')||{}).textContent||'');
-    const m=/Journée (\d+) sur 20…/.exec(t);if(m)vues.add(+m[1]);
+    const t=await page.evaluate(()=>(document.querySelector('#periode-bandeau .pj-court')||{}).textContent||'');
+    const m=/^simulation en cours, (\d+) sur 20$/.exec(t);if(m)vues.add(+m[1]);
     await page.waitForTimeout(5);
   }
   await page.evaluate(()=>{OrlyPeriode.creerPeriode=window.__creer;});
+  await revenir();
   assert.equal(await etat(),'a-jour');
   assert.ok(vues.size>=2&&[...vues].some(k=>k>1&&k<20),'des étapes intermédiaires : '+[...vues].join(','));
   assert.match(await page.locator('#periode-bandeau .pj-etat').innerText(),/Période simulée : 20 journées/);
@@ -215,11 +224,13 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.match(await page.locator('#periode-bandeau .pj-etat').innerText(),/À relancer/);
   assert.equal(await page.evaluate(()=>Sim.periode.entreeDuJour('2026-10-26')),null);
   await verifier('2026-10-26',null,'à relancer : le sale de la veille saisi');
-  assert.match(await page.locator('#periode-bandeau [data-pv=lancer]').innerText(),/Relancer la période/);
+  assert.equal(await page.locator('#periode-bandeau .pj-court').innerText(),'période à relancer');
+  {const avant=await page.evaluate(()=>document.body.dataset.sous);await nav.aller(page,'j-periode');
+   assert.match(await page.locator('#journee-periode [data-pv=lancer]').innerText(),/Relancer la période/);if(avant!=='j-periode')await nav.aller(page,avant);}
   // Annuler la modification : la même période redevient à jour.
   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre(200);
   assert.equal(await etat(),'a-relancer','une version de plus : on relance, même revenu au même réglage');
-  await page.locator('#periode-bandeau [data-pv=lancer]').click();await finir();
+  await dansPeriode('lancer');await finir();
   assert.deepEqual(JSON.parse(await page.evaluate(()=>JSON.stringify(Sim.periode.resultat.bilan))),json(periode.bilan),'relancée : la même période');
   // Le délai de chargement, puis le décalage (Horaires de vols).
   // (Évolution 23 e : « Réglages » montre une section à la fois — `nav.reglage` choisit celle du réglage, comme un clic dans sa liste.)

@@ -6,17 +6,31 @@
    ========================================================================== */
 
 /* ---- Le bandeau : une ligne sous le titre de la page, sur toute sa largeur -- */
-.periode-bandeau{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);
-  margin-top:var(--ds-e-2);padding:6px 10px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+/* Sur une ligne (correction 24 e) : le libellé, ‹, la liste, ›, une étiquette d'état courte, « La période → ». */
+.periode-bandeau{grid-column:1/-1;display:flex;flex-wrap:nowrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);
+  margin-top:var(--ds-e-2);padding:4px 10px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
   background:var(--ds-surface-2);font-size:var(--ds-t-13);color:var(--ds-texte-2)}
 .periode-bandeau[hidden]{display:none}
-.pj-jour{display:flex;align-items:center;gap:6px}
+.pj-jour{display:flex;align-items:center;gap:6px;flex:none}
 .pj-jour label{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
 .pj-jour select{min-height:var(--ds-h-compact);max-width:min(46ch,70vw);font-size:var(--ds-t-13)}
 .pj-jour .btn{min-width:var(--ds-h-compact);padding:0 6px}
-.pj-etat{flex:1 1 28ch;min-width:0;margin:0;line-height:1.4}
+.pj-etat{flex:none;min-width:0;margin:0;line-height:1.4}
 .pj-actions,.pv-actions{display:flex;align-items:center;gap:var(--ds-e-3)}
+.pj-actions{flex:none;margin-left:auto;white-space:nowrap}
+/* L'étiquette : un point et un mot ; la phrase entière est son infobulle et son texte lu (elle reste écrite dans « Période »). */
+.pj-mot{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 10px;border-radius:99px;background:var(--ds-surface-1);
+  border:1px solid var(--ds-bordure);color:var(--ds-texte-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pj-mot::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--ds-texte-4)}
+.pj-mot[data-etat="a-jour"]::before{background:var(--ds-ok)}
+.pj-mot[data-etat="a-relancer"]{color:var(--ds-attente-texte)}
+.pj-mot[data-etat="a-relancer"]::before{background:var(--ds-attente)}
+.pj-mot[data-etat="erreur"]{color:var(--ds-retard-texte)}
+.pj-mot[data-etat="erreur"]::before{background:var(--ds-retard)}
+.pj-lu{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-sous="j-periode"] .periode-bandeau [data-pv="voir"]{display:none}
+/* Sur la page « Période », la phrase entière est écrite dans sa carte : l'étiquette de la barre ne la redit pas. */
+body[data-sous="j-periode"] .periode-bandeau .pj-lu{display:none}
 /* Sur la page Période, la phrase « Période simulée : … » ne se lit qu'une fois, dans sa carte (correction 18 c). */
 body[data-sous="j-periode"] .periode-bandeau .pj-simulee{display:none}
 .pj-relancer{color:var(--ds-attente-texte)}
@@ -72,9 +86,21 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pv-detail-corps th,.pv-detail-corps td{padding:4px 8px;border-bottom:1px solid var(--ds-bordure);white-space:nowrap}
 .pv-detail-corps small{color:var(--ds-texte-3)}
 
+/* « En direct », panneau « En ce moment » ouvert, sur un écran de 1 366 px : la barre n'a que 736 px. Elle y tient sur
+   sa ligne en serrant ses blancs et en quittant son cadre, sans rien couper ; plus étroit encore, elle va à la ligne. */
+@media (max-width:1440px){
+  body[data-sous="j-plan"]:not(.sans-en-ce-moment) .periode-bandeau{padding-left:0;padding-right:0;border-color:transparent;background:none;column-gap:10px}
+  body[data-sous="j-plan"]:not(.sans-en-ce-moment) .pj-jour{gap:4px}
+  body[data-sous="j-plan"]:not(.sans-en-ce-moment) .pj-mot{padding:0 8px}
+}
+@media (max-width:1340px){
+  body[data-sous="j-plan"]:not(.sans-en-ce-moment) .periode-bandeau{flex-wrap:wrap}
+}
+@media (max-width:860px){
+  .periode-bandeau{flex-wrap:wrap}
+}
 @media (max-width:700px){
   .journee-periode{padding:12px 16px}
-  .pj-etat{flex-basis:100%}
 }
 
 /* « Exporter les résultats » : avec une période simulée, le choix entre son classeur et la journée (JSON). */
