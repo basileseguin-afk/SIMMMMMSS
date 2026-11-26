@@ -2437,6 +2437,21 @@ produit et vérifie les captures de contrôle, sur l'unité fictive, aux deux
 tailles et dans les deux thèmes (104 captures, gardées hors du dépôt). Ce
 qui reste propre à la version 2, gelée : `docs/DESIGN_SYSTEM.md`, § 10.
 
+## Retouches du visuel et confiance (correction 24)
+
+**Ouvrir une page ne change jamais le résultat** (correction 24 a). Ouvrir
+une page, changer d'onglet, déplier une section ou survoler ne change ni le
+résultat ni ce qui est enregistré. Seuls un geste de réglage, un import, une
+restauration ou un changement de journée le peuvent. Avant, le premier calcul
+d'une journée lisait l'effectif que chaque équipe calculée portait encore (le
+champ `saisi` de `effectifs`, dans le résultat), puis y reportait l'effectif
+calculé : le calcul suivant, que l'ouverture de « Planning » relance, ne
+lisait plus le même nombre. Quand ce report change un effectif, la journée se
+rejoue maintenant aussitôt sur l'état enregistré (`ateliers.js`,
+`calculer()`) : le résultat est celui de cet état, celui que le banc d'essai
+rend pour la sauvegarde exportée. Le moteur n'est pas touché.
+`tests/ouvrir-sans-changer-browser.cjs` le vérifie.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2778,6 +2793,7 @@ qui reste propre à la version 2, gelée : `docs/DESIGN_SYSTEM.md`, § 10.
 | `tests/pastilles-browser.cjs` | La pastille et l’étiquette dans la page (v1, évolution 25 d), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : le `textContent` de chaque page du menu, d’une fiche de service, d’une fiche d’équipe et du tableau de tous les temps est celui de la page d’avant (sans `pastilles.js`) ; la pastille (6 px, 22 px, graisse 700 ; deux lettres en pseudo-élément pour un nom long) et l’étiquette (22 px, le point de la classe) ; une compagnie a la même pastille sur toutes les pages ; sans choix, « Tout sauvegarder » rend la sauvegarde d’avant, octet pour octet ; la carte « Couleurs des compagnies » (un choix, « Annuler », « Garder ces couleurs », « Revenir aux couleurs automatiques ») ; le même résultat et les mêmes réponses avec et sans choix ; un choix survit à sauvegarder puis restaurer, une entrée abîmée refuse la sauvegarde, la version 2 l’ignore ; douze couleurs à 4,5:1 dans les deux thèmes ; rien ne s’écrit en lecture seule |
 | `tests/visuel-dessins-browser.cjs` | Les dessins prennent leurs couleurs dans les jetons (v1, évolution 25 e), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, sur un chemin ouvert et sur « En direct » en relief, aucune couleur calculée d’un élément visible (texte, fond, bordure, contour, remplissage, trait, ombre, dégradé ; pseudo-éléments compris) n’est l’un des anciens bleus (`#0B1A2E`, `#0D2036`, `#0B6E99`, `#38BDF8`) ; chaque remplissage et chaque trait d’un dessin est la valeur d’un jeton ou un mélange de la feuille, sauf les zones libres du plan (leur couleur est une donnée du plan, `plan-editor.js`) ; un texte dans un dessin tient 4,5:1 sur le fond réellement dessous ; les classes ont leurs cinq couleurs de donnée ; les teintes de la scène en relief (`--dv-…`) sont définies, et aucune n’est un ancien bleu |
 | `tests/captures-evolution-25-browser.cjs` | Les captures de contrôle du nouveau visuel (v1, évolution 25 g), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre : chaque page du menu (« En direct » en relief), « En direct » à plat, l’accueil de l’application (son bandeau au fond du menu), la fiche d’un service par compagnie avec des champs saisis et des champs vides, le tableau de tous les temps par vol (une compagnie dépliée), un chemin ouvert, la carte « Couleurs des compagnies » dépliée, une notification avec « Annuler », une question, la palette « Aller à… », la page d’entrée. Chaque capture est vérifiée : sa taille, le fond de la page et celui du menu pour le thème, ce qu’elle doit montrer, la fenêtre qui ne défile pas, aucun texte sous 13 px (12 px à l’écran dans un dessin). Les captures restent hors du dépôt (`$ORY_CAPTURES`, ou un dossier temporaire) |
+| `tests/ouvrir-sans-changer-browser.cjs` | Ouvrir une page ne change jamais le résultat (v1, correction 24 a), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : après le chargement, puis une fois la période simulée, puis après un réglage, toutes les pages du menu une à une (sections dépliées, survol), chaque onglet de « Détails » et du Planning (jours de travail, échelles, rangées), dans l’ordre puis dans l’ordre inverse — le résultat champ par champ, les réponses de la Synthèse, chaque entrée de la sauvegarde et la révision des données sont les mêmes avant et après ; un recalcul rend le même résultat sans rien écrire ; un réglage, lui, les change |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

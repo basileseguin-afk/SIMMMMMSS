@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (a) : ouvrir une page ne change jamais le résultat
+
+Le constat : ouvrir « Planning » changeait `effectifs.<équipe>.saisi` dans
+le résultat (1 → 2), sans aucun geste.
+
+- **La cause.** Pour chaque équipe à l'effectif calculé, le moteur écrit dans
+  son résultat `saisi` : l'effectif que l'équipe portait quand il l'a lue. Or
+  la page reporte l'effectif calculé dans l'équipe (`personnes`), en gardant à
+  part le nombre tapé (`personnesSaisies`), pour que le planning, le budget,
+  les exports et les fiches lisent le même nombre. Le premier calcul d'une
+  journée lisait donc l'effectif d'avant (celui du calcul précédent : une
+  autre journée, un autre programme), puis y écrivait le sien ; le calcul
+  suivant lisait ce nouvel effectif. Et ouvrir « Planning » ou « Commandes »
+  redessine la page par un calcul.
+- **La correction**, dans `ateliers.js` : quand le report change l'effectif
+  d'une équipe, la journée se rejoue aussitôt sur l'état enregistré. Le
+  résultat affiché est celui de cet état ; tout calcul suivant rend le même,
+  champ par champ. C'est le résultat que le banc d'essai rend pour la
+  sauvegarde que la page exporte.
+- **Ce qui ne change pas** : le moteur (`moteur/`), aucun fichier commun, la
+  version 2, le format de la sauvegarde, ce qui s'enregistre. Du résultat,
+  seul `effectifs.<équipe>.saisi` du premier calcul qui suit un import, une
+  restauration, un changement de journée ou un réglage : il dit maintenant ce
+  que le calcul suivant disait déjà. Aucun effectif calculé, aucune heure,
+  aucun retard ne change.
+
+Fichiers : `ateliers.js` ; `tests/ouvrir-sans-changer-browser.cjs` (nouveau) ;
+`docs/CAHIER_DES_CHARGES.md`, `README.md`, `index.html` (empreintes).
+
 ## 2026-11-25 — Évolution 25 (g) : le contrôle, les captures et la doc
 
 Aucun code de la page ne change : un test de plus, et la doc.

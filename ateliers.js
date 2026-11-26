@@ -696,6 +696,16 @@
      * les liens et le barème (`unite`), et le délai de chargement. */
     calculer() {
       this.synchroniserAteliers();
+      this.jouerLaJournee();
+      // Le report écrit l'effectif calculé dans l'équipe ; le moteur venait de lire celui d'avant (le champ `saisi` de
+      // son résultat). La journée se rejoue alors sur l'état enregistré : le résultat est celui de cet état, et le
+      // calcul suivant — ouvrir « Planning » le relance — rend le même, champ par champ (correction 24 a).
+      if (this.reporterEffectifs()) { this.jouerLaJournee(); this.reporterEffectifs(); }
+      return this.resultat;
+    }
+
+    /** La journée, jouée par le moteur sur l'état du moment : ses arguments et son résultat, sans rien écrire. */
+    jouerLaJournee() {
       try {
         const unite = { ...(this.a.unite ? this.a.unite() : {}), etat: this.state };
         const delaiChargement = this.a.delaiChargement ? this.a.delaiChargement() : undefined;
@@ -711,8 +721,6 @@
       }
       // Ce que la page affiche : les messages du moteur avec ses mots (« équipe », « temps par vol ») ; sans ancien mot, le même objet.
       this.resultat = MM().avecLesMotsDeLaPage(this.resultat);
-      this.reporterEffectifs();
-      return this.resultat;
     }
 
     /** Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6) — à une heure, ou que si
@@ -1160,7 +1168,7 @@
     }
 
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
-     * exports et les fiches lisent tous le même nombre. */
+     * exports et les fiches lisent tous le même nombre. Rend le nombre d'équipes changées. */
     reporterEffectifs() {
       const eff = (this.resultat && this.resultat.effectifs) || {};
       let n = 0;
@@ -1177,6 +1185,7 @@
         a.personnes = a.personnesSaisies; delete a.personnesSaisies; n++;
       }
       if (n) this.enregistrer();
+      return n;
     }
 
     /** Changer l'état d'un geste ; refusé, il reste tel quel. Le refus d'une

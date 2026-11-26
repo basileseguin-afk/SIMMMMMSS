@@ -839,6 +839,36 @@ rangs, l'entrée, le même résultat avec et sans elle) et
 `tests/pastilles-browser.cjs` (la carte, « Annuler », sauvegarder puis
 restaurer, les deux thèmes).
 
+### La confiance : regarder ne change rien (version 1, correction 24 a)
+
+Un résultat qui bouge quand on le regarde ne se croit plus. La règle :
+
+- **ouvrir une page, changer d'onglet, déplier une section ou survoler** ne
+  change ni le résultat, ni les réponses de la Synthèse, ni une entrée de la
+  sauvegarde ;
+- seuls **un geste de réglage, un import, une restauration ou un changement
+  de journée** le peuvent.
+
+Ce qui la rompait : la page reporte l'effectif calculé dans l'équipe
+(`personnes`, le nombre tapé restant dans `personnesSaisies`), et le moteur
+écrit dans son résultat l'effectif que l'équipe portait quand il l'a lue
+(`effectifs.<équipe>.saisi`). Le premier calcul d'une journée lisait
+l'effectif d'avant, le suivant l'effectif reporté ; et ouvrir « Planning »
+relance un calcul. Quand le report change un effectif, la journée se rejoue
+donc aussitôt sur l'état enregistré : le résultat de la page est toujours
+celui du moteur sur ce qui est enregistré, celui que le banc d'essai rend
+pour la sauvegarde exportée. Le moteur n'est pas touché.
+
+Ce que `saisi` dit, et ne dit pas : pour une équipe qui n'est pas un robot,
+c'est l'effectif qu'elle portait, donc l'effectif calculé une fois reporté ;
+le nombre tapé reste dans `personnesSaisies`. Pour un robot, le moteur repart
+de son effectif tapé.
+
+Contrôlé par `tests/ouvrir-sans-changer-browser.cjs` : toutes les pages du
+menu, chaque onglet de « Détails » et du Planning, dans l'ordre puis dans
+l'ordre inverse, après le chargement, une fois la période simulée et après
+un réglage.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |
