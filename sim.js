@@ -1898,7 +1898,7 @@ function majLegende(avant, compte) {
     box.setAttribute('aria-label', 'Ce que dit la couleur des services');
     box.innerHTML = puce('var(--txt3)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
       + puce('var(--bordure2)', ETATS_PARAM.partiel.lib, ETATS_PARAM.partiel.aide)
-      + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide);
+      + puce('var(--ds-travail)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide);
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
@@ -1911,7 +1911,7 @@ function majLegende(avant, compte) {
     // L'attente est aussi en pointillé, pour ne pas dépendre de la couleur.
     box.setAttribute('aria-label', 'État des services à cet instant');
     // Évolution 14 (b) : la pastille a la couleur du remplissage de la zone ; « pas commencé », son contour pointillé.
-    box.innerHTML = puce('var(--ds-accent)', 'Au travail', 'Une équipe prépare des commandes à cette heure.')
+    box.innerHTML = puce('var(--ds-travail)', 'Au travail', 'Une équipe prépare des commandes à cette heure.')
       + puce('var(--ds-attente)', 'Attend le service d’avant', 'L’équipe est là, mais ce qu’elle doit recevoir n’est pas encore arrivé.')
       + puce('var(--ds-texte-4)', 'A fini', 'Tout ce que ce service avait à faire est prêt.')
       + puce('var(--ds-survol)', 'Pas commencé', 'Le service n’a pas encore ouvert.', 'pc-avenir');

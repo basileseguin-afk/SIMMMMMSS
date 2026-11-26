@@ -178,14 +178,14 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   const clair=await couleurs();
   assert.deepEqual([clair.travail,clair.pic,clair.presents],[clair.d1,clair.d1,clair.texte3]);
   // Correction 18 (b) : plus de barres de file sur la ligne d'un service (un lot à faire n'attend pas) ; un trait fin par lot,
-  // dans l'accent ; un lot en retard, dans la couleur du retard.
+  // dans le bleu du travail (correction 24 c ; avant, l'accent) ; un lot en retard, dans la couleur du retard.
   assert.equal(await page.locator('#at-planning .ch-file').count(),0,'pas de barres de file dans le planning');
   const traits=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
     const t=document.querySelector('#at-planning .pg-trait:not(.retard)'),tr=document.querySelector('#at-planning .pg-trait.retard');
     return {n:document.querySelectorAll('#at-planning .pg-trait').length,lots:Sim.ateliers.resultat.ateliers.reduce((n,a)=>n+(a.lots||[]).filter(l=>!l.dispo&&Number.isFinite(l.debut)).length,0),
-      trait:t&&getComputedStyle(t).stroke,accent:c('--ds-accent'),retard:tr&&getComputedStyle(tr).stroke,rouge:c('--ds-retard')};});
+      trait:t&&getComputedStyle(t).stroke,travail:c('--ds-travail'),retard:tr&&getComputedStyle(tr).stroke,rouge:c('--ds-retard')};});
   assert.ok(traits.n>=5&&traits.n===traits.lots,'un trait fin par lot : '+traits.n+' pour '+traits.lots+' lots');
-  assert.equal(traits.trait,traits.accent,'le trait d’un lot : l’accent');
+  assert.equal(traits.trait,traits.travail,'le trait d’un lot : le bleu du travail');
   if(traits.retard)assert.equal(traits.retard,traits.rouge,'le trait d’un lot en retard : la couleur du retard');
   await page.evaluate(()=>{document.documentElement.dataset.theme='sombre';});await attendre(100);
   const sombre=await couleurs();

@@ -699,11 +699,11 @@ Ils ont donc suivi les jetons redéfinis, sans qu'un dessin soit retouché.
 
 | Dessin | Ce qu'il lit |
 |---|---|
-| Le plan rejoué (« En direct », à plat) | un service au travail : `--ds-accent` ; qui attend : `--ds-attente` ; qui a fini : `--ds-texte-4` ; pas commencé : la carte, en tirets ; son contour : `--ds-trait-plan` ; un lien : `--ds-trait-lien` |
-| La vue en trois dimensions | ses teintes `--dv-…` (`direct.css`), toutes des jetons ou des mélanges de jetons : le sol et les murs depuis `--ds-texte-1` et `--ds-surface-1`, le travail `--ds-accent`, l'attente `--ds-attente`, ce qui coince `--ds-retard`, les repas `--ds-d1`, l'équipement `--ds-d5`. Sa scène, sa caméra, ses gestes, son panneau et sa barre du temps ne changent pas |
-| Le planning, la charge | la courbe « au travail » : `--ds-d1` ; « présents » : `--ds-texte-3` ; un lot : `--ds-accent` ; un lot en retard : `--ds-retard` |
+| Le plan rejoué (« En direct », à plat) | un service au travail : `--ds-travail` (correction 24 c ; avant, l'accent) ; qui attend : `--ds-attente` ; qui a fini : `--ds-texte-4` ; pas commencé : la carte, en tirets ; son contour : `--ds-trait-plan` ; un lien : `--ds-trait-lien` |
+| La vue en trois dimensions | ses teintes `--dv-…` (`direct.css`), toutes des jetons ou des mélanges de jetons : le sol et les murs depuis `--ds-texte-1` et `--ds-surface-1`, le travail `--ds-travail` (correction 24 c ; avant, l'accent), l'attente `--ds-attente`, ce qui coince `--ds-retard`, les repas `--ds-d1`, l'équipement `--ds-d5`. Sa scène, sa caméra, ses gestes, son panneau et sa barre du temps ne changent pas |
+| Le planning, la charge | la courbe « au travail » et la barre d'un lot : `--ds-travail` (correction 24 c ; avant, `--ds-d1` pour la courbe et l'accent pour le lot) ; « présents » : `--ds-texte-3` ; un lot en retard : `--ds-retard` |
 | Le schéma d'un chemin | une étape : la carte ; un lien : `--ds-trait-lien` ; une chaîne : `--ds-chaine` ; le ton d'une étape : `--ds-ok`, `--ds-attente` |
-| Les courbes (Synthèse, Période, stocks) | la série : `--ds-d1` (le travail, la période), `--ds-d6` (un stock) ; une alerte : `--ds-retard` |
+| Les courbes (Synthèse, Période, stocks) | « au travail » : `--ds-travail` ; la période : `--ds-d1` ; un stock : `--ds-d6` ; une alerte : `--ds-retard` |
 | Une classe, partout | `--cab-*` : Équipage d1, Économie d2, Premium d3, Business d4, repas spéciaux d6 |
 
 **Plus aucun bleu nuit ni bleu océan** : sur chaque page du menu, aucune
@@ -781,3 +781,51 @@ compagnies », une notification, une question, la palette « Aller à… », la
 page d'entrée. Chacune est vérifiée : sa taille, le thème, la fenêtre qui ne
 défile pas, aucun texte sous 13 px. Les captures restent hors du dépôt
 (`$ORY_CAPTURES`, ou un dossier temporaire).
+
+---
+
+## 11. Version 1 : les retouches de la correction 24
+
+Un audit de l'outil — simple, compréhensible, beau — a porté trois constats :
+on peut perdre son travail sans être prévenu ; le caramel est partout, l'œil
+ne sait plus où est l'action ; un même état n'a pas la même couleur d'une
+page à l'autre. Tout passe par les fichiers propres à la version 1 ; les
+feuilles et les scripts communs avec la version 2 ne changent pas.
+
+### Un état, une couleur : le jeton du travail (correction 24 c)
+
+Depuis que l'accent est caramel, « au travail » était caramel dans « En
+direct » et bleu dans le Planning ; dans « En direct », il touchait l'ocre de
+« attend ».
+
+| Jeton | Rôle | Clair | Sombre |
+|---|---|---|---|
+| `--ds-travail` | « au travail » : un service, une équipe, une personne, un lot en cours | `--ds-d1` (`#2464A6`) | `--ds-d1` (`#A7C5EB`) |
+| `--ds-sur-travail` | le texte posé dessus, à 4,5:1 | `--ds-sur-donnee` (`#FFFFFF`, 6,1:1) | `--ds-sur-donnee` (`#161113`, 10,5:1) |
+
+La règle :
+
+- **« au travail » prend `--ds-travail` partout**, et ne prend plus jamais
+  l'accent : les personnages de la vue en relief (`--dv-travail`), les zones
+  de la vue à plat et la pastille de leur légende, la courbe du temps, la
+  courbe de charge d'un service et sa clé, les pastilles du panneau « En ce
+  moment », la courbe « au travail » du Planning et de la Synthèse, les
+  barres des lots du Planning et le trait d'un lot. Avant de relire la
+  journée, un service dont une équipe prépare une commande (« Équipe au
+  travail ») le prend aussi.
+- **« attend » reste à l'ocre** (`--ds-attente`), **« en retard » au rouge**
+  (`--ds-retard`), **« a fini » au gris** (`--ds-texte-4`) — la pastille
+  « a fini » du panneau « En ce moment », qui était verte, est grise comme
+  la zone.
+- **L'accent garde ce qui est action ou choix** : un bouton, l'élément
+  choisi (l'onglet du Planning, le service choisi), le focus.
+- Sur une zone colorée de la vue à plat, le nom du service tient 4,5:1 dans
+  les deux thèmes.
+
+Les pastilles du panneau « En ce moment » viennent de feuilles communes
+(`histoire.css`, `demarrage.css`) : `visuel.css` les reprend. Rien d'autre
+ne change dans la vue en relief : sa scène, sa caméra, ses gestes.
+
+`tests/travail-couleur-browser.cjs` le vérifie dans les deux thèmes : le
+jeton, chaque élément qui dit « au travail », la même couleur calculée dans
+le Planning et dans « En direct », le contraste du nom sur chaque zone.

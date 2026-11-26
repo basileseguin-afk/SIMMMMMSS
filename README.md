@@ -1077,7 +1077,7 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
   puis le zoom (−, %, +, « Cadrer » le service choisi, « Tout voir »). Les noms des
   services gardent la même taille à tout zoom ; les sous-titres n'apparaissent que
   lorsqu'ils se lisent. Chaque service est rempli de la couleur de son état à
-  l'heure rejouée : au travail (la couleur d'accent), attend le service d’avant
+  l'heure rejouée : au travail (le bleu du travail, `--ds-travail`), attend le service d’avant
   (la couleur d'avertissement), a fini (gris), pas commencé (gris clair, contour
   pointillé). Au centre, « 4 au travail / 6 présents » — les créneaux de 15 min des
   indicateurs de charge — et, s'il y en a, « 3 en file ». « Liens » propose par
@@ -1493,7 +1493,7 @@ La scène respecte les réglages de la simulation :
   service dit combien de ses équipes ont le leur. Le réglage se garde avec
   les équipes, s'annule, et ne change aucun calcul ; une sauvegarde d'avant
   se relit sans lui.
-- **La couleur d'une personne dit son état** : au travail (l'accent) ; sans
+- **La couleur d'une personne dit son état** : au travail (le bleu du travail) ; sans
   travail, en attente du service d'avant (l'avertissement) ; en pause, en
   appui ou en chemin (neutre). La légende le rappelle dans la bande.
 - **Ce qui est une mise en scène** : une personne au travail est à son poste
@@ -1738,7 +1738,7 @@ travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
 indicateurs. Ce qui suit décrit sa vue **« À plat »** (le plan dessiné) ; la
 vue « En relief » est décrite plus haut.
 
-- **La couleur d'un service dit son état** : rempli d'accent, il travaille ;
+- **La couleur d'un service dit son état** : rempli du bleu du travail, il travaille ;
   de la couleur d'avertissement, son équipe est là mais attend le service
   d'avant ; gris, il a fini ; gris clair à contour pointillé, il n'a pas
   commencé. La légende, à droite de la bande, le rappelle.
@@ -2486,6 +2486,18 @@ sauvegarde.
 - **La page de secours** (`secours.html`) rend les mêmes entrées que « Tout
   sauvegarder », les neuf ; le site sait ensuite que tout est sauvegardé.
 
+**Un état, une couleur : « au travail » en bleu, partout** (correction
+24 c). Un jeton, `--ds-travail`, égal à `--ds-d1` dans les deux thèmes, et
+son texte posé dessus, `--ds-sur-travail`. « Au travail » le prend partout —
+les personnages de la vue en relief, les zones de la vue à plat et leur
+légende, la courbe du temps, les pastilles du panneau « En ce moment », la
+courbe et les barres du Planning, la Synthèse — et ne prend plus jamais
+l'accent, qui reste à l'action et au choix. « Attend » reste à l'ocre, « en
+retard » au rouge, « a fini » au gris. Sur une zone colorée de la vue à
+plat, le nom du service tient 4,5:1 dans les deux thèmes. Le détail :
+`docs/DESIGN_SYSTEM.md`, § 11. `tests/travail-couleur-browser.cjs` le
+vérifie.
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2831,6 +2843,7 @@ sauvegarde.
 | `tests/ouvrir-sans-changer-browser.cjs` | Ouvrir une page ne change jamais le résultat (v1, correction 24 a), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : après le chargement, puis une fois la période simulée, puis après un réglage, toutes les pages du menu une à une (sections dépliées, survol), chaque onglet de « Détails » et du Planning (jours de travail, échelles, rangées), dans l’ordre puis dans l’ordre inverse — le résultat champ par champ, les réponses de la Synthèse, chaque entrée de la sauvegarde et la révision des données sont les mêmes avant et après ; un recalcul rend le même résultat sans rien écrire ; un réglage, lui, les change |
 | `tests/etat-sauvegarde.test.cjs` | `etat-sauvegarde.js` sans navigateur (v1, correction 24 b) : la mémoire relue (absente, abîmée), celle d’un navigateur d’avant, les trois états et leurs mots (l’heure, la date un autre jour), ce qui compte comme un changement (un réglage oui ; l’effectif calculé reporté et les commandes d’une équipe « par compagnie » non) ; `stockage.js` signale chaque donnée vraiment écrite ; la page de secours a les neuf entrées de « Tout sauvegarder », dans l’ordre, et reste autonome |
 | `tests/etat-sauvegarde-browser.cjs` | L’état de sauvegarde dans la page (v1, correction 24 b), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : première visite « Jamais sauvegardé » sans question ; restaurée « Sauvegardé à HH:MM », et le reste après un import de vols, un autre jour, des pages ouvertes, un thème, une section ; un réglage → « Non sauvegardé depuis HH:MM », l’écouteur de fermeture posé une seule fois, la question du navigateur au rechargement et en quittant le site, pas en lecture seule ; « Tout sauvegarder » par la barre du haut (sans changer de page) et par « Fichiers » → « Sauvegardé », le même fichier octet pour octet à la date près ; sous un navigateur piloté, jamais d’écouteur ; la page de secours rend les neuf entrées ; le bouton à 13 px, 24 px de haut, 4,5:1 et 3:1 dans les deux thèmes, son mot gardé à 1 100 px |
+| `tests/travail-couleur-browser.cjs` | Un état, une couleur (v1, correction 24 c), sur l’unité et les vols fictifs, à 1 366 × 768, dans les deux thèmes : `--ds-travail` vaut `--ds-d1` et n’est pas l’accent, son texte s’y lit à 4,5:1 ; « En direct » à plat (la légende, les zones au travail, en attente, finies ; le nom du service à 4,5:1 sur chaque zone colorée ; les pastilles du panneau) ; en relief (la légende, le jeton des personnages, la courbe du temps, la courbe de charge d’un service et sa clé) ; le Planning (la courbe, les barres, leurs clés, le trait d’un lot, l’étiquette d’une barre) ; la Synthèse ; la même couleur calculée dans le Planning et dans « En direct » ; aucun élément qui dit « au travail » n’a la couleur de l’accent |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

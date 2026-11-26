@@ -43,14 +43,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    if(version==='v1'){
     // v1, évolution 14 (c) : le planning à échelle fixe (planning-vue.js) ; les mêmes intentions.
-    // 1. Le travail en accent ; l'attente garde sa couleur d'état ; chaque barre à l'heure de son lot.
+    // 1. Le travail dans son bleu (correction 24 c ; avant, l'accent) ; l'attente garde sa couleur d'état ; chaque barre à l'heure de son lot.
     //    Correction 18 (b) : le planning s'ouvre replié, sur un jour de travail — on déplie tout, les barres sont celles de ce jour.
     await page.locator('#at-planning [data-pg-tout="deplier"]').click();await attendre();
     await page.locator('[data-pg-zoom="six"]').click();await attendre();
     const pal=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
       const seg=document.querySelector('#at-planning .pg-lot:not(.robot):not(.chaine):not(.retard) .pg-seg'),att=document.querySelector('#at-planning .at-pl-attente');
-      return {lot:getComputedStyle(seg).fill,accent:c('--ds-accent'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
-    assert.equal(pal.lot,pal.accent,V+'une équipe prépare : une barre pleine, en accent');
+      return {lot:getComputedStyle(seg).fill,travail:c('--ds-travail'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
+    assert.equal(pal.lot,pal.travail,V+'une équipe prépare : une barre pleine, dans le bleu du travail');
     assert.equal(pal.att,pal.attente,V+'l’attente garde la couleur d’état');
     const place=await page.evaluate(()=>{const v=OrlyPlanningVue.etat.vue,lots=Sim.ateliers.resultat.ateliers.filter(a=>(a.jour||0)===v.jour).flatMap(a=>a.lots).filter(l=>!l.dispo&&l.fin!=null);
       const xs=[...document.querySelectorAll('#at-planning .pg-lot')].map(g=>+g.dataset.x).sort((a,b)=>a-b);

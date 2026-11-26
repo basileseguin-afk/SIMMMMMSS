@@ -5,6 +5,36 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-26 — Correction 24 (c) : un état, une couleur — « au travail » en bleu, partout
+
+Le constat : depuis que l'accent est caramel, « au travail » était caramel
+dans « En direct » et bleu dans le Planning ; dans « En direct », il
+touchait l'ocre de « attend ».
+
+- **Un jeton, `--ds-travail`**, égal à `--ds-d1` dans les deux thèmes, et
+  son texte posé dessus, `--ds-sur-travail` (4,5:1 au moins).
+- **« Au travail » le prend partout**, et ne prend plus jamais l'accent :
+  les personnages de la vue en relief, les zones de la vue à plat et leur
+  légende, la courbe du temps, la courbe de charge d'un service, les
+  pastilles du panneau « En ce moment », la courbe « au travail » du
+  Planning et de la Synthèse, les barres des lots du Planning et le trait
+  d'un lot.
+- « Attend » reste à l'ocre, « en retard » au rouge, « a fini » au gris : la
+  pastille « a fini » du panneau « En ce moment », qui était verte, est
+  grise comme la zone.
+- L'accent garde ce qui est action ou choix.
+- Sur une zone colorée de la vue à plat, le nom du service tient 4,5:1 dans
+  les deux thèmes.
+
+Aucun calcul ne change, ni aucune donnée, ni aucun texte. Rien d'autre ne
+change dans la vue en relief. La version 2 n'est pas touchée, ni aucun
+fichier commun.
+
+Fichiers : `visuel.css`, `direct.css`, `plan-flux.css`, `planning-vue.css`,
+`charge.css`, `synthese-vue.css`, `sim.js`, `index.html` et `accueil.html`
+(empreintes) ; `tests/travail-couleur-browser.cjs` (nouveau) ;
+`docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-11-26 — Correction 24 (b) : ne pas perdre son travail
 
 Le constat : tout vit dans le navigateur, rien ne prévient à la fermeture,

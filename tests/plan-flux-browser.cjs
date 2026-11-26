@@ -36,7 +36,8 @@ const chargeAttendue=(id,t)=>{const gs=groupes.get(id);if(!gs)return null;const 
 const rgb=s=>{const m=String(s).match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/);assert.ok(m,'une couleur : '+s);return [+m[1],+m[2],+m[3]];};
 const lum=c=>{const [r,g,b]=rgb(c).map(v=>{v/=255;return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4;});return 0.2126*r+0.7152*g+0.0722*b;};
 const contraste=(a,b)=>{const [x,y]=[lum(a),lum(b)].sort((p,q)=>q-p);return (x+0.05)/(y+0.05);};
-const TOKENS={travail:'--ds-accent',attente:'--ds-attente',fini:'--ds-texte-4',avenir:'--ds-survol'};
+// Correction 24 (c) : « au travail » a son jeton, le bleu des données, et ne prend plus l'accent.
+const TOKENS={travail:'--ds-travail',attente:'--ds-attente',fini:'--ds-texte-4',avenir:'--ds-survol'};
 const plat=s=>String(s).replace(/[\s  ]+/g,' ').trim();
 
 (async()=>{

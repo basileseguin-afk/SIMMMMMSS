@@ -10,16 +10,21 @@
  * ==========================================================================*/
 
 /* Les quatre états, sur toute la zone. */
-body.en-lecture #plan .zone.s-travail .fond{fill:var(--ds-accent);fill-opacity:1;stroke:var(--ds-accent);stroke-dasharray:none}
+body.en-lecture #plan .zone.s-travail .fond{fill:var(--ds-travail);fill-opacity:1;stroke:var(--ds-travail);stroke-dasharray:none}
 body.en-lecture #plan .zone.s-attente .fond{fill:var(--ds-attente);fill-opacity:1;stroke:var(--ds-attente);stroke-dasharray:none}
 body.en-lecture #plan .zone.s-fini .fond{fill:var(--ds-texte-4);fill-opacity:1;stroke:var(--ds-texte-4);stroke-dasharray:none}
 body.en-lecture #plan .zone.s-avenir .fond{fill:var(--ds-survol);fill-opacity:1;stroke:var(--ds-texte-3);stroke-opacity:1;stroke-width:1.5px;stroke-dasharray:6 4}
 body.en-lecture #plan .zone.selection .fond{stroke:var(--ds-texte-1);stroke-width:3px;stroke-dasharray:none}
 /* Le texte sur le remplissage, son halo de la couleur du fond (pas de liseré clair sur un aplat). */
-body.en-lecture #plan .zone.s-travail :is(.titre,.sous,.zone-charge){fill:var(--ds-sur-accent);stroke:var(--ds-accent)}
+body.en-lecture #plan .zone.s-travail :is(.titre,.sous,.zone-charge){fill:var(--ds-sur-travail);stroke:var(--ds-travail)}
 body.en-lecture #plan .zone.s-attente :is(.titre,.sous,.zone-charge){fill:var(--ds-sur-attente);stroke:var(--ds-attente)}
 body.en-lecture #plan .zone.s-fini :is(.titre,.sous,.zone-charge){fill:var(--ds-texte-1);stroke:var(--ds-texte-4)}
 body.en-lecture #plan .zone.s-avenir :is(.titre,.sous,.zone-charge){fill:var(--ds-texte-2);stroke:var(--ds-survol)}
+/* Avant de relire (l'horloge au début de la journée), le plan dit ce qui reste à décrire : un service dont une équipe
+   prépare une commande — « Équipe au travail » — prend le bleu du travail, jamais l'accent (correction 24 c). Une zone
+   à qui l'on a choisi une couleur la garde : c'est son identité. */
+body.avant-lancement #plan .zone.p-pret:not(.couleur-perso) .fond{fill:var(--ds-travail);stroke:var(--ds-travail)}
+body.avant-lancement #plan .zone.p-pret .zone-ico circle{fill:var(--ds-travail);stroke:var(--ds-travail)}
 /* Le pictogramme reste neutre : la couleur de la zone dit déjà l'état. */
 body.en-lecture #plan .zone:is(.s-travail,.s-attente,.s-fini,.s-avenir) .zone-ico circle{fill:var(--ds-surface-1);stroke:var(--ds-texte-3)}
 body.en-lecture #plan .zone:is(.s-travail,.s-attente,.s-fini,.s-avenir) .zone-ico-trait{stroke:var(--ds-texte-1)}

@@ -13,10 +13,10 @@
 .ch-legende{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-1) var(--ds-e-3);margin:0 0 var(--ds-e-2)}
 .ch-cle{display:inline-block;width:14px;height:10px;margin-right:-6px;vertical-align:middle;border-radius:2px}
 .ch-cle-presents{height:0;border-top:2px solid var(--ds-texte-3);border-radius:0}
-.ch-cle-travail{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border-top:2px solid var(--ds-d1)}
+.ch-cle-travail{background:color-mix(in srgb,var(--ds-travail) 32%,transparent);border-top:2px solid var(--ds-travail)}
 .ch-cle-file{background:var(--ds-attente)}
 .ch-cle-appui{height:0;border-top:2px dotted var(--ds-texte-4);border-radius:0}
-.ch-cle-pic{width:9px;height:9px;border-radius:50%;background:var(--ds-d1);box-shadow:0 0 0 2px var(--ds-surface-1)}
+.ch-cle-pic{width:9px;height:9px;border-radius:50%;background:var(--ds-travail);box-shadow:0 0 0 2px var(--ds-surface-1)}
 
 .ch-axe{display:block;width:100%;height:auto}
 .ch-heure-txt{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:middle}
@@ -29,12 +29,12 @@
 .ch-heure{stroke:var(--ds-bordure);stroke-width:1}
 .ch-heure.minuit{stroke:var(--ds-texte-4);stroke-dasharray:4 3}
 .ch-base{stroke:var(--ds-bordure-forte);stroke-width:1}
-.ch-travail{fill:color-mix(in srgb,var(--ds-d1) 32%,transparent);stroke:var(--ds-d1);stroke-width:2;stroke-linejoin:round}
+.ch-travail{fill:color-mix(in srgb,var(--ds-travail) 32%,transparent);stroke:var(--ds-travail);stroke-width:2;stroke-linejoin:round}
 .ch-presents{fill:none;stroke:var(--ds-texte-3);stroke-width:2;stroke-linejoin:round}
 /* En appui ou à disposition (correction 16) : discret, un trait pointillé. */
 .ch-appui{fill:none;stroke:var(--ds-texte-4);stroke-width:2;stroke-dasharray:2 3;stroke-linejoin:round}
 .ch-file{fill:var(--ds-attente)}
-.ch-pic{fill:var(--ds-d1);stroke:var(--ds-surface-1);stroke-width:2}
+.ch-pic{fill:var(--ds-travail);stroke:var(--ds-surface-1);stroke-width:2}
 .ch-cible{fill:transparent;pointer-events:all}
 .ch-cible:hover{fill:var(--ds-accent-doux);opacity:1}
 

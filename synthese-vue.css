@@ -58,7 +58,7 @@
 .sy-ecart-barre i{position:absolute;top:0;bottom:0;border-radius:2px;background:var(--ds-texte-4)}
 [data-ton="attente"] .sy-ecart-barre i,[data-ton="attente"] .sy-occ-barre i{background:var(--ds-attente)}
 .sy-occ-barre{display:inline-block;width:44px;height:8px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
-.sy-occ-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-d1)}
+.sy-occ-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-travail)}
 /* Correction 18 (a) : les personnes sans travail — les heures, leur part, une barre neutre (jamais une couleur d'alerte) ;
    l'attente d'un arrivage ; ce que l'équipe attendait avant son premier lot, sur deux lignes au besoin. */
 .sy-sans{white-space:nowrap}
@@ -87,7 +87,7 @@
 .sy-legende-courbe{display:flex;flex-wrap:wrap;gap:var(--ds-e-4);margin:0 0 var(--ds-e-2);font-size:var(--ds-t-12);color:var(--ds-texte-2)}
 .sy-legende-courbe span::before{content:"";display:inline-block;width:14px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
 .sy-l-presents::before{height:0 !important;border-top:2px solid var(--ds-texte-3);vertical-align:3px !important}
-.sy-l-travail::before{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border:2px solid var(--ds-d1)}
+.sy-l-travail::before{background:color-mix(in srgb,var(--ds-travail) 32%,transparent);border:2px solid var(--ds-travail)}
 .sy-l-file::before{background:var(--ds-attente)}
 .sy-l-depart::before{width:0 !important;height:12px !important;border-left:2px solid var(--ds-texte-2)}
 .sy-trace{position:relative;width:100%;overflow:hidden;border-radius:var(--ds-r-2)}

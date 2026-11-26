@@ -20,7 +20,7 @@
   --dv-rayonnage:color-mix(in srgb,var(--ds-texte-1) 36%,var(--ds-surface-1));
   --dv-table:color-mix(in srgb,var(--ds-texte-1) 30%,var(--ds-surface-1));
   --dv-peau:color-mix(in srgb,var(--ds-d4) 34%,var(--ds-surface-1));
-  --dv-travail:var(--ds-accent);
+  --dv-travail:var(--ds-travail);
   --dv-attente:var(--ds-attente);
   --dv-neutre:var(--ds-texte-3);
   --dv-critique:var(--ds-retard);
@@ -85,7 +85,7 @@
 .direct-coin .direct-legende{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0;padding:0}
 .direct-coin .direct-legende>span{flex:0 0 auto;white-space:nowrap}
 .direct-legende .pastille{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:50%;border:0;vertical-align:baseline}
-.direct-legende .dl-travail{background:var(--ds-accent)}
+.direct-legende .dl-travail{background:var(--ds-travail)}
 .direct-legende .dl-attente{background:var(--ds-attente)}
 .direct-legende .dl-neutre{background:var(--ds-texte-3)}
 .direct-legende .carre{display:inline-block;width:10px;height:9px;margin-right:5px;border-radius:2px;border:0;vertical-align:baseline}
@@ -161,7 +161,7 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 .dt-jour-trait{stroke:var(--ds-bordure-forte);stroke-width:1}
 .dt-jour{fill:var(--ds-texte-3)}
 .dt-base{stroke:var(--ds-bordure);stroke-width:1}
-.dt-aire{fill:color-mix(in srgb,var(--ds-accent) 32%,transparent);stroke:var(--ds-accent);stroke-width:1.25;stroke-linejoin:round}
+.dt-aire{fill:color-mix(in srgb,var(--ds-travail) 32%,transparent);stroke:var(--ds-travail);stroke-width:1.25;stroke-linejoin:round}
 .dt-ligne{fill:none;stroke:var(--ds-attente);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .dt-vol{stroke:var(--ds-texte-3);stroke-width:1.5}
 .dt-vol-retard{stroke:var(--ds-retard);stroke-width:2.5}
@@ -219,12 +219,12 @@ body[data-direct="relief"][data-sous="j-plan"] #plan-etat{display:none!important
 .dp-courbe text{font-family:inherit;font-size:10px;fill:var(--ds-texte-3)}
 .dp-courbe .dp-fin{text-anchor:end}
 .dp-axe{stroke:var(--ds-bordure-forte);stroke-width:1}
-.dp-aire{fill:color-mix(in srgb,var(--ds-accent) 30%,transparent);stroke:var(--ds-accent);stroke-width:1.25;stroke-linejoin:round}
+.dp-aire{fill:color-mix(in srgb,var(--ds-travail) 30%,transparent);stroke:var(--ds-travail);stroke-width:1.25;stroke-linejoin:round}
 .dp-presents{fill:none;stroke:var(--ds-texte-3);stroke-width:1.5;stroke-linejoin:round}
 .dp-maintenant{stroke:var(--ds-texte-1);stroke-width:1.5}
 .dp-courbe figcaption{margin-top:2px;font-size:var(--ds-t-11);color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
 .dp-cle{display:inline-block;width:12px;height:8px;margin:0 4px 0 0;vertical-align:baseline}
-.dp-cle-travail{background:color-mix(in srgb,var(--ds-accent) 30%,transparent);border-top:2px solid var(--ds-accent)}
+.dp-cle-travail{background:color-mix(in srgb,var(--ds-travail) 30%,transparent);border-top:2px solid var(--ds-travail)}
 .dp-cle-presents{margin-left:10px;height:0;border-top:2px solid var(--ds-texte-3);vertical-align:middle}
 .dp-suivi{margin:0 0 var(--ds-e-4);padding:8px 10px;border-radius:var(--ds-r-2);border-left:4px solid var(--ds-accent);background:var(--ds-surface-2);font-size:var(--ds-t-12);line-height:1.45}
 .dp-suivi.dp-critique{border-left-color:var(--ds-retard)}

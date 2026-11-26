@@ -54,6 +54,9 @@
   --ds-d1:#2464A6; --ds-d2:#1B8364; --ds-d3:#5021A1; --ds-d4:#881E31; --ds-d5:#8A1C69; --ds-d6:#865D24;
   --ds-chaine:#8A1C69;
   --ds-sur-donnee:#FFFFFF; --ds-sur-attente:#FFFFFF;
+  /* « Au travail » (correction 24 c) : un état, une couleur, la même partout — le bleu des données, jamais l'accent,
+     qui reste à l'action et au choix. Son texte posé dessus tient 4,5:1. */
+  --ds-travail:var(--ds-d1); --ds-sur-travail:var(--ds-sur-donnee);
   --ds-entete-bas:#FBF8F6;
   /* Les rayons : un champ et un bouton à 8 px, une carte à 14 px. */
   --ds-r-1:5px; --ds-r-2:8px; --ds-r-3:14px; --ds-r-4:16px;
@@ -96,6 +99,7 @@
   --ds-d1:#A7C5EB; --ds-d2:#A9EEE0; --ds-d3:#9463E1; --ds-d4:#CC8596; --ds-d5:#B666A4; --ds-d6:#E1D1A3;
   --ds-chaine:#B666A4;
   --ds-sur-donnee:#161113; --ds-sur-attente:#1A1206;
+  --ds-travail:var(--ds-d1); --ds-sur-travail:var(--ds-sur-donnee);
   --ds-entete-bas:#161113;
   --ds-saisi-fond:#2E2019; --ds-saisi-bord:#5A3A28;
   /* En sombre, le choix retenu : la surface la plus haute, cernée de l'accent. */
@@ -125,6 +129,13 @@
    page qu'il ouvre : il ne change plus de couleur avec l'état. */
 .barre :is(.so-badge,.so-badge.attente,.so-badge.retard,.so-badge.neutre,.pb-compte){background:var(--ds-nav-repere);color:var(--ds-nav-fond);
   border:0;box-shadow:none;font-weight:var(--ds-g-fort)}
+
+/* « En ce moment » : un état, une couleur (correction 24 c). La pastille d'un service au travail prend le bleu du
+   travail, jamais l'accent ; celle d'un service qui a fini, le gris des zones qui ont fini. « Attend » garde l'ocre. */
+.stat-atelier.etat-travail .stat-etat{background:color-mix(in srgb,var(--ds-travail) 15%,var(--ds-surface-1));color:var(--ds-travail)}
+.stat-atelier.etat-travail .stat-ico{background:var(--ds-travail);color:var(--ds-sur-travail)}
+.stat-atelier.etat-fini .stat-etat{background:var(--ds-survol);color:var(--ds-texte-2)}
+.stat-atelier.etat-fini .stat-ico{background:var(--ds-survol);color:var(--ds-texte-2)}
 
 /* La barre du haut : son ombre n'apparaît que quand un contenu défile dessous (visuel.js le dit sur <body>). */
 .haut{box-shadow:none}

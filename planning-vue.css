@@ -41,16 +41,16 @@
   font-size:var(--ds-t-12);color:var(--ds-texte-2);scrollbar-width:thin}
 .pg-legende[hidden]{display:none}
 .pg-cle{display:inline-flex;align-items:center;gap:6px;flex:none}
-.pg-ex{display:inline-block;width:18px;height:10px;border-radius:2px;flex:none;background:var(--ds-accent)}
+.pg-ex{display:inline-block;width:18px;height:10px;border-radius:2px;flex:none;background:var(--ds-travail)}
 .pg-ex.attente{height:4px;background:var(--ds-attente);opacity:.5}
-.pg-ex.pause{background:linear-gradient(to right,var(--ds-accent) 0 7px,transparent 7px 11px,var(--ds-accent) 11px)}
-.pg-ex.motif{background:repeating-linear-gradient(135deg,var(--ds-accent) 0 3px,color-mix(in srgb,var(--ds-accent) 62%,var(--ds-sur-accent)) 3px 5px)}
+.pg-ex.pause{background:linear-gradient(to right,var(--ds-travail) 0 7px,transparent 7px 11px,var(--ds-travail) 11px)}
+.pg-ex.motif{background:repeating-linear-gradient(135deg,var(--ds-travail) 0 3px,color-mix(in srgb,var(--ds-travail) 62%,var(--ds-sur-travail)) 3px 5px)}
 .pg-ex.chaine{clip-path:polygon(0 0,3px 0,6px 45%,9px 0,100% 0,100% 100%,0 100%)}
-.pg-ex.retard{background:var(--ds-accent);box-shadow:0 0 0 2px var(--ds-retard)}
+.pg-ex.retard{background:var(--ds-travail);box-shadow:0 0 0 2px var(--ds-retard)}
 .pg-ex.limite{width:12px;background:linear-gradient(to right,transparent 0 9px,var(--ds-texte-1) 9px 11px,transparent 11px),
   linear-gradient(to bottom,transparent 4px,var(--ds-texte-3) 4px 5px,transparent 5px)}
 .pg-ex.presents{height:0;border-top:2px solid var(--ds-texte-3);border-radius:0}
-.pg-ex.autravail{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border-top:2px solid var(--ds-d1);border-radius:0}
+.pg-ex.autravail{background:color-mix(in srgb,var(--ds-travail) 32%,transparent);border-top:2px solid var(--ds-travail);border-radius:0}
 .pg-ex.appui{height:0;border-top:2px dotted var(--ds-texte-4);border-radius:0}
 .pg-ex.trait{height:2px;border-radius:0}
 .pg-ex.avant{background:repeating-linear-gradient(135deg,var(--ds-texte-4) 0 1.5px,transparent 1.5px 4px)}
@@ -72,7 +72,7 @@
 .pg-cadre:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
 .pg-toile{position:relative}
 .pg-defs{position:absolute}
-#pg-motif line{stroke:var(--ds-sur-accent);stroke-opacity:.4;stroke-width:2}
+#pg-motif line{stroke:var(--ds-sur-travail);stroke-opacity:.4;stroke-width:2}
 #pg-hachure line{stroke:var(--ds-texte-4);stroke-width:1.5}
 
 /* L'axe : collant en haut ; son coin, collant aussi à gauche. */
@@ -110,7 +110,7 @@
 .pg .ch-service{margin:0;flex:none}
 .pg .ch-mini{display:block;background:none;border:0;border-radius:0}
 .pg-traits{position:absolute;left:0;top:0;display:block;pointer-events:none}
-.pg-trait{stroke:var(--ds-accent);stroke-width:2}
+.pg-trait{stroke:var(--ds-travail);stroke-width:2}
 .pg-trait.retard{stroke:var(--ds-retard)}
 .pg-lignes[hidden]{display:none}
 /* Le résumé du service, en entier : il reste à gauche pendant les défilements, et passe à la ligne plutôt que d'être coupé. */
@@ -130,19 +130,19 @@
   background-position:var(--pg-decalage) 0}
 .pg-minuit{position:absolute;top:40px;bottom:0;width:0;border-left:1px dashed var(--ds-texte-3);pointer-events:none;z-index:1}
 
-/* Les barres : le travail plein (accent) ; l'attente des amonts en bande fine ; le robot et le lavage avec un motif ;
+/* Les barres : le travail plein (le bleu du travail, correction 24 c) ; l'attente des amonts en bande fine ; le robot et le lavage avec un motif ;
  * le travail à la chaîne avec une encoche ; un lot en retard, un contour critique et l'icône d'alerte. */
 .pg-lot{cursor:pointer;outline:none}
 .pg-lot:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
-.pg-lot .pg-seg{fill:var(--ds-accent)}
+.pg-lot .pg-seg{fill:var(--ds-travail)}
 .pg-lot .pg-motif{fill:url(#pg-motif);pointer-events:none}
 .pg-lot.retard .pg-contour{fill:none;stroke:var(--ds-retard);stroke-width:2}
 .pg-alerte circle{fill:var(--ds-surface-1);stroke:var(--ds-retard);stroke-width:1}
 .pg-alerte g{fill:none;stroke:var(--ds-retard);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pg .at-pl-attente{fill:var(--ds-attente);opacity:.5}
-.pg .at-pl-etiq{fill:var(--ds-sur-accent);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);pointer-events:none}
+.pg .at-pl-etiq{fill:var(--ds-sur-travail);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);pointer-events:none}
 .pg .ds-graphique .pg-lot[data-info]:hover{opacity:1}
-.pg-lot:hover .pg-seg{fill:color-mix(in srgb,var(--ds-accent) 82%,var(--ds-texte-1))}
+.pg-lot:hover .pg-seg{fill:color-mix(in srgb,var(--ds-travail) 82%,var(--ds-texte-1))}
 .pg-lot:focus-visible .pg-seg{stroke:var(--ds-texte-1);stroke-width:2}
 /* Avant le premier lot : l'équipe est là, sans travail — une bande hachurée, discrète. */
 .pg-avant{fill:url(#pg-hachure);stroke:var(--ds-bordure);stroke-width:1}
