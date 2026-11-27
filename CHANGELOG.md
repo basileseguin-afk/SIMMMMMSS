@@ -5,6 +5,19 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-27 — Prompt 40 : évolution 26, les compagnies d'abord
+
+- **(a) La charte tenue par des tests.** Le budget d'une page (règle 8) se mesure sur
+  l'unité fictive, à 1 366 × 768, sur chaque page du menu, l'accueil, la fiche d'un
+  service et celle d'une équipe (`tests/charte-budget-browser.cjs`) : mots visibles
+  hors tableaux, phrases d'explication de 12 mots et plus, sections à déplier,
+  boutons visibles, colonnes du plus grand tableau. Aucune couleur écrite en dur
+  dans une feuille ou un script propres à la version 1, hors `visuel.css`
+  (`tests/charte-couleurs.test.cjs`, règle 12). Deux tests à cliquet : l'écart
+  d'avant est relevé une fois dans `tests/charte-dette.json` ; il ne peut que
+  baisser. La charte cite, à côté des règles 9, 10 et 17, les tests qui les
+  tiennent déjà.
+
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 
 - **La charte de l'interface** (`docs/CHARTE_INTERFACE.md`, version 1) : un

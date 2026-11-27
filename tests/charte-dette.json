@@ -1,0 +1,83 @@
+{
+ "note": "La dette de la charte (évolution 26 a) : relevée une fois, elle ne fait que baisser. « pages » : ce qui dépasse le budget de la règle 8, page par page (tests/charte-budget-browser.cjs) ; « couleurs » : les couleurs écrites en dur, feuille par feuille et script par script (tests/charte-couleurs.test.cjs).",
+ "pages": {
+  "j-chiffres": {
+   "mots": 162,
+   "phrases": 12
+  },
+  "j-plan": {
+   "deplier": 3,
+   "boutons": 7
+  },
+  "at-planning": {
+   "deplier": 8,
+   "boutons": 8
+  },
+  "j-periode": {
+   "phrases": 1,
+   "deplier": 1
+  },
+  "at-repas": {
+   "deplier": 6,
+   "boutons": 7,
+   "colonnes": 1
+  },
+  "v-departs": {
+   "phrases": 1,
+   "deplier": 1
+  },
+  "j-stocks": {
+   "phrases": 1
+  },
+  "j-comparer": {
+   "deplier": 1
+  },
+  "v-programme": {
+   "phrases": 1,
+   "deplier": 4
+  },
+  "v-planche": {
+   "phrases": 2,
+   "colonnes": 3
+  },
+  "mu-services": {
+   "mots": 21,
+   "phrases": 2,
+   "deplier": 3,
+   "boutons": 8
+  },
+  "mu-flux": {
+   "deplier": 2,
+   "boutons": 10
+  },
+  "rg-simulation": {
+   "phrases": 1
+  },
+  "mu-pas": {
+   "mots": 165,
+   "phrases": 9,
+   "deplier": 1,
+   "boutons": 3
+  },
+  "u-sauvegarde": {
+   "phrases": 4,
+   "deplier": 4,
+   "boutons": 6
+  },
+  "fiche-service": {
+   "mots": 32,
+   "phrases": 1,
+   "deplier": 4,
+   "boutons": 14
+  },
+  "fiche-equipe": {
+   "phrases": 1,
+   "boutons": 25
+  }
+ },
+ "couleurs": {
+  "controles-page.css": 1,
+  "lecture-seule.css": 1,
+  "secours.html": 13
+ }
+}
