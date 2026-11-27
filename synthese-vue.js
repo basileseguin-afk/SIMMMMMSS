@@ -469,26 +469,33 @@
 
   /** Des commandes que personne ne prépare : un problème bloquant, avec son lien (pas parmi les commandes comptées).
    *  Correction 23 (d) : le lien mène à « Contrôles », où le point bloquant est en tête, avec un bouton par service —
-   *  « Cocher dans un service » ouvrait « Services et équipes » sans dire lequel. En lecture seule, il s'ouvre aussi. */
-  function probleme(k) {
-    if (!k || !k.classesAbsentes) return '';
-    const I = root.OrlyIcones, n = k.classesAbsentes;
-    return '<p class="bilan-probleme" role="note">' + (I ? I.ico('alerte') : '') + '<span><b>' + n + (n > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')
-      + '</b> — un problème bloquant : elles ne sont pas parmi les commandes comptées ici.</span>'
+   *  « Cocher dans un service » ouvrait « Services et équipes » sans dire lequel. En lecture seule, il s'ouvre aussi.
+   *  Évolution 26 (e) : il compte aussi les compagnies de l'import qui ne sont pas dans la liste (`horsListe`, les points
+   *  de « Contrôles ») ; sans elles, le bandeau d'avant. */
+  function probleme(k, horsListe) {
+    const n = (k && k.classesAbsentes) || 0, m = horsListe || 0;
+    if (!n && !m) return '';
+    const I = root.OrlyIcones;
+    const absentes = n ? '<b>' + n + (n > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')
+      + '</b> — un problème bloquant : elles ne sont pas parmi les commandes comptées ici.' : '';
+    const hors = m ? '<b>' + m + (m > 1 ? ' compagnies de l’import ne sont pas dans votre liste' : ' compagnie de l’import n’est pas dans votre liste')
+      + '</b> : ' + (m > 1 ? 'leurs' : 'ses') + ' vols ne sont pas comptés ici.' : '';
+    return '<p class="bilan-probleme" role="note">' + (I ? I.ico('alerte') : '') + '<span>' + [absentes, hors].filter(Boolean).join(' ') + '</span>'
       + '<button type="button" class="btn btn-sm" data-page="mu-pas">Voir dans Contrôles ' + (I ? I.ico('droite') : '→') + '</button></p>';
   }
 
   /**
    * La Synthèse dans `box`. `o` : { reponses, resultat, k (les indicateurs), ordre (les services, de l'amont vers l'aval),
    * essais ({ A, B } : les réponses des deux essais retenus, ou null), prevuCale (le prévu du total de l'unité d'après une
-   * politique d'effectif gardée, ou null) }. Sans réponses : la page le dit.
+   * politique d'effectif gardée, ou null), horsListe (évolution 26 e : les compagnies de l'import hors de la liste) }. Sans
+   * réponses : la page le dit.
    */
   function rendre(box, o) {
     if (!box) return;
     const rep = o && o.reponses;
     if (!rep) { box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>'; return; }
     const k = o.resultat && o.resultat.indicateurs, cartes = [carteCoince(rep), carteRetard(rep), carteEssai(o.essais)].filter(Boolean);
-    box.innerHTML = '<div class="sy-tete">' + phrases(rep, o.prevuCale).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k)
+    box.innerHTML = '<div class="sy-tete">' + phrases(rep, o.prevuCale).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k, o.horsListe)
       // Évolution 23 (g) : les phrases de la journée restent en tête ; les cartes, les services et la courbe défilent dans leur zone.
       + '<div class="sy-zone page-zone"><div class="sy-cartes" data-n="' + cartes.length + '">' + cartes.map(carte).join('') + '</div>'
       + '<section class="sy-bloc" aria-label="Les services"><h4>Les services</h4>' + tableau(rep, o.ordre) + '</section>'

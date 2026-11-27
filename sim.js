@@ -126,22 +126,41 @@ function chargerVols(data) {
 }
 /* LA LISTE DES COMPAGNIES (évolution 26, compagnies.js). Le programme importé reste tel quel (`Sim.dataCourante`) ; le
  * calcul lit le programme préparé d'après la liste (`OrlyCompagnies.preparerVols`), refait quand la liste change. Sans
- * liste, c'est le même objet : rien ne change. `idsDuProgramme` : les commandes que porte le programme entier, tous ses jours — la liste s'y traduit. */
-let prepare = { brut: null, sig: null, vols: null, ids: null };
+ * liste, c'est le même objet : rien ne change. `idsDuProgramme` : les commandes que porte le programme entier, tous ses jours — la liste s'y traduit.
+ * L'import rattache (évolution 26 e) : la préparation lit aussi les règles d'import (« Règles d'import Winrest ») ; elle
+ * se refait quand elles changent. `ra` : ce que le rattachement a gardé, ignoré, et ce qu'il n'a pas su rattacher. */
+let prepare = { brut: null, sig: null, regles: null, lues: null, vols: null, ids: null, ra: null };
 // Le programme préparé d'où viennent les vols de la journée (`flights`) : le calcul peut avoir refait la préparation
 // (`idsDuProgramme`) avant que la page ne recharge ses vols.
 let volsCharges = null;
 // La liste elle-même : chaque geste la remplace par une liste neuve (`valider`), une liste inchangée garde la même.
 const signaturePreparation = () => { const st = Sim.ateliers && Sim.ateliers.state; return st && Array.isArray(st.compagnies) ? st.compagnies : null; };
+/** Les règles d'import gardées, telles qu'écrites : la préparation se refait quand elles changent. */
+const reglesImportBrutes = () => { try { return localStorage.getItem(CLE_WINREST); } catch (e) { return null; } };
 function programmePrepare(data) {
   data = data || Sim.dataCourante || SAMPLE;
-  const sig = signaturePreparation();
-  if (prepare.brut !== data || prepare.sig !== sig) {
+  const sig = signaturePreparation(), regles = sig ? reglesImportBrutes() : null;
+  if (prepare.brut !== data || prepare.sig !== sig || prepare.regles !== regles) {
     const st = Sim.ateliers ? Sim.ateliers.state : null;
-    prepare = { brut: data, sig, vols: window.OrlyCompagnies && st ? OrlyCompagnies.preparerVols(data, st) : data, ids: null };
+    // Des règles illisibles se lisent comme les règles par défaut (« Règles d'import Winrest » le dit).
+    const lues = sig && window.OrlyWinrest ? reglesWinrest().regles : null;
+    prepare = { brut: data, sig, regles, lues, vols: window.OrlyCompagnies && st ? OrlyCompagnies.preparerVols(data, st, lues) : data, ids: null, ra: null };
   }
   return prepare.vols;
 }
+/** Le rattachement du programme à la liste (évolution 26 e) ; rien sans liste. */
+function rattachementCourant() {
+  const at = Sim.ateliers;
+  if (!at || !window.OrlyCompagnies || !Array.isArray(at.state.compagnies)) return null;
+  programmePrepare();
+  if (!prepare.ra) prepare.ra = OrlyCompagnies.rattacher(prepare.brut, at.state.compagnies, prepare.lues);
+  return prepare.ra;
+}
+/** Le rattachement d'un programme importé : les vols d'exemple ne sont pas une importation — ceux des compagnies hors
+ *  de la liste ne comptent pas non plus, mais « Contrôles » n'en fait pas des points. */
+const rattachementDeLImport = () => (dataSource !== 'Jeu de démonstration' ? rattachementCourant() : null);
+/** Les vols de l'import qu'aucune compagnie de la liste ne prend. */
+const volsNonRattaches = ra => (ra ? ra.nonRattaches.reduce((k, n) => k + n.vols, 0) : 0);
 function idsDuProgramme() {
   const vols = programmePrepare();
   if (!prepare.ids) prepare.ids = OrlyCompagnies.idsDuProgramme(vols);
@@ -934,14 +953,87 @@ function pointsDesCompagnies(){
       detail:'C’est une commande fixe : donnez-lui une quantité par jour et au moins un jour coché.',
       page:'mu-commandes'});
   }
+  // Les vols de l'import qu'aucune compagnie de la liste ne prend (évolution 26 e) : un point par code, trois gestes.
+  // « La rattacher à… » et « L'ignorer » écrivent une règle de tri, que la notification montre.
+  const ra=rattachementDeLImport(),noms=(at.compagnies||[]).map(c=>c.nom);
+  for(const n of ra?ra.nonRattaches:[]){
+    const un=n.vols===1;
+    out.push({niveau:'corriger',cle:'import:'+n.code,importCode:n.code,
+      titre:n.code+' : '+n.vols+(un?' vol de l’import n’est':' vols de l’import ne sont')+' dans aucune compagnie de votre liste',
+      detail:un?'Il ne compte pas.':'Ils ne comptent pas.',
+      gestes:[{action:'ajouter-cie',valeur:n.code,texte:'L’ajouter'},
+        ...(noms.length?[{action:'rattacher',texte:'La rattacher à…',choix:noms.map(x=>({valeur:x,texte:x}))}]:[]),
+        {action:'ignorer',valeur:n.code,texte:'L’ignorer'}]});
+  }
   return out;
 }
 /** Un geste fait dans « Contrôles » (évolution 26). Rend vrai s'il a été fait. */
-function gesteControles(action,valeur){
+function gesteControles(action,valeur,p){
   if(action==='faire-liste')return faireMaListe();
   if(action==='complete')return completerCommande(valeur);
+  if(action==='ajouter-cie')return ajouterDepuisLImport(valeur);
+  if(action==='rattacher')return rattacherCode(p&&p.importCode,valeur);
+  if(action==='ignorer')return ignorerCode(valeur);
   return false;
 }
+/* L'IMPORT RATTACHE (évolution 26 e) : les gestes d'un code que l'import n'a pas su rattacher. */
+/** « L'ajouter » : le panneau d'ajout de « Commandes », le nom rempli, et les classes de ses vols cochées. */
+function ajouterDepuisLImport(code){
+  if(!code||!Sim.commandes||lectureSeule)return false;
+  const ra=rattachementCourant(),n=ra&&ra.nonRattaches.find(x=>x.code===code);
+  if(Sim.onglets)Sim.onglets.choisir('mu-commandes');
+  Sim.commandes.ouvrirAjout({nom:code,cabines:n?n.classes:[]});
+  return true;
+}
+const QUI_REGLE='« Règles d’import Winrest » (Programme des vols)';
+/** « La rattacher à… » : la règle « code = compagnie » s'écrit dans les codes compagnie des règles d'import, et se montre. */
+function rattacherCode(code,nom){
+  if(!code||!nom||lectureSeule)return false;
+  const r=reglesWinrest().regles,compagnies={};
+  for(const [k,v] of Object.entries(r.compagnies))if(OrlyCompagnies.normaliser(k)!==code)compagnies[k]=v;
+  compagnies[code]=nom;
+  return ecrireReglesImport({...r,compagnies},code+' rattachée à '+nom+' : la règle « '+code+' = '+nom+' » est écrite dans les codes compagnie de '+QUI_REGLE+'.');
+}
+/** « L'ignorer » : le code s'écrit parmi les ICAO exclus des règles d'import, et se montre ; ses vols ne comptent pas. */
+function ignorerCode(code){
+  if(!code||lectureSeule)return false;
+  const r=reglesWinrest().regles;
+  return ecrireReglesImport({...r,icaoExclus:[...r.icaoExclus,code]},code+' ignorée : « '+code+' » est écrit parmi les ICAO exclus de '+QUI_REGLE+'. Ses vols ne comptent pas.');
+}
+/* Les règles d'import qu'un geste écrit (« La rattacher à… », « L'ignorer », un nom qui change) se défont par « Annuler » :
+ * leur historique, `regles-import`, rejoint ceux d'un même geste (notifications.js). On garde les règles d'avant, telles
+ * qu'écrites (rien : les règles par défaut). La section des règles se redessine, et le calcul suit. */
+const histoireRegles={version:0,avant:[]};
+function inscrireHistoireRegles(){
+  if(window.OrlyNotif)OrlyNotif.inscrire('regles-import',{version:()=>histoireRegles.version,defaire:defaireReglesImport});
+}
+/** Écrit des règles d'import (validées : un refus se dit, rien n'est écrit), puis la phrase. `suivre` : le calcul suit tout de
+ *  suite (un geste qui change aussi la liste le laisse à la liste). Rend vrai si c'est fait. */
+function ecrireReglesImport(regles,phrase,suivre=true){
+  const avant=reglesImportBrutes();
+  try{enregistrerReglesWinrest(regles);}
+  catch(err){toast('Refusé : '+(window.OrlyWinrestVue?OrlyWinrestVue.raison(err.message):err.message));return false;}
+  histoireRegles.avant.push(avant);histoireRegles.version++;
+  if(window.OrlyNotif)OrlyNotif.marquer('regles-import');
+  if(suivre)suivreReglesImport(true);else redessinerReglesImport();
+  if(phrase)toast(phrase);
+  return true;
+}
+/** Les règles changées à la main, dans leur section : un « Annuler » d'un geste d'avant ne les efface pas — sa notification
+ *  dit qu'il n'y a plus rien à annuler ici. */
+function reglesChangeesALaMain(){ histoireRegles.version++; if(window.OrlyNotif)OrlyNotif.bouger(); }
+function defaireReglesImport(){
+  if(!histoireRegles.avant.length)return;
+  const avant=histoireRegles.avant.pop();histoireRegles.version++;
+  try{if(avant===null)localStorage.removeItem(CLE_WINREST);else localStorage.setItem(CLE_WINREST,avant);}catch(e){/* stockage indisponible */}
+  suivreReglesImport(true);
+}
+/** Les règles d'import ont changé : la section se redessine (`redessiner`), le programme préparé se refait, le calcul suit. */
+function suivreReglesImport(redessiner){
+  if(redessiner)redessinerReglesImport();
+  if(suivrePreparation()&&Sim.ateliers)Sim.ateliers.rendre();else majProblemes();
+}
+function redessinerReglesImport(){ if(window.OrlyWinrestVue&&document.getElementById('winrest-regles-corps'))rendreReglesWinrest(); }
 /** « C'est complet » : la classe n'est plus à compléter. */
 function completerCommande(id){
   const at=Sim.ateliers,G=window.OrlyCompagniesGestes;if(!at||!G||!id)return false;
@@ -1061,16 +1153,33 @@ function renommerCompagnie(ancien,neufBrut){
   if(neuf===ancien)return '';
   const r=G.renommer({...at.state,compagnies:deLaListe()},Sim.reglages?Sim.reglages.etat.bareme:{},ancien,neuf);
   const aDesVols=(Sim.dataCourante||[]).some(v=>OrlyCompagnies.normaliser(v.cie)===ancien);
+  // Avec une liste, l'import rattache (évolution 26 e) : ses vols la suivent par une règle de tri, écrite et montrée.
+  const regle=at.compagnies?regleDuNouveauNom(ancien,neuf,aDesVols):null;
+  if(regle&&!ecrireReglesImport(regle.regles,'',false))return 'Les règles d’import n’ont pas pu suivre : le nom ne change pas.';
   return gesteSurLaListe(r.etat,r.bareme,ancien+' s’appelle maintenant '+neuf+' : ses réglages et sa couleur suivent.'
-    +(aDesVols?' Ses vols portent encore le nom '+ancien+'.':''),
+    +(regle&&aDesVols?' Ses vols aussi : la règle « '+ancien+' = '+neuf+' » est écrite dans les codes compagnie de '+QUI_REGLE+'.'
+      :regle?' Les règles de tri qui menaient à '+ancien+' mènent à '+neuf+' ('+QUI_REGLE+').'
+      :aDesVols?' Ses vols portent encore le nom '+ancien+'.':''),
     g=>{const rang=g[ancien];const {[ancien]:_,...reste}=g;return rang?{...reste,[neuf]:rang}:reste;});
+}
+/** Les règles d'import après un changement de nom : celles qui menaient à l'ancien nom mènent au nouveau ; les vols qui
+ *  portent l'ancien nom (`aDesVols`) y sont menés ; une règle qui mène un nom à lui-même part. Rien à écrire : null. */
+function regleDuNouveauNom(ancien,neuf,aDesVols){
+  const N=OrlyCompagnies.normaliser,r=reglesWinrest().regles,compagnies={};
+  for(const [k,v] of Object.entries(r.compagnies))if(N(k)!==ancien||!aDesVols)compagnies[k]=N(v)===ancien?neuf:v;
+  if(aDesVols)compagnies[ancien]=neuf;
+  for(const k of Object.keys(compagnies))if(N(k)===N(compagnies[k]))delete compagnies[k];
+  return JSON.stringify(compagnies)===JSON.stringify(r.compagnies)?null:{regles:{...r,compagnies}};
 }
 /** Retirer une compagnie de la liste : ses commandes partent ; ses réglages restent, « Annuler » la rend. */
 function retirerCompagnie(nom){
   const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
   if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
   const n=classesDeLaCompagnie(nom).length;
-  return gesteSurLaListe(G.retirerDeLaListe(at.state,Sim.dataCourante||SAMPLE,nom),null,nom+' retirée de la liste'+(n?', avec '+(n>1?'ses ':'sa ')+plCmd(n):'')+'.');
+  // Avec une liste, ses vols de l'import ne se rattachent plus à rien (évolution 26 e) : « Contrôles » le dit.
+  const aDesVols=!!at.compagnies&&(programmePrepare()||[]).some(v=>OrlyCompagnies.normaliser(v.cie)===nom);
+  return gesteSurLaListe(G.retirerDeLaListe(at.state,Sim.dataCourante||SAMPLE,nom),null,nom+' retirée de la liste'+(n?', avec '+(n>1?'ses ':'sa ')+plCmd(n):'')+'.'
+    +(aDesVols?' Ses vols de l’import ne comptent plus : voir « Contrôles ».':''));
 }
 /** Ajouter ou ôter une classe d'une compagnie de la liste. */
 function classeCompagnie(nom,cabine,dedans){
@@ -2648,7 +2757,10 @@ function initVueSimulation() {
       const j = Sim.vue.vide ? null : journeeLue(), box = document.getElementById('bilan-journee');
       // Une politique d'effectif gardée (évolution 17 c) : la phrase de tête dit ce que l'unité mettrait, d'après les heures réelles.
       const cale = j && Sim.calage ? Sim.calage.prevuDuJour() : null;
+      const ra = rattachementDeLImport();
       OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(), prevuCale: cale ? cale.unite[0] : null,
+        // L'import qui rattache (évolution 26 e) : le bandeau compte les compagnies hors de la liste (les points de « Contrôles »).
+        ...(ra && ra.nonRattaches.length ? { horsListe: ra.nonRattaches.length } : {}),
         // L'ordre des services, tiré de tous les chemins (correction 17 b) : le même que le planning et la page Période.
         ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r, (j.args || {}).parcours) : [] } : null);
     };
@@ -3696,9 +3808,23 @@ async function importVols(e) {
 function direImport(report,reconnu,data,nom){
   const texte=remplacerProgramme(data,nom);
   report.classList.remove('error');
+  // Avec une liste, l'import rattache (évolution 26 e) : combien de vols sont rattachés, combien ne le sont pas.
+  const ra=rattachementDeLImport(),rattachement=ra?{rattaches:ra.rattaches,nonRattaches:volsNonRattaches(ra)}:null;
   if(!window.OrlyVolsPage||!OrlyVolsPage.compteRendu){report.textContent=reconnu+'\n'+texte;return;}
+  if(ra)direRattachement(rattachement);
   report.innerHTML=OrlyVolsPage.compteRenduHTML(OrlyVolsPage.compteRendu({fichier:nom,reconnu,lignes:data.length,departs:data.filter(f=>f.sens==='DEP').length,
-    retours:data.filter(f=>f.sens==='RET').length,periode:OrlyPeriode.decrire(data),detail:texte.split('\n')}));
+    retours:data.filter(f=>f.sens==='RET').length,periode:OrlyPeriode.decrire(data),detail:texte.split('\n'),...(rattachement?{rattachement}:{})}));
+}
+/** La notification de l'import qui rattache : « 960 vols rattachés, 12 non rattachés », et un bouton vers « Contrôles ».
+ *  notifications.js, commun avec la version 2, ne porte pas de lien : le bouton s'ajoute ici, à la notification. */
+function direRattachement(x){
+  toast(OrlyVolsPage.phraseRattachement(x)+(x.nonRattaches?' : voir « Contrôles ».':'.'),{cle:'import-rattache'});
+  const n=x.nonRattaches&&document.querySelector('#notifs .notif[data-cle="import-rattache"]'),fermer=n&&n.querySelector('.notif-fermer');
+  if(!fermer)return;
+  const b=document.createElement('button');
+  b.type='button';b.className='notif-aller';b.dataset.page='mu-pas';b.textContent='Voir « Contrôles »';
+  b.addEventListener('click',()=>fermer.click());
+  fermer.before(b);
 }
 /** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
 function remplacerProgramme(data,nom){
@@ -3723,6 +3849,8 @@ function remplacerProgramme(data,nom){
 const MAX_WINREST=30*1024*1024;
 let rapportWinrest=null;
 function installerWinrest(){
+  // Les règles qu'un geste de « Contrôles » ou de « Commandes » écrit se défont, même sans leur section (évolution 26 e).
+  inscrireHistoireRegles();
   const corps=document.getElementById('winrest-regles-corps');
   if(!corps||!window.OrlyWinrestVue)return;
   rendreReglesWinrest();
@@ -3778,6 +3906,8 @@ function changerRegleWinrest(el){
   try{const x=OrlyWinrestVue.modifier(reglesWinrest().regles,el);if(!x)return;enregistrerReglesWinrest(x);}
   catch(err){refuserRegleWinrest(el,err);return;}
   if(alerte)rendreReglesWinrest();
+  reglesChangeesALaMain();
+  suivreReglesImport(false);
   toast('Règles d’import Winrest enregistrées.');
 }
 /** Un bouton des règles : ajouter ou retirer un Guest type, un vol fictif. Un ajout refusé garde ce qui est tapé. */
@@ -3790,6 +3920,8 @@ function agirRegleWinrest(b){
     return;
   }
   rendreReglesWinrest();
+  reglesChangeesALaMain();
+  suivreReglesImport(false);
   toast('Règles d’import Winrest enregistrées.');
 }
 function exporterVols() {

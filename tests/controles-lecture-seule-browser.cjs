@@ -137,7 +137,9 @@ const C='#mu-pas';
   }
   assert.ok(etat.filter(b=>b.gris&&/^Régler dans /.test(b.texte)).length>=7,'les « Régler dans… »');
   assert.equal(etat.filter(b=>b.gris&&b.voulu).length,voulus,'tous les « C’est voulu »');
-  assert.ok(etat.filter(b=>!b.gris&&/^Voir dans Synthèse/.test(b.texte)).length>=3);
+  // (Évolution 26 e : avec la liste, les vols d'exemple des compagnies hors de la liste ne comptent plus — ni leur plonge,
+  // ni ses points ; il en reste deux.)
+  assert.ok(etat.filter(b=>!b.gris&&/^Voir dans Synthèse/.test(b.texte)).length>=2);
   // Une raison par point, pas par bouton.
   assert.equal(await page.locator(C+' .ct-point').evaluateAll(ps=>ps.every(p=>p.querySelectorAll('.ct-raison').length===(p.querySelector('button:disabled')?1:0))),true);
   // Grisé se voit : le bouton est estompé.

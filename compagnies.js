@@ -33,6 +33,11 @@
  *  effectif est l'état lui-même : le calcul rend le même résultat, champ par
  *  champ.
  *
+ *  L'import rattache, il ne crée plus (partie e). Avec une liste, chaque ligne du
+ *  programme est rattachée à une compagnie de la liste par les règles de tri de
+ *  l'import (moteur/import-flights.js : les codes compagnie, les ICAO exclus) ;
+ *  une ligne qui ne se rattache à rien n'est pas comptée (`rattacher`).
+ *
  *  Un seul chemin de calcul : la page et les outils (outils/simuler-journee.cjs,
  *  outils/simuler-periode.cjs) préparent la sauvegarde et les vols ici, puis
  *  appellent le même moteur. Module pur, testé en Node.
@@ -41,6 +46,7 @@
   'use strict';
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const P = () => (enNode ? require('./moteur/production.js') : root.MoteurProduction);
+  const W = () => (enNode ? require('./moteur/import-flights.js') : root.OrlyWinrest);
 
   /** Le plus de compagnies qu'une liste garde. */
   const MAX_COMPAGNIES = 500;
@@ -196,14 +202,54 @@
     });
   }
 
+  /* ---- Le rattachement des lignes de l'import (partie e) -----------------------------------------------------------
+   * Avec une liste, l'import ne crée plus de compagnie : chaque ligne du programme est rattachée à une compagnie de la
+   * liste, par les règles de tri de l'import qui existent (moteur/import-flights.js) :
+   *   - sa compagnie est un nom de la liste : elle y reste, telle quelle ;
+   *   - sinon, la table des codes compagnie la mène à un nom de la liste : elle y est rattachée ;
+   *   - sinon, son code est parmi les ICAO exclus : elle est ignorée ;
+   *   - sinon, elle n'est rattachée à rien : elle n'est pas comptée, et « Contrôles » le dit, un point par code.
+   * Le nom de la liste passe avant la table : une ligne déjà dans une compagnie de la liste n'en change pas. */
+  const SANS_REGLES = { compagnies: {}, icaoExclus: [] };
+  /** La clé des règles d'import dans le stockage et dans une sauvegarde complète. */
+  const CLE_REGLES = 'ory-import-winrest-v1';
   /**
-   * Le programme de vols que le calcul lit. Sans liste, ou sans compagnie aux commandes fixes, le programme lui-même (le
-   * même objet). Sinon, les lignes de départ de ces compagnies sont remplacées, jour par jour, par leurs départs fixes
-   * (à la place de leur première ligne du jour, ou à la fin). Le rattachement des lignes de l'import (partie e) se
-   * prépare ici aussi.
+   * Les lignes d'un programme rattachées à la liste. `regles` : les règles d'import (complètes), ou rien (aucune table,
+   * aucun code exclu). Rend les lignes gardées (le programme lui-même quand toutes y sont déjà), leur nombre, celui des
+   * lignes ignorées, et les codes non rattachés, rangés par code : { code, vols (lignes), classes (celles de leurs départs) }.
    */
-  function preparerVols(vols, etat) {
+  function rattacher(vols, liste, regles) {
+    const noms = new Set((liste || []).map(c => c.nom)), R = regles || SANS_REGLES, table = new Map();
+    for (const [k, v] of Object.entries(R.compagnies || {})) { const c = normaliser(k); if (c && !table.has(c)) table.set(c, normaliser(v)); }
+    const exclus = new Set((R.icaoExclus || []).map(normaliser)), hors = new Map(), out = [];
+    let rattaches = 0, ignores = 0;
+    for (const v of vols || []) {
+      const code = normaliser(v && v.cie), cible = table.get(code);
+      if (noms.has(code)) { out.push(v); rattaches++; }
+      else if (cible && noms.has(cible)) { out.push({ ...v, cie: cible }); rattaches++; }
+      else if (exclus.has(code)) ignores++;
+      else { if (!hors.has(code)) hors.set(code, []); hors.get(code).push(v); }
+    }
+    const nonRattaches = [...hors.keys()].sort().map(code => {
+      const ids = idsDuProgramme(hors.get(code));
+      return { code, vols: hors.get(code).length, classes: P().CABINES.filter(cab => ids.has(P().idClasse(code, cab))) };
+    });
+    const memesLignes = out.length === (vols || []).length && out.every((v, i) => v === vols[i]);
+    return { vols: memesLignes ? vols : out, rattaches, ignores, nonRattaches };
+  }
+
+  /**
+   * Le programme de vols que le calcul lit. Sans liste, le programme lui-même (le même objet). Avec une liste, ses lignes
+   * rattachées à la liste (`rattacher`, d'après les règles d'import `regles`) ; puis, s'il y a des compagnies aux
+   * commandes fixes, leurs lignes de départ remplacées, jour par jour, par leurs départs fixes (à la place de leur
+   * première ligne du jour, ou à la fin). Quand rien ne change (la liste d'aujourd'hui, toutes les lignes y sont, aucune
+   * commande fixe), le programme lui-même.
+   */
+  function preparerVols(vols, etat, regles) {
     if (!etat || !Array.isArray(etat.compagnies) || !Array.isArray(vols)) return vols;
+    return avecLesFixes(rattacher(vols, etat.compagnies, regles).vols, etat);
+  }
+  function avecLesFixes(vols, etat) {
     const fixes = new Map(etat.compagnies.filter(c => c && c.fixe).map(c => [c.nom, c]));
     if (!fixes.size) return vols;
     const estFixe = v => !!v && v.sens === 'DEP' && fixes.has(normaliser(v.cie));
@@ -237,12 +283,14 @@
     // L'état tel que la page le tient : ses retirées sans double, ses ajoutées nommées en majuscules.
     etat.exclues = [...new Set((Array.isArray(brut.exclues) ? brut.exclues : []).map(String))];
     etat.ajoutees = (Array.isArray(brut.ajoutees) ? brut.ajoutees : []).map(x => ({ cie: normaliser(x && x.cie), cabine: x && x.cabine }));
-    const v = preparerVols(vols, etat), eff = etatEffectif(etat, idsDuProgramme(v));
+    // Les règles de tri de l'import, gardées dans la sauvegarde (validées comme à la restauration) ; sans elles, aucune.
+    const regles = c[CLE_REGLES] === undefined ? null : W().lireEnveloppe(c[CLE_REGLES]);
+    const v = preparerVols(vols, etat, regles), eff = etatEffectif(etat, idsDuProgramme(v));
     if (eff === etat && v === vols) return { sauvegarde, vols };
     return { sauvegarde: { ...sauvegarde, contenu: { ...c, 'ory-ateliers-v1': { ...brut, exclues: eff.exclues, ajoutees: eff.ajoutees } } }, vols: v };
   }
 
-  const api = { MAX_COMPAGNIES, JOURS, HEURE_FIXE, normaliser, lire, lireFixe, idsDeLaListe, idsDuProgramme, compagniesDuProgramme, etatEffectif, listeDesVols, listeApresClasseur, preparerVols, preparerSauvegarde };
+  const api = { MAX_COMPAGNIES, JOURS, HEURE_FIXE, normaliser, lire, lireFixe, idsDeLaListe, idsDuProgramme, compagniesDuProgramme, etatEffectif, listeDesVols, listeApresClasseur, rattacher, preparerVols, preparerSauvegarde };
   if (enNode) module.exports = api;
   else root.OrlyCompagnies = api;
 })(typeof window !== 'undefined' ? window : globalThis);

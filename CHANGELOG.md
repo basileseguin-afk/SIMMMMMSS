@@ -67,6 +67,23 @@ Le plus récent est en haut.
   (handling, camion, retour à la plonge, vols de la Synthèse). Correction de
   (c) : la compagnie choisie dans la liste est sur le fond pâle de l'accent.
   Sans commande fixe, le programme et le résultat sont ceux d'avant.
+- **(e) L'import rattache, il ne crée plus.** Avec une liste, chaque ligne du
+  programme est rattachée à une compagnie de la liste par les règles de tri de
+  l'import qui existent (« Règles d'import Winrest » : les codes compagnie, les
+  ICAO exclus ; `compagnies.js`, `rattacher`) : un nom de la liste reste tel quel,
+  avant toute règle. Une ligne qui ne se rattache à rien n'est pas comptée (ni
+  commande, ni vol). La notification de l'import le dit (« 22 vols rattachés à
+  votre liste, 2 non rattachés : voir « Contrôles ». ») avec un bouton vers
+  « Contrôles », comme le compte rendu de l'import. « Contrôles » montre un point
+  à corriger par compagnie non rattachée (« ECO : 2 vols de l'import ne sont dans
+  aucune compagnie de votre liste »), avec trois gestes : « L'ajouter » ouvre le
+  panneau d'ajout de « Commandes », le nom et les classes de ses vols remplis ;
+  « La rattacher à… » écrit la règle « ECO = NORD » dans les codes compagnie ;
+  « L'ignorer » écrit ECO parmi les ICAO exclus. La notification montre la règle
+  écrite, la section des règles la porte, et « Annuler » la retire. Le bandeau de
+  la Synthèse compte ces points. Renommer une compagnie qui a des vols écrit la
+  règle qui les mène au nouveau nom, et la montre. Les outils lisent les règles
+  dans la sauvegarde. Sans liste, l'import d'avant, champ par champ.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

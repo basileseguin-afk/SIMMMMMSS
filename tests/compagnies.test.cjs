@@ -97,8 +97,10 @@ test('le résultat d’une journée : sans liste comme avant ; avec la liste d�
   // Une liste qui retire une compagnie : ses commandes ne sont plus dans la journée.
   const moins = journee(avecListe(LISTE_FICTIVE.filter(c => c.nom !== 'SUD')), vols);
   assert.ok(Object.keys(avant.parClasse).some(id => id.startsWith('SUD/')));
-  // (Son armement, une case par compagnie, reste tant que ses vols sont au programme : comme quand toutes ses classes sont retirées.)
+  // Ses vols ne se rattachent plus à la liste (évolution 26 e) : ils ne comptent pas. La case de son armement, que ses
+  // équipes ont cochée, reste, sans vol (moteur/production.js, `classesCategories`).
   assert.ok(!Object.keys(moins.parClasse).some(id => id.startsWith('SUD/') && !id.includes('/@')), 'ses commandes ne sont plus dans la journée');
+  assert.equal(moins.parClasse['SUD/@ARM'].vols, 0, 'son armement : aucun vol');
 });
 
 test('les outils lisent la liste par le même chemin : une sauvegarde d’avant rend le même résultat ; la liste d’aujourd’hui aussi', async () => {

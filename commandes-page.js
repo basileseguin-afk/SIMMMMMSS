@@ -297,10 +297,11 @@
       if (ici) { ici.focus({ preventScroll: true }); if (sel && typeof ici.setSelectionRange === 'function') try { ici.setSelectionRange(sel[0], sel[1]); } catch (e) { /* champ sans sélection */ } }
     }
 
-    ouvrirAjout() {
+    /** Le panneau d'ajout ; `o` (« L'ajouter », depuis « Contrôles » — évolution 26 e) : le nom et les classes, remplis. */
+    ouvrirAjout(o = {}) {
       if (this.verrouille()) return;
-      const noms = this.noms();
-      this.panneau = { genre: 'ajout', nom: '', fixe: false, cabines: ['YC'], mode: noms.length ? 'modele' : 'zero', modele: noms[0] || '' };
+      const noms = this.noms(), cabines = (o.cabines || []).length ? o.cabines.slice() : ['YC'];
+      this.panneau = { genre: 'ajout', nom: String(o.nom || ''), fixe: false, cabines, mode: noms.length ? 'modele' : 'zero', modele: noms[0] || '' };
       this.rendre();
       const l = this.hote().querySelector('.co-liste'); if (l) l.scrollTop = 0;   // les commandes à créer, en tête, se voient
       const champ = this.hote().querySelector('[data-co-champ="nom"]'); if (champ) champ.focus();
@@ -356,10 +357,13 @@
     }
 
     renommer(el) {
-      const p = this.panneau; if (!p || p.genre !== 'compagnie' || this.verrouille()) return;
+      const p = this.panneau; if (!p || p.genre !== 'compagnie' || this.verrouille() || this.renommage) return;
       const neuf = String(el.value || '').trim().toUpperCase();
       if (neuf === p.nom) return;
-      const refus = this.a.renommer(p.nom, el.value);
+      // Le calcul qui suit redessine la page : le champ quitté envoie son « change » pendant ce temps — c'est le même geste.
+      let refus;
+      this.renommage = true;
+      try { refus = this.a.renommer(p.nom, el.value); } finally { this.renommage = false; }
       if (refus) { p.refus = refus; this.rendre(); return; }
       p.nom = neuf; p.refus = ''; this.rendre();
     }
