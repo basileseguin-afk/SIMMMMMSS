@@ -116,11 +116,41 @@ let descProgramme = { data: null, d: null };
 let numeroProgramme = 0;
 const descriptionDuProgramme = data => (descProgramme.data === data ? descProgramme.d : (descProgramme = { data, d: OrlyPeriode.decrire(data) }).d);
 function chargerVols(data) {
+  // Le programme que le calcul lit (évolution 26) : sans liste des compagnies, le programme lui-même.
+  data = programmePrepare(data);
   const d = descriptionDuProgramme(data);
   if (!d) Sim.jourVols = null;
   else if (!(Sim.jourVols >= d.debut && Sim.jourVols <= d.fin)) Sim.jourVols = d.debut;
   flights = OrlyJournee.volsDecales(d ? OrlyPeriode.volsDuJour(data, Sim.jourVols) : data, CFG.shift);
   if (document.getElementById('source-count')) updateSource();
+}
+/* LA LISTE DES COMPAGNIES (évolution 26, compagnies.js). Le programme importé reste tel quel (`Sim.dataCourante`) ; le
+ * calcul lit le programme préparé d'après la liste (`OrlyCompagnies.preparerVols`), refait quand la liste change. Sans
+ * liste, c'est le même objet : rien ne change. `idsDuProgramme` : les commandes que porte le programme entier, tous ses jours — la liste s'y traduit. */
+let prepare = { brut: null, sig: null, vols: null, ids: null };
+// La liste elle-même : chaque geste la remplace par une liste neuve (`valider`), une liste inchangée garde la même.
+const signaturePreparation = () => { const st = Sim.ateliers && Sim.ateliers.state; return st && Array.isArray(st.compagnies) ? st.compagnies : null; };
+function programmePrepare(data) {
+  data = data || Sim.dataCourante || SAMPLE;
+  const sig = signaturePreparation();
+  if (prepare.brut !== data || prepare.sig !== sig) {
+    const st = Sim.ateliers ? Sim.ateliers.state : null;
+    prepare = { brut: data, sig, vols: window.OrlyCompagnies && st ? OrlyCompagnies.preparerVols(data, st) : data, ids: null };
+  }
+  return prepare.vols;
+}
+function idsDuProgramme() {
+  const vols = programmePrepare();
+  if (!prepare.ids) prepare.ids = OrlyCompagnies.idsDuProgramme(vols);
+  return prepare.ids;
+}
+/** Après un changement de la liste : si le programme préparé n'est plus le même, la journée se recharge. */
+function suivrePreparation() {
+  if (!window.OrlyCompagnies || !Sim.ateliers) return false;
+  const avant = prepare.vols, brut = Sim.dataCourante || SAMPLE;
+  if (programmePrepare(brut) === avant) return false;
+  chargerVols(brut);
+  return true;
 }
 
 /* ==========================================================================
@@ -618,6 +648,8 @@ function initAteliers(){
     // Le handling a son service à lui, dans la zone CF départ food (où il charge).
     creerHandling:()=>Sim.editor?Sim.editor.nouveauService('Handling','handling',!ZONES.handling):null,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
+    // Les commandes que porte le programme entier (évolution 26 b) : la liste des compagnies s'y traduit.
+    idsDuProgramme,
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
     // Ce que le calcul lit de l'unité (moteur/journee.js) : le plan, ses services
@@ -631,7 +663,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{suivreGestes();if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
+    change:r=>{suivreGestes();if(suivreDemo()||suivrePreparation()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -858,7 +890,7 @@ function sourcesProblemes(){
   // Fournisseurs » ; et les clients réglés en partie (une sauvegarde d'avant) se lisent, en information.
   const U=Sim.unite&&window.OrlyFournisseurs&&Sim.unite.estFournisseur?Sim.unite:null;
   const fourni=a=>(U&&a.code==='parcours-trou'&&a.service&&U.estFournisseur(a.service)?{...a,fournisseur:true}:a);
-  return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
+  return {points:pointsDesCompagnies(),anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
     clientsEnPartie:U&&U.tableauFournisseurs?U.tableauFournisseurs().enPartie:0,
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
     etapes,enClair:MoteurProduction.enClair,
@@ -866,6 +898,30 @@ function sourcesProblemes(){
     cheminDe:c=>{const PC=window.OrlyParcours,st=Sim.ateliers.state,p=PC?PC.fluxDe(st,Sim.ateliers.classes.find(x=>x.id===c)||c):null;
       return p?{id:p.id,nom:p.nom,defaut:!PC.cheminDe(st,c)}:null;},
     libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService};
+}
+/* Les points de la liste des compagnies (évolution 26), en tête de « Contrôles ». Une unité sans liste : ses compagnies
+ * viennent encore des vols — une information, et le geste « En faire ma liste ». */
+function pointsDesCompagnies(){
+  const at=Sim.ateliers;if(!at||!window.OrlyCompagnies)return [];
+  const out=[];
+  if(!at.compagnies){
+    const n=OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,at.state).length;
+    if(n)out.push({niveau:'information',cle:'liste',titre:'Les compagnies de cette unité viennent encore des vols : '+n+(n>1?' trouvées.':' trouvée.'),
+      page:'mu-pas',gestes:[{action:'faire-liste',texte:'En faire ma liste'}]});
+  }
+  return out;
+}
+/** Un geste fait dans « Contrôles » (évolution 26). Rend vrai s'il a été fait. */
+function gesteControles(action){
+  if(action==='faire-liste')return faireMaListe();
+  return false;
+}
+/** « En faire ma liste » : la liste des compagnies telle qu'elle est aujourd'hui (compagnies.js). Le résultat ne change pas. */
+function faireMaListe(){
+  const at=Sim.ateliers;if(!at||at.compagnies||!window.OrlyCompagnies)return false;
+  const liste=OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,at.state),n=liste.reduce((k,c)=>k+c.classes.length,0);
+  return at.changer(()=>{at.state.compagnies=liste;},'Votre liste des compagnies est faite : '+liste.length+(liste.length>1?' compagnies, ':' compagnie, ')
+    +n+(n>1?' commandes':' commande')+'. Le résultat ne change pas.');
 }
 /* Le dernier réglage changé, et son heure (évolution 22 d) : « Contrôles » le dit. Un historique qui avance (les équipes et
  * les chemins, les temps par vol, les liens, le plan) est un réglage changé ; ce que la page annonce dans le même geste dit
@@ -946,6 +1002,8 @@ function initUnite(){
     avis:()=>(Sim.problemes?Sim.problemes.liste:[]),
     dernierReglage:()=>dernierReglage,
     voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true)),
+    // Un geste qui se fait dans « Contrôles » même (évolution 26) : « En faire ma liste »…
+    geste:(action,valeur,p)=>gesteControles(action,valeur,p),
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,lieu)=>allerPage(page,lieu),
     // En lecture seule (évolution 23 d), « Contrôles » se lit : ses boutons vers un réglage sont grisés, avec leur raison.
@@ -2291,7 +2349,7 @@ function signaturePeriode(){
   const v=x=>(x?x.version:0);
   return [v(Sim.ateliers),v(Sim.reglages),v(Sim.flows),v(Sim.editor),programmes,CFG.loadDelay,CFG.shift].join('|');
 }
-const programmeDate=()=>(descriptionDuProgramme(Sim.dataCourante)?Sim.dataCourante:null);
+const programmeDate=()=>(descriptionDuProgramme(Sim.dataCourante)?programmePrepare(Sim.dataCourante):null);
 /** Ce que la veille laisse à la journée affichée dans la période (ses vols de la veille décalés comme les siens), ou null. */
 function entreeDeLaJournee(){
   const e=Sim.periode?Sim.periode.entreeDuJour(Sim.jourVols):null;
@@ -2324,7 +2382,7 @@ function initPeriode(){
   Sim.periode=new OrlyPeriodeVue.VuePeriode({
     programme:programmeDate,
     // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
-    unite:()=>{Sim.ateliers.synchroniserAteliers();return JSON.parse(JSON.stringify({...Sim.ateliers.a.unite(),etat:Sim.ateliers.state}));},
+    unite:()=>{Sim.ateliers.synchroniserAteliers();return JSON.parse(JSON.stringify({...Sim.ateliers.a.unite(),etat:Sim.ateliers.etatPourLeCalcul()}));},
     options:()=>({delaiChargement:CFG.loadDelay,decalage:CFG.shift}),
     signature:signaturePeriode,
     jour:()=>Sim.jourVols,
@@ -2412,7 +2470,7 @@ function changerTravail(r,message){
 /** La journée affichée, en jour de travail : la charge de ses services, l'encadrement, les chauffeurs (le prévu calé de la Synthèse). */
 function journeeCalee(){
   const r=Sim.ateliers&&Sim.ateliers.resultat;if(!r||!r.ok)return null;
-  const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.state};
+  const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.etatPourLeCalcul()};
   const args=OrlyJournee.argumentsDeLUnite(unite,Sim.ateliers.a.vols(),{delaiChargement:CFG.loadDelay});
   // L'encadrement compté comme dans la période : ses personnes × sa présence ÷ la présence générale (évolution 11 e).
   const encadrement=Object.fromEntries(Object.entries(Sim.ateliers.state.encadrement||{}).map(([id,x])=>[id,OrlyPeriode.encadrementDuJour(x,args.regime).charge]));
@@ -3160,7 +3218,8 @@ function capturer(slot, silencieux) {
   snaps[slot] = OrlyComparaison.capturer(r, {
     source: dataSource,
     ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)),
-    etat: (({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})=>JSON.parse(JSON.stringify({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})))(Sim.ateliers.state),
+    // L'état que le calcul lit (évolution 26 b) : avec une liste des compagnies, ses classes retirées et ajoutées.
+    etat: (({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})=>JSON.parse(JSON.stringify({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})))(Sim.ateliers.etatPourLeCalcul()),
     vols: JSON.parse(JSON.stringify(flights)),
     reglages: Sim.reglages ? Sim.reglages.pourMoteur() : { delaiChargement: CFG.loadDelay },
     liaisons: liaisonsServices(),
@@ -3949,7 +4008,9 @@ function migrerRobot(){
 let cleDemo='';
 function suivreDemo(){
   if(dataSource!=='Jeu de démonstration'||!Sim.ateliers)return false;
-  const data=OrlyDemo.completer(SAMPLE,OrlyDemo.compagniesUtilisees(Sim.ateliers.state));
+  // Avec la liste des compagnies (évolution 26 b), chaque compagnie de la liste compte comme une compagnie ajoutée.
+  const st=Sim.ateliers.state,liste=Array.isArray(st.compagnies)?st.compagnies.flatMap(c=>c.classes.map(cabine=>({cie:c.nom,cabine}))):[];
+  const data=OrlyDemo.completer(SAMPLE,OrlyDemo.compagniesUtilisees(liste.length?{...st,ajoutees:[...(st.ajoutees||[]),...liste]}:st));
   const cle=data.map(v=>v.id).join(',');
   if(cle===cleDemo)return false;
   cleDemo=cle;Sim.dataCourante=data;chargerVols(data);

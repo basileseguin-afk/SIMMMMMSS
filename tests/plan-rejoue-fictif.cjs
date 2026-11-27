@@ -14,6 +14,7 @@ const J = require('../moteur/journee.js');
 const P = require('../moteur/production.js');
 const I = require('../moteur/indicateurs.js');
 const PE = require('../moteur/periode.js');
+const CO = require('../compagnies.js');
 
 const S = REF.scenarios.find(s => s.nom === 'unite-vol');
 const hh = t => (t == null ? '' : String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'));
@@ -45,9 +46,14 @@ function volsSansRetardCsv() {
   return TETE + '\n' + garde.map(v => LIGNE({ ...v, std: v.sens === 'DEP' ? Math.min(23 * 60 + 50, v.std + 300) : v.std })).join('\n') + '\n';
 }
 
-/** La sauvegarde de l'unité fictive, ses zones en grille : `colonnes` par rang, chaque zone `w` × `h` unités, depuis (x0, y0). */
-function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380, ecart = 140 } = {}) {
+/**
+ * La sauvegarde de l'unité fictive, ses zones en grille : `colonnes` par rang, chaque zone `w` × `h` unités, depuis (x0, y0).
+ * Évolution 26 (b) : l'unité d'exemple a sa liste des compagnies, celle que « En faire ma liste » écrirait (ses commandes
+ * d'aujourd'hui) — le calcul rend le même résultat. `liste: false` : l'unité d'avant, privée de sa liste.
+ */
+function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380, ecart = 140, liste = true } = {}) {
   const s = JSON.parse(JSON.stringify(S.sauvegarde));
+  if (liste) s.contenu['ory-ateliers-v1'].compagnies = CO.listeDesVols(S.args.vols, s.contenu['ory-ateliers-v1']);
   let i = 0;
   for (const z of s.contenu['orly-plan-v3'].zones) {
     Object.assign(z, { x: x0 + (i % colonnes) * (w + ecart), y: y0 + Math.floor(i / colonnes) * (h + ecart), w, h });

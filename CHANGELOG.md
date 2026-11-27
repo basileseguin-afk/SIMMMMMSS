@@ -17,6 +17,20 @@ Le plus récent est en haut.
   d'avant est relevé une fois dans `tests/charte-dette.json` ; il ne peut que
   baisser. La charte cite, à côté des règles 9, 10 et 17, les tests qui les
   tiennent déjà.
+- **(b) La liste des compagnies appartient à l'utilisateur.** Une donnée de plus
+  dans l'état des équipes (`compagnies`, dans `ory-ateliers-v1`) : chaque
+  compagnie avec ses classes ; une compagnie existe sans vol. Avec une liste, les
+  commandes sont celles de la liste, ni plus ni moins : `compagnies.js` la traduit,
+  avant le calcul, en classes retirées et ajoutées, que le moteur lit déjà
+  (`moteur/` ne change pas). La page et les outils (`outils/simuler-journee.cjs`,
+  `outils/simuler-periode.cjs`, `outils/caler-periode.cjs`) préparent la
+  sauvegarde au même endroit. Sans liste (une unité d'avant), rien ne change,
+  champ par champ. « Contrôles » le dit en information (« Les compagnies de cette
+  unité viennent encore des vols : 5 trouvées. ») avec « En faire ma liste », qui
+  écrit la liste telle qu'elle est sans changer le résultat, et s'annule. Les
+  gestes « Retirer », « Rétablir » et « + Ajouter » tiennent la liste à jour ; la
+  feuille « Classes » du classeur des équipes la mène à l'import. L'unité fictive
+  des tests a sa liste.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

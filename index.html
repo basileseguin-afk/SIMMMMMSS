@@ -136,7 +136,7 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="9872143b89"/>
+<meta name="ory-version" content="efd081d071"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
 <link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=a5ac5130" rel="stylesheet"/><link href="charge.css?v=5e621050" rel="stylesheet"/><link href="plan-rejoue.css?v=cc2e1741" rel="stylesheet"/><link href="plan-flux.css?v=8bdd4843" rel="stylesheet"/><link href="direct.css?v=475db1a0" rel="stylesheet"/><link href="planning-vue.css?v=0b8fe2ef" rel="stylesheet"/><link href="resultats-vue.css?v=76f9ddaf" rel="stylesheet"/><link href="synthese-vue.css?v=23944793" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/><link href="jouent.css?v=e8644013" rel="stylesheet"/><link href="avis.css?v=f8b612b4" rel="stylesheet"/><link href="vols-page.css?v=0aae3ced" rel="stylesheet"/><link href="menu.css?v=15992ebc" rel="stylesheet"/><link href="lecture-seule.css?v=36a56069" rel="stylesheet"/><link href="services-page.css?v=32387957" rel="stylesheet"/><link href="fichiers-page.css?v=d8032747" rel="stylesheet"/><link href="chemins-page.css?v=8ce78cff" rel="stylesheet"/><link href="controles-page.css?v=7549d88b" rel="stylesheet"/><link href="reglages-page.css?v=893d7817" rel="stylesheet"/><link href="visuel.css?v=0c5f49db" rel="stylesheet"/><link href="lisible.css?v=ded2b725" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
@@ -258,13 +258,14 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="ds.js?v=2acdca0d"></script>
 <script src="palette.js?v=7712201e"></script>
 <script src="onglets.js?v=85eb53c0"></script>
-<script src="avis.js?v=5ccceed4"></script>
+<script src="avis.js?v=6ab514e9"></script>
 <script src="vols-page.js?v=b02f0c00"></script>
 <script src="notifications.js?v=c02682a3"></script>
 <script src="icones.js?v=a3450299"></script>
 <script src="ui-model.js?v=73d18d7f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=ed0006c3"></script>
+<script src="compagnies.js?v=cc99e64d"></script>
 <script src="mots/plan-editor.js?v=b9b3c571"></script>
 <script src="mots/flow-center.js?v=7345045c"></script>
 <script src="tableur.js?v=7fa2b57a"></script><script src="classeurs-anciens.js?v=7e5008e8"></script>
@@ -273,10 +274,10 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="mots/echanges.js?v=6931cfe4"></script>
 <script src="mots-moteur.js?v=b4d5d690"></script>
 <script src="jouent.js?v=6f7d1a25"></script><script src="plan-menage.js?v=1e70f2de"></script><script src="jouent-vue.js?v=ec423f3c"></script>
-<script src="ateliers.js?v=42555643"></script>
+<script src="ateliers.js?v=bdefb774"></script>
 <script src="mots/reglages.js?v=42373205"></script>
 <script src="moteur/journee.js?v=ccc447bf"></script><script src="moteur/indicateurs.js?v=51eb5358"></script><script src="moteur/ordre-services.js?v=9dfb062a"></script><script src="moteur/disposition.js?v=17d434ae"></script><script src="moteur/site.js?v=d01f0835"></script><script src="site-reglages.js?v=8fde3358"></script><script src="moteur/reponses.js?v=356ba510"></script><script src="seuils-vue.js?v=e90eaada"></script><script src="moteur/periode.js?v=4b188df1"></script><script src="periode-courbe.js?v=d9588778"></script><script src="periode-vue.js?v=a29330ef"></script><script src="charge-vue.js?v=f9234e3e"></script><script src="planning-ensemble.js?v=76206789"></script><script src="planning-vue.js?v=7f9f34fc"></script><script src="resultats-vue.js?v=bf4eb8e0"></script><script src="synthese-vue.js?v=3f8c792e"></script><script src="comparer-vue.js?v=e1e055ad"></script><script src="plan-rejoue.js?v=8fb26f05"></script><script src="plan-flux.js?v=6b4464bc"></script><script src="direct-camera.js?v=fc7ad4b7"></script><script src="direct-etat.js?v=2e209f1b"></script><script src="direct-allees.js?v=56057456"></script><script src="direct-scene.js?v=622eef16"></script><script src="direct-lire.js?v=dd42cf65"></script><script src="direct-temps.js?v=81a75daf"></script><script src="direct-panneau.js?v=af1dca7a"></script><script src="direct-questions.js?v=89bb76a9"></script><script src="direct-dessin.js?v=6cdd4a9f"></script><script src="direct-vue.js?v=38a1ba77"></script><script src="direct-disposer.js?v=77bcc129"></script><script src="echanges-charge.js?v=15bcfa71"></script><script src="echanges-reponses.js?v=aa524fd3"></script><script src="classeur-compresse.js?v=74f3647d"></script><script src="moteur/import-flights.js?v=7440280d"></script><script src="echanges-import-flights.js?v=401f6644"></script><script src="import-flights-vue.js?v=79070d93"></script><script src="moteur/reel.js?v=31e25810"></script><script src="moteur/planning.js?v=6d8ac712"></script><script src="moteur/calage-travail.js?v=6f307d8d"></script><script src="moteur/calage-formes.js?v=2019896e"></script><script src="moteur/calage-statut.js?v=0b1c62f1"></script><script src="moteur/calage-periode.js?v=205dc845"></script><script src="echanges-calage.js?v=cf16af6a"></script><script src="calage-nuage.js?v=5c4f801a"></script><script src="calage-vue.js?v=21206571"></script>
-<script src="mots/unite.js?v=2af89398"></script><script src="services-page.js?v=5c7bff80"></script><script src="fichiers-page.js?v=e388c63b"></script><script src="chemins-page.js?v=2efa7aaf"></script><script src="lecture-seule.js?v=d31fa8bf"></script><script src="controles-page.js?v=caf5bf56"></script><script src="reglages-page.js?v=4d9f6456"></script>
+<script src="mots/unite.js?v=2af89398"></script><script src="services-page.js?v=5c7bff80"></script><script src="fichiers-page.js?v=e388c63b"></script><script src="chemins-page.js?v=2efa7aaf"></script><script src="lecture-seule.js?v=d31fa8bf"></script><script src="controles-page.js?v=4f305ad0"></script><script src="reglages-page.js?v=4d9f6456"></script>
 <script src="demarrage.js?v=a89507e8"></script>
 <script src="mots/temps.js?v=cc607596"></script>
 <script src="replay.js?v=016adb42"></script>
@@ -286,6 +287,6 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="pastilles.js?v=069afa3e"></script>
 <script src="etat-sauvegarde.js?v=e2f7f11c"></script>
 <script src="inhabituel.js?v=80deae30"></script>
-<script src="sim.js?v=981439a0"></script>
+<script src="sim.js?v=68920abb"></script>
 </body>
 </html>

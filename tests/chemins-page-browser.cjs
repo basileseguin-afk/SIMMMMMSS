@@ -46,7 +46,8 @@ function ecarts(avant,apres,chemin='',out=[]){
  const ouvrir=async url=>{
   const ctx=await browser.newContext({viewport:{width:1366,height:768}});
   const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(e.message));page.on('dialog',d=>d.accept());
-  const site=await F.charger(page,nav,url,{pageId:'mu-flux'});
+  // Une unité d'avant (sans liste des compagnies, que la version 2 ne lit pas) : les deux versions comparées champ par champ.
+  const site=await F.charger(page,nav,url,{sauvegarde:F.sauvegardeFictive({liste:false}),pageId:'mu-flux'});
   return {page,ctx,site};
  };
  const attendre=(page,ms=300)=>page.waitForTimeout(ms);

@@ -126,7 +126,7 @@ const CSV_NEUF=F.volsCsv()+'NE900,NEUF,MOYEN,DEP,18:00,,4,0,90,4,0\n';
    /* ---- (c) « Contrôles » : une commande sans équipe à trois étapes, puis la fiche ouverte par son bouton ----------- */
    {
     const {page,attendre,capturer,fermer}=await ouvrir();
-    const site=await F.charger(page,nav,URL_V1,{csv:CSV_NEUF,pageId:'mu-pas'});
+    const site=await F.charger(page,nav,URL_V1,{csv:CSV_NEUF,sauvegarde:F.sauvegardeFictive({liste:false}),pageId:'mu-pas'});
     try{
      await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.problemes&&Sim.unite);
      // Chaque étape sans équipe reçoit une équipe ; puis la commande ajoutée, cochée dans une seule équipe de la cuisine.

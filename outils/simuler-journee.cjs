@@ -27,6 +27,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const J = require('../moteur/journee.js');
+const CO = require('../compagnies.js');
 const I = require('../moteur/indicateurs.js');
 const REP = require('../moteur/reponses.js');
 const T = require('../tableur.js');
@@ -60,7 +61,10 @@ async function simulerJournee(cheminSauvegarde, cheminVols, cheminOptions, { arg
   if (dates.length > 1) throw new Error('vols : programme daté sur ' + dates.length + ' jours (du ' + dates[0] + ' au ' + dates[dates.length - 1]
     + ') ; une journée se joue avec les vols d’un seul jour. Pour la période : node outils/simuler-periode.cjs.');
   if (dates.length) vols = vols.map(({ date, ...v }) => v);
-  const args = J.argumentsDeLaJournee(sauvegarde, vols, options);
+  // La liste des compagnies (évolution 26) : la sauvegarde et les vols préparés comme dans la page. Sans liste, les mêmes.
+  const pret = CO.preparerSauvegarde(sauvegarde, vols);
+  vols = pret.vols;
+  const args = J.argumentsDeLaJournee(pret.sauvegarde, vols, options);
   if (seulementArguments) return args;
   const resultat = J.jouer(args);
   const sortie = {
