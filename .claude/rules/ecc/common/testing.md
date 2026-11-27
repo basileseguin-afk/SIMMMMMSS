@@ -5,9 +5,9 @@
 
 A fix or a feature is not finished until it has been tested:
 - run the tests that cover the change and see them pass;
-- run the whole suite before committing, to catch regressions.
+- before committing, run the tests that the category of the delivery calls for, to catch regressions (see below).
 
-In this repository: `node --test tests/*.test.cjs tests/v2/*.test.cjs` (Node tests), and the browser tests `tests/*-browser.cjs` that the change touches. Before each commit, the whole battery also runs in a clean clone, without the files `.gitignore` refuses: `node outils/batterie.cjs` (the verification-loop skill, phase 4b). No test depends on `plan-prive/` or any other ignored file; a test that needs a background plan uses the fictive tile of `tests/plan-fictif.cjs`.
+In this repository, the category of the delivery, read from its diff, decides which tests run (section « Les tests » of `.claude/rules/simms.md`); a documents-only delivery runs none. The Node tests: `node --test tests/*.test.cjs tests/v2/*.test.cjs`; the browser tests: those of `tests/*-browser.cjs` that the change touches. The whole battery runs in a clean clone, without the files `.gitignore` refuses (`node outils/batterie.cjs --commit HEAD`, the verification-loop skill, phase 4b), only when the category calls for it: once per delivery, on the head of the branch, never before each commit. No test depends on `plan-prive/` or any other ignored file; a test that needs a background plan uses the fictive tile of `tests/plan-fictif.cjs`.
 
 ## Test Types
 

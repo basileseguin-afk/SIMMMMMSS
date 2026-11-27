@@ -20,3 +20,42 @@
 - Pas de rapport TDD dans un fichier : le résumé va dans le corps du commit.
 - Pas de documents de planification (PRD, architecture, system_design…) dans le dépôt : le plan reste dans la session ou dans le corps du commit.
 - Avant chaque commit : le skill verification-loop. Pour une partie qui touche le moteur : l'agent code-reviewer.
+
+## Travail par prompt (Project Claude Code)
+
+Section ajoutée le 2026-11-27. Elle complète les règles ci-dessus sans en changer aucune.
+
+### Le cycle
+- Un prompt du maître d'œuvre = un thread = une branche neuve = une pull request vers la branche par défaut.
+- La branche part de la tête de la branche par défaut au lancement du thread. Elle n'est pas remise à jour sur la branche par défaut (ni merge, ni rebase), sauf si un prompt le demande.
+- Ne jamais fusionner une pull request. Ne jamais pousser sur la branche par défaut. Ne jamais réécrire l'historique d'une branche poussée : ni force-push, ni rebase, ni amend d'un commit poussé.
+- Une fois le rapport donné, la branche ne bouge plus : le maître d'œuvre vérifie le commit de tête que le rapport nomme. Une retouche n'arrive que par un prompt « RETOUCHE PROMPT NN.k » qui nomme la branche ; ses commits s'ajoutent par-dessus, puis un nouveau rapport « RAPPORT PROMPT NN.k ».
+- L'en-tête d'un prompt dit s'il peut tourner en parallèle d'un autre. Sans mention : un seul à la fois.
+
+### Les tests
+- Chaque livraison a une catégorie, lue dans son diff ; la plus lourde l'emporte.
+  - Documents seuls (`docs/`, `CHANGELOG.md`, `README.md`, `CLAUDE.md`, `.claude/`) : aucun test à lancer.
+  - Interface : à chaque partie, la suite Node, les tests navigateur des pages touchées et les tests de la charte (ceux que `docs/CHARTE_INTERFACE.md` cite à côté de ses règles). Pas de batterie complète, sauf quand le prompt la demande (en fin de série).
+  - Calcul et données : le diff touche `moteur/`, un fichier appelé par le calcul ou par l'import des vols, le stockage ou la sauvegarde, ou un fichier identique à son jumeau de `v2/`. À chaque partie, la suite Node et les tests ciblés ; une fois, sur la tête de la branche, la batterie complète dans une copie propre.
+- Un fichier propre à la version 1 que toutes les pages chargent (feuilles et scripts de la coquille, `index.html`) touche toutes les pages : ses tests ciblés sont alors les tests navigateur de toutes les pages du menu.
+- La batterie complète ne se lance jamais à chaque partie ni avant chaque commit. Le skill `verification-loop` (phase 4b) et `.claude/rules/ecc/common/testing.md` suivent cette règle ; elle remplace la consigne « avant chaque commit » qui reste écrite dans l'en-tête de `outils/batterie.cjs` et dans `docs/BANC_ESSAI.md`.
+
+### Les documents de référence
+- Avant toute partie, lire `docs/decisions.md` et `docs/CHARTE_INTERFACE.md`. Toute page nouvelle ou modifiée de la version 1 respecte la charte ; un écart voulu se décide avec le chef de projet et s'écrit d'abord dans la charte.
+- Ces deux fichiers ne se modifient que si le prompt le demande, et seulement comme il le demande.
+- Si le prompt semble contredire une décision ou une règle de la charte : ne pas trancher. Arrêter la partie concernée avant d'écrire, faire les autres, et décrire le conflit dans la section 9 du rapport.
+
+### Le rapport
+Le thread finit par un message qui commence par « RAPPORT PROMPT NN », recopié dans la description de la pull request. Les douze sections sont toutes présentes, dans cet ordre ; « rien » si une section est vide.
+1. Identité : nom de la branche ; numéro de la pull request ; base (nom de la branche et SHA complet du commit de départ) ; tête (SHA complet du dernier commit) ; nombre de commits.
+2. Commits : un par ligne, SHA court, partie, titre, signé ou non.
+3. Périmètre : `git diff --stat base..tête` ; la commande qui montre que `v2/`, `moteur/` et les fichiers identiques à leur jumeau de `v2/` n'ont pas changé, et son résultat (ou ce qui a changé, et pourquoi).
+4. Calcul : « aucun calcul ne change », ou ce qui change, où et pourquoi ; ce que donne `node outils/empreinte.cjs`.
+5. Sauvegarde : format inchangé, ou entrées ajoutées ou changées ; ce que devient une sauvegarde d'avant, et une sauvegarde d'après lue par le code d'avant.
+6. Tests : la catégorie (documents, interface, calcul et données) et les fichiers du diff qui la décident ; la suite Node (réussis, en échec) ; chaque test navigateur lancé, avec sa raison (page touchée, charte) ; la batterie complète sur la tête si la catégorie la demande, dans une copie propre (OK, ÉCHEC) ; tests ajoutés ; tests dont la valeur attendue change (ancienne → nouvelle, et pourquoi) ; tests instables rencontrés.
+7. Données : confirmation qu'aucune donnée d'une unité réelle n'a été ajoutée (noms, chiffres, plan), et comment cela a été vérifié.
+8. Écarts au prompt : ce qui n'est pas fait, ce qui est fait autrement, ce qui est laissé faute de pouvoir toucher `moteur/` ou un fichier commun.
+9. Contradictions avec `docs/decisions.md` ou la charte.
+10. Choix à valider : un par ligne, avec sa partie.
+11. Questions au maître d'œuvre.
+12. Captures : où elles sont (hors dépôt) et la commande pour les refaire.
