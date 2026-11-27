@@ -15,7 +15,11 @@ Dernière mise à jour : 2026-11-27.
 - 2026-11-17 — Les corrections de la version 1 ne sont pas reportées dans la version 2 tant qu'elle n'est pas utilisée. [À CONFIRMER]
 - 2026-11-05 — Les données de l'unité (vols, heures réelles, exports de l'ERP, sauvegardes) ne vont jamais dans le dépôt ni dans une demande à Claude Code.
 - 2026-11-16 — Ce qui décrit l'unité (compagnies, disposition, listes d'import, couleurs) est un réglage de l'utilisateur, gardé dans sa sauvegarde, jamais une valeur du code.
-- 2026-11-03 — Chaque livraison est vérifiée hors dépôt sur les vraies données : même résultat quand rien ne doit changer, sauvegarde restaurée puis exportée rendue à l'identique, batterie complète lancée seule.
+- 2026-11-03 — Chaque livraison est vérifiée hors dépôt sur les vraies données : même résultat quand rien ne doit changer, sauvegarde restaurée puis exportée rendue à l'identique, pages contrôlées à l'écran.
+- 2026-11-27 — Tests proportionnés au risque, selon la catégorie de la livraison : documents seuls, aucun test ; interface, suite Node, tests navigateur des pages touchées et tests de la charte, et batterie complète une fois en fin de série (pour la série en cours : avec le PROMPT 44) ; calcul et données, batterie complète à chaque livraison.
+- 2026-11-27 — Catégorie « calcul et données » : le diff touche `moteur/`, un fichier appelé par le calcul ou par l'import des vols, le stockage ou la sauvegarde, ou un fichier identique à son jumeau de `v2/`. La catégorie se lit dans le diff, pas dans l'intention du prompt ; la plus lourde l'emporte.
+- 2026-11-27 — La batterie complète tourne une fois par livraison, dans le thread, sur la tête de la branche ; le maître d'œuvre ne la relance que si le rapport montre un échec ou un test instable.
+- 2026-11-27 — Quand une livraison touche le stockage ou la sauvegarde, le maître d'œuvre rejoue plusieurs fois, de son côté, les tests d'enregistrement. [À CONFIRMER]
 - 2026-11-03 — Un résultat défavorable est rapporté tel quel.
 - 2026-11-27 — Un prompt du maître d'œuvre = un thread = une branche = une pull request vers la branche par défaut ; le chef de projet ne fusionne la PR qu'après la vérification du maître d'œuvre ; un seul prompt à la fois, sauf mention contraire en tête du prompt.
 - 2026-11-27 — `docs/decisions.md` et `docs/CHARTE_INTERFACE.md` ne se modifient que sur demande explicite d'un prompt du maître d'œuvre.
