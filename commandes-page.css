@@ -27,9 +27,10 @@ body[data-sous="mu-commandes"] #view-ateliers>#mu-commandes{flex:1 1 0;min-heigh
   background:none;color:var(--ds-texte-1);font:inherit;font-weight:var(--ds-g-moyen);cursor:pointer}
 .co-cie:hover,.co-cie[aria-pressed="true"]{background:var(--ds-survol);border-color:var(--ds-bordure-forte)}
 .co-cie:focus-visible{outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
-/* La compagnie choisie : le fond pâle de l'accent, un trait d'accent à gauche. */
-.co-groupe.choisie>tr>*{background:var(--ds-choix-fond)}
-.co-groupe.choisie>tr>th{box-shadow:inset 3px 0 0 var(--ds-choix-trait)}
+/* La compagnie choisie : le fond pâle de l'accent, un trait d'accent à gauche (règle 11 ; les jetons du choix, pleins,
+ * sont ceux d'un onglet choisi). */
+.co-groupe.choisie>tr>*{background:var(--ds-accent-pale)}
+.co-groupe.choisie>tr>th{box-shadow:inset 3px 0 0 var(--ds-accent)}
 .co-fixe{margin-left:6px;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
 .co-chemin{white-space:nowrap}
 .co-etat{color:var(--ds-texte-2)}
@@ -62,6 +63,20 @@ body[data-sous="mu-commandes"] #view-ateliers>#mu-commandes{flex:1 1 0;min-heigh
 .co-bilan{margin:0;color:var(--ds-texte-1);font-size:var(--ds-t-14);font-weight:var(--ds-g-moyen)}
 .co-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:auto}
 .co-couleur .pa-teintes{margin-top:2px}
+/* Les commandes fixes d'une compagnie (évolution 26 d) : par classe, la quantité par jour et l'heure de départ (des champs
+ * saisis : le fond du saisi, en gras), puis ses jours, une case par jour sous la classe. */
+.co-fixes{width:100%;border-collapse:collapse;font-size:var(--ds-t-14)}
+.co-fixes caption{caption-side:top;margin-bottom:4px;text-align:left;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.co-fixes th,.co-fixes td{padding:4px 8px 4px 0;text-align:left;vertical-align:middle}
+.co-fixes thead th{font-size:var(--ds-t-13);font-weight:var(--ds-g-normal);color:var(--ds-texte-2)}
+.co-fixes tbody th{font-weight:var(--ds-g-moyen);white-space:nowrap}
+.co-fixes tbody+tbody tr:first-child>*{border-top:1px solid var(--ds-bordure)}
+#mu-commandes .co-saisi{width:84px;min-height:32px;padding:4px 8px;border:1px solid var(--ds-saisi-bord);border-radius:8px;
+  background:var(--ds-saisi-fond);color:var(--ds-texte-1);font:inherit;font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums}
+#mu-commandes .co-saisi.co-heure{width:68px}
+.co-jours{display:flex;gap:4px}
+.co-jours label{display:inline-flex;flex-direction:column;align-items:center;min-width:24px;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+#mu-commandes .co-jours input{flex:none;width:auto;min-height:0;margin:0}
 
 @media (max-width:900px){
   .co-cadre.avec-panneau{grid-template-columns:minmax(0,1fr)}

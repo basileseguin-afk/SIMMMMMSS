@@ -156,14 +156,72 @@
     return [...avant, ...neufs].map(nom => ({ nom, classes: P().CABINES.filter(cab => commandes.has(P().idClasse(nom, cab))) }));
   }
 
+  /* ---- Les commandes fixes (partie d) ------------------------------------------------------------------------------
+   * Une compagnie aux commandes fixes (`fixe`) ne dépend d'aucun vol : chaque jour où elle existe, chacune de ses
+   * classes donne au calcul un départ, à son heure, avec sa quantité — comme une ligne du programme. Si le programme
+   * porte aussi une ligne de départ de cette compagnie ce jour-là, la quantité est celle du programme, l'heure celle de
+   * la commande fixe ; un jour non coché où le programme porte une ligne, la ligne compte, à l'heure de la commande fixe.
+   * Les classes de même heure partent ensemble, comme les classes d'une ligne. Les retours de ses vols restent tels quels. */
+  const CHAMP_PAX = { BC: 'bc', PC: 'pc', YC: 'yc', CREW: 'crew', SPML: 'spml' };
+  const UN_JOUR = 864e5;
+  /** Le jour de la semaine d'une date « AAAA-MM-JJ » : 1 (lundi) à 7 (dimanche). */
+  const jourDeLaSemaine = d => new Date(d + 'T00:00:00Z').getUTCDay() || 7;
+  const enMinutes = h => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const lendemain = d => new Date(Date.parse(d + 'T00:00:00Z') + UN_JOUR).toISOString().slice(0, 10);
+  /** Les jours d'un programme daté, du premier au dernier ; `[null]` pour un programme sans date (une journée type). */
+  function joursDuProgramme(vols) {
+    const dates = [...new Set(vols.filter(v => v && v.date).map(v => v.date))].sort();
+    if (!dates.length) return [null];
+    const out = [];
+    for (let d = dates[0]; d <= dates[dates.length - 1]; d = lendemain(d)) out.push(d);
+    return out;
+  }
   /**
-   * Le programme de vols que le calcul lit. Sans liste, le programme lui-même. Avec une liste, c'est ici que les
-   * commandes fixes (partie d) et le rattachement des lignes de l'import (partie e) se préparent ; pour l'instant, le
-   * programme lui-même aussi.
+   * Les départs d'une compagnie aux commandes fixes, un jour (`date` ; null pour un programme sans date, où la commande
+   * existe si elle a au moins un jour coché). `lignes` : les lignes de départ du programme de cette compagnie ce jour-là.
+   */
+  function departsFixes(c, date, lignes) {
+    const parHeure = new Map();
+    for (const cab of c.classes) {
+      const f = (c.fixe || {})[cab] || { quantite: 0, jours: JOURS, heure: HEURE_FIXE };
+      const coche = date ? f.jours.includes(jourDeLaSemaine(date)) : f.jours.length > 0;
+      const q = lignes.length ? lignes.reduce((k, v) => k + (Number(v[CHAMP_PAX[cab]]) || 0), 0) : coche ? f.quantite : 0;
+      if (q > 0) parHeure.set(f.heure, { ...parHeure.get(f.heure), [cab]: q });
+    }
+    const heures = [...parHeure.keys()].sort();
+    return heures.map(h => {
+      const pax = parHeure.get(h), v = { id: c.nom + '-FIXE' + (heures.length > 1 ? '-' + h.replace(':', '') : ''), cie: c.nom, sens: 'DEP', avion: '', std: enMinutes(h), sta: null };
+      for (const cab of P().CABINES) v[CHAMP_PAX[cab]] = pax[cab] || 0;
+      return date ? { ...v, date } : v;
+    });
+  }
+
+  /**
+   * Le programme de vols que le calcul lit. Sans liste, ou sans compagnie aux commandes fixes, le programme lui-même (le
+   * même objet). Sinon, les lignes de départ de ces compagnies sont remplacées, jour par jour, par leurs départs fixes
+   * (à la place de leur première ligne du jour, ou à la fin). Le rattachement des lignes de l'import (partie e) se
+   * prépare ici aussi.
    */
   function preparerVols(vols, etat) {
-    if (!etat || !Array.isArray(etat.compagnies)) return vols;
-    return vols;
+    if (!etat || !Array.isArray(etat.compagnies) || !Array.isArray(vols)) return vols;
+    const fixes = new Map(etat.compagnies.filter(c => c && c.fixe).map(c => [c.nom, c]));
+    if (!fixes.size) return vols;
+    const estFixe = v => !!v && v.sens === 'DEP' && fixes.has(normaliser(v.cie));
+    const cle = (nom, date) => nom + '|' + (date || '');
+    const out = [], places = new Map(), lignes = new Map();
+    for (const v of vols) {
+      if (!estFixe(v)) { out.push(v); continue; }
+      const k = cle(normaliser(v.cie), v.date);
+      if (!places.has(k)) { places.set(k, out.length); out.push(null); lignes.set(k, []); }
+      lignes.get(k).push(v);
+    }
+    const fin = [];
+    for (const date of joursDuProgramme(vols)) for (const c of fixes.values()) {
+      const k = cle(c.nom, date), d = departsFixes(c, date, lignes.get(k) || []);
+      if (places.has(k)) out[places.get(k)] = d; else fin.push(...d);
+    }
+    if (!places.size && !fin.length) return vols;
+    return [...out.flatMap(x => (Array.isArray(x) ? x : [x])), ...fin];
   }
 
   /**

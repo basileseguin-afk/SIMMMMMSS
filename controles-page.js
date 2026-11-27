@@ -36,12 +36,13 @@
   /**
    * Où un avis se règle : la page, et l'endroit dedans.
    * @param {object} p  un avis du registre (`OrlyAvis.lister`)
-   * @returns {{page:string, service?:string, equipe?:string, commande?:string, lieu?:string}|null}
+   * @returns {{page:string, service?:string, equipe?:string, commande?:string, lieu?:string, compagnie?:string}|null}
    *   service  — la fiche de ce service (« Services et équipes »), ou son étape (« Chemins ») ;
    *   equipe   — la fiche de cette équipe ;
    *   commande — la commande à mettre en évidence dans le tableau de l'étape ;
    *   lieu     — un endroit de la page (`temps` : les temps par vol du service ; `supprimes` : les services supprimés ;
-   *              `fournisseurs` : le tableau « Qui se fournit où », dans « Chemins » — évolution 24 a).
+   *              `fournisseurs` : le tableau « Qui se fournit où », dans « Chemins » — évolution 24 a) ;
+   *   compagnie — le panneau de cette compagnie, dans « Commandes » (évolution 26 d).
    *   `null` : l'avis ne mène nulle part ailleurs (il se lit ici).
    */
   function destination(p) {
@@ -59,6 +60,8 @@
     // Une commande « à compléter » (évolution 26 c) : ses équipes se choisissent dans « Chemins », à la première étape de
     // son chemin.
     if (p.aCompleter && p.commande) return { page: 'mu-flux', ...(p.service ? { service: p.service } : {}), commande: p.commande };
+    // Une compagnie de la liste (évolution 26 d) : son panneau, dans « Commandes ».
+    if (p.compagnie && p.page === 'mu-commandes') return { page: 'mu-commandes', compagnie: p.compagnie };
     // Un service sans temps par vol : la section de ses temps — et le champ de la commande, quand le point la nomme.
     if (SANS_TEMPS.has(p.code) && p.service) return { page: 'mu-services', service: p.service, lieu: 'temps', ...((p.classes || []).length ? { commande: p.classes[0] } : {}) };
     // Un point d'une équipe : sa fiche — sur la case de la commande cochée hors de son chemin, ou sur le champ en cause.
@@ -210,6 +213,7 @@
    *   voulu(compagnie)  — retenir qu'une compagnie n'a pas de chargement, et que c'est voulu ;
    *   nomPage(id)       — le nom d'une page ;
    *   aller(page, lieu) — ouvrir une page, à un endroit ;
+   *   compagnie(nom)    — « Commandes », le panneau de cette compagnie ouvert (évolution 26 d) ;
    *   verrou()          — facultatif : vrai en lecture seule (évolution 23 d) — la page se lit, ses gestes sont grisés ;
    *   ferme(page)       — facultatif : la page ne s'ouvre pas ; motFerme : la raison dite sous un bouton grisé.
    */
@@ -255,6 +259,7 @@
     menerA(d) {
       if (d.page === 'mu-flux' && d.lieu === 'suivi' && this.ouvrirSuivi) return this.ouvrirSuivi(d.chemin, d.commande);
       if (d.page === 'mu-flux' && d.service) return this.commandeOuService(d);
+      if (d.page === 'mu-commandes' && d.compagnie && this.a.compagnie) return this.a.compagnie(d.compagnie);
       if (d.page === 'j-chiffres' && d.service && this.a.resultats) return this.a.resultats(d.service);
       if (d.page === 'mu-services' && d.equipe && this.ouvrirEquipe && this.etat.ateliers.some(a => a.id === d.equipe))
         return void (this.viser ? this.viser({ genre: d.commande ? 'cocher' : 'equipe', equipe: d.equipe, commande: d.commande, champ: d.champ }) : this.ouvrirEquipe(d.equipe));

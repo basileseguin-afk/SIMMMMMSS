@@ -24,6 +24,9 @@
  *  le chemin habituel de sa classe et est marquée « à compléter ». La règle ⚡
  *  d'une équipe (« si NORD a assez de vols ») reste au modèle.
  *
+ *  Une compagnie « Fixe, sans vol » (partie d) : ses commandes fixes, classe
+ *  par classe — une quantité par jour, ses jours, son heure de départ.
+ *
  *  Après chaque geste, les classes retirées et ajoutées d'avant suivent la
  *  liste (`aligner`) : le code d'avant, qui ne lit pas la liste, lit les mêmes
  *  commandes. Module pur : rien n'est modifié en place ; testé en Node.
@@ -207,8 +210,55 @@
     }) };
   }
 
+  /* ---- Les commandes fixes (partie d) ---------------------------------------------------------------------------- */
+
+  /**
+   * Une compagnie « Avec des vols » (`fixe` faux) ou « Fixe, sans vol ». Ses réglages fixes restent tant qu'elle l'est ;
+   * repassée « Avec des vols », ils partent (« Annuler » les rend).
+   */
+  function typeDeCommandes(etat, vols, nomBrut, fixe) {
+    const n = nom(nomBrut);
+    return { ...etat, compagnies: listeDe(etat, vols).map(c => {
+      if (c.nom !== n || !!c.fixe === !!fixe) return c;
+      const { fixe: _, ...reste } = c;
+      return fixe ? { ...reste, fixe: {} } : reste;
+    }) };
+  }
+
+  /** La commande fixe d'une classe, telle que le calcul la lit : celle de la compagnie, ou celle de départ. */
+  function fixeDe(c, cabine) {
+    const f = (c && c.fixe && c.fixe[cabine]) || {};
+    return { quantite: f.quantite ?? 0, jours: Array.isArray(f.jours) ? f.jours.slice() : CO().JOURS.slice(), heure: f.heure || CO().HEURE_FIXE };
+  }
+
+  const QUANTITE_MAX = 99999;
+  /**
+   * Régler la commande fixe d'une classe : `{ quantite }` (par jour), `{ heure }` (« HH:MM ») ou `{ jour, coche }` (1 :
+   * lundi … 7 : dimanche). Une valeur fausse est refusée : l'erreur dit quoi faire.
+   */
+  function reglerFixe(etat, vols, nomBrut, cabine, o) {
+    const n = nom(nomBrut), liste = listeDe(etat, vols), c = liste.find(x => x.nom === n);
+    if (!c || !c.fixe) throw new Error(n + ' n’a pas de commandes fixes : choisissez d’abord « Fixe, sans vol ».');
+    if (!c.classes.includes(cabine)) throw new Error(n + ' n’a pas cette classe : cochez-la d’abord.');
+    const f = fixeDe(c, cabine);
+    if ('quantite' in o) {
+      const t = String(o.quantite ?? '').trim(), q = Number(t);
+      if (!/^\d+$/.test(t) || q > QUANTITE_MAX) throw new Error('La quantité par jour est un nombre entier, de 0 à 99 999.');
+      f.quantite = q;
+    }
+    if ('heure' in o) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(o.heure))) throw new Error('Une heure est attendue : tapez par exemple 0430, 4:30 ou 4h30.');
+      f.heure = String(o.heure);
+    }
+    if ('jour' in o) {
+      if (!CO().JOURS.includes(o.jour)) throw new Error('Un jour de la semaine est attendu : de 1 (lundi) à 7 (dimanche).');
+      f.jours = CO().JOURS.filter(j => (j === o.jour ? !!o.coche : f.jours.includes(j)));
+    }
+    return { ...etat, compagnies: liste.map(x => (x.nom === n ? { ...x, fixe: { ...x.fixe, [cabine]: f } } : x)) };
+  }
+
   const api = { CHAMPS_PAR_COMPAGNIE, LISTES_DE_COMPAGNIES, CHAMPS_PAR_COMMANDE, nomNeuf, copier, renommer, aligner, listeDe,
-    ajouterALaListe, retirerDeLaListe, classe, complete };
+    ajouterALaListe, retirerDeLaListe, classe, complete, typeDeCommandes, fixeDe, reglerFixe };
   if (enNode) module.exports = api;
   else root.OrlyCompagniesGestes = api;
 })(typeof window !== 'undefined' ? window : globalThis);

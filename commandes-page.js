@@ -13,8 +13,10 @@
  *      compagnie » ou « Partir de zéro »). La liste montre par avance, à part
  *      et en tête, les commandes qui seront créées ;
  *    - un clic sur une compagnie ouvre son panneau : la renommer, lui ajouter
- *      ou lui ôter une classe, choisir sa couleur (les douze teintes), la
- *      retirer.
+ *      ou lui ôter une classe, ses commandes (« Avec des vols » ou « Fixe, sans
+ *      vol » ; fixes, chaque classe a sa quantité par jour, son heure de
+ *      départ et ses jours — évolution 26 d), choisir sa couleur (les douze
+ *      teintes), la retirer.
  *  Chaque geste se défait par « Annuler » : c'est la page qui le fait
  *  (sim.js, `a.ajouter`, `a.renommer`…), sur les équipes, les temps par vol
  *  et les couleurs à la fois.
@@ -158,7 +160,36 @@
     </aside>`;
   }
 
-  /** Le panneau d'une compagnie : son nom, ses classes, sa couleur, la retirer. */
+  const LETTRES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const NOMS_DES_JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+  /**
+   * Ses commandes : « Avec des vols » ou « Fixe, sans vol » (évolution 26 d). Fixes, un tableau : par classe, la quantité
+   * par jour, l'heure de départ, et ses jours (une case par jour de la semaine, sous la classe).
+   * @param {{classes:string[], fixe:object|null}} c  fixe : { YC: { quantite, jours, heure } } pour chaque classe
+   */
+  function blocFixe(c, verrou) {
+    const type = `<fieldset class="co-choix co-type"><legend>Ses commandes</legend>`
+      + `<label><input type="radio" name="co-type-cie" data-co-champ="type-cie" value="vols"${coche(!c.fixe)}${verrou}> Avec des vols</label>`
+      + `<label><input type="radio" name="co-type-cie" data-co-champ="type-cie" value="fixe"${coche(!!c.fixe)}${verrou}> Fixe, sans vol</label></fieldset>`;
+    const cabs = c.fixe ? (c.classes || []).filter(cab => c.fixe[cab]) : [];
+    if (!cabs.length) return type;
+    const rangee = cab => {
+      const f = c.fixe[cab], n = esc(nomCabine(cab)), de = `data-co-fixe="${cab}"`;
+      const jours = LETTRES.map((l, i) => `<label title="${NOMS_DES_JOURS[i]}"><input type="checkbox" ${de} data-co-fixe-champ="jour-${i + 1}"`
+        + `${coche(f.jours.includes(i + 1))} aria-label="${n} : le ${NOMS_DES_JOURS[i]}"${verrou}><span aria-hidden="true">${l}</span></label>`).join('');
+      return `<tbody data-co-fixe-classe="${cab}"><tr><th scope="row" rowspan="2"><span class="co-classe">${n}</span></th>`
+        + `<td><input type="number" class="co-saisi" ${de} data-co-fixe-champ="quantite" value="${esc(f.quantite)}" min="0" max="99999" step="1"`
+        + ` inputmode="numeric" aria-label="${n} : quantité par jour"${verrou}></td>`
+        + `<td><input class="co-saisi co-heure" ${de} data-co-fixe-champ="heure" data-heure value="${esc(f.heure)}" maxlength="5" autocomplete="off"`
+        + ` aria-label="${n} : heure de départ"${verrou}></td></tr>`
+        + `<tr><td colspan="2"><span class="co-jours" role="group" aria-label="${n} : ses jours">${jours}</span></td></tr></tbody>`;
+    };
+    return type + `<table class="co-fixes"><caption>Ses commandes fixes</caption>`
+      + `<thead><tr><th scope="col">Classe</th><th scope="col">Par jour</th><th scope="col">Départ</th></tr></thead>${cabs.map(rangee).join('')}</table>`;
+  }
+
+  /** Le panneau d'une compagnie : son nom, ses classes, ses commandes (avec des vols, ou fixes), sa couleur, la retirer. */
   function panneauCompagnie(c, o) {
     const verrou = o.verrou ? ' disabled' : '', refus = c.refus ? `<p class="co-refus" role="alert">${esc(c.refus)}</p>` : '';
     return `<aside class="co-panneau" data-co-panneau="compagnie" data-co-nom="${esc(c.nom)}" aria-labelledby="co-p-titre">
@@ -166,6 +197,7 @@
       <label class="co-champ"><span>Nom</span><input data-co-champ="renommer" value="${esc(c.nom)}" maxlength="40" autocomplete="off" spellcheck="false"${verrou}></label>${refus}
       <fieldset class="co-choix co-classes"><legend>Ses classes</legend>${P().CABINES.map(cab =>
         `<label><input type="checkbox" data-co-classe="${cab}"${coche((c.classes || []).includes(cab))}${verrou}> ${esc(nomCabine(cab))}</label>`).join('')}</fieldset>
+      ${blocFixe(c, verrou)}
       <fieldset class="co-choix co-couleur"><legend>Sa couleur</legend>${o.teintes || ''}</fieldset>
       <div class="co-actions"><button type="button" class="btn svc-danger" data-co-action="retirer"${verrou}>Retirer ${esc(c.nom)}</button>`
       + `<button type="button" class="btn" data-co-action="fermer">Fermer</button></div>
@@ -205,7 +237,9 @@
    *   cheminDe(id)           — le chemin d'une commande ({ nom }) ; cheminHabituel(cabine) — celui de sa classe ;
    *   classesDe(nom)         — les classes d'une compagnie de la liste (ou de la journée) ;
    *   verrou()               — la lecture seule ;
-   *   ajouter(brouillon), renommer(ancien, neuf), retirer(nom), classe(nom, cabine, dedans), couleur(nom, rang) :
+   *   fixeDe(nom, cabine)    — la commande fixe d'une classe ({ quantite, jours, heure }) ;
+   *   ajouter(brouillon), renommer(ancien, neuf), retirer(nom), classe(nom, cabine, dedans), couleur(nom, rang),
+   *   type(nom, fixe), fixe(nom, cabine, { quantite | heure | jour, coche }) :
    *                            les gestes — une phrase d'erreur quand le geste est refusé, sinon rien.
    */
   class PageCommandes {
@@ -239,7 +273,8 @@
         const g = gs.find(x => x.nom === pan.nom);
         if (!g) this.panneau = o.panneau = null;
         else {
-          o.compagnie = { nom: g.nom, classes: this.a.classesDe(g.nom) };
+          const classes = this.a.classesDe(g.nom), fixe = g.fixe && this.a.fixeDe;
+          o.compagnie = { nom: g.nom, classes, fixe: fixe ? Object.fromEntries(classes.map(cab => [cab, this.a.fixeDe(g.nom, cab)])) : null };
           o.teintes = root.OrlyPastilles && root.OrlyPastilles.teintesHTML ? root.OrlyPastilles.teintesHTML(g.nom, this.verrouille()) : '';
         }
       }
@@ -252,6 +287,7 @@
       const actif = box.contains(d.activeElement) ? d.activeElement : null;
       const cle = actif && (actif.dataset.coChamp ? '[data-co-champ="' + actif.dataset.coChamp + '"]' + (actif.type === 'radio' || actif.type === 'checkbox' ? '[value="' + actif.value + '"]' : '')
         : actif.dataset.coAction ? '[data-co-action="' + actif.dataset.coAction + '"]' : actif.dataset.coOuvrir ? '[data-co-ouvrir="' + CSS.escape(actif.dataset.coOuvrir) + '"]'
+          : actif.dataset.coFixe ? '[data-co-fixe="' + actif.dataset.coFixe + '"][data-co-fixe-champ="' + actif.dataset.coFixeChamp + '"]'
           : actif.dataset.coClasse ? '[data-co-classe="' + actif.dataset.coClasse + '"]' : actif.dataset.paTeinte ? '[data-pa-teinte="' + actif.dataset.paTeinte + '"]' : null);
       const sel = actif && typeof actif.selectionStart === 'number' ? [actif.selectionStart, actif.selectionEnd] : null;
       const html1 = html(this.donnees());
@@ -269,8 +305,9 @@
       const l = this.hote().querySelector('.co-liste'); if (l) l.scrollTop = 0;   // les commandes à créer, en tête, se voient
       const champ = this.hote().querySelector('[data-co-champ="nom"]'); if (champ) champ.focus();
     }
-    ouvrirCompagnie(nom) {
-      if (this.panneau && this.panneau.genre === 'compagnie' && this.panneau.nom === nom) return this.fermer(nom);
+    /** Ouvre le panneau d'une compagnie ; un second clic le ferme, sauf `rester` (on y vient de « Contrôles »). */
+    ouvrirCompagnie(nom, rester) {
+      if (this.panneau && this.panneau.genre === 'compagnie' && this.panneau.nom === nom && !rester) return this.fermer(nom);
       this.panneau = { genre: 'compagnie', nom };
       this.rendre();
       const g = this.hote().querySelector('[data-co-compagnie="' + CSS.escape(nom) + '"]'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'nearest' });
@@ -327,6 +364,18 @@
       p.nom = neuf; p.refus = ''; this.rendre();
     }
 
+    /** Une valeur d'une commande fixe : la quantité, l'heure, un jour. Refusée, le champ reprend sa valeur et dit pourquoi. */
+    reglerFixe(nom, el) {
+      const cab = el.dataset.coFixe, k = el.dataset.coFixeChamp, f = this.a.fixeDe(nom, cab);
+      const o = k === 'quantite' ? { quantite: el.value } : k === 'heure' ? { heure: el.value } : { jour: +k.slice(5), coche: el.checked };
+      if (k === 'quantite' && /^\d+$/.test(String(el.value).trim()) && Number(el.value) === f.quantite) return;
+      if (k === 'heure' && el.value === f.heure) return;
+      const refus = this.a.fixe(nom, cab, o);
+      if (!refus) return this.rendre();
+      if (el.type === 'checkbox') el.checked = !el.checked; else el.value = el.defaultValue;
+      const C = root.OrlyChamps; if (C && C.refuser) C.refuser(el, refus);
+    }
+
     lier() {
       const dans = e => e.target.closest && e.target.closest('#mu-commandes');
       d.addEventListener('click', e => {
@@ -343,11 +392,24 @@
         if (quoi === 'retirer' && p && p.genre === 'compagnie' && !this.verrouille()) { const nom = p.nom; this.panneau = null; this.a.retirer(nom); this.rendre(); const f = this.hote().querySelector('[data-co-action="ouvrir-ajout"]'); if (f) f.focus(); }
       });
       d.addEventListener('input', e => { if (dans(e) && e.target.dataset.coChamp === 'nom') this.saisir(e.target); });
+      // Un bouton de souris enfoncé : un réglage qu'il fait valider attend la fin du clic.
+      d.addEventListener('pointerdown', () => { this.appui = true; }, true);
+      d.addEventListener('pointerup', () => { this.appui = false; const f = this.apres; this.apres = null; if (f) f(); }, true);
       d.addEventListener('change', e => {
         if (!dans(e)) return;
         const el = e.target, p = this.panneau;
         if (el.dataset.coChamp === 'renommer') return this.renommer(el);
         if (el.dataset.coClasse && p && p.genre === 'compagnie' && !this.verrouille()) { this.a.classe(p.nom, el.dataset.coClasse, el.checked); return this.rendre(); }
+        if (el.dataset.coChamp === 'type-cie' && p && p.genre === 'compagnie' && !this.verrouille()) { this.a.type(p.nom, el.value === 'fixe'); return this.rendre(); }
+        // Une quantité ou une heure se règle une fois le clavier parti (Tab), ou le clic fini (une case cochée juste après
+        // la saisie garde son clic) : le dessin neuf garde le clavier où il est allé.
+        if (el.dataset.coFixe && p && p.genre === 'compagnie' && !this.verrouille()) {
+          const nom = p.nom;
+          if (el.type === 'checkbox') return this.reglerFixe(nom, el);
+          const faire = () => root.setTimeout(() => this.reglerFixe(nom, el), 0);
+          if (this.appui) this.apres = faire; else faire();
+          return;
+        }
         // Le nom validé (ou quitté) : la page se redessine, avec lui.
         if (el.dataset.coChamp === 'nom') return this.rendre();
         if (el.dataset.coChamp) this.saisir(el);

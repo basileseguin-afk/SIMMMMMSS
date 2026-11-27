@@ -52,6 +52,21 @@ Le plus récent est en haut.
   « Commandes ». Au menu, les espaces de « Régler » n'ont plus de titre (il
   défilait à 768 px de haut avec une entrée de plus). Sans geste, aucun calcul ne
   change.
+- **(d) Les commandes fixes.** Une compagnie « Fixe, sans vol » (une cantine) :
+  dans son panneau de « Commandes », chaque classe a sa quantité par jour, ses
+  jours (tous cochés au départ) et son heure de départ. Chaque jour coché, elle
+  donne au calcul un départ à son heure, avec sa quantité, comme une ligne du
+  programme ; cela se prépare avant le calcul (`compagnies.js`, `preparerVols`),
+  `moteur/` ne change pas. Si le programme porte aussi des lignes de départ de
+  cette compagnie ce jour-là, leur quantité compte, à l'heure de la commande
+  fixe, même un jour décoché. La liste dit « fixe » ; une commande fixe qui ne
+  pèse sur aucun jour (sans quantité ni ligne au programme) est un point « à
+  corriger » de « Contrôles », dont le bouton ouvre son panneau. Chaque réglage
+  a sa notification et « Annuler » ; une quantité fausse est refusée sous le
+  champ. Le départ se nomme « CANTINE-FIXE » et compte encore comme un vol
+  (handling, camion, retour à la plonge, vols de la Synthèse). Correction de
+  (c) : la compagnie choisie dans la liste est sur le fond pâle de l'accent.
+  Sans commande fixe, le programme et le résultat sont ceux d'avant.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

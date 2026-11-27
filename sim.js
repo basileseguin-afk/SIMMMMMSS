@@ -117,7 +117,7 @@ let numeroProgramme = 0;
 const descriptionDuProgramme = data => (descProgramme.data === data ? descProgramme.d : (descProgramme = { data, d: OrlyPeriode.decrire(data) }).d);
 function chargerVols(data) {
   // Le programme que le calcul lit (évolution 26) : sans liste des compagnies, le programme lui-même.
-  data = programmePrepare(data);
+  data = volsCharges = programmePrepare(data);
   const d = descriptionDuProgramme(data);
   if (!d) Sim.jourVols = null;
   else if (!(Sim.jourVols >= d.debut && Sim.jourVols <= d.fin)) Sim.jourVols = d.debut;
@@ -128,6 +128,9 @@ function chargerVols(data) {
  * calcul lit le programme préparé d'après la liste (`OrlyCompagnies.preparerVols`), refait quand la liste change. Sans
  * liste, c'est le même objet : rien ne change. `idsDuProgramme` : les commandes que porte le programme entier, tous ses jours — la liste s'y traduit. */
 let prepare = { brut: null, sig: null, vols: null, ids: null };
+// Le programme préparé d'où viennent les vols de la journée (`flights`) : le calcul peut avoir refait la préparation
+// (`idsDuProgramme`) avant que la page ne recharge ses vols.
+let volsCharges = null;
 // La liste elle-même : chaque geste la remplace par une liste neuve (`valider`), une liste inchangée garde la même.
 const signaturePreparation = () => { const st = Sim.ateliers && Sim.ateliers.state; return st && Array.isArray(st.compagnies) ? st.compagnies : null; };
 function programmePrepare(data) {
@@ -144,11 +147,11 @@ function idsDuProgramme() {
   if (!prepare.ids) prepare.ids = OrlyCompagnies.idsDuProgramme(vols);
   return prepare.ids;
 }
-/** Après un changement de la liste : si le programme préparé n'est plus le même, la journée se recharge. */
+/** Après un changement de la liste : si le programme préparé n'est plus celui des vols chargés, la journée se recharge. */
 function suivrePreparation() {
   if (!window.OrlyCompagnies || !Sim.ateliers) return false;
-  const avant = prepare.vols, brut = Sim.dataCourante || SAMPLE;
-  if (programmePrepare(brut) === avant) return false;
+  const brut = Sim.dataCourante || SAMPLE;
+  if (programmePrepare(brut) === volsCharges) return false;
   chargerVols(brut);
   return true;
 }
@@ -921,6 +924,16 @@ function pointsDesCompagnies(){
       detail:'Sa compagnie modèle n’a pas cette classe : elle suit le chemin habituel'+(ch?' (« '+ch.nom+' »)':'')+', sans équipe ni temps propres. Choisissez ses équipes, puis « C’est complet ».',
       page:'mu-flux',gestes:[{action:'complete',valeur:id,texte:'C’est complet'}]});
   }
+  // Une commande fixe qui ne pèse sur aucun jour (évolution 26 d) : sans quantité ou sans jour coché, et sans ligne au
+  // programme. Le bouton ouvre le panneau de sa compagnie, dans « Commandes ».
+  const ids=at.compagnies&&at.compagnies.some(c=>c.fixe)?idsDuProgramme():null;
+  for(const c of ids?at.compagnies:[])if(c.fixe)for(const cab of c.classes){
+    const id=P.idClasse(c.nom,cab);if(ids.has(id))continue;
+    out.push({niveau:'corriger',cle:'fixe:'+id,commande:id,classes:[id],compagnie:c.nom,
+      titre:P.libelleClasse(id)+' ne pèse sur aucun jour',
+      detail:'C’est une commande fixe : donnez-lui une quantité par jour et au moins un jour coché.',
+      page:'mu-commandes'});
+  }
   return out;
 }
 /** Un geste fait dans « Contrôles » (évolution 26). Rend vrai s'il a été fait. */
@@ -1011,12 +1024,16 @@ function garderLesCouleurs(f){
   const PA=window.OrlyPastilles;if(!PA||!PA.reecrire)return;
   PA.reecrire((choix,noms)=>{const g=PA.garder(noms,choix);return f?f(g):g;},'');
 }
+/** Les commandes du programme importé, tel quel : les classes retirées et ajoutées que l'état garde sont pour le code
+ *  d'avant, qui lit ce programme sans le préparer (ni commandes fixes — évolution 26 d —, ni rattachement). Le calcul,
+ *  lui, les retire et les ajoute d'après le programme préparé (`idsDuProgramme`). */
+const idsDuBrut=()=>OrlyCompagnies.idsDuProgramme(Sim.dataCourante||SAMPLE);
 /** Un geste sur la liste : les temps par vol d'abord (s'ils changent), les couleurs, puis les équipes, qui disent la phrase. */
 function gesteSurLaListe(etat,bareme,phrase,couleurs){
   const rg=Sim.reglages;
   if(bareme&&rg&&JSON.stringify(bareme)!==JSON.stringify(rg.etat.bareme))rg.changer(()=>{rg.etat.bareme=bareme;},'');
   garderLesCouleurs(couleurs);
-  Sim.ateliers.changer(()=>{Sim.ateliers.state=OrlyCompagniesGestes.aligner(etat,idsDuProgramme());},phrase);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=OrlyCompagniesGestes.aligner(etat,idsDuBrut());},phrase);
   return '';
 }
 /** « Ajouter les 3 commandes » : une phrase d'erreur quand le geste est refusé, sinon rien. */
@@ -1060,9 +1077,27 @@ function classeCompagnie(nom,cabine,dedans){
   const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
   if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
   const lib=P.libelleClasse(P.idClasse(nom,cabine));
-  Sim.ateliers.changer(()=>{Sim.ateliers.state=G.aligner(G.classe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,dedans),idsDuProgramme());},
-    lib+(dedans?' ajoutée.':' ôtée de la liste.'));
+  const etat=G.classe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,dedans);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=G.aligner(etat,idsDuBrut());},lib+(dedans?' ajoutée.':' ôtée de la liste.'));
   return '';
+}
+/** « Avec des vols » ou « Fixe, sans vol » (évolution 26 d). */
+function typeCompagnie(nom,fixe){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  return gesteSurLaListe(G.typeDeCommandes(at.state,Sim.dataCourante||SAMPLE,nom,fixe),null,
+    nom+(fixe?' : des commandes fixes, sans vol. Pour chaque classe, sa quantité par jour, ses jours et son heure de départ.'
+      :' : des commandes avec des vols. Ses commandes fixes sont retirées.'));
+}
+const NOMS_DES_JOURS=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+/** La commande fixe d'une classe (évolution 26 d) : une phrase d'erreur quand la valeur est refusée, sinon rien. */
+function fixeCompagnie(nom,cabine,o){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  let etat;try{etat=G.reglerFixe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,o);}catch(e){return e.message;}
+  const n=OrlyCompagnies.normaliser(nom),f=G.fixeDe(etat.compagnies.find(c=>c.nom===n),cabine),j=NOMS_DES_JOURS[o.jour-1];
+  const quoi='quantite' in o?f.quantite+' par jour':'heure' in o?'départ à '+f.heure:(o.coche?'le '+j+' aussi':'plus le '+j);
+  return gesteSurLaListe(etat,null,P.libelleClasse(P.idClasse(n,cabine))+', commande fixe : '+quoi+'.');
 }
 function initCommandes(){
   if(!window.OrlyCommandesPage||!OrlyCommandesPage.PageCommandes||!Sim.ateliers||!window.OrlyCompagniesGestes)return;
@@ -1076,7 +1111,10 @@ function initCommandes(){
     classesDe:classesDeLaCompagnie,
     verrou:()=>lectureSeule,
     ajouter:ajouterCompagnie, renommer:renommerCompagnie, retirer:retirerCompagnie, classe:classeCompagnie,
-    couleur:(nom,rang)=>{if(window.OrlyPastilles)OrlyPastilles.choisirCouleur(nom,rang);}
+    couleur:(nom,rang)=>{if(window.OrlyPastilles)OrlyPastilles.choisirCouleur(nom,rang);},
+    // Les commandes fixes (évolution 26 d).
+    fixeDe:(nom,cab)=>OrlyCompagniesGestes.fixeDe((at().compagnies||[]).find(c=>c.nom===nom),cab),
+    type:typeCompagnie, fixe:fixeCompagnie
   });
 }
 function initUnite(){
@@ -1110,6 +1148,8 @@ function initUnite(){
     geste:(action,valeur,p)=>gesteControles(action,valeur,p),
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,lieu)=>allerPage(page,lieu),
+    // « Commandes », le panneau d'une compagnie ouvert (évolution 26 d).
+    compagnie:nom=>{if(Sim.onglets)Sim.onglets.choisir('mu-commandes');if(Sim.commandes)Sim.commandes.ouvrirCompagnie(nom,true);},
     // En lecture seule (évolution 23 d), « Contrôles » se lit : ses boutons vers un réglage sont grisés, avec leur raison.
     verrou:()=>lectureSeule, ferme:id=>pageFermee(id), motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
     notify:toast

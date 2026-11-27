@@ -14,6 +14,10 @@
  *   7. Les autres pages : plus de carte « Couleurs des compagnies » dans le programme des vols ; plus de « + Ajouter une
  *      compagnie ou une classe » dans « Chemins » ni dans la liste des commandes de « Détails » ; un lien mène à
  *      « Commandes ».
+ *   8. Les commandes fixes (évolution 26 d) : CANTINE, « Fixe, sans vol », porte le mot « fixe » ; sans quantité, elle ne
+ *      pèse sur aucun jour : un point de « Contrôles », dont le bouton ouvre son panneau. Sa quantité par jour, son heure,
+ *      ses jours : chacun s'écrit avec sa notification et « Annuler », et le calcul suit ; une quantité fausse est refusée
+ *      sous le champ ; le panneau tient le budget de la charte.
  * Unité, vols, compagnies et équipes fictifs. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const nav=require('./nav.cjs'),F=require('./plan-rejoue-fictif.cjs');
@@ -178,9 +182,68 @@ const rangDe=(page,nom)=>page.evaluate(n=>{const e=document.querySelector('#mu-c
   assert.equal((await lien.textContent()).trim(),'Ajouter une compagnie ou une classe : Commandes →');
   await lien.click();await attendre(300);
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-commandes','le lien mène à « Commandes »');
+  /* 8. Les commandes fixes (évolution 26 d) : CANTINE, « Fixe, sans vol », comme EST, en Économie. */
+  const panneauCie=page.locator('#mu-commandes .co-panneau[data-co-panneau="compagnie"]');
+  const derniere=async()=>(await page.locator('.notifs .notif').last().textContent()).replace(/\s+/g,' ').replace(/\s*Annuler$/,'');
+  const cantine=()=>page.evaluate(()=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.vol==='CANTINE-FIXE'&&x.depart!=null);
+    return {pax:(r.parClasse['CANTINE/YC']||{pax:0}).pax,depart:l?l.depart:null};});
+  await nav.aller(page,'mu-commandes');await attendre(300);
+  await page.locator('#mu-commandes [data-co-action="ouvrir-ajout"]').click();await attendre(200);
+  await page.keyboard.type('cantine');await panneau.locator('[data-co-champ="type"][value="fixe"]').check();
+  assert.equal(await panneau.locator('[data-co-champ="modele"]').inputValue(),'EST');
+  await panneau.locator('[data-co-action="valider"]').click();await attendre(600);
+  const rangeeCantine=page.locator('#mu-commandes tbody[data-co-compagnie="CANTINE"] tr');
+  assert.deepEqual(await rangeeCantine.evaluateAll(l=>l.map(t=>[...t.querySelectorAll('td')].map(c=>c.textContent.replace(/\s+/g,' ').trim()))),
+    [['Économie fixe',(await page.evaluate(()=>Sim.commandes.a.cheminDe('EST/YC').nom)),'ne pèse sur aucun jour']],'le mot « fixe » ; sans quantité, elle ne pèse sur aucun jour');
+  assert.deepEqual(await cantine(),{pax:0,depart:null},'aucun départ tant qu’elle n’a pas de quantité');
+  // Le point de « Contrôles » ; son bouton ouvre le panneau de CANTINE.
+  await nav.aller(page,'mu-pas');await attendre(300);
+  const pointFixe=page.locator('#mu-pas .ct-point',{hasText:'CANTINE · Économie ne pèse sur aucun jour'});
+  assert.equal(await pointFixe.count(),1,'un point « à corriger » dans « Contrôles »');
+  await pointFixe.getByRole('button',{name:/Régler dans Commandes/}).click();await attendre(400);
+  assert.deepEqual([await page.evaluate(()=>document.body.dataset.sous),await panneauCie.getAttribute('data-co-nom')],['mu-commandes','CANTINE'],'son bouton ouvre le panneau de CANTINE');
+  assert.equal(await panneauCie.locator('[data-co-champ="type-cie"][value="fixe"]').isChecked(),true,'« Fixe, sans vol »');
+  const champ=k=>panneauCie.locator('[data-co-fixe="YC"][data-co-fixe-champ="'+k+'"]');
+  assert.deepEqual([await champ('quantite').inputValue(),await champ('heure').inputValue(),await panneauCie.locator('[data-co-fixe="YC"][type=checkbox]:checked').count()],['0','12:00',7],'au départ : 0 par jour, 12:00, tous les jours cochés');
+  b=await page.evaluate(BUDGET);
+  assert.deepEqual([b.pleins,b.deplier,b.colonnes<=7,b.boutons<=12],[['+ Ajouter une compagnie'],0,true,true],'le panneau d’une commande fixe tient le budget : '+JSON.stringify(b));
+  // Une quantité fausse est refusée sous le champ ; rien n'est écrit.
+  const nNotifs=await page.locator('.notifs .notif').count();
+  await champ('quantite').fill('-3');await champ('quantite').press('Tab');await attendre(400);
+  assert.match(await panneauCie.locator('.champ-erreur').textContent(),/nombre entier, de 0 à 99 999/,'le refus dit quoi faire');
+  assert.deepEqual([await champ('quantite').inputValue(),await page.locator('.notifs .notif').count()],['0',nNotifs],'le champ reprend sa valeur, aucune notification');
+  // 80 par jour : un départ à 12:00, 80 en éco ; le point s'en va. Puis 09:30.
+  await champ('quantite').fill('80');await champ('quantite').press('Tab');await attendre(600);
+  assert.equal(await derniere(),'CANTINE · Économie, commande fixe : 80 par jour.');
+  assert.deepEqual(await page.evaluate(()=>document.activeElement.dataset.coFixeChamp),'heure','Tab : le clavier est sur l’heure');
+  assert.deepEqual(await cantine(),{pax:80,depart:720},'un départ à 12:00, avec sa quantité');
+  assert.equal(await rangeeCantine.locator('td.co-etat').textContent(),await page.locator('#mu-commandes tbody[data-co-compagnie="EST"] tr').first().locator('td.co-etat').textContent(),
+    'elle pèse : plus de point, l’état de son modèle');
+  assert.equal(await page.evaluate(()=>Sim.problemes.liste.filter(p=>p.cle==='fixe:CANTINE/YC').length),0);
+  await champ('heure').fill('930');await champ('heure').press('Enter');await attendre(600);
+  assert.equal(await derniere(),'CANTINE · Économie, commande fixe : départ à 09:30.');
+  assert.deepEqual(await cantine(),{pax:80,depart:570},'son départ : 09:30');
+  await page.locator('.notifs .notif').last().getByRole('button',{name:'Annuler'}).click();await attendre(500);
+  assert.deepEqual([await champ('heure').inputValue(),(await cantine()).depart],['12:00',720],'« Annuler » : 12:00');
+  // Une saisie validée par un clic sur une case : les deux comptent (le clic n'est pas perdu au nouveau dessin).
+  await champ('quantite').fill('81');await panneauCie.locator('[data-co-fixe="YC"][data-co-fixe-champ="jour-7"]').click();await attendre(600);
+  assert.deepEqual([await champ('quantite').inputValue(),await panneauCie.locator('[data-co-fixe="YC"][data-co-fixe-champ="jour-7"]').isChecked()],['81',false],'la quantité et la case');
+  await panneauCie.locator('[data-co-fixe="YC"][data-co-fixe-champ="jour-7"]').check();await attendre(400);
+  await champ('quantite').fill('80');await champ('quantite').press('Enter');await attendre(600);
+  // Un jour décoché : la journée type garde son départ (il reste six jours) ; « Avec des vols » retire les réglages fixes.
+  await panneauCie.locator('[data-co-fixe="YC"][data-co-fixe-champ="jour-1"]').uncheck();await attendre(500);
+  assert.equal(await derniere(),'CANTINE · Économie, commande fixe : plus le lundi.');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.coFixeChamp),'jour-1','le clavier reste sur la case');
+  assert.equal((await cantine()).pax,80);
+  await panneauCie.locator('[data-co-champ="type-cie"][value="vols"]').check();await attendre(500);
+  assert.equal(await derniere(),'CANTINE : des commandes avec des vols. Ses commandes fixes sont retirées.');
+  assert.deepEqual([await panneauCie.locator('.co-fixes').count(),await rangeeCantine.locator('.co-fixe').count(),(await cantine()).pax],[0,0,0],'plus de commandes fixes : sans vol, aucune quantité');
+  await page.locator('.notifs .notif').last().getByRole('button',{name:'Annuler'}).click();await attendre(500);
+  assert.deepEqual([await champ('quantite').inputValue(),await panneauCie.locator('[data-co-fixe="YC"][type=checkbox]:checked').count(),(await cantine()).pax],['80',6,80],'« Annuler » : ses réglages fixes reviennent');
+
   assert.deepEqual(erreurs,[],'aucune erreur dans la page');
   await site.effacer();
   console.log('OK commandes-page : le compte et une rangée par commande, budget de la charte tenu panneaux ouverts ; « comme une autre » donne à NEUVE le chemin, les équipes et les temps de SUD pour chaque classe commune, '
-   +'Premium à compléter avec son point de « Contrôles » qui ouvre son chemin, retiré par « C’est complet » ; « Annuler » rend la sauvegarde d’avant ; renommer garde réglages et couleur ; plus de carte des couleurs ni d’ajout ailleurs, un lien vers « Commandes », première entrée de « Régler »');
+   +'Premium à compléter avec son point de « Contrôles » qui ouvre son chemin, retiré par « C’est complet » ; « Annuler » rend la sauvegarde d’avant ; renommer garde réglages et couleur ; plus de carte des couleurs ni d’ajout ailleurs, un lien vers « Commandes », première entrée de « Régler » ; une commande fixe : le mot « fixe », son point de « Contrôles » qui ouvre son panneau, sa quantité, son heure et ses jours, chacun avec « Annuler », une quantité fausse refusée');
  }finally{fs.rmSync(dossier,{recursive:true,force:true});await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
