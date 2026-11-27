@@ -15,7 +15,9 @@ metadata:
   - la couverture se lit sans seuil (.claude/rules/ecc/common/testing.md) ;
   - les renvois à la commande /verify et aux hooks d'ECC, absents de ce dépôt, sont retirés ;
   - la batterie complète se joue aussi dans un clone propre, sans les fichiers ignorés
-    (outils/batterie.cjs, banc d'essai, correction 15).
+    (outils/batterie.cjs, banc d'essai, correction 15) ;
+  - les tests à lancer, batterie comprise, dépendent de la catégorie de la livraison
+    (.claude/rules/simms.md, section « Les tests », retouche 00.2).
 -->
 
 # Verification Loop Skill
@@ -56,6 +58,10 @@ Report all syntax errors. Fix them before continuing.
 No linter in this repository: skip this phase.
 
 ### Phase 4: Test Suite
+Which tests to run depends on the category of the delivery, read from its diff (section
+« Les tests » of `.claude/rules/simms.md`). A documents-only delivery runs no test: skip
+Phases 4 and 4b.
+
 ```bash
 set -o pipefail
 # Run the Node tests (add --experimental-test-coverage for a coverage report: no threshold)
@@ -72,6 +78,11 @@ Report:
 - Coverage: X% (only if the report was run; no threshold)
 
 ### Phase 4b: Full Battery in a Clean Clone
+Only when the category of the delivery calls for it (section « Les tests » of
+`.claude/rules/simms.md`): once per delivery, on the head of the branch, after its last
+commit (`node outils/batterie.cjs --commit HEAD`); never at each part or before each
+commit. Otherwise skip this phase and report `Battery: not run (category)`.
+
 The repository is public: a clone has no `plan-prive/`, no saves, no real data — nothing
 that `.gitignore` refuses. A test that depends on such a file passes here and fails in
 every clone. Run the whole battery (Node tests, then every browser test) in a clean copy,
@@ -90,7 +101,7 @@ folder. A test that needs a background plan uses the fictive tile of
 also carries new files that are not ignored; after it, `--commit HEAD` reveals a file
 forgotten at `git add`. Playwright comes from the environment (global install or
 `NODE_PATH`): a `node_modules/` in the repository is ignored, so the copy lacks it. The
-battery takes about half an hour: run it in the background while reviewing the diff.
+battery takes about an hour and a quarter: run it in the background while reviewing the diff.
 
 Report:
 - Battery: X OK, Y failed (with the failing tests)
@@ -128,8 +139,8 @@ VERIFICATION REPORT
 Build:     [PASS/FAIL] (fingerprints)
 Types:     [PASS/FAIL] (X syntax errors)
 Lint:      n/a (no linter)
-Tests:     [PASS/FAIL] (X/Y passed)
-Battery:   [PASS/FAIL] (clean clone: X OK, Y failed)
+Tests:     [PASS/FAIL/not run] (X/Y passed; not run for documents only)
+Battery:   [PASS/FAIL/not run] (clean clone: X OK, Y failed; not run when the category does not call for it)
 Security:  [PASS/FAIL] (X issues)
 Diff:      [X files changed]
 
