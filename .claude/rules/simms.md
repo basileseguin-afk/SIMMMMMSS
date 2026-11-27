@@ -38,7 +38,7 @@ Section ajoutée le 2026-11-27. Elle complète les règles ci-dessus sans en cha
   - Interface : à chaque partie, la suite Node, les tests navigateur des pages touchées et les tests de la charte (ceux que `docs/CHARTE_INTERFACE.md` cite à côté de ses règles). Pas de batterie complète, sauf quand le prompt la demande (en fin de série).
   - Calcul et données : le diff touche `moteur/`, un fichier appelé par le calcul ou par l'import des vols, le stockage ou la sauvegarde, ou un fichier identique à son jumeau de `v2/`. À chaque partie, la suite Node et les tests ciblés ; une fois, sur la tête de la branche, la batterie complète dans une copie propre.
 - Un fichier propre à la version 1 que toutes les pages chargent (feuilles et scripts de la coquille, `index.html`) touche toutes les pages : ses tests ciblés sont alors les tests navigateur de toutes les pages du menu.
-- La batterie complète ne se lance jamais à chaque partie. Pour la batterie, cette règle remplace la consigne « avant chaque commit » de l'en-tête de `outils/batterie.cjs`.
+- La batterie complète ne se lance jamais à chaque partie ni avant chaque commit. Le skill `verification-loop` (phase 4b) et `.claude/rules/ecc/common/testing.md` suivent cette règle ; elle remplace la consigne « avant chaque commit » qui reste écrite dans l'en-tête de `outils/batterie.cjs` et dans `docs/BANC_ESSAI.md`.
 
 ### Les documents de référence
 - Avant toute partie, lire `docs/decisions.md` et `docs/CHARTE_INTERFACE.md`. Toute page nouvelle ou modifiée de la version 1 respecte la charte ; un écart voulu se décide avec le chef de projet et s'écrit d'abord dans la charte.
