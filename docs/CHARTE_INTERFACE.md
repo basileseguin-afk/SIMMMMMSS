@@ -13,8 +13,8 @@ B. La page
 6. Sur la page : le titre, l'objet principal, une action. Ce qui sert à chaque visite reste visible.
 7. Le reste s'ouvre dans un panneau à côté. La page mère reste visible. Jamais un panneau dans un panneau. Une fenêtre par-dessus la page ne sert qu'à une question.
 8. Le budget d'une page : 150 mots au plus hors tableaux ; une phrase d'explication au plus, le reste derrière un « ? » ; aucune section à déplier ; 12 boutons visibles au plus ; 7 colonnes au plus par tableau. Deux exceptions décidées : la grille de tous les temps, dense par rôle ; la Synthèse, à huit colonnes.
-9. Un seul bouton plein par écran. Seule exception : « Contrôles », un par point bloquant.
-10. La fenêtre ne défile pas, aucun texte sous 13 px, les colonnes prennent la largeur.
+9. Un seul bouton plein par écran. Seule exception : « Contrôles », un par point bloquant. Test : `tests/caramel-action-browser.cjs`.
+10. La fenêtre ne défile pas, aucun texte sous 13 px, les colonnes prennent la largeur. Tests : `tests/pages-menu-browser.cjs`, `tests/defilement-browser.cjs`.
 11. Des listes plates. Un seul cadre, des rangées séparées par un trait ; la rangée choisie sur le fond pâle de l'accent, avec un trait d'accent à gauche.
 
 C. Le visuel
@@ -23,7 +23,7 @@ C. Le visuel
 14. Saisi, repris, calculé. Une valeur saisie : champ au fond du saisi, en gras. Une valeur reprise : champ au fond de carte, en italique gris. Un nombre calculé : du texte, sans cadre.
 15. La compagnie a sa pastille, la classe son étiquette, partout les mêmes. La couleur d'une compagnie est un réglage de l'utilisateur, parmi douze.
 16. Un état, une couleur, partout. Au travail, attend, en retard, a fini : chacun son jeton. Jamais la couleur seule : toujours avec un mot ou une forme.
-17. Lisible par tous. Deux thèmes ; contraste de 4,5 pour 1 ; cibles de 24 px ; tout se fait au clavier ; phrases en minuscules, sans capitales espacées.
+17. Lisible par tous. Deux thèmes ; contraste de 4,5 pour 1 ; cibles de 24 px ; tout se fait au clavier ; phrases en minuscules, sans capitales espacées. Tests : `tests/contraste.test.cjs` (contraste), `tests/finition-browser.cjs` (cibles), `tests/focus-browser.cjs` (clavier), `tests/pages-menu-browser.cjs` (deux thèmes, capitales).
 18. La vue en relief d'« En direct » reste. Seules ses couleurs suivent le visuel.
 
 D. Les gestes

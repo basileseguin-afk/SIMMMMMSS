@@ -56,8 +56,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(v1){
     const entrees=await page.evaluate(()=>OrlyOnglets.entrees().filter(o=>!OrlyOnglets.partieDe(o.id).bas).map(o=>({cle:o.groupe?'groupe:'+o.groupe:o.id,
       titre:o.groupe?o.nom:OrlyOnglets.page(o.id).nom,espace:OrlyOnglets.partieDe(o.id).nom,pages:o.groupe?o.pages:[o.id]})));
-    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze.)
-    assert.equal(entrees.length,11,V+'onze entrées dans les deux blocs (sans « Période », sans programme daté)');
+    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze. Évolution 26 c :
+    // « Commandes » — douze.)
+    assert.equal(entrees.length,12,V+'douze entrées dans les deux blocs (sans « Période », sans programme daté)');
     let avant=null;
     for(const e of entrees){
      const bouton=page.locator(`#menu [data-entree="${e.cle}"]`);

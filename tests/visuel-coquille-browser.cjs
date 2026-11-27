@@ -80,7 +80,9 @@ const JETONS=['ds-nav-fond','ds-nav-repere','ds-nav-texte-1','ds-nav-actif','ds-
     await attendre(200);
     assert.equal(await page.evaluate(()=>document.querySelector('[data-essai="zone"]').scrollTop),40,V+'une zone de la page a défilé');
     assert.deepEqual(await barreHaut(),{ombre:'none',dit:false},V+'une zone sous le titre défile : toujours pas d’ombre');
-    // L'accueil défile juste sous la barre du haut : l'ombre apparaît, puis s'efface au retour en haut.
+    // L'accueil défile juste sous la barre du haut : l'ombre apparaît, puis s'efface au retour en haut. (Évolution 26 f :
+    // le guide de l'accueil tient dans 768 px de haut ; la fenêtre se fait plus basse le temps de le faire défiler.)
+    await page.setViewportSize({width:1366,height:520});
     await page.locator('.barre .marque').click();await page.waitForFunction(()=>document.body.dataset.vue==='accueil');await attendre();
     const accueil=await page.evaluate(()=>{const a=document.getElementById('view-accueil');return {depasse:a.scrollHeight-a.clientHeight,haut:Math.round(a.getBoundingClientRect().top),barre:Math.round(document.querySelector('body>.haut').getBoundingClientRect().bottom)};});
     assert.ok(accueil.depasse>20&&accueil.haut===accueil.barre,V+'l’accueil défile, juste sous la barre du haut : '+JSON.stringify(accueil));
@@ -91,6 +93,7 @@ const JETONS=['ds-nav-fond','ds-nav-repere','ds-nav-texte-1','ds-nav-actif','ds-
     if(theme==='clair')assert.notEqual(b.ombre,'none',V+'la barre du haut prend son ombre');
     await page.evaluate(()=>{document.getElementById('view-accueil').scrollTop=0;});await attendre(200);
     assert.deepEqual(await barreHaut(),{ombre:'none',dit:false},V+'revenu en haut : l’ombre s’efface');
+    await page.setViewportSize({width:1366,height:768});await attendre(200);
 
     /* ---- 3. une carte ---------------------------------------------------------------------------------------------- */
     // Le bandeau de l'accueil prend le bordeaux du menu, uni comme lui (évolution 25 f) ; en sombre, la surface du menu.
@@ -99,14 +102,15 @@ const JETONS=['ds-nav-fond','ds-nav-repere','ds-nav-texte-1','ds-nav-actif','ds-
     assert.deepEqual([bandeau.fond,bandeau.image],[bandeau.menu,'none'],V+'le bandeau de l’accueil : le fond du menu, uni');
     assert.equal(bandeau.menuImage,'none');
     assert.equal(bandeau.rayon,'16px',V+'le bandeau garde son rayon');
-    // Une tuile de l'accueil se clique : elle s'élève au survol.
-    const tuile=page.locator('#view-accueil .acc-tuile').first();
+    // Le guide de l'accueil (évolution 26 f) : une liste plate, posée en carte ; sa rangée se clique, elle s'éclaire au survol.
+    const tuile=page.locator('#view-accueil .acc-guide');
     s=await tuile.evaluate(e=>{const c=getComputedStyle(e);return {r:c.borderRadius,b:c.borderTopColor,o:c.boxShadow};});
     assert.deepEqual([s.r,s.b],['14px',j['ds-bordure']],V+'une carte : rayon de 14 px, trait fin');
     if(theme==='clair'){
       assert.match(s.o,/rgba\(42, 31, 35, 0\.04\) 0px 1px 2px 0px, rgba\(42, 31, 35, 0\.08\) 0px 12px 32px -8px/,V+'l’ombre d’une carte : '+s.o);
-      await tuile.hover();await attendre(250);
-      assert.notEqual(await tuile.evaluate(e=>getComputedStyle(e).boxShadow),s.o,V+'une carte qui se clique s’élève au survol');
+      const rangee=page.locator('#view-accueil .acc-etape-tete').first();
+      await rangee.hover();await attendre(250);
+      assert.equal(await rangee.evaluate(e=>getComputedStyle(e).backgroundColor),j['ds-survol'],V+'une rangée qui se clique s’éclaire au survol');
       await page.mouse.move(2,2);
     }
     // Une carte qui se lit (le programme de vols) ne bouge pas au survol.

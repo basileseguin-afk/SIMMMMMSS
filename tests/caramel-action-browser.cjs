@@ -72,6 +72,7 @@ const RELEVE=()=>{
     if(id==='j-plan')assert.deepEqual(pleinsDe(r),['Rejouer'],'« En direct »'+T);
     if(id==='mu-flux')assert.deepEqual(pleinsDe(r),[],'« Chemins »'+T+' : « + Ajouter un chemin » est un bouton de carte');
     if(id==='mu-services')assert.ok(!pleinsDe(r).some(t=>/Ajouter un service|Créer/.test(t)),'« Services et équipes »'+T+' : « + Ajouter un service » est un bouton de carte — '+JSON.stringify(pleinsDe(r)));
+    if(id==='mu-commandes')assert.deepEqual(pleinsDe(r),['+ Ajouter une compagnie'],'« Commandes »'+T+' : « + Ajouter une compagnie » est le bouton plein');
    }
    await nav.aller(page,'j-plan');
    assert.deepEqual(pleinsDe(await ecran('« En direct » à plat')),['Rejouer'],'« En direct » à plat'+T);

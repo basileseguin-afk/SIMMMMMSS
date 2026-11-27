@@ -108,9 +108,20 @@
    * jour par jour (`detail` : les phrases du compte rendu d'avant) est à part : la page le replie.
    * @param {{fichier:string, reconnu?:string, lignes:number, departs:number, retours:number, periode:?object, detail?:string[]}} o
    *   periode — ce que `OrlyPeriode.decrire` rend d'un programme daté ({debut, fin, jours, parJour, sansVol}), ou rien.
+   *   rattachement — avec une liste des compagnies (évolution 26 e) : { rattaches, nonRattaches } (des vols). Quand des
+   *   vols ne sont pas rattachés, le compte rendu le dit sur une ligne de plus (`rattachement`), qui mène à « Contrôles ».
+   *   Sinon (tout est rattaché, ou sans liste), le compte rendu d'avant, en deux lignes.
    * @returns {{lignes:string[], alerte:string, detail:string[]}}  `alerte` : les jours sans vol, dits sans rien déplier.
    */
   function compteRendu(o) {
+    const r = o.rattachement && o.rattachement.nonRattaches > 0 ? { rattachement: phraseRattachement(o.rattachement) + '.' } : {};
+    return { ...compteRenduDAvant(o), ...r };
+  }
+  /** L'import qui rattache (évolution 26 e) : « 960 vols rattachés à votre liste, 12 non rattachés ». */
+  function phraseRattachement(x) {
+    return pl(x.rattaches, 'vol rattaché', 'vols rattachés') + ' à votre liste' + (x.nonRattaches ? ', ' + pl(x.nonRattaches, 'non rattaché', 'non rattachés') : '');
+  }
+  function compteRenduDAvant(o) {
     const d = o.periode, premiere = '« ' + o.fichier + ' ».' + (o.reconnu ? ' ' + o.reconnu : '');
     if (!d) return { lignes: [premiere, o.lignes + ' lignes importées. ' + o.departs + ' départs et ' + o.retours + ' retours.'], alerte: '', detail: [] };
     const n = j => j.departs + j.retours, avec = d.parJour.filter(j => n(j) > 0);
@@ -130,6 +141,9 @@
     const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const [une, deux] = cr.lignes;
     return '<p class="vp-cr-ligne">' + e(une) + '</p><p class="vp-cr-ligne">' + e(deux) + (cr.alerte ? ' <span class="vp-cr-alerte">' + e(cr.alerte) + '</span>' : '') + '</p>'
+      // L'import qui rattache (évolution 26 e) : une ligne de plus, et ce qui n'est pas rattaché mène à « Contrôles ».
+      + (cr.rattachement ? '<p class="vp-cr-ligne">' + e(cr.rattachement)
+        + ' <button type="button" class="lien-discret" data-page="mu-pas">Voir dans « Contrôles » →</button></p>' : '')
       + (cr.detail && cr.detail.length ? '<details class="vp-cr-detail"><summary>Le détail jour par jour</summary>' + cr.detail.map(l => '<p>' + e(l) + '</p>').join('') + '</details>' : '');
   }
 
@@ -176,7 +190,7 @@
       + '</tbody></table></div>';
   }
 
-  const api = { FORMATS, reconnaitre, phrase, refus, compteRendu, compteRenduHTML, lignes, compte, tableau };
+  const api = { FORMATS, reconnaitre, phrase, refus, compteRendu, phraseRattachement, compteRenduHTML, lignes, compte, tableau };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyVolsPage = api;
 })(typeof window !== 'undefined' ? window : globalThis);

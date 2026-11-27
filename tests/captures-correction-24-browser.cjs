@@ -6,7 +6,7 @@
  *   — « En direct » en relief et à plat (c, e) ; la Synthèse (e) ; « Période », simulée (d, e) ;
  *   — « Services et équipes », « Chemins », « Réglages » (f) ; « Stocks et retours » et le Planning (f) ;
  *   — « Contrôles », avec un point bloquant et un point à corriger (d) ;
- *   — la carte « Couleurs des compagnies » repliée, dépliée, et son panneau ouvert (g) ;
+ *   — les couleurs des compagnies (g) : depuis l'évolution 26 (c), la liste de « Commandes » et le panneau d'une compagnie ;
  *   — le tableau de tous les temps par vol, défilé à droite (h).
  * Chaque capture est vérifiée : sa taille, le thème (le fond de la page et celui du menu), ce qu'elle doit montrer, la
  * fenêtre qui ne défile pas, aucun texte sous 13 px (12 px à l'écran dans un dessin).
@@ -155,20 +155,17 @@ const PLEINS=()=>{const s=document.createElement('i');document.body.append(s);s.
     assert.ok(boutons.corriger.length>=1&&!boutons.corriger.some(Boolean),V+'le bouton d’un point à corriger est un bouton de carte');
     await capturer('controles');
 
-    /* ---- (g) la carte « Couleurs des compagnies » : repliée, dépliée, son panneau ouvert ---------------------------- */
-    await nav.aller(page,'v-programme');await attendre(500);
-    const carte=page.locator('#couleurs-compagnies');
-    assert.deepEqual(await carte.evaluate(c=>[c.open,[...c.querySelectorAll('.pa-apercu > .pa-nom')].filter(x=>!x.hidden).length>=1,c.querySelector('.pa-apercu').scrollWidth<=c.querySelector('.pa-apercu').clientWidth+1]),[false,true,true],V+'repliée, la carte montre des pastilles entières');
-    await capturer('couleurs-repliee');
-    await carte.locator('summary').click();
-    await page.waitForFunction(()=>document.getElementById('couleurs-compagnies').open&&document.querySelectorAll('#couleurs-compagnies .pa-rangee .pa-cie').length===5);await attendre();
-    assert.equal(await carte.locator('[data-pa-teinte]').count(),0,V+'dépliée : une rangée par compagnie, sans les douze teintes étalées');
-    await capturer('couleurs-depliee');
-    await carte.locator('[data-pa-compagnie="NORD"] [data-pa-ouvrir]').click();
-    await carte.locator('.pa-panneau').waitFor();await attendre(200);
-    assert.deepEqual(await carte.evaluate(c=>{const q=c.querySelector('.pa-panneau').getBoundingClientRect();return [c.querySelectorAll('.pa-panneau [role=radio]').length,c.querySelectorAll('.pa-panneau [aria-checked=true]').length,q.top>=0&&q.bottom<=innerHeight&&q.left>=0&&q.right<=innerWidth];}),[12,1,true],V+'le panneau : douze teintes, une cochée, dans la fenêtre');
+    /* ---- (g) les couleurs des compagnies : depuis l'évolution 26 (c), dans « Commandes » — la liste, puis le panneau d'une
+     *      compagnie ouvert (la carte du programme des vols n'est plus) ---------------------------------------------------- */
+    await nav.aller(page,'mu-commandes');await attendre(500);
+    assert.equal(await page.locator('#mu-commandes [data-co-ouvrir] .pa-cie').count(),5,V+'la liste : une pastille par compagnie');
+    await capturer('couleurs-liste');
+    await page.locator('#mu-commandes [data-co-ouvrir="NORD"]').click();
+    await page.locator('#mu-commandes .co-panneau [role=radiogroup]').waitFor();await attendre(200);
+    assert.deepEqual(await page.evaluate(()=>{const c=document.querySelector('#mu-commandes .co-panneau'),q=c.getBoundingClientRect();return [c.querySelectorAll('[role=radio]').length,c.querySelectorAll('[aria-checked=true]').length,q.top>=0&&q.bottom<=innerHeight&&q.left>=0&&q.right<=innerWidth];}),
+      [12,1,true],V+'le panneau : douze teintes, une cochée, dans la fenêtre');
     await capturer('couleurs-panneau');
-    await page.keyboard.press('Escape');await carte.locator('summary').click();
+    await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(()=>localStorage.getItem('ory-couleurs-compagnies-v1')),null,V+'regarder le panneau ne choisit rien');
 
     /* ---- (h) le tableau de tous les temps par vol, défilé à droite --------------------------------------------------- */
@@ -182,7 +179,7 @@ const PLEINS=()=>{const s=document.createElement('i');document.body.append(s);s.
     await attendre(200);
     await capturer('tous-les-temps-defile');
 
-    assert.equal(rang,17,V+rang+' captures');
+    assert.equal(rang,16,V+rang+' captures');
     vues=rang;
     assert.deepEqual(erreurs,[],V+'aucune erreur de page : '+erreurs.join(' | '));
    }finally{site.effacer();await ctx.close();}

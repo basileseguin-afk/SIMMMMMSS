@@ -67,6 +67,8 @@
     const noter = nom => { const k = cle(nom); if (k && k !== TOUTES) vues.add(k); };
     for (const v of s.vols || []) noter(v && v.cie);
     for (const c of s.classes || []) noter(c && c.cie);
+    // La liste des compagnies (évolution 26) : une compagnie y existe même sans vol ni réglage.
+    for (const c of Array.isArray(etat.compagnies) ? etat.compagnies : []) noter(c && c.nom);
     for (const c of etat.ajoutees || []) noter(c && c.cie);
     for (const id of etat.exclues || []) noter(compagnieDe(id));
     for (const a of etat.ateliers || []) compagniesDeLEquipe(a || {}, noter);
@@ -199,10 +201,11 @@
     '.rg-cie-code',                                                               // le tableau de tous les temps par vol
     '.ch-suit > span', '.ch-table th[scope="row"]',                               // les chemins : qui suit le chemin, qui passe par l'étape
     '.pa-nom',                                                                    // la carte « Couleurs des compagnies »
+    '.co-nom',                                                                    // « Commandes » : la compagnie, sa rangée et son panneau (évolution 26 c)
     '.mu-atelier-cies label > b'                                                  // les compagnies à cocher d'un service à un seul atelier (correction 24 g)
   ];
   /** Où le nom d'une classe, seul, nomme une commande : sous la rangée de sa compagnie. */
-  const LIEUX_CLASSE = ['.rg-recap-classe > th[scope="row"]'];
+  const LIEUX_CLASSE = ['.rg-recap-classe > th[scope="row"]', '.co-classe'];
   const TOUS_LES_LIEUX = LIEUX.concat(LIEUX_CLASSE).join(','), CLASSE_SEULE = LIEUX_CLASSE.join(',');
 
   let source = null;      // ce que la page branche : { signature(), compagnies(), classes() }
@@ -506,7 +509,30 @@
     dessinerCarte();
   }
 
+  /**
+   * Les douze teintes d'une compagnie, à poser dans un panneau de la page (« Commandes », évolution 26 c) : un groupe de
+   * boutons radio, celle du moment cochée. Un clic sur une teinte (`data-pa-teinte`) se donne à `choisirCouleur`.
+   */
+  function teintesHTML(nomBrut, verrou) {
+    const nom = cle(nomBrut), rang = unite().rangs.get(nom) || rangs([...unite().noms, nom], choix).get(nom);
+    return `<span class="pa-teintes" role="radiogroup" aria-label="Couleur de ${esc(nom)}">` + Array.from({ length: NOMBRE }, (_, i) => i + 1).map(r =>
+      `<button type="button" class="pa-teinte" role="radio" data-pa-teinte="${r}" data-pa-rang="${r}" aria-checked="${r === rang}"`
+      + ` tabindex="${r === rang ? 0 : -1}" aria-label="${esc(nom)} : couleur ${r}" title="Couleur ${r}"${verrou ? ' disabled' : ''}></button>`).join('') + '</span>';
+  }
+  /** Au clavier, dans des teintes posées par `teintesHTML` : les flèches vont de l'une à l'autre. */
+  function clavierTeintes(e) { if (e.key !== 'Escape') auClavier(e); }
+  /**
+   * Un geste sur les couleurs que la page compose (« Commandes ») : `f(choix, noms)` rend les choix neufs. Rien en
+   * lecture seule ; la notification dit `phrase` et propose « Annuler ».
+   */
+  function reecrire(f, phrase) {
+    if (verrouille()) return;
+    const u = unite(), neufs = f({ ...choix }, u.noms.slice());
+    if (JSON.stringify(neufs) !== JSON.stringify(choix)) changer(neufs, phrase);
+  }
+
   Object.assign(api, {
+    teintesHTML, clavierTeintes, reecrire,
     brancher, poserCarte, relire: () => { relire(); rafraichir(); },
     choix: () => ({ ...choix }), rang: nom => unite().rangs.get(cle(nom)) || null,
     choisirCouleur, garderCouleurs, revenirAuxAutomatiques

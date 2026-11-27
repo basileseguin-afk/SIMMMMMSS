@@ -300,6 +300,16 @@ trois colonnes (info).
   fabriquée dans « Fabrications » est refusée : c'est une contradiction.
 - Une ligne absente du programme de vols est une compagnie × classe **ajoutée**.
 
+**Avec la liste des compagnies de l'unité** (version 1, évolution 26 b), les
+colonnes ne changent pas. À l'export, la feuille porte l'état que le calcul
+lit : les classes du programme que la liste n'a pas sont « Retirée » = `oui`,
+celles de la liste qui ne sont pas au programme sont des lignes ajoutées. À
+l'import, la liste suit la feuille : une classe retirée la quitte (une
+compagnie dont toutes les classes sont retirées reste dans la liste, sans
+classe) ; une ligne ajoutée y entre, et sa compagnie à la suite des autres
+si elle n'y était pas. Réimporté sans changement, le classeur laisse la liste
+telle qu'elle était. Sans liste, la feuille se lit comme avant.
+
 ### Feuille « Parcours »
 
 Un parcours est un **diagramme de nœuds** : une ligne par **lien**, « De » livre

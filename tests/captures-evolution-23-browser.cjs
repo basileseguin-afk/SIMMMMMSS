@@ -68,9 +68,10 @@ const LIRE=()=>{
     /* ---- le menu ------------------------------------------------------------------------------------------- */
     await nav.aller(page,'j-chiffres');
     const menu=await page.evaluate(()=>({entrees:[...document.querySelectorAll('#menu [data-sous-onglet] > span:not(.so-badge), #btn-sauvegarde > span:last-child')].map(x=>x.textContent.trim()),
-      blocs:[...document.querySelectorAll('#menu .menu-bloc')].map(b=>b.querySelector('.menu-bloc-titre').textContent.trim()),
+      blocs:[...document.querySelectorAll('#menu .menu-bloc:not(.menu-accueil)')].map(b=>b.querySelector('.menu-bloc-titre').textContent.trim()),
       defile:(()=>{const z=document.querySelector('.barre-defile');return z.scrollHeight-z.clientHeight;})()}));
-    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Période','Détails','Comparer','Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles','Fichiers'],V+'les treize entrées du menu');
+    // (Évolution 26 c : « Commandes » ; 26 f : « Régler » dans l'ordre du travail, chaque entrée au nom de sa page.)
+    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Période','Détails','Comparer','Commandes','Services et équipes','Chemins','Programme des vols','Planche retour','Réglages','Contrôles','Fichiers'],V+'les quatorze entrées du menu');
     assert.deepEqual(menu.blocs,['Lire','Régler'],V+'deux blocs');
     assert.ok(menu.defile<=0,V+'le menu ne défile pas');
     assert.equal(await page.locator('#menu [data-entree="u-plan"]').count(),0,V+'« Plan » n’est plus au menu');

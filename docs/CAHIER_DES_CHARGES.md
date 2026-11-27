@@ -955,6 +955,86 @@ prise — rien n'est refusé —, mais elle se dit.
 
 Contrôlé par `tests/inhabituel.test.cjs` et `tests/finition-browser.cjs`.
 
+### Les compagnies d'abord (version 1, évolution 26)
+
+Le constat : les compagnies, et leurs commandes, venaient des vols. Une
+compagnie sans vol n'existait pas ; un programme importé en créait sans qu'on
+le demande. Désormais **l'unité a sa liste des compagnies, et elle lui
+appartient** ; les vols s'y rattachent.
+
+**La liste des compagnies** (évolution 26 b). Chaque compagnie, avec ses
+classes ; une compagnie existe sans vol. Elle est gardée avec les équipes
+(`compagnies`, dans `ory-ateliers-v1`), donc dans la sauvegarde.
+
+- **Avec une liste, elle fait foi** : les commandes de l'unité sont celles de
+  la liste, ni plus ni moins. Elle se traduit, avant le calcul, en classes
+  retirées et ajoutées, que le moteur lit déjà (`compagnies.js`) : `moteur/`
+  ne change pas. La page et les outils (`outils/simuler-journee.cjs`,
+  `outils/simuler-periode.cjs`, `outils/caler-periode.cjs`) préparent la
+  sauvegarde au même endroit.
+- **Sans liste** (une unité d'avant), rien ne change, champ par champ : le
+  même résultat, la même sauvegarde restaurée puis exportée. « Contrôles » le
+  dit en information (« Les compagnies de cette unité viennent encore des
+  vols : 5 trouvées. »), avec « En faire ma liste » : la liste s'écrit telle
+  qu'elle est, sans changer le résultat, et s'annule.
+- « Retirer », « Rétablir » et « + Ajouter » tiennent la liste à jour. La
+  feuille « Classes » du classeur des équipes la mène à l'import
+  (`docs/FORMATS_EXCEL.md`).
+
+**La page « Commandes »** (évolution 26 c), première entrée de « Régler » : le
+compte, une liste plate des commandes par compagnie (sa pastille, sa classe,
+son chemin, ce qui lui manque, dans les mots de « Contrôles »), et
+« + Ajouter une compagnie ». Le panneau d'ajout : le nom, « Avec des vols » ou
+« Fixe, sans vol », les classes, et **« Comme une autre compagnie »** — classe
+par classe, le chemin, l'équipe de chaque étape, les temps par vol et les
+réglages par compagnie du modèle sont copiés (`compagnies-gestes.js`) ; une
+classe que le modèle n'a pas suit le chemin habituel de sa classe, « à
+compléter », avec son point de « Contrôles ». Le panneau d'une compagnie : la
+renommer (ses réglages et sa couleur suivent), ses classes, sa couleur, la
+retirer. Chaque geste s'annule d'un coup.
+
+**Les commandes fixes** (évolution 26 d). Une compagnie « Fixe, sans vol » (une
+cantine, par exemple) ne dépend d'aucun vol : chaque classe a sa quantité par
+jour, ses jours et son heure de départ. Chaque jour coché, elle donne au
+calcul un départ à son heure, avec sa quantité, comme une ligne du programme
+(`preparerVols`, avant le calcul). Si le programme porte aussi des lignes de
+départ de cette compagnie ce jour-là, leur quantité compte, à l'heure de la
+commande fixe, même un jour décoché. Une commande fixe qui ne pèse sur aucun
+jour est un point « à corriger ». Sans commande fixe, le programme et le
+résultat sont ceux d'avant. Une commande fixe compte encore comme un vol
+(« CANTINE-FIXE » : handling, camion, retour à la plonge, vols de la Synthèse).
+
+**L'import rattache, il ne crée plus** (évolution 26 e). Avec une liste, chaque
+ligne du programme est rattachée à une compagnie de la liste, par les règles
+de tri de l'import qui existent (« Règles d'import Winrest » : les codes
+compagnie, les ICAO exclus) ; un nom de la liste reste tel quel, avant toute
+règle. Une ligne qui ne se rattache à rien n'est pas comptée. La notification
+de l'import le dit (« 22 vols rattachés à votre liste, 2 non rattachés »), et
+mène à « Contrôles », qui montre un point à corriger par compagnie non
+rattachée, avec trois gestes : « L'ajouter » (le panneau d'ajout, le nom
+rempli), « La rattacher à… » (la règle de tri, écrite et montrée),
+« L'ignorer » (la règle d'exclusion, écrite et montrée) ; chacun s'annule. Le
+bandeau de la Synthèse compte ces points. Les vols d'exemple ne sont pas une
+importation : ceux des compagnies hors de la liste ne comptent pas, sans
+point. Sans liste, l'import d'avant.
+
+**Le menu et l'accueil dans l'ordre du travail** (évolution 26 f). « Régler »,
+sans sous-groupes : Commandes, Services et équipes, Chemins, Programme des
+vols, Planche retour, Réglages, Contrôles. L'accueil est une entrée du menu,
+au-dessus de « Lire ». Il guide, une rangée par étape : les compagnies et
+leurs commandes, les services et leurs équipes, les chemins, les contrôles,
+le programme des vols, puis lire le résultat ; sur une unité vide, « À faire
+ensuite » propose d'ajouter une première compagnie. Avant tout import,
+quand chaque commande a son chemin, ses équipes et ses temps, « Contrôles »
+dit « Le site est prêt : il ne manque que les vols », avec un bouton vers
+« Programme des vols ».
+
+Contrôlé par `tests/compagnies.test.cjs`, `tests/compagnies-liste-browser.cjs`,
+`tests/commandes-page-browser.cjs`, `tests/compagnies-gestes.test.cjs`,
+`tests/compagnies-fixes.test.cjs`, `tests/compagnies-import.test.cjs`,
+`tests/import-rattache-browser.cjs`, `tests/demarrage.test.cjs`,
+`tests/onglets.test.cjs` et `tests/accueil-guide-browser.cjs`.
+
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |

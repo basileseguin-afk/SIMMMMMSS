@@ -78,14 +78,14 @@ const C='#mu-pas';
   assert.ok(boutonsAvant.some(b=>b.page==='mu-services')&&boutonsAvant.some(b=>b.page==='mu-flux')&&boutonsAvant.some(b=>b.page==='j-chiffres'),'des boutons vers « Services et équipes », « Chemins » et la Synthèse');
   assert.deepEqual(boutonsAvant.filter(b=>b.gris||b.raison!==null),[],'hors lecture seule : aucun bouton grisé, aucune raison');
   assert.equal(await page.locator(C+' .ct-raison').count(),0);
-  assert.deepEqual(await menu(),[['lire',false,['Synthèse','En direct','Planning','Détails','Comparer']],['regler',false,['Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles']]]);
+  assert.deepEqual(await menu(),[['accueil',false,[]],['lire',false,['Synthèse','En direct','Planning','Détails','Comparer']],['regler',false,['Commandes','Services et équipes','Chemins','Programme des vols','Planche retour','Réglages','Contrôles']]]);   // (évolution 26 f : l'ordre du travail)
   assert.equal(pastilleAvant[2],'regler');
   assert.deepEqual(await tete(),['Simulation','Contrôles','Simulation','rg-simulation']);
 
   /* ---- 1. en lecture seule : « Contrôles » reste au menu, sous « Lire », avec sa pastille -------------------------- */
   await bascule.click();await attendre(400);
   assert.deepEqual([await page.evaluate(()=>document.body.dataset.lecture),await sous()],['seule','mu-pas'],'la page ouverte reste ouverte');
-  assert.deepEqual(await menu(),[['lire',false,['Synthèse','En direct','Planning','Détails','Comparer','Contrôles']],['regler',true,[]]]);
+  assert.deepEqual(await menu(),[['accueil',false,[]],['lire',false,['Synthèse','En direct','Planning','Détails','Comparer','Contrôles']],['regler',true,[]]]);
   assert.equal((await page.locator('#menu [data-bloc=regler] .menu-ferme').innerText()).trim(),MOT);
   assert.deepEqual(await pastille(),[pastilleAvant[0],pastilleAvant[1],'lire'],'sa pastille : le même nombre, le même détail');
   assert.ok(+pastilleAvant[0]>=9,'elle compte les points bloquants et à corriger : '+pastilleAvant[0]);
@@ -118,9 +118,10 @@ const C='#mu-pas';
   assert.equal(await sous(),'mu-pas','par un lien');
   await page.evaluate(()=>document.getElementById('cl-lien').remove());
   await page.locator('#btn-accueil').click();await attendre(300);
-  assert.deepEqual(await page.locator('#view-accueil .acc-bloc').evaluateAll(bs=>bs.map(b=>[b.dataset.bloc,b.hasAttribute('data-ferme'),[...b.querySelectorAll('.acc-page')].map(e=>e.textContent)])),
-    [['lire',false,['Synthèse','En direct','Planning','Détails','Comparer','Contrôles']],['regler',true,[]]],'l’accueil suit le menu');
-  await page.locator('#view-accueil .acc-page[data-page="mu-pas"]').click();await attendre(300);
+  // (Évolution 26 f : l'accueil guide dans l'ordre du travail ; les étapes de « Régler » s'y replient en une ligne.)
+  assert.deepEqual(await page.locator('#view-accueil .acc-etape').evaluateAll(es=>es.map(e=>e.hasAttribute('data-ferme')?'ferme':e.querySelector('.acc-etape-tete').dataset.page)),
+    ['ferme','mu-pas','j-chiffres'],'l’accueil suit le menu');
+  await page.locator('#view-accueil .acc-etape-tete[data-page="mu-pas"]').click();await attendre(300);
   assert.equal(await sous(),'mu-pas','par l’accueil');
   assert.equal(await dernierAvis(),'','aucun refus');
 
@@ -137,7 +138,9 @@ const C='#mu-pas';
   }
   assert.ok(etat.filter(b=>b.gris&&/^Régler dans /.test(b.texte)).length>=7,'les « Régler dans… »');
   assert.equal(etat.filter(b=>b.gris&&b.voulu).length,voulus,'tous les « C’est voulu »');
-  assert.ok(etat.filter(b=>!b.gris&&/^Voir dans Synthèse/.test(b.texte)).length>=3);
+  // (Évolution 26 e : avec la liste, les vols d'exemple des compagnies hors de la liste ne comptent plus — ni leur plonge,
+  // ni ses points ; il en reste deux.)
+  assert.ok(etat.filter(b=>!b.gris&&/^Voir dans Synthèse/.test(b.texte)).length>=2);
   // Une raison par point, pas par bouton.
   assert.equal(await page.locator(C+' .ct-point').evaluateAll(ps=>ps.every(p=>p.querySelectorAll('.ct-raison').length===(p.querySelector('button:disabled')?1:0))),true);
   // Grisé se voit : le bouton est estompé.

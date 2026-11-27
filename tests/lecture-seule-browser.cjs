@@ -80,7 +80,7 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
 
   /* ---- 2. le bloc « Régler » replié en « Paramétrage verrouillé » ; « Lire » et « Fichiers » intacts ---------------- */
   assert.deepEqual(await page.locator('#menu .menu-bloc').evaluateAll(bs=>bs.map(b=>[b.dataset.bloc,b.hasAttribute('data-ferme'),b.querySelectorAll('[data-sous-onglet]').length])),
-    [['lire',false,6],['regler',true,0]]);
+    [['accueil',false,0],['lire',false,6],['regler',true,0]]);   // l'accueil, en tête du menu, reste ouvert (évolution 26 f)
   assert.equal((await page.locator('#menu [data-bloc=regler] .menu-ferme').innerText()).trim(),MOT);
   assert.equal(await page.locator('#menu [data-bloc=regler] .menu-ferme svg').count(),1,'un cadenas');
   // (Le nom de l'entrée, sans sa pastille : « Contrôles » porte la sienne, évolution 23 d.)
@@ -122,11 +122,13 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   assert.equal(await sous(),'mu-pas','« Contrôles détaillés » ouvre « Contrôles »');
   assert.equal(await dernierAvis(),'','aucun refus');
   await nav.aller(page,'j-chiffres');await attendre(200);
-  // Depuis l'accueil : le bloc « Régler » y est replié aussi ; « À faire ensuite » le dit.
+  // Depuis l'accueil : les étapes du guide qui ne s'ouvrent pas y sont repliées en une rangée (évolution 26 f) ;
+  // « À faire ensuite » le dit.
   await page.locator('#btn-accueil').click();await attendre(300);
-  assert.deepEqual(await page.locator('#view-accueil .acc-bloc').evaluateAll(bs=>bs.map(b=>[b.dataset.bloc,b.hasAttribute('data-ferme'),b.querySelectorAll('.acc-tuile').length])),[['lire',false,1],['regler',true,0]]);
+  assert.deepEqual(await page.locator('#view-accueil .acc-etape').evaluateAll(es=>es.map(e=>e.hasAttribute('data-ferme')?'ferme':e.querySelector('.acc-etape-tete').dataset.page)),
+    ['ferme','mu-pas','j-chiffres']);
   assert.equal((await page.locator('#view-accueil .acc-ferme').innerText()).trim(),MOT);
-  assert.equal(await page.locator('#view-accueil [data-vers-partie]:not([data-vers-partie=resultats])').count(),0,'aucune tuile de « Régler »');
+  assert.equal(await page.locator('#view-accueil .acc-guide [data-page]').evaluateAll((es,fermees)=>es.filter(e=>fermees.includes(e.dataset.page)).length,[...REGLER,'mu-commandes']),0,'aucune étape fermée ne s’ouvre');
   const suite=page.locator('#view-accueil .acc-suite [data-page]');
   if(REGLER.includes(await suite.getAttribute('data-page'))){
     assert.equal(await suite.evaluate(e=>getComputedStyle(e,'::after').content),'" · '+MOT+'"');
@@ -185,8 +187,10 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   /* ---- 6. les pages de résultats restent intactes ; aucun réglage ne change par l'interface -------------------------- */
   // (a) Ce que la lecture seule retire des pages de résultats : les gestes qui changent un réglage, et eux seuls.
   await nav.aller(page,'at-repas');await attendre(300);
-  assert.ok(await page.locator('#at-classes table tbody tr').count()>=12,'« Détails › Commandes » montre ses commandes');
-  for(const sel of ['#at-classes .at-ajout-ouvrir','#at-etapes','#at-classes .at-ligne-actions .at-menu'])assert.equal(await page.locator(sel).first().isVisible(),false,sel+' ne se montre plus');
+  // (Évolution 26 b : l'unité fictive a sa liste des compagnies — ses 17 commandes, dont celles à l'heure, repliées en une
+  // ligne ; avant, les compagnies des vols de démonstration s'y ajoutaient.)
+  assert.ok(await page.locator('#at-classes table tbody tr').count()>=5,'« Détails › Commandes » montre ses commandes');
+  for(const sel of ['#at-classes .at-vers-commandes','#at-etapes','#at-classes .at-ligne-actions .at-menu'])assert.equal(await page.locator(sel).first().isVisible(),false,sel+' ne se montre plus');
   await nav.aller(page,'v-departs');await attendre(300);
   assert.equal(await page.locator('[data-vh-action=brancher]:visible').count(),0);
   await nav.aller(page,'j-plan');await attendre(400);
@@ -260,6 +264,9 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   assert.equal(await page.locator('#fi-classeurs .fi-verrou, #fi-verrou-restaurer').count(),0,'plus de raison');
   assert.deepEqual(await page.locator('#fi-classeurs td[data-fi-sens=importer] button').evaluateAll(bs=>bs.filter(b=>b.disabled).map(b=>b.id)),[]);
   for(const sel of ['#imp-vols','#sauvegarde-import','#at-import','#fc-import'])assert.equal(await page.locator(sel).isDisabled(),false,sel);
+  // « Détails » rouvre la dernière de ses pages qu'on a vue : la passe a fini par « Heures sup et renforts ». (Avant l'évolution
+  // 26 f, l'accueil, cliqué en dernier, menait à « Détails › Commandes » ; son guide ne mène plus qu'aux étapes du travail.)
+  await nav.aller(page,'at-repas');await attendre(150);
   await nav.aller(page,'j-chiffres');await attendre(300);
   assert.equal(await page.locator('#menu').innerHTML(),menuAvant,'le menu d’avant, à l’octet près');
   // Hors lecture seule, un lien vers un réglage (posé ici pour l'essai : la Synthèse n'en a plus, correction 23 d) ne dit rien.
@@ -267,7 +274,7 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
     document.querySelector('#journee-chiffres .bilan-probleme').append(b);const c=getComputedStyle(b,'::after').content;b.remove();return c;}),'none');
   for(const id of REGLER.filter(i=>i!=='u-plan')){await page.evaluate(i=>Sim.onglets.choisir(i),id);await attendre(150);assert.equal(await sous(),id,id+' s’ouvre de nouveau');}
   await nav.aller(page,'at-repas');await attendre(300);
-  assert.equal(await page.locator('#at-classes .at-ajout-ouvrir').isVisible(),true);
+  assert.equal(await page.locator('#at-classes .at-vers-commandes').isVisible(),true);
   assert.equal(await page.locator('#at-etapes').isVisible(),true);
   assert.equal(await page.locator('#pv-reel').evaluate(e=>e.inert),false);
   // Un réglage change de nouveau, et se défait.

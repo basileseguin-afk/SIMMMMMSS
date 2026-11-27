@@ -36,12 +36,13 @@
   /**
    * Où un avis se règle : la page, et l'endroit dedans.
    * @param {object} p  un avis du registre (`OrlyAvis.lister`)
-   * @returns {{page:string, service?:string, equipe?:string, commande?:string, lieu?:string}|null}
+   * @returns {{page:string, service?:string, equipe?:string, commande?:string, lieu?:string, compagnie?:string}|null}
    *   service  — la fiche de ce service (« Services et équipes »), ou son étape (« Chemins ») ;
    *   equipe   — la fiche de cette équipe ;
    *   commande — la commande à mettre en évidence dans le tableau de l'étape ;
    *   lieu     — un endroit de la page (`temps` : les temps par vol du service ; `supprimes` : les services supprimés ;
-   *              `fournisseurs` : le tableau « Qui se fournit où », dans « Chemins » — évolution 24 a).
+   *              `fournisseurs` : le tableau « Qui se fournit où », dans « Chemins » — évolution 24 a) ;
+   *   compagnie — le panneau de cette compagnie, dans « Commandes » (évolution 26 d).
    *   `null` : l'avis ne mène nulle part ailleurs (il se lit ici).
    */
   function destination(p) {
@@ -56,6 +57,11 @@
     if (p.groupe && (p.etapes || []).length) return { page: 'mu-flux', service: p.etapes[0], commande: (p.classes || [])[0] || undefined };
     // Une étape du chemin que personne ne prépare : l'équipe d'une commande à une étape se choisit dans « Chemins ».
     if (p.code === 'parcours-trou' && p.service) return { page: 'mu-flux', service: p.service, commande: (p.classes || [])[0] || undefined };
+    // Une commande « à compléter » (évolution 26 c) : ses équipes se choisissent dans « Chemins », à la première étape de
+    // son chemin.
+    if (p.aCompleter && p.commande) return { page: 'mu-flux', ...(p.service ? { service: p.service } : {}), commande: p.commande };
+    // Une compagnie de la liste (évolution 26 d) : son panneau, dans « Commandes ».
+    if (p.compagnie && p.page === 'mu-commandes') return { page: 'mu-commandes', compagnie: p.compagnie };
     // Un service sans temps par vol : la section de ses temps — et le champ de la commande, quand le point la nomme.
     if (SANS_TEMPS.has(p.code) && p.service) return { page: 'mu-services', service: p.service, lieu: 'temps', ...((p.classes || []).length ? { commande: p.classes[0] } : {}) };
     // Un point d'une équipe : sa fiche — sur la case de la commande cochée hors de son chemin, ou sur le champ en cause.
@@ -166,10 +172,17 @@
       // (un autre service, un autre geste), sont des boutons de carte (correction 24 d).
       const bloquant = (AV.NIVEAUX.some(n => n.id === p.niveau) ? p.niveau : AV.NIVEAUX[0].id) === 'bloquant';
       const aller = (b, k) => `<button type="button" class="btn btn-sm${bloquant && !k ? ' btn-play' : ''}" data-ct-aller="${i}"${k ? ` data-ct-geste="${k}"` : ''} data-ct-page="${esc(b.page)}"${ferme(b.page) ? gris : ''}>${esc(b.texte)} →</button>`;
+      // Un geste qui se fait ici (évolution 26) : il écrit un réglage, grisé en lecture seule. Le premier d'un point
+      // bloquant est plein, comme un bouton qui mène ailleurs.
+      const gestes = p.gestes || [], gesteGris = verrou && gestes.length > 0;
+      const geste = (g, k) => g.choix
+        ? `<label class="ct-choix"><span>${esc(g.texte)}</span><select data-ct-action="${esc(g.action)}" data-ct-point="${i}"${verrou ? gris : ''}><option value="">choisir…</option>${
+          g.choix.map(c => `<option value="${esc(c.valeur)}">${esc(c.texte)}</option>`).join('')}</select></label>`
+        : `<button type="button" class="btn btn-sm${bloquant && !k && !bs.length ? ' btn-play' : ''}" data-ct-action="${esc(g.action)}" data-ct-point="${i}"${g.valeur != null ? ` data-ct-valeur="${esc(g.valeur)}"` : ''}${verrou ? gris : ''}>${esc(g.texte)}</button>`;
       return `<li class="ct-point" data-ct-point="${i}"><div class="ct-corps"><b>${esc(p.titre)}</b>${p.detail ? `<span>${esc(p.detail)}</span>` : ''}</div>
-        <div class="ct-gestes">${bs.map(aller).join('')}${
+        <div class="ct-gestes">${bs.map(aller).join('')}${gestes.map(geste).join('')}${
           p.voulu ? `<button type="button" class="btn btn-sm" data-ct-voulu="${esc(p.voulu)}"${vouluGris ? gris : ''} aria-label="${esc(AV.VOULU + ' (' + p.voulu + ')')}" title="${esc(AV.VOULU)}">C’est voulu</button>` : ''}${
-          allerGris || vouluGris ? `<small class="ct-raison" id="ct-raison-${i}">${esc(o.motFerme || MOT_FERME)}</small>` : ''}</div></li>`;
+          allerGris || vouluGris || gesteGris ? `<small class="ct-raison" id="ct-raison-${i}">${esc(o.motFerme || MOT_FERME)}</small>` : ''}</div></li>`;
     };
     const colonne = c => {
       const nv = c.niveau, replier = nv.id === 'information' && c.avis.length > INFOS_VISIBLES;
@@ -200,6 +213,7 @@
    *   voulu(compagnie)  — retenir qu'une compagnie n'a pas de chargement, et que c'est voulu ;
    *   nomPage(id)       — le nom d'une page ;
    *   aller(page, lieu) — ouvrir une page, à un endroit ;
+   *   compagnie(nom)    — « Commandes », le panneau de cette compagnie ouvert (évolution 26 d) ;
    *   verrou()          — facultatif : vrai en lecture seule (évolution 23 d) — la page se lit, ses gestes sont grisés ;
    *   ferme(page)       — facultatif : la page ne s'ouvre pas ; motFerme : la raison dite sous un bouton grisé.
    */
@@ -220,6 +234,13 @@
       const plus = box.querySelector('.ct-plus'); if (plus && deplie) plus.open = true;
     }
 
+    /** Un geste d'un point, fait ici : c'est la page qui le fait (`a.geste`). En lecture seule, rien. */
+    faireGeste(el, valeur) {
+      if (this.verrouille() || !this.a.geste) return;
+      const p = (this.avisMontres || [])[+el.dataset.ctPoint];
+      this.a.geste(el.dataset.ctAction, valeur, p);
+    }
+
     /** La lecture seule est-elle en marche ? C'est la page qui le sait. */
     verrouille() { return !!(this.a.verrou && this.a.verrou()); }
 
@@ -238,6 +259,7 @@
     menerA(d) {
       if (d.page === 'mu-flux' && d.lieu === 'suivi' && this.ouvrirSuivi) return this.ouvrirSuivi(d.chemin, d.commande);
       if (d.page === 'mu-flux' && d.service) return this.commandeOuService(d);
+      if (d.page === 'mu-commandes' && d.compagnie && this.a.compagnie) return this.a.compagnie(d.compagnie);
       if (d.page === 'j-chiffres' && d.service && this.a.resultats) return this.a.resultats(d.service);
       if (d.page === 'mu-services' && d.equipe && this.ouvrirEquipe && this.etat.ateliers.some(a => a.id === d.equipe))
         return void (this.viser ? this.viser({ genre: d.commande ? 'cocher' : 'equipe', equipe: d.equipe, commande: d.commande, champ: d.champ }) : this.ouvrirEquipe(d.equipe));
@@ -283,6 +305,14 @@
         }
         const b = e.target.closest('[data-ct-aller]');
         if (b) return this.allerAvis((this.avisMontres || [])[+b.dataset.ctAller], +b.dataset.ctGeste || 0);
+        // Un geste qui se fait ici (évolution 26) : « En faire ma liste », « L'ajouter », « L'ignorer »…
+        const g = e.target.closest('button[data-ct-action]');
+        if (g) this.faireGeste(g, g.dataset.ctValeur || '');
+      });
+      // Un geste à choisir dans une liste (« La rattacher à… ») : il se fait au choix.
+      d.addEventListener('change', e => {
+        const s = e.target.closest && e.target.closest('#mu-pas select[data-ct-action]');
+        if (s && s.value) this.faireGeste(s, s.value);
       });
       d.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('ct-plus')) this.infosDepliees = e.target.open; }, true);
     }

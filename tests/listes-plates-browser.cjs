@@ -118,7 +118,7 @@ const LISTE=sel=>{const l=document.querySelector(sel),R=l.getBoundingClientRect(
     return {blocs:[...document.querySelectorAll('#menu .menu-bloc-titre')].map(e=>[e.textContent,g(e).fontWeight,parseFloat(g(e).fontSize)]),
       sous:[...document.querySelectorAll('#menu .menu-espace-titre')].map(e=>[e.textContent,g(e).fontWeight,g(e).color,parseFloat(g(e).fontSize)]),
       retraits:[entree('#menu [data-bloc="lire"] .menu-entree'),entree('#menu .menu-espace:has(.menu-espace-titre) .menu-entree')],
-      air:parseFloat(g(document.querySelectorAll('#menu .menu-bloc')[1]).paddingTop)+parseFloat(g(document.querySelectorAll('#menu .menu-bloc')[1]).marginTop),
+      air:parseFloat(g(document.querySelector('#menu [data-bloc="regler"]')).paddingTop)+parseFloat(g(document.querySelector('#menu [data-bloc="regler"]')).marginTop),
       entrees:[...document.querySelectorAll('#menu [role=tab]')].map(e=>e.textContent.replace(/\d+$/,'').trim()),attendues:OrlyOnglets.entrees().map(o=>o.nom||''),
       version:{texte:v.textContent,attendu:'version '+document.querySelector('meta[name="ory-version"]').content,dansLePied:!!v.closest('.barre-pied'),sousLaMarque:!!v.closest('.marque'),
         sousLeTheme:v.getBoundingClientRect().top>=theme.getBoundingClientRect().bottom-1,dernier:v===v.parentElement.lastElementChild,taille:parseFloat(g(v).fontSize),copiable:g(v).userSelect,
@@ -126,14 +126,15 @@ const LISTE=sel=>{const l=document.querySelector(sel),R=l.getBoundingClientRect(
       memeTexte:jumeau.textContent.replace(/version [0-9a-f]+/,'')===texte.replace(/version [0-9a-f]+/,''),unSeul:barre.querySelectorAll('.marque-version').length};});
   assert.deepEqual(menu.blocs.map(b=>b[0]),['Lire','Régler'],'le menu : ses deux blocs');
   assert.ok(menu.blocs.every(b=>b[1]==='600'&&b[2]>=13),'le menu : « Lire » et « Régler » en graisse 600 — '+JSON.stringify(menu.blocs));
-  assert.deepEqual(menu.sous.map(s=>s[0]),['Vols','L’unité','Simulation'],'le menu : ses trois sous-titres');
-  assert.ok(menu.sous.every(s=>s[1]==='400'&&s[2]===J['--ds-nav-texte-3']&&s[3]>=13),'le menu : les sous-titres en graisse 400, à la couleur discrète du menu — '+JSON.stringify(menu.sous));
-  assert.ok(menu.retraits[1]>=menu.retraits[0]+8,'le menu : les entrées d’un sous-titre en retrait — '+menu.retraits.join(' → '));
+  // (Évolutions 26 c et f : « Régler » n'a plus de sous-groupes — ni sous-titre, ni entrée en retrait.)
+  assert.deepEqual(menu.sous,[],'le menu : aucun sous-titre');
+  assert.deepEqual(menu.retraits,[menu.retraits[0],null],'le menu : aucune entrée en retrait');
   assert.ok(menu.air>=24,'le menu : plus d’air au-dessus de « Régler » ('+menu.air+' px)');
   assert.deepEqual(menu.version,{...menu.version,texte:menu.version.attendu,dansLePied:true,sousLaMarque:false,sousLeTheme:true,dernier:true,copiable:'text',visible:true,coupe:false},'le numéro de version : au bas du menu, sous le thème, lisible et copiable');
   assert.ok(menu.version.taille>=13,'le numéro de version : 13 px au moins');
   assert.deepEqual([menu.memeTexte,menu.unSeul],[true,1],'le texte lu du menu ne change pas, hors la place du numéro de version');
-  assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles'],'le menu a les entrées d’avant, dans l’ordre');
+  // (Évolution 26 c : « Commandes » ; 26 f : « Régler » dans l'ordre du travail, chaque entrée au nom de sa page.)
+  assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Commandes','Services et équipes','Chemins','Programme des vols','Planche retour','Réglages','Contrôles'],'le menu a ses entrées, dans l’ordre');
 
   // 5. Le fil du haut ne répète pas un mot.
   const fils={};

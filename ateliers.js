@@ -20,6 +20,8 @@
   const MM = () => (enNode ? require('./mots-moteur.js') : root.OrlyMotsMoteur);
   /** Les réglages qui ne jouent pas (jouent.js) : l'import d'un classeur garde ceux qu'il ne porte pas. */
   const JOUENT = () => (enNode ? require('./jouent.js') : root.OrlyJouent);
+  // La liste des compagnies (évolution 26 b) : sans ce module, l'unité d'avant.
+  const CO = () => root.OrlyCompagnies || (enNode ? require('./compagnies.js') : null);
   /** « 2 réglages qui ne jouent pas ici sont gardés de la page (Plonge matin : temps pour laver un vol, par compagnie). » ; rien, si rien n'est gardé. */
   const direGardes = gardes => (!gardes.length ? '' : ' ' + (gardes.length > 1 ? gardes.length + ' réglages qui ne jouent pas ici sont gardés' : '1 réglage qui ne joue pas ici est gardé')
     + ' de la page, le classeur ne les portant pas (' + gardes.slice(0, 4).map(g => g.equipe + ' : ' + g.libelle.charAt(0).toLowerCase() + g.libelle.slice(1)).join(' ; ')
@@ -506,6 +508,9 @@
     // sauvegarde d'avant), rien ne change ; elle sert au service coché qui n'est encore dans aucun chemin.
     const FOURNISSEURS = fournisseursModule();
     const fournisseurs = FOURNISSEURS ? FOURNISSEURS.lire(brut.fournisseurs) : {};
+    // La liste des compagnies de l'unité (évolution 26 b) : quand elle existe, elle fait foi. Sans elle (une unité
+    // d'avant), rien ne change : les commandes viennent du programme de vols.
+    const compagnies = CO() ? CO().lire(brut.compagnies) : null;
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
@@ -514,7 +519,7 @@
       ...(Object.keys(surfaces).length ? { surfaces } : {}), ...(Object.keys(partages).length ? { partages } : {}), ...(disposition ? { disposition } : {}),
       ...(Object.keys(attentes).length ? { attentes } : {}), ...(Object.keys(rayonnages).length ? { rayonnages } : {}),
       ...(Object.keys(postes).length ? { postes } : {}), ...(sansChargement.length ? { sansChargement } : {}),
-      ...(Object.keys(fournisseurs).length ? { fournisseurs } : {}) };
+      ...(Object.keys(fournisseurs).length ? { fournisseurs } : {}), ...(compagnies ? { compagnies } : {}) };
   }
   /** Les fournisseurs et leurs clients (fournisseurs.js, évolution 24 a) ; sans ce module, la page d'avant. */
   function fournisseursModule() { return root.OrlyFournisseurs || (enNode ? require('./fournisseurs.js') : null); }
@@ -669,15 +674,33 @@
      * identifiant qu'une classe du programme la remplace — c'est la façon de
      * corriger un volume sans toucher au fichier de vols. (moteur/journee.js) */
     get classes() {
-      return J().classesDuProgramme(this.a.classes() || [], this.state);
+      return J().classesDuProgramme(this.a.classes() || [], this.etatPourLeCalcul());
     }
 
     /* Les classes du programme que l'utilisateur a retirées, pour pouvoir les
-     * rétablir : un retrait qu'on ne peut pas défaire est un piège. */
+     * rétablir : un retrait qu'on ne peut pas défaire est un piège. Avec la liste
+     * des compagnies, celles du programme qui n'y sont pas. */
     get retirees() {
-      const exclues = new Set(this.state.exclues || []);
+      const exclues = new Set(this.etatPourLeCalcul().exclues || []);
       return (this.a.classes() || []).filter(c => exclues.has(c.id));
     }
+
+    /**
+     * L'état que le calcul lit (évolution 26 b) : sans liste des compagnies, l'état lui-même ; avec elle, ses classes
+     * retirées et ajoutées tirées de la liste et des commandes du programme entier (`idsDuProgramme`, tous ses jours).
+     */
+    etatPourLeCalcul() {
+      if (!Array.isArray(this.state.compagnies) || !CO()) return this.state;
+      return CO().etatEffectif(this.state, this.idsDuProgramme());
+    }
+
+    /** Les commandes que porte le programme de vols entier (tous ses jours) : « NORD/BC »… */
+    idsDuProgramme() {
+      return this.a.idsDuProgramme ? this.a.idsDuProgramme() : (this.a.classes() || []).map(c => c.id);
+    }
+
+    /** La liste des compagnies de l'unité, ou `null` (une unité d'avant, dont les compagnies viennent des vols). */
+    get compagnies() { return Array.isArray(this.state.compagnies) ? this.state.compagnies : null; }
 
     /** Les commandes d'un service qui travaille par catégories, ou null pour un autre. */
     classesDe(service) {
@@ -707,7 +730,7 @@
     /** La journée, jouée par le moteur sur l'état du moment : ses arguments et son résultat, sans rien écrire. */
     jouerLaJournee() {
       try {
-        const unite = { ...(this.a.unite ? this.a.unite() : {}), etat: this.state };
+        const unite = { ...(this.a.unite ? this.a.unite() : {}), etat: this.etatPourLeCalcul() };
         const delaiChargement = this.a.delaiChargement ? this.a.delaiChargement() : undefined;
         // Une journée d'une période simulée et à jour : elle part de ce que la veille lui a laissé dans la période (évolution 10).
         const entree = this.a.journeePeriode ? this.a.journeePeriode() : null;
@@ -1276,6 +1299,7 @@
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="mu-flux" hidden></details>
+<section id="mu-commandes" class="mu mu-commandes" data-sous="mu-commandes" aria-label="Commandes"></section>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Contrôles"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
@@ -1528,9 +1552,6 @@
           return this.rendreClasses(this.resultat);
         }
         case 'classe-retablir':  return this.retablirClasse(data.classe);
-        case 'classe-nouvelle':  return this.ouvrirAjout(data.lieu);
-        case 'classe-annuler':   { this.ajout = null; return this.rendre(''); }
-        case 'classe-valider':   return this.validerAjout(data.lieu);
       }
     }
 
@@ -1882,56 +1903,34 @@
         }
         if (ajoutee) this.state.ajoutees = this.state.ajoutees.filter(c => P.idClasse(c.cie, c.cabine) !== id);
         else this.state.exclues = [...new Set([...(this.state.exclues || []), id])];
+        this.classeDansLaListe(id, false);
       }, message);
     }
 
     retablirClasse(id) {
-      this.changer(() => { this.state.exclues = (this.state.exclues || []).filter(x => x !== id); },
+      this.changer(() => { this.state.exclues = (this.state.exclues || []).filter(x => x !== id); this.classeDansLaListe(id, true); },
         id + ' rétablie. Elle est à fabriquer de nouveau.');
     }
 
-    ouvrirAjout(lieu) { this.ajout = { lieu: lieu || 'commandes' }; this.rendre(''); }
-
-    /* Ajouter une compagnie, ou les classes qui lui manquent (retour d'usage :
-     * « je ne peux plus rajouter de compagnie ni de compagnie × classe ») : une
-     * compagnie, et ses classes cochées d'un coup. Le formulaire vit là où
-     * l'on regarde les commandes : les chemins, et la page des commandes. */
-    formAjout(lieu) {
-      if (!this.ajout || this.ajout.lieu !== lieu)
-        return `<button class="btn btn-sm at-ajout-ouvrir" data-at-action="classe-nouvelle" data-lieu="${esc(lieu)}">+ Ajouter une compagnie ou une classe</button>`;
-      const cies = [...new Set(this.classes.map(c => c.cie))].sort();
-      return `<div class="at-ajout" data-lieu="${esc(lieu)}">
-        <label>Compagnie<input data-ajout="cie" maxlength="40" placeholder="Ex. EZY" list="at-ajout-cies-${esc(lieu)}" autocomplete="off"></label>
-        <datalist id="at-ajout-cies-${esc(lieu)}">${cies.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
-        <fieldset class="at-ajout-cabs"><legend>Classes</legend>${P.CABINES.map(c => `<label class="chk chk-mini"><input type="checkbox" data-ajout-cab="${c}"
-          ${c === 'YC' ? 'checked' : ''}> ${esc((P.NOM_CABINE || {})[c] || c)}</label>`).join('')}</fieldset>
-        <div class="at-ajout-actions">
-          <button class="btn btn-play btn-sm" data-at-action="classe-valider" data-lieu="${esc(lieu)}">Ajouter</button>
-          <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
-        </div>
-        <p class="mini-note at-ajout-note">Une compagnie déjà là : cochez les classes qui lui manquent. Passagers, nombre de vols et
-          heure viennent de l’<b>import des vols</b> ; une commande absente des vols reste ajoutée, sans volume, jusqu’au prochain import.</p>
-      </div>`;
+    /**
+     * Avec la liste des compagnies (évolution 26 b), retirer ou remettre une commande la retire de la liste ou l'y met
+     * (sa compagnie y entre au besoin) : la liste fait foi. Les classes retirées et ajoutées d'avant suivent aussi, pour
+     * qu'une sauvegarde relue sans la liste dise la même chose. À appeler dans un `changer`. Sans liste, rien.
+     */
+    classeDansLaListe(id, dedans) {
+      const liste = this.state.compagnies; if (!Array.isArray(liste)) return;
+      const i = String(id).lastIndexOf('/'), cie = String(id).slice(0, i), cab = String(id).slice(i + 1);
+      if (i < 0 || !P.CABINES.includes(cab)) return;
+      let c = liste.find(x => x.nom === cie);
+      if (!c && dedans) { c = { nom: cie, classes: [] }; liste.push(c); }
+      if (!c) return;
+      c.classes = dedans ? P.CABINES.filter(x => x === cab || c.classes.includes(x)) : c.classes.filter(x => x !== cab);
     }
 
-    validerAjout(lieu) {
-      const f = document.querySelector('.at-ajout[data-lieu="' + (lieu || 'commandes') + '"]'); if (!f) return;
-      const cie = String((f.querySelector('[data-ajout=cie]') || {}).value || '').trim().toUpperCase();
-      const cabs = [...f.querySelectorAll('[data-ajout-cab]:checked')].map(x => x.dataset.ajoutCab);
-      if (!cie) return this.rendre('Nommez la compagnie.');
-      if (!cabs.length) return this.rendre('Cochez au moins une classe.');
-      const ids = cabs.map(c => P.idClasse(cie, c));
-      const deja = ids.filter(id => this.classes.some(c => c.id === id));
-      const nouvelles = cabs.filter(c => !deja.includes(P.idClasse(cie, c)));
-      if (!nouvelles.length) return this.rendre(deja.map(P.libelleClasse).join(', ') + (deja.length > 1 ? ' existent' : ' existe') + ' déjà.');
-      this.ajout = null;
-      const libs = nouvelles.map(c => (P.NOM_CABINE || {})[c] || c);
-      this.changer(() => {
-        this.state.exclues = (this.state.exclues || []).filter(x => !ids.includes(x));
-        this.state.ajoutees = [...(this.state.ajoutees || []), ...nouvelles.map(cabine => ({ cie, cabine }))];
-      }, (nouvelles.length > 1 ? cie + ' : ' + libs.join(', ') + ' ajoutées.' : P.libelleClasse(P.idClasse(cie, nouvelles[0])) + ' ajouté.')
-        + (deja.length ? ' (' + deja.map(P.libelleClasse).join(', ') + ' : déjà là.)' : '')
-        + ' Donnez-leur un chemin ; leurs passagers viendront de l’import des vols.');
+    /* Ajouter une compagnie, ou les classes qui lui manquent : dans « Commandes » (évolution 26 c), la première page de
+     * « Régler ». Là où l'on regardait les commandes (les chemins, la liste des commandes), un lien y mène. */
+    formAjout(lieu) {
+      return `<button type="button" class="lien-discret at-vers-commandes" data-page="mu-commandes" data-lieu="${esc(lieu || '')}">Ajouter une compagnie ou une classe : Commandes →</button>`;
     }
 
     /* Le classeur Excel : c'est lui qu'on modifie hors du site, puis qu'on
@@ -1939,7 +1938,8 @@
      * docs/FORMATS_EXCEL.md. */
     exporter() {
       const E = root.OrlyEchanges, T = root.OrlyTableur;
-      const octets = T.ecrireClasseur(E.ateliersVersClasseur(this.state,
+      // L'état que le calcul lit : avec la liste des compagnies, la feuille « Classes » dit ce qu'elle retire et ajoute.
+      const octets = T.ecrireClasseur(E.ateliersVersClasseur(this.etatPourLeCalcul(),
         { services: this.a.services(), classes: this.classes, resultat: this.resultat }));
       T.telecharger('ory-ateliers-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
       this.rendre('Classeur exporté : modifiez-le dans Excel, puis « Importer ».');
@@ -1975,6 +1975,8 @@
           // Une valeur masquée ne se perd pas par Excel : ce que le classeur ne porte pas garde la valeur de la page.
           gardes = JOUENT().garderMasques(r.etat, this.state);
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
+          // La feuille « Classes » dit ce qui est retiré et ajouté : la liste des compagnies la suit (évolution 26 b).
+          if (etat.compagnies && T.feuille(feuilles, 'Classes')) etat = valider({ ...etat, compagnies: CO().listeApresClasseur(etat.compagnies, this.idsDuProgramme(), etat) });
           this.fondreDispos(etat); etat = valider(etat);
         }
         this.changer(() => { this.state = etat; }, 'Équipes importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes' : ' équipe')
@@ -2992,9 +2994,7 @@
       const classes = this.classes, retirees = this.retirees;
       const par = (r && r.parClasse) || {};
 
-      const ouvert = this.ajout && this.ajout.lieu === 'commandes';
-      const ajout = ouvert ? this.formAjout('commandes') : '';
-      const barre = ouvert ? '' : `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
+      const ajout = '', barre = `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
         ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}" title="Remettre cette commande au programme">${pic('recommencer')}${esc(c.id)}</button>`).join(' ')}</p>` : '';

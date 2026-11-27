@@ -1,10 +1,9 @@
-/* Le menu (évolution 22 a) : deux blocs, quatorze entrées, toutes visibles —
- * « Lire » (Synthèse, En direct, Planning, Période, Détails, Comparer), puis
- * « Régler » en trois espaces (Vols : Programme, Retours ; L'unité : Services
- * et équipes, Chemins, Plan ; Simulation : Réglages, Contrôles), et « Fichiers »
- * en bas. Plus de partie à ouvrir ni de mention « Plus ». L'accueil suit le
- * même rangement. L'application s'ouvre sur la Synthèse quand une journée se
- * calcule, sinon sur l'accueil. La pastille des problèmes est sur « Contrôles ».
+/* Le menu (évolution 22 a ; évolution 26 f) : l'accueil en tête, puis deux blocs, quatorze entrées, toutes visibles —
+ * « Lire » (Synthèse, En direct, Planning, Période, Détails, Comparer), puis « Régler » dans l'ordre du travail, sans
+ * sous-groupes (Commandes, Services et équipes, Chemins, Programme des vols, Planche retour, Réglages, Contrôles), et
+ * « Fichiers » en bas. Plus de partie à ouvrir ni de mention « Plus ». L'accueil guide dans l'ordre du travail.
+ * L'application s'ouvre sur la Synthèse quand une journée se calcule, sinon sur l'accueil. La pastille des problèmes
+ * est sur « Contrôles ».
  * Chaque page a un titre et une phrase en mots de tous les jours ; son ancien
  * nom se cherche toujours par « Aller à… ». Unité, vols et équipes fictifs. */
 const assert=require('node:assert/strict'),path=require('node:path');
@@ -14,8 +13,13 @@ const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL_SITE=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
 const LIRE=['Synthèse','En direct','Planning','Période','Détails','Comparer'];
-// (Évolution 23 a : « Plan » n'est plus au menu — treize entrées, contre quatorze.)
-const REGLER=[['Vols',['Programme','Retours']],['L’unité',['Services et équipes','Chemins']],['Simulation',['Réglages','Contrôles']]];
+// (Évolution 23 a : « Plan » n'est plus au menu — treize entrées, contre quatorze. Évolution 26 c : « Commandes », en tête
+// de « Régler », sans titre d'espace — quatorze entrées. Évolution 26 f : « Régler » dans l'ordre du travail, chaque
+// entrée au nom de sa page.)
+const REGLER=[['Commandes',['Commandes']],['L’unité',['Services et équipes','Chemins']],['Vols',['Programme des vols','Planche retour']],['Simulation',['Réglages','Contrôles']]];
+const REGLER_MENU=REGLER.map(([,e])=>['',e]);   // (sans titre d'espace au menu)
+/** Le guide de l'accueil (évolution 26 f) : ses six étapes, dans l'ordre du travail. */
+const GUIDE=['mu-commandes','mu-services','mu-flux','mu-pas','v-programme','j-chiffres'];
 const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
@@ -25,54 +29,53 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
  /** Les entrées du menu, dans l'ordre où elles se lisent : celles des deux blocs, puis « Fichiers », en bas. */
  const entrees=()=>page.evaluate(()=>[...document.querySelectorAll('#menu [data-sous-onglet] > span:not(.so-badge), #btn-sauvegarde > span:last-child')].map(x=>x.textContent.trim()));
  const actif=()=>page.evaluate(()=>document.body.dataset.vue==='accueil'?null:document.body.dataset.sous);
- /** L'entrée marquée ouverte : celle du menu, « Fichiers », ou la marque (l'accueil). */
+ /** L'entrée marquée ouverte : celle du menu, « Fichiers », ou l'accueil (son entrée, en tête du menu — évolution 26 f). */
  const courant=()=>page.evaluate(()=>{
-   const m=document.querySelector('#menu [aria-selected=true]'),f=document.querySelector('#btn-sauvegarde[aria-current=page]'),a=document.querySelector('#btn-accueil[aria-current=page]');
+   const m=document.querySelector('#menu [aria-selected=true]'),f=document.querySelector('#btn-sauvegarde[aria-current=page]'),a=document.querySelector('#menu [data-entree=accueil][aria-current=page]');
    return [m&&m.dataset.entree,f&&'fichiers',a&&'accueil'].filter(Boolean).join('+')||null;});
- const tuile=p=>page.locator(`.acc-tuile:has([data-vers-partie=${p}])`);
+ /** Une étape du guide de l'accueil (évolution 26 f). */
+ const etape=c=>page.locator(`#view-accueil .acc-etape[data-etape=${c}]`);
  try{
   await page.goto(URL_SITE);await nav.pret(page);
 
-  // 1. Rien ne se calcule encore : on arrive sur l'accueil — l'histoire en quatre images, puis le rangement du menu.
+  // 1. Rien ne se calcule encore : on arrive sur l'accueil — l'histoire en quatre images, puis le guide, dans l'ordre du
+  //    travail (évolution 26 f).
   assert.equal(await page.locator('#view-accueil').isVisible(),true,'on arrive sur l’accueil');
   assert.equal(await page.locator('.app').isVisible(),false,'aucune page derrière');
-  assert.equal(await courant(),'accueil','la marque dit qu’on y est');
+  assert.equal(await courant(),'accueil','son entrée dit qu’on y est');
   assert.equal(await page.locator('.acc-histoire .cm-liste li').count(),4);
   assert.equal(await page.locator('.acc-histoire svg.ico').count(),4,'une image par temps de l’histoire');
-  assert.match(await page.locator('.acc-histoire').textContent(),/Des avions partent[\s\S]*repas[\s\S]*équipes[\s\S]*calcule/);
-  // Deux blocs, une tuile par espace, dans l'ordre du menu ; chaque tuile liste les entrées de son espace.
-  assert.deepEqual(await page.locator('.acc-bloc').evaluateAll(bs=>bs.map(b=>[b.querySelector('.acc-bloc-titre').textContent,[...b.querySelectorAll('.acc-tuile-tete')].map(t=>t.dataset.versPartie)])),
-    [['Lire',['resultats']],['Régler',['donnees','organisation','reglages']]],'l’accueil suit le rangement du menu');
-  assert.deepEqual(await page.locator('.acc-tuile').evaluateAll(ts=>ts.map(t=>[t.querySelector('.acc-titre b').textContent,[...t.querySelectorAll('.acc-page')].map(b=>b.textContent)])),
-    [['Lire',LIRE.filter(x=>x!=='Période')],...REGLER]);
+  assert.match(await page.locator('.acc-histoire').textContent(),/compagnies[\s\S]*équipes[\s\S]*vols[\s\S]*calcule/);
+  // Six étapes, chacune vers sa page.
+  assert.deepEqual(await page.locator('#view-accueil .acc-etape-tete').evaluateAll(bs=>bs.map(b=>b.dataset.page)),GUIDE,'le guide, dans l’ordre du travail');
   assert.match(await page.locator('.acc-pied').textContent(),/Fichiers/,'« Fichiers », en bas, comme au menu');
-  // Chaque tuile dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
-  assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple/);
-  assert.match(await tuile('organisation').textContent(),/Temps par vol : chiffres d’exemple/);
-  assert.match(await tuile('organisation').textContent(),/Chemins : \d+ chemin/,'la tuile de l’unité compte les chemins');
-  assert.match(await tuile('donnees').locator('.acc-etat').textContent(),/provisoire/);
-  assert.match(await tuile('organisation').textContent(),/aucune équipe/);
-  assert.match(await tuile('reglages').textContent(),/Repas prêts 45 min avant le départ/);
-  assert.match(await tuile('resultats').textContent(),/rien à calculer/);
-  assert.equal(await page.locator('.acc-etat.verifier').count(),0,'un exemple n’est pas une alerte');
+  // Chaque étape dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
+  assert.match(await etape('vols').textContent(),/12 départs · exemple/);
+  assert.match(await etape('vols').locator('.acc-etat').textContent(),/provisoire/);
+  assert.match(await etape('commandes').textContent(),/compagnies · \d+ commandes · tirées des vols/,'sans liste, les compagnies viennent des vols');
+  assert.match(await etape('chemins').textContent(),/\d+ chemins/,'le guide compte les chemins');
+  assert.match(await etape('services').textContent(),/aucune équipe/);
+  assert.match(await etape('journee').textContent(),/rien à calculer/);
+  assert.equal(await page.locator('#view-accueil .acc-etat.verifier').count(),0,'un exemple n’est pas une alerte');
   // Ce qu'il y a à faire ensuite, en un clic.
   assert.match(await page.locator('.acc-suite').textContent(),/À faire ensuite/);
   await page.locator('.acc-suite [data-page]').click();await attendre();
   assert.equal(await courant(),'mu-services');
   assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services et leurs équipes');
 
-  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, douze (« Période » n'y est pas). Deux blocs,
-  //    trois espaces titrés sous « Régler » ; ni partie à ouvrir, ni mention « Plus ».
+  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, treize (« Période » n’y est pas). Deux blocs,
+  //    quatre espaces sans titre sous « Régler » (évolution 26 c) ; ni partie à ouvrir, ni mention « Plus ».
   assert.deepEqual(await entrees(),TREIZE.filter(x=>x!=='Période'));
-  assert.deepEqual(await page.locator('#menu .menu-bloc').evaluateAll(bs=>bs.map(b=>[b.querySelector('.menu-bloc-titre').textContent,
+  assert.deepEqual(await page.locator('#menu .menu-bloc:not(.menu-accueil)').evaluateAll(bs=>bs.map(b=>[b.querySelector('.menu-bloc-titre').textContent,
     [...b.querySelectorAll('.menu-espace')].map(e=>[(e.querySelector('.menu-espace-titre')||{}).textContent||'',[...e.querySelectorAll('[data-sous-onglet]>span:not(.so-badge)')].map(x=>x.textContent)])])),
-    [['Lire',[['',LIRE.filter(x=>x!=='Période')]]],['Régler',REGLER]]);
-  assert.equal(await page.locator('#menu .so-plus, #menu .so-secondaire, #menu [data-vers-partie], #menu .menu-partie').count(),0,'ni « Plus », ni partie à ouvrir');
+    [['Lire',[['',LIRE.filter(x=>x!=='Période')]]],['Régler',REGLER_MENU]]);
+  assert.equal(await page.locator('#menu .so-plus, #menu .so-secondaire, #menu [data-vers-partie]:not([data-vers-partie=accueil]), #menu .menu-partie').count(),0,'ni « Plus », ni partie à ouvrir');
+  assert.equal(await page.locator('#menu > .menu-liste .menu-accueil:first-child [data-vers-partie=accueil]').count(),1,'l’accueil, en tête du menu');
   assert.equal(await page.locator('#menu [data-sous-onglet]:not(:visible)').count(),0,'toutes les entrées se voient');
-  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),11,'un pictogramme par entrée');
+  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),12,'un pictogramme par entrée');
   // Chaque entrée ouvre sa page, ou la première de son groupe ; le fil d'Ariane dit l'espace, le titre la page ou le groupe.
   const attendues=[['j-chiffres','Lire','Synthèse'],['j-plan','Lire','En direct'],['at-planning','Lire','Planning des équipes'],['groupe:details','Lire','Détails',['at-repas','v-departs','j-stocks','j-details']],
-    ['j-comparer','Lire','Comparer deux essais'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
+    ['j-comparer','Lire','Comparer deux essais'],['mu-commandes','Commandes','Commandes'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
     // « Services et équipes » : une seule page depuis l'évolution 22 (b), sans onglets internes.
     ['mu-services','L’unité','Services et équipes'],
     // « Chemins » : une seule page depuis l'évolution 22 (c), sans onglets internes ; « Liens entre services » n'est
@@ -163,8 +166,8 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await nav.aller(page,'j-comparer');
   assert.equal(await page.locator('#menu [data-sous-onglet][tabindex="0"]').count(),1,'une seule entrée dans l’ordre de tabulation');
   await page.locator('[data-sous-onglet=j-comparer]').focus();await page.keyboard.press('ArrowDown');await attendre();
-  assert.equal(await actif(),'v-programme','après « Comparer », la première entrée de « Régler »');
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'v-programme','le focus suit');
+  assert.equal(await actif(),'mu-commandes','après « Comparer », la première entrée de « Régler » (évolution 26 c : « Commandes »)');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'mu-commandes','le focus suit');
   await page.keyboard.press('ArrowUp');await attendre();
   assert.equal(await actif(),'j-comparer');
   await page.keyboard.press('Home');await attendre();
@@ -190,12 +193,12 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await actif(),'mu-flux');
   await page.locator('#menu [data-entree="mu-services"]').click();await attendre();
   assert.equal(await actif(),'mu-services');
-  // Une tuile ouvre son espace ; ses entrées y sont listées, chacune ouvre la sienne.
+  // Une étape du guide ouvre sa page.
   await nav.accueil(page);
-  await tuile('reglages').locator('[data-page=rg-simulation]').click();await attendre();
-  assert.equal(await actif(),'rg-simulation');
+  await etape('chemins').locator('.acc-etape-tete').click();await attendre();
+  assert.equal(await actif(),'mu-flux');
   await nav.accueil(page);
-  await tuile('donnees').locator('.acc-tuile-tete').click();await attendre();
+  await etape('vols').locator('.acc-etape-tete').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'donnees');
   await nav.accueil(page);
   await page.locator('.acc-pied [data-page=u-sauvegarde]').click();await attendre();
@@ -207,8 +210,8 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-nouveau]`,'AF/BC');await attendre();
   assert.match(await page.locator(`[data-at="${id}"] .at-chips`).textContent(),/AF · Business/,'les repas s’écrivent en clair');
   await nav.accueil(page);
-  assert.match(await tuile('organisation').textContent(),/\d+ commandes sans équipe/);
-  assert.match(await tuile('resultats').textContent(),/en retard|à l’heure/,'la journée a un résultat');
+  assert.match(await etape('services').textContent(),/\d+ commandes sans équipe/);
+  assert.match(await etape('journee').textContent(),/en retard|à l’heure/,'la journée a un résultat');
   await nav.aller(page,'j-chiffres');
   assert.equal(await page.locator('#bilan-journee').isVisible(),true,'la synthèse : la journée entière d’abord');
   // Évolution 15 (b) : elle répond aux cinq questions — deux phrases, les cartes, le tableau des services, la courbe.
@@ -303,10 +306,10 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
     assert.ok(pastilles.compte>0,T+'l’unité fictive a des problèmes : '+JSON.stringify(pastilles));
     assert.deepEqual(pastilles.menu,[['mu-pas',pastilles.compte]],T+'une seule pastille, sur « Contrôles »');
     assert.equal(await p.locator('#btn-problemes').count(),0,T+'plus de bouton « Problèmes » au bas du menu (évolution 22 d)');
-    // L'accueil suit : avec un programme daté, sa tuile « Lire » liste « Période ».
+    // La marque mène à l'accueil ; son entrée, en tête du menu, le dit.
     await p.locator('#btn-accueil').click();await p.waitForTimeout(150);
     assert.equal(await p.locator('#view-accueil').isVisible(),true,T+'la marque mène à l’accueil');
-    assert.deepEqual(await p.locator('.acc-tuile').first().locator('.acc-page').allTextContents(),LIRE,T+'l’accueil liste « Période » avec un programme daté');
+    assert.equal(await p.locator('#menu [data-entree=accueil][aria-current=page]').count(),1,T+'l’entrée de l’accueil le dit');
     assert.deepEqual(await lus(),TREIZE,T+'le menu reste entier sur l’accueil');
     if(w===1366){
      // « Aller à… » : chaque nom de page d'avant l'évolution — et chaque nom plus ancien — mène à sa page.
@@ -317,8 +320,9 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
      // Évolution 22 (c) : « Chemins » a repris trois pages de plus (« Vue d'ensemble », « Chemin d'une commande »,
      // « Étapes de chaque commande ») et garde l'ancien nom de la sienne (« Chemins de production ») : dix-neuf pages.
      // Évolution 22 (d) : « Contrôles » a repris « Contrôles détaillés », et garde l'ancien nom de sa page (« Prêt à
-     // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris.
-     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,18,'les dix-huit pages');
+     // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris. Évolution 26 (c) : « Commandes »,
+     // dix-neuf pages.
+     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,19,'les dix-neuf pages');
      assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','mu-pas:avant','mu-pas:problemes','rg-minutes','rg-recap','u-lecture','u-services'],'et les douze noms repris');
      // (Correction 23 g : « Temps par vol » ouvre l'entrée « Tous les temps par vol », son tableau à droite.)
      const AU_BON_ENDROIT={'mu-services:equipes':'#mu-services details[data-mu-section=equipes][open]','mu-services:temps':'#mu-services details[data-mu-section=temps][open]','mu-services:liste':'#mu-services .se-liste',
@@ -329,7 +333,12 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
       await p.keyboard.press('Control+k');await p.waitForSelector('dialog.palette [role=option]');
       await p.keyboard.type(cherche);await p.waitForTimeout(150);
       const options=p.locator('dialog.palette [role=option]');
-      const i=(await options.evaluateAll(os=>os.map(o=>(o.querySelector('.pal-nom')||o).textContent.trim()))).findIndex(t=>t===nom||t.endsWith('› '+nom));
+      // (Évolution 26 c : deux pages s'appellent « Commandes » — celle de « Régler », et celle du groupe « Détails », qui se
+      // lit « Détails › Commandes » : une page d'un groupe se prend par son chemin.)
+      const textes=await options.evaluateAll(os=>os.map(o=>(o.querySelector('.pal-nom')||o).textContent.trim()));
+      const dansUnGroupe=await p.evaluate(x=>!!(OrlyOnglets.page(x)||{}).groupe,id);
+      let i=textes.findIndex(t=>dansUnGroupe?t.endsWith('› '+nom):t===nom);
+      if(i<0)i=textes.findIndex(t=>t===nom||t.endsWith('› '+nom));
       assert.ok(i>=0,'« Aller à… » trouve « '+cherche+' »');
       await options.nth(i).click();await p.waitForTimeout(150);
       assert.equal(await p.evaluate(()=>document.body.dataset.sous),id,'« '+cherche+' » mène à sa page');
@@ -364,6 +373,6 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   }
 
   assert.deepEqual(errors,[],'aucune erreur de page');
-  console.log('menu-browser : ok — treize entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
+  console.log('menu-browser : ok — l’accueil en tête, quatorze entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

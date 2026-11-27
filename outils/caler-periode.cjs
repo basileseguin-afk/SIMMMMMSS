@@ -60,8 +60,10 @@ async function calerLeTravail(p, travail, controle, correspondance) {
   let vols;
   try { vols = await J.volsDuFichier(new File([fs.readFileSync(travail.vols)], path.basename(travail.vols))); }
   catch (e) { throw new Error('vols : ' + e.message); }
+  // La liste des compagnies (évolution 26) : la sauvegarde et les vols préparés comme dans la page. Sans liste, les mêmes.
+  const pret = require('../compagnies.js').preparerSauvegarde(sauvegarde, vols);
   const planning = await planningDuFichier(travail.planning, sauvegarde, options);
-  return CT.calerTravail({ unite: J.uniteDeLaSauvegarde(sauvegarde, options), vols, planning, controle, correspondance,
+  return CT.calerTravail({ unite: J.uniteDeLaSauvegarde(pret.sauvegarde, options), vols: pret.vols, planning, controle, correspondance,
     options: { delaiChargement: J.delaiDe(options), decalage: options.decalage } });
 }
 

@@ -174,6 +174,10 @@
    *   libelle(classe), nomService(id) : de quoi nommer une commande et un service ;
    *   une étape `commandes` peut porter `absentes` ({commandes:[noms], parService:[{nom, compagnies}]}) : son point les nomme.
    *   Une anomalie marquée `fournisseur` parle d'un lien de fournisseur : elle se règle dans « Chemins › Fournisseurs ».
+   *   Évolution 26, facultatif — sans lui, le registre d'avant :
+   *   points : des points déjà formés ({niveau, titre, detail?, page, cle, gestes:[{action, texte, valeur?, choix?}]}), la
+   *   liste des compagnies et ce que l'import n'a pas rattaché ; ils viennent en tête de leur niveau. Un geste se fait
+   *   dans « Contrôles » même (`action`) ; `choix` : une liste où choisir sa valeur.
    * @returns {Array<{niveau:string, titre:string, detail:string, page:string, aussi:string[], service?:string, voulu?:string,
    *   code?:string, equipe?:string, classes?:string[], etape?:string, services?:string[], fantome?:string, lien?:boolean}>}
    *   page : où il se règle ; aussi : les pages qui le montrent aussi (et le comptent) ; voulu : la compagnie d'un
@@ -187,6 +191,9 @@
   function lister(s = {}) {
     const clair = typeof s.enClair === 'function' ? s.enClair : (t => t);
     const out = [];
+    // Les points de la liste des compagnies (évolution 26) : en tête de leur niveau.
+    for (const p of s.points || []) if (p && p.titre && NIVEAUX.some(n => n.id === p.niveau))
+      out.push({ detail: '', page: 'mu-pas', aussi: p.niveau === 'information' ? [] : ['mu-pas'], ...p, gestes: (p.gestes || []).slice() });
     // Un service supprimé que des équipes ou des chemins citent encore : l'étape est sautée.
     for (const f of s.fantomes || []) {
       const cite = [f.cases ? pl(f.cases, 'équipe') : '', f.chemins ? pl(f.chemins, 'chemin') : ''].filter(Boolean).join(' et ');

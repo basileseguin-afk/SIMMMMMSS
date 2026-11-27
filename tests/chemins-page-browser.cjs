@@ -46,7 +46,8 @@ function ecarts(avant,apres,chemin='',out=[]){
  const ouvrir=async url=>{
   const ctx=await browser.newContext({viewport:{width:1366,height:768}});
   const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(e.message));page.on('dialog',d=>d.accept());
-  const site=await F.charger(page,nav,url,{pageId:'mu-flux'});
+  // Une unité d'avant (sans liste des compagnies, que la version 2 ne lit pas) : les deux versions comparées champ par champ.
+  const site=await F.charger(page,nav,url,{sauvegarde:F.sauvegardeFictive({liste:false}),pageId:'mu-flux'});
   return {page,ctx,site};
  };
  const attendre=(page,ms=300)=>page.waitForTimeout(ms);
@@ -232,7 +233,7 @@ function ecarts(avant,apres,chemin='',out=[]){
   assert.equal(await etat(page,(st,c)=>st.parcoursClasse[c]||null,pour),null,'« Annuler » la défait');
   // Exclure une commande du programme, puis la remettre.
   await page.locator(`${M} .ch-liste [data-mu-flux-choisir="${complet[0]}"]`).click();await attendre(page);await section(page,'commandes');
-  assert.equal(await page.locator(`${M} details[data-ch-section=commandes] [data-at-action=classe-nouvelle]`).count(),1,'« Ajouter une compagnie ou une classe »');
+  assert.equal(await page.locator(`${M} details[data-ch-section=commandes] .at-vers-commandes[data-page="mu-commandes"]`).count(),1,'« Ajouter une compagnie ou une classe » mène à « Commandes » (évolution 26 c)');
   const dejaExclues=await etat(page,st=>st.exclues||[]);
   assert.equal(await page.locator(`${M} details[data-ch-section=commandes] [data-at-action=classe-retablir]`).count(),dejaExclues.length,'les commandes déjà retirées du programme');
   await page.locator(`${M} [data-ch-exclure]`).selectOption(pour);await attendre(page,500);

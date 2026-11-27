@@ -62,3 +62,9 @@ body[data-sous="mu-pas"] #view-ateliers>#mu-pas{flex:1 1 0;min-height:320px;disp
 
 /* Correction 23 (c) : un point qui a plusieurs boutons (un par service, ou deux gestes) — le premier est le principal. */
 .ct-gestes .btn{max-width:100%;white-space:normal;text-align:left}
+
+/* Évolution 26 (e) : la notification de l'import qui rattache mène à « Contrôles » — un bouton comme « Annuler »
+   (notifications.js et ds.css, communs avec la version 2, ne sont pas touchés). */
+.notif-aller{flex:none;min-height:var(--ds-h-compact);padding:0 10px;border:0;border-radius:var(--ds-r-2);background:none;
+  font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-texte-1);text-decoration:underline;cursor:pointer}
+.notif-aller:hover{background:var(--ds-survol)}

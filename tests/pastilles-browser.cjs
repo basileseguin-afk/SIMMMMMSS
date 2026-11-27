@@ -8,15 +8,16 @@
  *      premières lettres (un pseudo-élément) et suit en graisse 500. L'étiquette : hauteur 22 px, le fond du survol, un
  *      point de 8 px à la couleur de la classe. Une compagnie a la même pastille sur toutes les pages.
  *   3. Sans choix, rien n'est écrit : « Tout sauvegarder » rend la sauvegarde de la page d'avant, octet pour octet.
- *   4. La carte « Couleurs des compagnies », au bas du programme des vols : une rangée par compagnie, douze couleurs.
- *      Un choix s'écrit dans son entrée, à part ; le résultat de la simulation et les réponses sont les mêmes ;
- *      « Annuler », dans la notification, le défait. « Garder ces couleurs » : une compagnie de plus ne déplace plus les
- *      autres. « Revenir aux couleurs automatiques » efface les choix, avec « Annuler ».
+ *   4. Les douze couleurs d'une compagnie, dans son panneau de « Commandes » (évolution 26 c : la carte « Couleurs des
+ *      compagnies » a quitté le programme des vols). Un choix s'écrit dans son entrée, à part ; le résultat de la
+ *      simulation et les réponses sont les mêmes ; « Annuler », dans la notification, le défait. « Garder ces couleurs »
+ *      (au module) : une compagnie de plus ne déplace plus les autres. « Revenir aux couleurs automatiques » (au module)
+ *      efface les choix, avec « Annuler ».
  *   5. Un choix survit à « Tout sauvegarder » puis « Restaurer » ; une sauvegarde sans l'entrée rend les couleurs
  *      automatiques, et la question le dit ; une entrée abîmée refuse la sauvegarde entière. La version 2 (gelée : le
  *      code d'avant) relit la sauvegarde qui porte l'entrée : elle l'ignore, et son résultat est le même.
  *   6. Chaque pastille tient 4,5:1 dans les deux thèmes, aux douze couleurs de la demande, dans l'ordre.
- *   7. En lecture seule, un choix ne s'écrit pas. La fenêtre ne défile pas, carte dépliée ; aucun texte sous 13 px.
+ *   7. En lecture seule, un choix ne s'écrit pas. La fenêtre ne défile pas, panneau ouvert ; aucun texte sous 13 px.
  * Unité, vols, compagnies et équipes fictifs. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const nav=require('./nav.cjs'),F=require('./plan-rejoue-fictif.cjs');
@@ -154,45 +155,35 @@ const CALCUL=()=>JSON.stringify([Sim.ateliers.resultat,Sim.reponses()]);
   assert.equal(JSON.stringify(sans.contenu),JSON.stringify(sauvegardeAvant.contenu),'« Tout sauvegarder » rend la sauvegarde d’avant, octet pour octet');
   assert.equal(CLE in sans.contenu,false);
 
-  /* ---- 4. La carte « Couleurs des compagnies » ------------------------------------------------------------------------- */
+  /* ---- 4. La couleur d'une compagnie : les douze teintes, dans son panneau de « Commandes » ---------------------------------- */
+  // Évolution 26 (c) : la carte « Couleurs des compagnies » quitte le programme des vols ; le petit panneau des douze
+  // teintes vient dans le panneau d'une compagnie, sur la page « Commandes ».
   await nav.aller(page,'v-programme');await page.waitForTimeout(300);
-  const carte=page.locator(CARTE);
-  // Correction 24 (g) : la pastille d'une rangée est un bouton ; il ouvre le petit panneau des douze teintes.
-  const ouvrirPanneau=async nom=>{await carte.locator('[data-pa-compagnie="'+nom+'"] [data-pa-ouvrir]').click();await carte.locator('.pa-panneau[data-pa-panneau="'+nom+'"]').waitFor();};
-  const choisirTeinte=async(nom,rang)=>{await ouvrirPanneau(nom);await carte.locator('.pa-panneau [data-pa-teinte="'+rang+'"]').click();await carte.locator('.pa-panneau').waitFor({state:'detached'});};
-  assert.equal(await carte.evaluate(e=>e.tagName+' '+e.open+' '+(e.previousElementSibling&&e.previousElementSibling.id)),'DETAILS false vols-jour','au bas de la page, sous les vols du jour, repliée');
-  assert.match(await carte.locator('summary').textContent(),/^Couleurs des compagnies5 compagnies · couleurs automatiques/);
-  assert.equal(await carte.locator('.pa-apercu .pa-cie').count(),5,'repliée, elle montre les pastilles des compagnies');
-  // Repliée, elle ne prend rien à la page d'un portable : l'import garde sa hauteur, six vols se voient sans défiler.
-  const ecran=()=>page.evaluate(()=>{const d=document.getElementById('vols-donnees'),c=document.querySelector('#vp-tableau .vp-cadre').getBoundingClientRect(),k=document.getElementById('couleurs-compagnies').getBoundingClientRect();
-    return {import:d.scrollHeight-d.clientHeight,vols:[...document.querySelectorAll('#vp-tableau tbody tr')].filter(t=>{const b=t.getBoundingClientRect();return b.top>=c.top&&b.bottom<=c.bottom+1;}).length,
-      sousLeTableau:Math.round(k.top-c.bottom),auBas:Math.round(innerHeight-k.bottom),fenetre:document.documentElement.scrollHeight-innerHeight};});
-  let e=await ecran();
-  assert.ok(e.import<=0&&e.vols>=6&&e.fenetre<=0,'repliée, à 1 366 × 768 : l’import garde sa hauteur ('+e.import+' px à défiler), '+e.vols+' vols à l’écran');
-  assert.ok(e.sousLeTableau>=0&&e.sousLeTableau<=16&&e.auBas>=0&&e.auBas<=16,'la carte est sous le tableau ('+e.sousLeTableau+' px), au bas de la page ('+e.auBas+' px du bord)');
-  await carte.locator('summary').click();await page.waitForTimeout(200);
-  assert.deepEqual(await carte.locator('.pa-rangee').evaluateAll(l=>l.map(e=>e.dataset.paCompagnie+' '+e.querySelectorAll('[data-pa-ouvrir] .pa-cie').length+' '+e.querySelector('[data-pa-ouvrir] .pa-cie').dataset.paRang+' '+e.querySelector('.pa-etat').textContent)),
-    ['EST 1 1 automatique','NORD 1 2 automatique','OUEST 1 3 automatique','SUD 1 4 automatique','ZEN 1 5 automatique'],'une rangée par compagnie : sa pastille (un bouton), à la couleur du moment, et son état');
-  assert.equal(await carte.locator('[data-pa-teinte]').count(),0,'les douze teintes ne sont plus étalées : elles sont dans le panneau d’une pastille');
-  assert.deepEqual(await carte.locator('[data-pa-action]').evaluateAll(l=>l.map(b=>b.textContent+(b.disabled?' (grisé)':''))),['Garder ces couleurs','Revenir aux couleurs automatiques (grisé)']);
+  assert.equal(await page.locator(CARTE).count(),0,'plus de carte au bas du programme des vols');
+  await nav.aller(page,'mu-commandes');await page.waitForTimeout(300);
+  const panneau=page.locator('#mu-commandes .co-panneau[data-co-panneau="compagnie"]');
+  const ouvrirPanneau=async nom=>{if(await panneau.count()&&await panneau.getAttribute('data-co-nom')===nom)return;
+    await page.locator('#mu-commandes [data-co-ouvrir="'+nom+'"]').click();await page.locator('#mu-commandes .co-panneau[data-co-nom="'+nom+'"]').waitFor();};
+  const choisirTeinte=async(nom,rang)=>{await ouvrirPanneau(nom);await panneau.locator('[data-pa-teinte="'+rang+'"]').click();
+    await page.locator('#mu-commandes .co-panneau [data-pa-teinte="'+rang+'"][aria-checked="true"]').waitFor();};
+  assert.deepEqual(await page.locator('#mu-commandes [data-co-ouvrir]').evaluateAll(l=>l.map(b=>b.dataset.coOuvrir+' '+[...new Set([...b.querySelectorAll('.pa-cie')].map(e=>e.dataset.paRang))].join(','))),
+    ['EST 1','NORD 2','OUEST 3','SUD 4','ZEN 5'],'une compagnie par groupe : sa pastille, à la couleur du moment');
   // Au clavier : les douze couleurs d'une compagnie sont un seul arrêt ; les flèches vont de l'une à l'autre.
   await ouvrirPanneau('NORD');
-  assert.deepEqual(await carte.locator('.pa-panneau [data-pa-teinte]').evaluateAll(l=>[l.length].concat(l.filter(b=>b.tabIndex===0).map(b=>b.dataset.paTeinte))),[12,'2'],'douze teintes, un seul arrêt : la couleur du moment');
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.paTeinte),'2','à l’ouverture, le focus est sur la couleur du moment');
+  assert.deepEqual(await panneau.locator('[data-pa-teinte]').evaluateAll(l=>[l.length].concat(l.filter(b=>b.tabIndex===0).map(b=>b.dataset.paTeinte))),[12,'2'],'douze teintes, un seul arrêt : la couleur du moment');
+  await panneau.locator('[data-pa-teinte="2"]').focus();
   await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');
   assert.equal(await page.evaluate(()=>document.activeElement.dataset.paTeinte),'4','deux flèches à droite : la couleur 4 a le focus');
   await page.keyboard.press('Home');await page.keyboard.press('ArrowLeft');
   assert.equal(await page.evaluate(()=>document.activeElement.dataset.paTeinte),'12','au bout, la flèche fait le tour');
   assert.equal(await garde(page),null,'se déplacer ne choisit rien');
   await page.keyboard.press('Escape');
-  assert.deepEqual(await page.evaluate(()=>[document.querySelectorAll('.pa-panneau').length,document.activeElement.matches('[data-pa-compagnie="NORD"] [data-pa-ouvrir]')]),[0,true],'Échap ferme le panneau et rend le focus à la pastille');
-  // La fenêtre ne défile pas, carte dépliée ; aucun texte sous 13 px ; le tableau des vols reste là.
+  assert.deepEqual(await page.evaluate(()=>[document.querySelectorAll('#mu-commandes .co-panneau').length,document.activeElement.matches('[data-co-ouvrir="NORD"]')]),[0,true],'Échap ferme le panneau et rend le focus à la compagnie');
+  // Panneau ouvert : la fenêtre ne défile pas, aucun texte sous 13 px, le panneau tient dans la fenêtre.
+  await ouvrirPanneau('NORD');
   assert.deepEqual(await page.evaluate(()=>[document.documentElement.scrollHeight<=innerHeight,document.documentElement.scrollWidth<=innerWidth]),[true,true],'la fenêtre ne défile pas');
-  assert.deepEqual(await carte.evaluate(c=>[...c.querySelectorAll('*')].filter(e=>e.getClientRects().length&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())&&parseFloat(getComputedStyle(e).fontSize)<13).map(e=>e.className)),[],'aucun texte sous 13 px');
-  assert.ok(await page.locator('#vp-tableau tbody tr').first().isVisible(),'le tableau des vols reste à l’écran');
-  assert.ok(await carte.evaluate(c=>c.getBoundingClientRect().bottom<=innerHeight),'la carte tient dans la fenêtre');
-  e=await ecran();
-  assert.ok(e.import<=0&&e.vols>=1&&e.fenetre<=0,'dépliée : elle prend sa place sur le tableau des vols, pas sur l’import ('+e.import+' px à défiler, '+e.vols+' vol à l’écran)');
+  assert.deepEqual(await panneau.evaluate(c=>[...c.querySelectorAll('*')].filter(e=>e.getClientRects().length&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())&&parseFloat(getComputedStyle(e).fontSize)<13).map(e=>e.className)),[],'aucun texte sous 13 px');
+  assert.ok(await panneau.evaluate(c=>c.getBoundingClientRect().bottom<=innerHeight),'le panneau tient dans la fenêtre');
 
   // Un choix : la couleur 9 pour NORD. Il s'écrit dans son entrée ; les pastilles de NORD suivent ; le calcul ne bouge pas.
   const calcul=await page.evaluate(CALCUL),ateliers=await page.evaluate(()=>localStorage.getItem('ory-ateliers-v1'));
@@ -201,7 +192,6 @@ const CALCUL=()=>JSON.stringify([Sim.ateliers.resultat,Sim.reponses()]);
   assert.deepEqual(JSON.parse(await garde(page)),{schema:'ory-couleurs-compagnies',version:1,couleurs:{NORD:9}},'le choix porte un rang, pas une teinte');
   assert.deepEqual(await page.evaluate(()=>[...new Set([...document.querySelectorAll('#workspace .pa-cie[data-pa-cle="NORD"]')].map(e=>e.dataset.paRang))]),['9'],'toutes les pastilles de NORD');
   assert.deepEqual(await page.evaluate(()=>['EST','OUEST','SUD','ZEN'].map(c=>OrlyPastilles.rang(c))),[1,3,4,5],'les autres gardent leur couleur automatique');
-  assert.equal(await carte.locator('[data-pa-compagnie="NORD"] .pa-etat').textContent(),'gardée');
   assert.equal(await page.evaluate(CALCUL),calcul,'le résultat et les réponses sont les mêmes avec un choix');
   assert.equal(await page.evaluate(()=>localStorage.getItem('ory-ateliers-v1')),ateliers,'les équipes ne sont pas réécrites');
   assert.match(await page.locator('#notifs .notif').last().textContent(),/NORD\s: couleur 9\./);
@@ -211,15 +201,15 @@ const CALCUL=()=>JSON.stringify([Sim.ateliers.resultat,Sim.reponses()]);
   await choisirTeinte('NORD',9);
   await page.waitForFunction(k=>localStorage.getItem(k)!==null,CLE);
 
-  // « Garder ces couleurs » : chacune reçoit sa couleur du moment (une compagnie de plus ne les déplace plus : plus bas).
-  await carte.locator('[data-pa-action="garder"]').click();
+  // « Garder ces couleurs » et « Revenir aux couleurs automatiques » n'ont plus de bouton depuis que la carte est partie ;
+  // le module les garde. Garder : chacune reçoit sa couleur du moment (une compagnie de plus ne les déplace plus : plus bas).
+  await page.evaluate(()=>OrlyPastilles.garderCouleurs());
   await page.waitForFunction(k=>Object.keys(JSON.parse(localStorage.getItem(k)).couleurs).length===5,CLE);
   assert.deepEqual(JSON.parse(await garde(page)).couleurs,{EST:1,NORD:9,OUEST:3,SUD:4,ZEN:5});
-  assert.match(await carte.locator('summary').textContent(),/5 compagnies · couleurs gardées/);
 
-  // « Revenir aux couleurs automatiques » : les choix s'effacent ; « Annuler » les rend.
+  // Revenir : les choix s'effacent ; « Annuler » les rend.
   const gardees=await garde(page);
-  await carte.locator('[data-pa-action="automatiques"]').click();
+  await page.evaluate(()=>OrlyPastilles.revenirAuxAutomatiques());
   await page.waitForFunction(k=>localStorage.getItem(k)===null,CLE);
   assert.deepEqual(await page.evaluate(()=>['EST','NORD','OUEST','SUD','ZEN'].map(c=>OrlyPastilles.rang(c))),[1,2,3,4,5]);
   assert.match(await page.locator('#notifs .notif').last().textContent(),/Couleurs automatiques/);
@@ -291,7 +281,6 @@ const CALCUL=()=>JSON.stringify([Sim.ateliers.resultat,Sim.reponses()]);
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ajoutees.push({cie:'ALPHA',cabine:'YC'});},''));
   await page.waitForFunction(()=>OrlyPastilles.rang('ALPHA')!==null);
   assert.deepEqual(await page.evaluate(()=>['ALPHA','EST','NORD','OUEST','SUD','ZEN'].map(c=>OrlyPastilles.rang(c))),[1,1,12,3,4,5],'ALPHA prend la première couleur ; les autres ne bougent pas');
-  await page.waitForFunction(()=>document.querySelectorAll('#couleurs-compagnies .pa-rangee').length===6);
   assert.equal(JSON.parse(await garde(page)).couleurs.ALPHA,undefined,'la nouvelle n’est pas écrite tant qu’on ne la garde pas');
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ajoutees=st.ajoutees.filter(c=>c.cie!=='ALPHA');},''));
   await page.waitForFunction(()=>OrlyPastilles.rang('ALPHA')===null);
@@ -309,6 +298,6 @@ const CALCUL=()=>JSON.stringify([Sim.ateliers.resultat,Sim.reponses()]);
 
   await fermer();
   assert.deepEqual(erreurs,[],'aucune erreur de page : '+erreurs.join(' | '));
-  console.log('OK pastilles : le texte de chaque page du menu est celui d’avant ; la pastille (6 px, 22 px, 700 ; deux lettres pour un nom long) et l’étiquette (22 px, le point de la classe), les mêmes partout ; sans choix la sauvegarde d’avant, octet pour octet ; la carte « Couleurs des compagnies » (un choix, « Garder », « Revenir », « Annuler ») ; le même résultat avec et sans choix ; le choix survit à sauvegarder puis restaurer ; douze couleurs à 4,5:1 dans les deux thèmes ; rien en lecture seule');
+  console.log('OK pastilles : le texte de chaque page du menu est celui d’avant ; la pastille (6 px, 22 px, 700 ; deux lettres pour un nom long) et l’étiquette (22 px, le point de la classe), les mêmes partout ; sans choix la sauvegarde d’avant, octet pour octet ; les douze couleurs dans le panneau d’une compagnie de « Commandes » (un choix, « Garder », « Revenir », « Annuler »), plus de carte au programme des vols ; le même résultat avec et sans choix ; le choix survit à sauvegarder puis restaurer ; douze couleurs à 4,5:1 dans les deux thèmes ; rien en lecture seule');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

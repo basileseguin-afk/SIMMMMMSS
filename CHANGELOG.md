@@ -5,6 +5,124 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-27 — Prompt 40 : évolution 26, les compagnies d'abord
+
+- **(a) La charte tenue par des tests.** Le budget d'une page (règle 8) se mesure sur
+  l'unité fictive, à 1 366 × 768, sur chaque page du menu, l'accueil, la fiche d'un
+  service et celle d'une équipe (`tests/charte-budget-browser.cjs`) : mots visibles
+  hors tableaux, phrases d'explication de 12 mots et plus, sections à déplier,
+  boutons visibles, colonnes du plus grand tableau. Aucune couleur écrite en dur
+  dans une feuille ou un script propres à la version 1, hors `visuel.css`
+  (`tests/charte-couleurs.test.cjs`, règle 12). Deux tests à cliquet : l'écart
+  d'avant est relevé une fois dans `tests/charte-dette.json` ; il ne peut que
+  baisser. La charte cite, à côté des règles 9, 10 et 17, les tests qui les
+  tiennent déjà.
+- **(b) La liste des compagnies appartient à l'utilisateur.** Une donnée de plus
+  dans l'état des équipes (`compagnies`, dans `ory-ateliers-v1`) : chaque
+  compagnie avec ses classes ; une compagnie existe sans vol. Avec une liste, les
+  commandes sont celles de la liste, ni plus ni moins : `compagnies.js` la traduit,
+  avant le calcul, en classes retirées et ajoutées, que le moteur lit déjà
+  (`moteur/` ne change pas). La page et les outils (`outils/simuler-journee.cjs`,
+  `outils/simuler-periode.cjs`, `outils/caler-periode.cjs`) préparent la
+  sauvegarde au même endroit. Sans liste (une unité d'avant), rien ne change,
+  champ par champ. « Contrôles » le dit en information (« Les compagnies de cette
+  unité viennent encore des vols : 5 trouvées. ») avec « En faire ma liste », qui
+  écrit la liste telle qu'elle est sans changer le résultat, et s'annule. Les
+  gestes « Retirer », « Rétablir » et « + Ajouter » tiennent la liste à jour ; la
+  feuille « Classes » du classeur des équipes la mène à l'import. L'unité fictive
+  des tests a sa liste.
+- **(c) La page « Commandes ».** La première entrée de « Régler »
+  (`commandes-page.js`, `commandes-page.css`) : le compte (« 17 commandes ·
+  5 compagnies »), une liste plate des commandes par compagnie — sa pastille, sa
+  classe, son chemin, son état (« complète », ou ce qui lui manque, dans les mots
+  de « Contrôles ») — et un bouton plein, « + Ajouter une compagnie ». Son panneau,
+  à côté de la liste : le nom (la pastille se dessine à la frappe), « Avec des
+  vols » ou « Fixe, sans vol », les classes, « Comme une autre compagnie » ou
+  « Partir de zéro » ; la liste montre à part, en tête, les commandes qui seront
+  créées. « Comme une autre » copie, classe par classe, le chemin, l'équipe de
+  chaque étape, les temps par vol et les réglages par compagnie du modèle
+  (`compagnies-gestes.js`) ; une classe que le modèle n'a pas suit le chemin
+  habituel de sa classe, « à compléter », avec un point de « Contrôles » qui ouvre
+  son chemin et « C'est complet ». Un clic sur une compagnie ouvre son panneau :
+  la renommer (ses réglages et sa couleur suivent), lui ajouter ou lui ôter une
+  classe, choisir sa couleur (les douze teintes), la retirer. Chaque geste
+  s'annule d'un coup (équipes, temps par vol, couleurs). La carte « Couleurs des
+  compagnies » quitte le programme des vols ; les « + Ajouter une compagnie ou une
+  classe » de « Chemins » et de « Détails › Commandes » deviennent un lien vers
+  « Commandes ». Au menu, les espaces de « Régler » n'ont plus de titre (il
+  défilait à 768 px de haut avec une entrée de plus). Sans geste, aucun calcul ne
+  change.
+- **(d) Les commandes fixes.** Une compagnie « Fixe, sans vol » (une cantine) :
+  dans son panneau de « Commandes », chaque classe a sa quantité par jour, ses
+  jours (tous cochés au départ) et son heure de départ. Chaque jour coché, elle
+  donne au calcul un départ à son heure, avec sa quantité, comme une ligne du
+  programme ; cela se prépare avant le calcul (`compagnies.js`, `preparerVols`),
+  `moteur/` ne change pas. Si le programme porte aussi des lignes de départ de
+  cette compagnie ce jour-là, leur quantité compte, à l'heure de la commande
+  fixe, même un jour décoché. La liste dit « fixe » ; une commande fixe qui ne
+  pèse sur aucun jour (sans quantité ni ligne au programme) est un point « à
+  corriger » de « Contrôles », dont le bouton ouvre son panneau. Chaque réglage
+  a sa notification et « Annuler » ; une quantité fausse est refusée sous le
+  champ. Le départ se nomme « CANTINE-FIXE » et compte encore comme un vol
+  (handling, camion, retour à la plonge, vols de la Synthèse). Correction de
+  (c) : la compagnie choisie dans la liste est sur le fond pâle de l'accent.
+  Sans commande fixe, le programme et le résultat sont ceux d'avant.
+- **(e) L'import rattache, il ne crée plus.** Avec une liste, chaque ligne du
+  programme est rattachée à une compagnie de la liste par les règles de tri de
+  l'import qui existent (« Règles d'import Winrest » : les codes compagnie, les
+  ICAO exclus ; `compagnies.js`, `rattacher`) : un nom de la liste reste tel quel,
+  avant toute règle. Une ligne qui ne se rattache à rien n'est pas comptée (ni
+  commande, ni vol). La notification de l'import le dit (« 22 vols rattachés à
+  votre liste, 2 non rattachés : voir « Contrôles ». ») avec un bouton vers
+  « Contrôles », comme le compte rendu de l'import. « Contrôles » montre un point
+  à corriger par compagnie non rattachée (« ECO : 2 vols de l'import ne sont dans
+  aucune compagnie de votre liste »), avec trois gestes : « L'ajouter » ouvre le
+  panneau d'ajout de « Commandes », le nom et les classes de ses vols remplis ;
+  « La rattacher à… » écrit la règle « ECO = NORD » dans les codes compagnie ;
+  « L'ignorer » écrit ECO parmi les ICAO exclus. La notification montre la règle
+  écrite, la section des règles la porte, et « Annuler » la retire. Le bandeau de
+  la Synthèse compte ces points. Renommer une compagnie qui a des vols écrit la
+  règle qui les mène au nouveau nom, et la montre. Les outils lisent les règles
+  dans la sauvegarde. Sans liste, l'import d'avant, champ par champ.
+- **(f) Le menu et l'accueil dans l'ordre du travail.** « Régler », sans
+  sous-groupes : Commandes, Services et équipes, Chemins, Programme des vols,
+  Planche retour (l'ancien « Retours », que « Aller à… » trouve encore),
+  Réglages, Contrôles. L'accueil devient une entrée du menu (« Accueil », sa
+  maison), au-dessus de « Lire » ; c'est elle qui dit qu'on y est. L'accueil
+  (`demarrage.js`) guide en six rangées, une liste plate : les compagnies et
+  leurs commandes, les services et leurs équipes, les chemins, les contrôles, le
+  programme des vols, puis lire le résultat — chacune avec son état en clair, et
+  qui mène à sa page. Sur une unité vide, « À faire ensuite » propose « Ajouter
+  une première compagnie », qui ouvre le panneau d'ajout de « Commandes ».
+  L'histoire du haut se récrit dans le même ordre (vos compagnies commandent,
+  des équipes les préparent, les vols donnent l'heure, le site calcule la
+  journée). Avant tout import, quand chaque commande de la liste a son chemin,
+  ses équipes et ses temps, « Contrôles » le dit en tête : « Le site est prêt :
+  il ne manque que les vols », avec « Voir dans Programme des vols → » (`sim.js`,
+  sans toucher `avis.js`). Les tuiles de l'accueil d'avant et son annexe (le plan,
+  les liens) s'en vont : les alertes des liens sont dans « Contrôles ». Sans
+  aucune commande, « Lire le résultat » reste à faire (« rien à calculer
+  encore »). Aucun calcul ne change.
+- **(g) Le contrôle et la documentation.** `tests/captures-evolution-26-browser.cjs`
+  produit et vérifie 40 captures de contrôle, gardées hors du dépôt, sur
+  l'unité fictive, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre :
+  l'accueil d'une unité vide, d'une unité sans vols et d'une unité complète ;
+  le menu ; « Commandes » (la liste, l'ajout « comme une autre », le panneau
+  d'une compagnie et ses couleurs, celui d'une commande fixe) ; « Contrôles »
+  (« il ne manque que les vols » ; une compagnie non rattachée et une classe à
+  compléter). Chaque capture : sa taille, le thème, la fenêtre et le menu qui
+  ne défilent pas, aucun texte sous 13 px. La documentation :
+  `docs/CAHIER_DES_CHARGES.md` (« Les compagnies d'abord » : la liste, les
+  commandes fixes, l'import qui rattache, le menu et l'accueil),
+  `docs/FORMATS_EXCEL.md` (la feuille « Classes » avec la liste des
+  compagnies), `README.md` (le parcours, le menu, l'accueil, la section de
+  l'évolution 26, les fichiers et les tests). Correction de (d) : sur le
+  programme d'exemple, une compagnie « Fixe, sans vol » ne reçoit plus de vols
+  d'essai (`sim.js`, `suivreDemo`) ; leurs départs, pris pour des lignes du
+  programme, remplaçaient sa quantité par la leur
+  (`tests/commande-fixe-demo-browser.cjs`). Sans commande fixe, aucun calcul ne
+  change.
+
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 
 - **La charte de l'interface** (`docs/CHARTE_INTERFACE.md`, version 1) : un

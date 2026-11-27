@@ -6,7 +6,8 @@
  *   — la fiche d'un service par compagnie, avec des champs saisis et des champs vides (c), et les pastilles (d) ;
  *   — le tableau de tous les temps par vol, une compagnie dépliée (c, d) ;
  *   — « Chemins », un chemin ouvert ;
- *   — la carte « Couleurs des compagnies », dépliée (d) ; une notification, avec « Annuler » ;
+ *   — les couleurs des compagnies (d), dans le panneau d'une compagnie de « Commandes » depuis l'évolution 26 (c) ; une
+ *     notification, avec « Annuler » ;
  *   — une question (« Restaurer cette sauvegarde ? ») ; la palette « Aller à… ».
  * Chaque capture est vérifiée : sa taille, le thème (le fond de la page et celui du menu), ce qu'elle doit montrer, la
  * fenêtre qui ne défile pas, aucun texte sous 13 px (12 px à l'écran dans un dessin).
@@ -114,21 +115,21 @@ const A_L_ECRAN=sel=>{const e=document.querySelector(sel);if(!e)return null;cons
     await page.waitForFunction(()=>document.querySelector('#mu-flux .ch-fiche').dataset.muFluxFiche==='complet'&&!!document.querySelector('#mu-flux .gr-svg .gr-noeud'));await attendre(400);
     await capturer('chemin-ouvert');
 
-    /* ---- (d) la carte « Couleurs des compagnies », dépliée ; une notification -------------------------------------------- */
-    await nav.aller(page,'v-programme');await attendre(400);
-    await page.locator('#couleurs-compagnies summary').click();
-    await page.waitForFunction(()=>document.getElementById('couleurs-compagnies').open&&document.querySelectorAll('#couleurs-compagnies .pa-rangee .pa-cie').length===5);await attendre();
-    assert.equal(await page.locator('#couleurs-compagnies .pa-rangee').count(),5,V+'une rangée par compagnie');
-    assert.equal(await page.evaluate(A_L_ECRAN,'#couleurs-compagnies'),true,V+'la carte se voit en entier');
+    /* ---- (d) les couleurs des compagnies (depuis l'évolution 26 c : le panneau d'une compagnie de « Commandes ») ; une
+     *      notification ------------------------------------------------------------------------------------------------- */
+    await nav.aller(page,'mu-commandes');await attendre(400);
+    await page.locator('#mu-commandes [data-co-ouvrir="NORD"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#mu-commandes .co-panneau [data-pa-teinte]').length===12);await attendre();
+    assert.equal(await page.locator('#mu-commandes [data-co-ouvrir] .pa-cie').count(),5,V+'une pastille par compagnie');
+    assert.equal(await page.evaluate(A_L_ECRAN,'#mu-commandes .co-panneau'),true,V+'le panneau se voit en entier');
     await capturer('couleurs-des-compagnies');
-    // Correction 24 (g) : la pastille de la rangée ouvre le panneau des douze teintes.
-    await page.locator('#couleurs-compagnies [data-pa-compagnie="NORD"] [data-pa-ouvrir]').click();
-    await page.locator('#couleurs-compagnies .pa-panneau [data-pa-teinte="9"]').click();
+    await page.locator('#mu-commandes .co-panneau [data-pa-teinte="9"]').click();
     await page.waitForFunction(()=>!!document.querySelector('#notifs .notif .notif-annuler'));
     assert.match(await page.locator('#notifs .notif').last().textContent(),/NORD\s: couleur 9\.Annuler/,V+'la notification, avec « Annuler »');
     await capturer('notification',{notifs:true});
     await page.locator('#notifs .notif-annuler').last().click();
     await page.waitForFunction(()=>localStorage.getItem('ory-couleurs-compagnies-v1')===null);
+    await page.keyboard.press('Escape');
 
     /* ---- une question ------------------------------------------------------------------------------------------------------ */
     await nav.aller(page,'u-sauvegarde');await attendre();

@@ -34,7 +34,7 @@ body[data-lecture="seule"] :is(#btn-edit,[data-vh-action="regler"])::after{conte
    - « Détails › Vols » : mettre en place le handling ;
    - « En direct » : disposer les zones ; à plat (par « Aller à… », évolution 23 a) : les stockages d'un service,
      « Ajouter une équipe » à un service qui n'en a pas. */
-body[data-lecture="seule"] :is(.at-ajout-ouvrir,#at-etapes,[data-vh-action="brancher"],#direct-disposer-btn,#service-storages,[data-svc-action="equipe"]){display:none!important}
+body[data-lecture="seule"] :is(.at-vers-commandes,#at-etapes,[data-vh-action="brancher"],#direct-disposer-btn,#service-storages,[data-svc-action="equipe"]){display:none!important}
 body[data-lecture="seule"] .at-ligne-actions .at-menu{visibility:hidden}
 body[data-lecture="seule"] .at-exclues .at-chip{pointer-events:none}
 

@@ -116,11 +116,63 @@ let descProgramme = { data: null, d: null };
 let numeroProgramme = 0;
 const descriptionDuProgramme = data => (descProgramme.data === data ? descProgramme.d : (descProgramme = { data, d: OrlyPeriode.decrire(data) }).d);
 function chargerVols(data) {
+  // Le programme que le calcul lit (évolution 26) : sans liste des compagnies, le programme lui-même.
+  data = volsCharges = programmePrepare(data);
   const d = descriptionDuProgramme(data);
   if (!d) Sim.jourVols = null;
   else if (!(Sim.jourVols >= d.debut && Sim.jourVols <= d.fin)) Sim.jourVols = d.debut;
   flights = OrlyJournee.volsDecales(d ? OrlyPeriode.volsDuJour(data, Sim.jourVols) : data, CFG.shift);
   if (document.getElementById('source-count')) updateSource();
+}
+/* LA LISTE DES COMPAGNIES (évolution 26, compagnies.js). Le programme importé reste tel quel (`Sim.dataCourante`) ; le
+ * calcul lit le programme préparé d'après la liste (`OrlyCompagnies.preparerVols`), refait quand la liste change. Sans
+ * liste, c'est le même objet : rien ne change. `idsDuProgramme` : les commandes que porte le programme entier, tous ses jours — la liste s'y traduit.
+ * L'import rattache (évolution 26 e) : la préparation lit aussi les règles d'import (« Règles d'import Winrest ») ; elle
+ * se refait quand elles changent. `ra` : ce que le rattachement a gardé, ignoré, et ce qu'il n'a pas su rattacher. */
+let prepare = { brut: null, sig: null, regles: null, lues: null, vols: null, ids: null, ra: null };
+// Le programme préparé d'où viennent les vols de la journée (`flights`) : le calcul peut avoir refait la préparation
+// (`idsDuProgramme`) avant que la page ne recharge ses vols.
+let volsCharges = null;
+// La liste elle-même : chaque geste la remplace par une liste neuve (`valider`), une liste inchangée garde la même.
+const signaturePreparation = () => { const st = Sim.ateliers && Sim.ateliers.state; return st && Array.isArray(st.compagnies) ? st.compagnies : null; };
+/** Les règles d'import gardées, telles qu'écrites : la préparation se refait quand elles changent. */
+const reglesImportBrutes = () => { try { return localStorage.getItem(CLE_WINREST); } catch (e) { return null; } };
+function programmePrepare(data) {
+  data = data || Sim.dataCourante || SAMPLE;
+  const sig = signaturePreparation(), regles = sig ? reglesImportBrutes() : null;
+  if (prepare.brut !== data || prepare.sig !== sig || prepare.regles !== regles) {
+    const st = Sim.ateliers ? Sim.ateliers.state : null;
+    // Des règles illisibles se lisent comme les règles par défaut (« Règles d'import Winrest » le dit).
+    const lues = sig && window.OrlyWinrest ? reglesWinrest().regles : null;
+    prepare = { brut: data, sig, regles, lues, vols: window.OrlyCompagnies && st ? OrlyCompagnies.preparerVols(data, st, lues) : data, ids: null, ra: null };
+  }
+  return prepare.vols;
+}
+/** Le rattachement du programme à la liste (évolution 26 e) ; rien sans liste. */
+function rattachementCourant() {
+  const at = Sim.ateliers;
+  if (!at || !window.OrlyCompagnies || !Array.isArray(at.state.compagnies)) return null;
+  programmePrepare();
+  if (!prepare.ra) prepare.ra = OrlyCompagnies.rattacher(prepare.brut, at.state.compagnies, prepare.lues);
+  return prepare.ra;
+}
+/** Le rattachement d'un programme importé : les vols d'exemple ne sont pas une importation — ceux des compagnies hors
+ *  de la liste ne comptent pas non plus, mais « Contrôles » n'en fait pas des points. */
+const rattachementDeLImport = () => (dataSource !== 'Jeu de démonstration' ? rattachementCourant() : null);
+/** Les vols de l'import qu'aucune compagnie de la liste ne prend. */
+const volsNonRattaches = ra => (ra ? ra.nonRattaches.reduce((k, n) => k + n.vols, 0) : 0);
+function idsDuProgramme() {
+  const vols = programmePrepare();
+  if (!prepare.ids) prepare.ids = OrlyCompagnies.idsDuProgramme(vols);
+  return prepare.ids;
+}
+/** Après un changement de la liste : si le programme préparé n'est plus celui des vols chargés, la journée se recharge. */
+function suivrePreparation() {
+  if (!window.OrlyCompagnies || !Sim.ateliers) return false;
+  const brut = Sim.dataCourante || SAMPLE;
+  if (programmePrepare(brut) === volsCharges) return false;
+  chargerVols(brut);
+  return true;
 }
 
 /* ==========================================================================
@@ -618,6 +670,8 @@ function initAteliers(){
     // Le handling a son service à lui, dans la zone CF départ food (où il charge).
     creerHandling:()=>Sim.editor?Sim.editor.nouveauService('Handling','handling',!ZONES.handling):null,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
+    // Les commandes que porte le programme entier (évolution 26 b) : la liste des compagnies s'y traduit.
+    idsDuProgramme,
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
     // Ce que le calcul lit de l'unité (moteur/journee.js) : le plan, ses services
@@ -631,7 +685,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{suivreGestes();if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
+    change:r=>{suivreGestes();if(suivreDemo()||suivrePreparation()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();if(Sim.commandes&&document.body.dataset.sous==='mu-commandes')Sim.commandes.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -741,7 +795,15 @@ function etatDemarrage(){
   try{ calibre=Sim.reglages
     ? JSON.stringify(Sim.reglages.etat.bareme)!==JSON.stringify(MoteurProduction.BAREME_DEMO)
     : false; }catch(e){ calibre=false; }
+  // Évolution 26 (f) : les compagnies et leurs commandes (la liste, ou, sans liste, celles des vols), et ce que
+  // « Contrôles » compte — l'accueil guide dans l'ordre du travail.
+  const at=Sim.ateliers,liste=at&&at.compagnies,pb=Sim.problemes?Sim.problemes.liste:[];
+  const duJour=at?at.classes.filter(c=>!String(c.id).includes('/@')):[];
   return {
+    compagnies:liste?{liste:true,n:liste.length,commandes:liste.reduce((k,c)=>k+(c.classes||[]).length,0)}
+      :{liste:false,n:new Set(duJour.map(c=>c.cie)).size,commandes:duJour.length},
+    controles:{bloquants:pb.filter(p=>p.niveau==='bloquant').length,corriger:pb.filter(p=>p.niveau==='corriger').length,
+      pret:pb.some(p=>p.cle==='pret')},
     vols:{ total:flights.length, departs:flights.filter(f=>f.sens==='DEP').length,
            source:dataSource==='Jeu de démonstration'?'demo':'importe' },
     plan:{ services:servicesDuPlan().length+annexes().length,
@@ -774,8 +836,12 @@ function majProblemes(){
     // Les nombres des onglets se lisent dans le registre : ils le suivent. « Contrôles », ouverte, aussi (évolution 22 d).
     if(Sim.onglets)Sim.onglets.rendre();
     if(Sim.unite&&document.body.dataset.sous==='mu-pas')Sim.unite.rendrePas();
+    // « Commandes », ouverte, dit l'état de chaque commande dans les mots de « Contrôles » (évolution 26 c).
+    if(Sim.commandes&&document.body.dataset.sous==='mu-commandes')Sim.commandes.rendre();
     // « Fichiers », ouverte, suit aussi (évolution 22 e) : une planche importée d'ici s'exporte aussitôt.
-    if(document.body.dataset.sous==='u-sauvegarde')majFichiers();},0);
+    if(document.body.dataset.sous==='u-sauvegarde')majFichiers();
+    // L'accueil, ouvert, compte les points de « Contrôles » (évolution 26 f) : il suit le registre.
+    if(Sim.demarrage&&activeView==='accueil')Sim.demarrage.rendre();},0);
 }
 function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
@@ -858,14 +924,150 @@ function sourcesProblemes(){
   // Fournisseurs » ; et les clients réglés en partie (une sauvegarde d'avant) se lisent, en information.
   const U=Sim.unite&&window.OrlyFournisseurs&&Sim.unite.estFournisseur?Sim.unite:null;
   const fourni=a=>(U&&a.code==='parcours-trou'&&a.service&&U.estFournisseur(a.service)?{...a,fournisseur:true}:a);
-  return {anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
+  return avecSitePret({points:pointsDesCompagnies(),anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
     clientsEnPartie:U&&U.tableauFournisseurs?U.tableauFournisseurs().enPartie:0,
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
     etapes,enClair:MoteurProduction.enClair,
     // Correction 23 (c) : de quoi regrouper les étapes sans équipe d'une même commande, et nommer ce qui est en cause.
     cheminDe:c=>{const PC=window.OrlyParcours,st=Sim.ateliers.state,p=PC?PC.fluxDe(st,Sim.ateliers.classes.find(x=>x.id===c)||c):null;
       return p?{id:p.id,nom:p.nom,defaut:!PC.cheminDe(st,c)}:null;},
-    libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService};
+    libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService});
+}
+/* « Il ne manque que les vols » (évolution 26 f). Avant tout import (les vols d'exemple), une unité qui a sa liste de
+ * compagnies et dont rien n'est bloquant ni à corriger est prête : chaque commande a son chemin, ses équipes et ses
+ * temps. Un point le dit, en tête des informations, avec son bouton vers « Programme des vols » ; il prend la place de
+ * l'étape des vols d'exemple, qui disait la même chose. Sinon, les sources telles quelles. */
+function avecSitePret(src){
+  const at=Sim.ateliers;
+  if(dataSource!=='Jeu de démonstration'||!at||!at.compagnies||!at.classes.length)return src;
+  if(OrlyAvis.lister(src).some(OrlyAvis.estProbleme))return src;
+  return {...src,etapes:src.etapes.filter(e=>e.id!=='vols'),
+    points:[{niveau:'information',cle:'pret',titre:'Le site est prêt : il ne manque que les vols',
+      detail:'Chaque commande a son chemin, ses équipes et ses temps.',page:'v-programme'},...src.points]};
+}
+/* Les points de la liste des compagnies (évolution 26), en tête de « Contrôles ». Une unité sans liste : ses compagnies
+ * viennent encore des vols — une information, et le geste « En faire ma liste ». */
+function pointsDesCompagnies(){
+  const at=Sim.ateliers;if(!at||!window.OrlyCompagnies)return [];
+  const out=[];
+  if(!at.compagnies){
+    const n=OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,at.state).length;
+    if(n)out.push({niveau:'information',cle:'liste',titre:'Les compagnies de cette unité viennent encore des vols : '+n+(n>1?' trouvées.':' trouvée.'),
+      page:'mu-pas',gestes:[{action:'faire-liste',texte:'En faire ma liste'}]});
+  }
+  // Une classe créée « comme une autre » que le modèle n'avait pas (évolution 26 c) : à compléter, dans son chemin.
+  const PC=window.OrlyParcours,P=window.MoteurProduction;
+  for(const c of at.compagnies||[])for(const cab of c.aCompleter||[]){
+    const id=P.idClasse(c.nom,cab),classe=at.classes.find(x=>x.id===id)||{id,cie:c.nom,cabine:cab};
+    const ch=PC?PC.fluxDe(at.state,classe):null,etape=ch?P.servicesDuParcours(ch)[0]:null;
+    out.push({niveau:'corriger',cle:'completer:'+id,aCompleter:true,commande:id,classes:[id],...(etape?{service:etape}:{}),
+      titre:P.libelleClasse(id)+' est à compléter',
+      detail:'Sa compagnie modèle n’a pas cette classe : elle suit le chemin habituel'+(ch?' (« '+ch.nom+' »)':'')+', sans équipe ni temps propres. Choisissez ses équipes, puis « C’est complet ».',
+      page:'mu-flux',gestes:[{action:'complete',valeur:id,texte:'C’est complet'}]});
+  }
+  // Une commande fixe qui ne pèse sur aucun jour (évolution 26 d) : sans quantité ou sans jour coché, et sans ligne au
+  // programme. Le bouton ouvre le panneau de sa compagnie, dans « Commandes ».
+  const ids=at.compagnies&&at.compagnies.some(c=>c.fixe)?idsDuProgramme():null;
+  for(const c of ids?at.compagnies:[])if(c.fixe)for(const cab of c.classes){
+    const id=P.idClasse(c.nom,cab);if(ids.has(id))continue;
+    out.push({niveau:'corriger',cle:'fixe:'+id,commande:id,classes:[id],compagnie:c.nom,
+      titre:P.libelleClasse(id)+' ne pèse sur aucun jour',
+      detail:'C’est une commande fixe : donnez-lui une quantité par jour et au moins un jour coché.',
+      page:'mu-commandes'});
+  }
+  // Les vols de l'import qu'aucune compagnie de la liste ne prend (évolution 26 e) : un point par code, trois gestes.
+  // « La rattacher à… » et « L'ignorer » écrivent une règle de tri, que la notification montre.
+  const ra=rattachementDeLImport(),noms=(at.compagnies||[]).map(c=>c.nom);
+  for(const n of ra?ra.nonRattaches:[]){
+    const un=n.vols===1;
+    out.push({niveau:'corriger',cle:'import:'+n.code,importCode:n.code,
+      titre:n.code+' : '+n.vols+(un?' vol de l’import n’est':' vols de l’import ne sont')+' dans aucune compagnie de votre liste',
+      detail:un?'Il ne compte pas.':'Ils ne comptent pas.',
+      gestes:[{action:'ajouter-cie',valeur:n.code,texte:'L’ajouter'},
+        ...(noms.length?[{action:'rattacher',texte:'La rattacher à…',choix:noms.map(x=>({valeur:x,texte:x}))}]:[]),
+        {action:'ignorer',valeur:n.code,texte:'L’ignorer'}]});
+  }
+  return out;
+}
+/** Un geste fait dans « Contrôles » (évolution 26). Rend vrai s'il a été fait. */
+function gesteControles(action,valeur,p){
+  if(action==='faire-liste')return faireMaListe();
+  if(action==='complete')return completerCommande(valeur);
+  if(action==='ajouter-cie')return ajouterDepuisLImport(valeur);
+  if(action==='rattacher')return rattacherCode(p&&p.importCode,valeur);
+  if(action==='ignorer')return ignorerCode(valeur);
+  return false;
+}
+/* L'IMPORT RATTACHE (évolution 26 e) : les gestes d'un code que l'import n'a pas su rattacher. */
+/** « L'ajouter » : le panneau d'ajout de « Commandes », le nom rempli, et les classes de ses vols cochées. */
+function ajouterDepuisLImport(code){
+  if(!code||!Sim.commandes||lectureSeule)return false;
+  const ra=rattachementCourant(),n=ra&&ra.nonRattaches.find(x=>x.code===code);
+  if(Sim.onglets)Sim.onglets.choisir('mu-commandes');
+  Sim.commandes.ouvrirAjout({nom:code,cabines:n?n.classes:[]});
+  return true;
+}
+const QUI_REGLE='« Règles d’import Winrest » (Programme des vols)';
+/** « La rattacher à… » : la règle « code = compagnie » s'écrit dans les codes compagnie des règles d'import, et se montre. */
+function rattacherCode(code,nom){
+  if(!code||!nom||lectureSeule)return false;
+  const r=reglesWinrest().regles,compagnies={};
+  for(const [k,v] of Object.entries(r.compagnies))if(OrlyCompagnies.normaliser(k)!==code)compagnies[k]=v;
+  compagnies[code]=nom;
+  return ecrireReglesImport({...r,compagnies},code+' rattachée à '+nom+' : la règle « '+code+' = '+nom+' » est écrite dans les codes compagnie de '+QUI_REGLE+'.');
+}
+/** « L'ignorer » : le code s'écrit parmi les ICAO exclus des règles d'import, et se montre ; ses vols ne comptent pas. */
+function ignorerCode(code){
+  if(!code||lectureSeule)return false;
+  const r=reglesWinrest().regles;
+  return ecrireReglesImport({...r,icaoExclus:[...r.icaoExclus,code]},code+' ignorée : « '+code+' » est écrit parmi les ICAO exclus de '+QUI_REGLE+'. Ses vols ne comptent pas.');
+}
+/* Les règles d'import qu'un geste écrit (« La rattacher à… », « L'ignorer », un nom qui change) se défont par « Annuler » :
+ * leur historique, `regles-import`, rejoint ceux d'un même geste (notifications.js). On garde les règles d'avant, telles
+ * qu'écrites (rien : les règles par défaut). La section des règles se redessine, et le calcul suit. */
+const histoireRegles={version:0,avant:[]};
+function inscrireHistoireRegles(){
+  if(window.OrlyNotif)OrlyNotif.inscrire('regles-import',{version:()=>histoireRegles.version,defaire:defaireReglesImport});
+}
+/** Écrit des règles d'import (validées : un refus se dit, rien n'est écrit), puis la phrase. `suivre` : le calcul suit tout de
+ *  suite (un geste qui change aussi la liste le laisse à la liste). Rend vrai si c'est fait. */
+function ecrireReglesImport(regles,phrase,suivre=true){
+  const avant=reglesImportBrutes();
+  try{enregistrerReglesWinrest(regles);}
+  catch(err){toast('Refusé : '+(window.OrlyWinrestVue?OrlyWinrestVue.raison(err.message):err.message));return false;}
+  histoireRegles.avant.push(avant);histoireRegles.version++;
+  if(window.OrlyNotif)OrlyNotif.marquer('regles-import');
+  if(suivre)suivreReglesImport(true);else redessinerReglesImport();
+  if(phrase)toast(phrase);
+  return true;
+}
+/** Les règles changées à la main, dans leur section : un « Annuler » d'un geste d'avant ne les efface pas — sa notification
+ *  dit qu'il n'y a plus rien à annuler ici. */
+function reglesChangeesALaMain(){ histoireRegles.version++; if(window.OrlyNotif)OrlyNotif.bouger(); }
+function defaireReglesImport(){
+  if(!histoireRegles.avant.length)return;
+  const avant=histoireRegles.avant.pop();histoireRegles.version++;
+  try{if(avant===null)localStorage.removeItem(CLE_WINREST);else localStorage.setItem(CLE_WINREST,avant);}catch(e){/* stockage indisponible */}
+  suivreReglesImport(true);
+}
+/** Les règles d'import ont changé : la section se redessine (`redessiner`), le programme préparé se refait, le calcul suit. */
+function suivreReglesImport(redessiner){
+  if(redessiner)redessinerReglesImport();
+  if(suivrePreparation()&&Sim.ateliers)Sim.ateliers.rendre();else majProblemes();
+}
+function redessinerReglesImport(){ if(window.OrlyWinrestVue&&document.getElementById('winrest-regles-corps'))rendreReglesWinrest(); }
+/** « C'est complet » : la classe n'est plus à compléter. */
+function completerCommande(id){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;if(!at||!G||!id)return false;
+  const i=String(id).lastIndexOf('/'),nom=id.slice(0,i),cab=id.slice(i+1);
+  return at.changer(()=>{at.state=G.complete(at.state,nom,cab);},MoteurProduction.libelleClasse(id)+' est complète.');
+}
+/** « En faire ma liste » : la liste des compagnies telle qu'elle est aujourd'hui (compagnies.js). Le résultat ne change pas. */
+function faireMaListe(){
+  const at=Sim.ateliers;if(!at||at.compagnies||!window.OrlyCompagnies)return false;
+  const liste=OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,at.state),n=liste.reduce((k,c)=>k+c.classes.length,0);
+  return at.changer(()=>{at.state.compagnies=liste;},'Votre liste des compagnies est faite : '+liste.length+(liste.length>1?' compagnies, ':' compagnie, ')
+    +n+(n>1?' commandes':' commande')+'. Le résultat ne change pas.');
 }
 /* Le dernier réglage changé, et son heure (évolution 22 d) : « Contrôles » le dit. Un historique qui avance (les équipes et
  * les chemins, les temps par vol, les liens, le plan) est un réglage changé ; ce que la page annonce dans le même geste dit
@@ -919,6 +1121,133 @@ async function supprimerServiceUnite(id){
   if(fait)toast('« '+nom+' » supprimé.',{parDefaut:true});
   return !!fait;
 }
+/* « COMMANDES » (évolution 26 c, commandes-page.js) : les commandes par compagnie, et les gestes sur une compagnie
+ * (compagnies-gestes.js). Un geste touche d'un coup les équipes, les temps par vol et les couleurs : une notification,
+ * dont « Annuler » défait le tout (notifications.js réunit les historiques d'un même geste). Une unité d'avant reçoit
+ * d'abord sa liste d'aujourd'hui (« En faire ma liste ») ; les couleurs du moment des autres compagnies sont gardées,
+ * pour qu'aucune ne change quand une compagnie arrive, part ou change de nom. */
+const deLaListe=()=>(Sim.ateliers.compagnies||OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,Sim.ateliers.state));
+/** Les classes d'une compagnie : celles de la liste ; sans liste, ses commandes de la journée. */
+function classesDeLaCompagnie(nom){
+  const c=deLaListe().find(x=>x.nom===nom);
+  return c?c.classes.slice():[];
+}
+const plCmd=n=>n+(n>1?' commandes':' commande');
+/** Les couleurs : celles du moment de chaque compagnie sont gardées ; `f` les retouche (un nom qui change). */
+function garderLesCouleurs(f){
+  const PA=window.OrlyPastilles;if(!PA||!PA.reecrire)return;
+  PA.reecrire((choix,noms)=>{const g=PA.garder(noms,choix);return f?f(g):g;},'');
+}
+/** Les commandes du programme importé, tel quel : les classes retirées et ajoutées que l'état garde sont pour le code
+ *  d'avant, qui lit ce programme sans le préparer (ni commandes fixes — évolution 26 d —, ni rattachement). Le calcul,
+ *  lui, les retire et les ajoute d'après le programme préparé (`idsDuProgramme`). */
+const idsDuBrut=()=>OrlyCompagnies.idsDuProgramme(Sim.dataCourante||SAMPLE);
+/** Un geste sur la liste : les temps par vol d'abord (s'ils changent), les couleurs, puis les équipes, qui disent la phrase. */
+function gesteSurLaListe(etat,bareme,phrase,couleurs){
+  const rg=Sim.reglages;
+  if(bareme&&rg&&JSON.stringify(bareme)!==JSON.stringify(rg.etat.bareme))rg.changer(()=>{rg.etat.bareme=bareme;},'');
+  garderLesCouleurs(couleurs);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=OrlyCompagniesGestes.aligner(etat,idsDuBrut());},phrase);
+  return '';
+}
+/** « Ajouter les 3 commandes » : une phrase d'erreur quand le geste est refusé, sinon rien. */
+function ajouterCompagnie(b){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const noms=deLaListe().map(c=>c.nom);let nom;
+  try{nom=G.nomNeuf(b.nom,noms);}catch(e){return e.message;}
+  const cabines=P.CABINES.filter(c=>(b.cabines||[]).includes(c));
+  if(!cabines.length)return 'Cochez au moins une classe.';
+  const modele=b.modele&&noms.includes(b.modele)?b.modele:null;
+  let etat=at.state,bareme=null,aCompleter=[];
+  if(modele){const r=G.copier(etat,Sim.reglages?Sim.reglages.etat.bareme:{},{modele,nom,cabines,classesModele:classesDeLaCompagnie(modele)});etat=r.etat;bareme=r.bareme;aCompleter=r.aCompleter;}
+  etat=G.ajouterALaListe(etat,Sim.dataCourante||SAMPLE,{nom,cabines,fixe:!!b.fixe,aCompleter});
+  const nomsCab=aCompleter.map(c=>(P.NOM_CABINE||{})[c]||c);
+  return gesteSurLaListe(etat,bareme,nom+' ajoutée : '+plCmd(cabines.length)+(modele?', comme '+modele:', à partir de zéro')+'.'
+    +(nomsCab.length?' '+nomsCab.join(', ')+(nomsCab.length>1?' sont':' est')+' à compléter : voir « Contrôles ».':''));
+}
+/** Renommer une compagnie : ses réglages, ses temps par vol et sa couleur la suivent. */
+function renommerCompagnie(ancien,neufBrut){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const noms=deLaListe().map(c=>c.nom);let neuf;
+  try{neuf=G.nomNeuf(neufBrut,noms,ancien);}catch(e){return e.message;}
+  if(neuf===ancien)return '';
+  const r=G.renommer({...at.state,compagnies:deLaListe()},Sim.reglages?Sim.reglages.etat.bareme:{},ancien,neuf);
+  const aDesVols=(Sim.dataCourante||[]).some(v=>OrlyCompagnies.normaliser(v.cie)===ancien);
+  // Avec une liste, l'import rattache (évolution 26 e) : ses vols la suivent par une règle de tri, écrite et montrée.
+  const regle=at.compagnies?regleDuNouveauNom(ancien,neuf,aDesVols):null;
+  if(regle&&!ecrireReglesImport(regle.regles,'',false))return 'Les règles d’import n’ont pas pu suivre : le nom ne change pas.';
+  return gesteSurLaListe(r.etat,r.bareme,ancien+' s’appelle maintenant '+neuf+' : ses réglages et sa couleur suivent.'
+    +(regle&&aDesVols?' Ses vols aussi : la règle « '+ancien+' = '+neuf+' » est écrite dans les codes compagnie de '+QUI_REGLE+'.'
+      :regle?' Les règles de tri qui menaient à '+ancien+' mènent à '+neuf+' ('+QUI_REGLE+').'
+      :aDesVols?' Ses vols portent encore le nom '+ancien+'.':''),
+    g=>{const rang=g[ancien];const {[ancien]:_,...reste}=g;return rang?{...reste,[neuf]:rang}:reste;});
+}
+/** Les règles d'import après un changement de nom : celles qui menaient à l'ancien nom mènent au nouveau ; les vols qui
+ *  portent l'ancien nom (`aDesVols`) y sont menés ; une règle qui mène un nom à lui-même part. Rien à écrire : null. */
+function regleDuNouveauNom(ancien,neuf,aDesVols){
+  const N=OrlyCompagnies.normaliser,r=reglesWinrest().regles,compagnies={};
+  for(const [k,v] of Object.entries(r.compagnies))if(N(k)!==ancien||!aDesVols)compagnies[k]=N(v)===ancien?neuf:v;
+  if(aDesVols)compagnies[ancien]=neuf;
+  for(const k of Object.keys(compagnies))if(N(k)===N(compagnies[k]))delete compagnies[k];
+  return JSON.stringify(compagnies)===JSON.stringify(r.compagnies)?null:{regles:{...r,compagnies}};
+}
+/** Retirer une compagnie de la liste : ses commandes partent ; ses réglages restent, « Annuler » la rend. */
+function retirerCompagnie(nom){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const n=classesDeLaCompagnie(nom).length;
+  // Avec une liste, ses vols de l'import ne se rattachent plus à rien (évolution 26 e) : « Contrôles » le dit.
+  const aDesVols=!!at.compagnies&&(programmePrepare()||[]).some(v=>OrlyCompagnies.normaliser(v.cie)===nom);
+  return gesteSurLaListe(G.retirerDeLaListe(at.state,Sim.dataCourante||SAMPLE,nom),null,nom+' retirée de la liste'+(n?', avec '+(n>1?'ses ':'sa ')+plCmd(n):'')+'.'
+    +(aDesVols?' Ses vols de l’import ne comptent plus : voir « Contrôles ».':''));
+}
+/** Ajouter ou ôter une classe d'une compagnie de la liste. */
+function classeCompagnie(nom,cabine,dedans){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const lib=P.libelleClasse(P.idClasse(nom,cabine));
+  const etat=G.classe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,dedans);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=G.aligner(etat,idsDuBrut());},lib+(dedans?' ajoutée.':' ôtée de la liste.'));
+  return '';
+}
+/** « Avec des vols » ou « Fixe, sans vol » (évolution 26 d). */
+function typeCompagnie(nom,fixe){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  return gesteSurLaListe(G.typeDeCommandes(at.state,Sim.dataCourante||SAMPLE,nom,fixe),null,
+    nom+(fixe?' : des commandes fixes, sans vol. Pour chaque classe, sa quantité par jour, ses jours et son heure de départ.'
+      :' : des commandes avec des vols. Ses commandes fixes sont retirées.'));
+}
+const NOMS_DES_JOURS=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+/** La commande fixe d'une classe (évolution 26 d) : une phrase d'erreur quand la valeur est refusée, sinon rien. */
+function fixeCompagnie(nom,cabine,o){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  let etat;try{etat=G.reglerFixe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,o);}catch(e){return e.message;}
+  const n=OrlyCompagnies.normaliser(nom),f=G.fixeDe(etat.compagnies.find(c=>c.nom===n),cabine),j=NOMS_DES_JOURS[o.jour-1];
+  const quoi='quantite' in o?f.quantite+' par jour':'heure' in o?'départ à '+f.heure:(o.coche?'le '+j+' aussi':'plus le '+j);
+  return gesteSurLaListe(etat,null,P.libelleClasse(P.idClasse(n,cabine))+', commande fixe : '+quoi+'.');
+}
+function initCommandes(){
+  if(!window.OrlyCommandesPage||!OrlyCommandesPage.PageCommandes||!Sim.ateliers||!window.OrlyCompagniesGestes)return;
+  const at=()=>Sim.ateliers,PC=window.OrlyParcours,nomDuChemin=p=>(p?{id:p.id,nom:p.nom}:null);
+  Sim.commandes=new OrlyCommandesPage.PageCommandes({
+    liste:()=>at().compagnies,
+    classes:()=>at().classes,
+    avis:()=>(Sim.problemes?Sim.problemes.liste:[]),
+    cheminDe:id=>{const c=at().classes.find(x=>x.id===id)||id;return nomDuChemin(PC?PC.fluxDe(at().state,c):null);},
+    cheminHabituel:cab=>{const st=at().state,id=(st.parcoursCabine||{})[cab];return nomDuChemin((st.parcours||[]).find(x=>x.id===id));},
+    classesDe:classesDeLaCompagnie,
+    verrou:()=>lectureSeule,
+    ajouter:ajouterCompagnie, renommer:renommerCompagnie, retirer:retirerCompagnie, classe:classeCompagnie,
+    couleur:(nom,rang)=>{if(window.OrlyPastilles)OrlyPastilles.choisirCouleur(nom,rang);},
+    // Les commandes fixes (évolution 26 d).
+    fixeDe:(nom,cab)=>OrlyCompagniesGestes.fixeDe((at().compagnies||[]).find(c=>c.nom===nom),cab),
+    type:typeCompagnie, fixe:fixeCompagnie
+  });
+}
 function initUnite(){
   if(!window.OrlyUnite||!Sim.ateliers)return;
   // « Services et équipes » (évolution 22 b) : la page de la version 1 hérite de celle de unite.js, commun aux deux versions.
@@ -946,8 +1275,12 @@ function initUnite(){
     avis:()=>(Sim.problemes?Sim.problemes.liste:[]),
     dernierReglage:()=>dernierReglage,
     voulu:cie=>!!(Sim.ateliers&&Sim.ateliers.regleSansChargement(cie,true)),
+    // Un geste qui se fait dans « Contrôles » même (évolution 26) : « En faire ma liste »…
+    geste:(action,valeur,p)=>gesteControles(action,valeur,p),
     nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
     aller:(page,lieu)=>allerPage(page,lieu),
+    // « Commandes », le panneau d'une compagnie ouvert (évolution 26 d).
+    compagnie:nom=>{if(Sim.onglets)Sim.onglets.choisir('mu-commandes');if(Sim.commandes)Sim.commandes.ouvrirCompagnie(nom,true);},
     // En lecture seule (évolution 23 d), « Contrôles » se lit : ses boutons vers un réglage sont grisés, avec leur raison.
     verrou:()=>lectureSeule, ferme:id=>pageFermee(id), motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
     notify:toast
@@ -1106,6 +1439,8 @@ function initOnglets(){
     verrou:()=>editMode,
     // En lecture seule (évolution 22 f), les pages du bloc « Régler » ne s'ouvrent pas : le bloc se replie, la page le dit.
     ferme:pageFermee,refus:direVerrou,motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
+    // L'accueil, en tête du menu, au-dessus de « Lire » (évolution 26 f).
+    accueil:'Accueil',
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
     lieu:(id,lieu)=>{
@@ -1114,6 +1449,8 @@ function initOnglets(){
       if(id==='j-plan'&&lieu==='plat'){choisirVueDirect('plat');Sim.pageAvantPlan='j-plan:plat';return;}
       if(id==='at-repas'&&lieu==='etapes'&&Sim.ateliers&&Sim.ateliers.ouvrirEtapes)return Sim.ateliers.ouvrirEtapes();
       if(id==='u-sauvegarde'&&lieu==='classeurs'){const t=document.getElementById('fichiers-classeurs');if(t)t.scrollIntoView({block:'start'});return;}
+      // « Ajouter une première compagnie » (l'accueil d'une unité vide, évolution 26 f) : le panneau d'ajout, ouvert.
+      if(id==='mu-commandes'&&lieu==='ajout'&&Sim.commandes&&!lectureSeule){Sim.commandes.ouvrirAjout();return;}
       if(!Sim.unite)return;
       if(id==='mu-services'&&Sim.unite.allerA)Sim.unite.allerA(lieu);
       if(id==='mu-flux'&&Sim.unite.allerChemins)Sim.unite.allerChemins(lieu);},
@@ -1134,6 +1471,7 @@ function initOnglets(){
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
       if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
+      if(id==='mu-commandes'&&Sim.commandes)Sim.commandes.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -1284,11 +1622,10 @@ function afficherTitre(){
     if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
   }
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg&&!pg.sansIntro?pg.intro:'';
-  // « Fichiers », en bas du menu : son bouton dit qu'on y est. De même la marque, pour l'accueil.
+  // « Fichiers », en bas du menu : son bouton dit qu'on y est. L'accueil, c'est son entrée en tête du menu qui le dit
+  // (évolution 26 f, onglets.js) : la marque y mène toujours, sans le dire une seconde fois.
   const sv=document.getElementById('btn-sauvegarde');
   if(sv){const ici=!!partie&&partie.id==='fichier';sv.classList.toggle('actif',ici);if(ici)sv.setAttribute('aria-current','page');else sv.removeAttribute('aria-current');}
-  const marque=document.getElementById('btn-accueil');
-  if(marque){if(accueil)marque.setAttribute('aria-current','page');else marque.removeAttribute('aria-current');}
   majAnnuler();
 }
 
@@ -1330,7 +1667,8 @@ function boutonsAnnuler(){
   // « Disposer les zones » (évolution 20 b) règle la disposition, gardée avec les équipes : tant que son panneau est
   // ouvert, dans « En direct », le bouton du haut annule et rétablit ses gestes — et eux seuls (`gesteDeDisposition`).
   if(document.body.classList.contains('direct-dispose'))return ['at-undo','at-redo'];
-  if(document.body.dataset.sous==='mu-services'){
+  // « Commandes » (évolution 26 c) règle aussi les équipes et les temps par vol : les deux histoires, comme « Services et équipes ».
+  if(document.body.dataset.sous==='mu-services'||document.body.dataset.sous==='mu-commandes'){
     suivreGestes();
     return [DEUX_HISTOIRES[ordreGestes.faits.at(-1)||'at'][0],DEUX_HISTOIRES[ordreGestes.defaits.at(-1)||'at'][1]];
   }
@@ -1420,7 +1758,7 @@ function elementsPalette(){
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
   geste('Exporter les résultats',()=>allerPage('u-sauvegarde','classeurs'),{ico:'telecharger',indice:'Fichiers',mots:'json fichier excel période'});
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
-  out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
+  out.push({groupe:'Pages',nom:'Accueil',ico:'maison',mots:'guide commencer démarrer',faire:()=>{allerPartie('accueil');ici();}});
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
   // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
@@ -2291,7 +2629,7 @@ function signaturePeriode(){
   const v=x=>(x?x.version:0);
   return [v(Sim.ateliers),v(Sim.reglages),v(Sim.flows),v(Sim.editor),programmes,CFG.loadDelay,CFG.shift].join('|');
 }
-const programmeDate=()=>(descriptionDuProgramme(Sim.dataCourante)?Sim.dataCourante:null);
+const programmeDate=()=>(descriptionDuProgramme(Sim.dataCourante)?programmePrepare(Sim.dataCourante):null);
 /** Ce que la veille laisse à la journée affichée dans la période (ses vols de la veille décalés comme les siens), ou null. */
 function entreeDeLaJournee(){
   const e=Sim.periode?Sim.periode.entreeDuJour(Sim.jourVols):null;
@@ -2324,7 +2662,7 @@ function initPeriode(){
   Sim.periode=new OrlyPeriodeVue.VuePeriode({
     programme:programmeDate,
     // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
-    unite:()=>{Sim.ateliers.synchroniserAteliers();return JSON.parse(JSON.stringify({...Sim.ateliers.a.unite(),etat:Sim.ateliers.state}));},
+    unite:()=>{Sim.ateliers.synchroniserAteliers();return JSON.parse(JSON.stringify({...Sim.ateliers.a.unite(),etat:Sim.ateliers.etatPourLeCalcul()}));},
     options:()=>({delaiChargement:CFG.loadDelay,decalage:CFG.shift}),
     signature:signaturePeriode,
     jour:()=>Sim.jourVols,
@@ -2412,7 +2750,7 @@ function changerTravail(r,message){
 /** La journée affichée, en jour de travail : la charge de ses services, l'encadrement, les chauffeurs (le prévu calé de la Synthèse). */
 function journeeCalee(){
   const r=Sim.ateliers&&Sim.ateliers.resultat;if(!r||!r.ok)return null;
-  const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.state};
+  const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.etatPourLeCalcul()};
   const args=OrlyJournee.argumentsDeLUnite(unite,Sim.ateliers.a.vols(),{delaiChargement:CFG.loadDelay});
   // L'encadrement compté comme dans la période : ses personnes × sa présence ÷ la présence générale (évolution 11 e).
   const encadrement=Object.fromEntries(Object.entries(Sim.ateliers.state.encadrement||{}).map(([id,x])=>[id,OrlyPeriode.encadrementDuJour(x,args.regime).charge]));
@@ -2444,7 +2782,10 @@ function initVueSimulation() {
       const j = Sim.vue.vide ? null : journeeLue(), box = document.getElementById('bilan-journee');
       // Une politique d'effectif gardée (évolution 17 c) : la phrase de tête dit ce que l'unité mettrait, d'après les heures réelles.
       const cale = j && Sim.calage ? Sim.calage.prevuDuJour() : null;
+      const ra = rattachementDeLImport();
       OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(), prevuCale: cale ? cale.unite[0] : null,
+        // L'import qui rattache (évolution 26 e) : le bandeau compte les compagnies hors de la liste (les points de « Contrôles »).
+        ...(ra && ra.nonRattaches.length ? { horsListe: ra.nonRattaches.length } : {}),
         // L'ordre des services, tiré de tous les chemins (correction 17 b) : le même que le planning et la page Période.
         ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r, (j.args || {}).parcours) : [] } : null);
     };
@@ -3160,7 +3501,8 @@ function capturer(slot, silencieux) {
   snaps[slot] = OrlyComparaison.capturer(r, {
     source: dataSource,
     ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)),
-    etat: (({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})=>JSON.parse(JSON.stringify({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})))(Sim.ateliers.state),
+    // L'état que le calcul lit (évolution 26 b) : avec une liste des compagnies, ses classes retirées et ajoutées.
+    etat: (({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})=>JSON.parse(JSON.stringify({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})))(Sim.ateliers.etatPourLeCalcul()),
     vols: JSON.parse(JSON.stringify(flights)),
     reglages: Sim.reglages ? Sim.reglages.pourMoteur() : { delaiChargement: CFG.loadDelay },
     liaisons: liaisonsServices(),
@@ -3380,7 +3722,8 @@ function initPastilles(){
       etat:Sim.ateliers&&Sim.ateliers.state,bareme:Sim.reglages&&Sim.reglages.etat&&Sim.reglages.etat.bareme}),
     classes:()=>['BC','PC','YC','CREW','SPML'].map(cabine=>({cabine,nom:P.libelleClasse('_/'+cabine).slice(4)}))
   });
-  OrlyPastilles.poserCarte(document.getElementById('couleurs-compagnies'));
+  // La carte « Couleurs des compagnies » a quitté « Programme des vols » (évolution 26 c) : la couleur d'une compagnie se
+  // choisit dans son panneau, dans « Commandes ».
 }
 /** Les seuils gardés : { seuils (complets), erreur (null, ou pourquoi les défauts) }. */
 function seuilsAlerte(){
@@ -3490,9 +3833,23 @@ async function importVols(e) {
 function direImport(report,reconnu,data,nom){
   const texte=remplacerProgramme(data,nom);
   report.classList.remove('error');
+  // Avec une liste, l'import rattache (évolution 26 e) : combien de vols sont rattachés, combien ne le sont pas.
+  const ra=rattachementDeLImport(),rattachement=ra?{rattaches:ra.rattaches,nonRattaches:volsNonRattaches(ra)}:null;
   if(!window.OrlyVolsPage||!OrlyVolsPage.compteRendu){report.textContent=reconnu+'\n'+texte;return;}
+  if(ra)direRattachement(rattachement);
   report.innerHTML=OrlyVolsPage.compteRenduHTML(OrlyVolsPage.compteRendu({fichier:nom,reconnu,lignes:data.length,departs:data.filter(f=>f.sens==='DEP').length,
-    retours:data.filter(f=>f.sens==='RET').length,periode:OrlyPeriode.decrire(data),detail:texte.split('\n')}));
+    retours:data.filter(f=>f.sens==='RET').length,periode:OrlyPeriode.decrire(data),detail:texte.split('\n'),...(rattachement?{rattachement}:{})}));
+}
+/** La notification de l'import qui rattache : « 960 vols rattachés, 12 non rattachés », et un bouton vers « Contrôles ».
+ *  notifications.js, commun avec la version 2, ne porte pas de lien : le bouton s'ajoute ici, à la notification. */
+function direRattachement(x){
+  toast(OrlyVolsPage.phraseRattachement(x)+(x.nonRattaches?' : voir « Contrôles ».':'.'),{cle:'import-rattache'});
+  const n=x.nonRattaches&&document.querySelector('#notifs .notif[data-cle="import-rattache"]'),fermer=n&&n.querySelector('.notif-fermer');
+  if(!fermer)return;
+  const b=document.createElement('button');
+  b.type='button';b.className='notif-aller';b.dataset.page='mu-pas';b.textContent='Voir « Contrôles »';
+  b.addEventListener('click',()=>fermer.click());
+  fermer.before(b);
 }
 /** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
 function remplacerProgramme(data,nom){
@@ -3517,6 +3874,8 @@ function remplacerProgramme(data,nom){
 const MAX_WINREST=30*1024*1024;
 let rapportWinrest=null;
 function installerWinrest(){
+  // Les règles qu'un geste de « Contrôles » ou de « Commandes » écrit se défont, même sans leur section (évolution 26 e).
+  inscrireHistoireRegles();
   const corps=document.getElementById('winrest-regles-corps');
   if(!corps||!window.OrlyWinrestVue)return;
   rendreReglesWinrest();
@@ -3572,6 +3931,8 @@ function changerRegleWinrest(el){
   try{const x=OrlyWinrestVue.modifier(reglesWinrest().regles,el);if(!x)return;enregistrerReglesWinrest(x);}
   catch(err){refuserRegleWinrest(el,err);return;}
   if(alerte)rendreReglesWinrest();
+  reglesChangeesALaMain();
+  suivreReglesImport(false);
   toast('Règles d’import Winrest enregistrées.');
 }
 /** Un bouton des règles : ajouter ou retirer un Guest type, un vol fictif. Un ajout refusé garde ce qui est tapé. */
@@ -3584,6 +3945,8 @@ function agirRegleWinrest(b){
     return;
   }
   rendreReglesWinrest();
+  reglesChangeesALaMain();
+  suivreReglesImport(false);
   toast('Règles d’import Winrest enregistrées.');
 }
 function exporterVols() {
@@ -3949,7 +4312,13 @@ function migrerRobot(){
 let cleDemo='';
 function suivreDemo(){
   if(dataSource!=='Jeu de démonstration'||!Sim.ateliers)return false;
-  const data=OrlyDemo.completer(SAMPLE,OrlyDemo.compagniesUtilisees(Sim.ateliers.state));
+  // Avec la liste des compagnies (évolution 26 b), chaque compagnie de la liste compte comme une compagnie ajoutée.
+  const st=Sim.ateliers.state,liste=Array.isArray(st.compagnies)?st.compagnies.flatMap(c=>c.classes.map(cabine=>({cie:c.nom,cabine}))):[];
+  const cies=OrlyDemo.compagniesUtilisees(liste.length?{...st,ajoutees:[...(st.ajoutees||[]),...liste]}:st);
+  // Une compagnie « Fixe, sans vol » (évolution 26 d) ne reçoit pas de vols d'essai : ses départs sont ses commandes
+  // fixes, et des départs d'essai, pris pour des lignes du programme, remplaceraient sa quantité par la leur.
+  if(Array.isArray(st.compagnies))for(const c of st.compagnies)if(c.fixe)cies.delete(String(c.nom).trim().toUpperCase());
+  const data=OrlyDemo.completer(SAMPLE,cies);
   const cle=data.map(v=>v.id).join(',');
   if(cle===cleDemo)return false;
   cleDemo=cle;Sim.dataCourante=data;chargerVols(data);
@@ -4252,6 +4621,7 @@ etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); eta
 etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
+etape('commandes',initCommandes);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
 etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut

@@ -42,20 +42,22 @@ const A_PLAT='En direct, à plat';
   await attendre(400);
 
   /* ---- 1. le menu : treize entrées, « Plan » n'y est plus ----------------------------------------------------- */
-  const menu=()=>page.evaluate(()=>({espaces:[...document.querySelectorAll('#menu .menu-espace')].map(e=>[(e.querySelector('.menu-espace-titre')||{textContent:'Lire'}).textContent,[...e.querySelectorAll('[data-sous-onglet]')].map(b=>b.textContent.replace(/\d+$/,'').trim())]),
+  // (Évolutions 26 c et f : les espaces de « Régler » n'ont plus de titre au menu ; on les nomme par leur identifiant.)
+  const menu=()=>page.evaluate(()=>({espaces:[...document.querySelectorAll('#menu .menu-espace')].map(e=>[e.dataset.espace,[...e.querySelectorAll('[data-sous-onglet]')].map(b=>b.textContent.replace(/\d+$/,'').trim())]),
     pied:[...document.querySelectorAll('#barre .barre-pied > button')].map(b=>b.textContent.trim()),entrees:OrlyOnglets.entrees().length}));
   let m=await menu();
-  assert.deepEqual(m.espaces,[['Lire',['Synthèse','En direct','Planning','Détails','Comparer']],['Vols',['Programme','Retours']],['L’unité',['Services et équipes','Chemins']],['Simulation',['Réglages','Contrôles']]]);
+  assert.deepEqual(m.espaces,[['resultats',['Synthèse','En direct','Planning','Détails','Comparer']],['commandes',['Commandes']],['organisation',['Services et équipes','Chemins']],
+    ['donnees',['Programme des vols','Planche retour']],['reglages',['Réglages','Contrôles']]]);
   assert.deepEqual(m.pied.slice(0,1),['Fichiers']);
-  assert.equal(m.entrees,12,'sans programme daté : douze entrées');
+  assert.equal(m.entrees,13,'sans programme daté : treize entrées (évolution 26 c : « Commandes »)');
   assert.equal(await page.locator('#menu [data-entree="u-plan"], #menu [data-sous-onglet="u-plan"]').count(),0,'« Plan » n’est plus une entrée');
   // Avec un programme daté, « Période » fait la treizième.
   await F.importerVols(page,nav,site.fichier,'vols-dates.csv',F.volsDatesCsv(3));
   await attendre(400);
   m=await menu();
-  assert.equal(m.entrees,13,'avec un programme daté : treize entrées, contre quatorze');
-  assert.deepEqual(m.espaces[0],['Lire',['Synthèse','En direct','Planning','Période','Détails','Comparer']]);
-  assert.deepEqual(m.espaces[2],['L’unité',['Services et équipes','Chemins']]);
+  assert.equal(m.entrees,14,'avec un programme daté : quatorze entrées (« Plan » parti, « Commandes » venue)');
+  assert.deepEqual(m.espaces[0],['resultats',['Synthèse','En direct','Planning','Période','Détails','Comparer']]);
+  assert.deepEqual(m.espaces[2],['organisation',['Services et équipes','Chemins']]);
   await F.importerVols(page,nav,site.fichier,'vols-fictifs.csv',F.volsCsv());
   await attendre(300);
 
@@ -145,9 +147,9 @@ const A_PLAT='En direct, à plat';
   // « Liens entre services » : « Voir sur le plan » n'est plus montré.
   await nav.aller(page,'u-liens');await attendre(300);
   assert.equal(await visible('#fc-show-map'),false,'« Voir sur le plan » (les liens dessinés) n’est plus montré');
-  // L'accueil : l'espace « L'unité » ne propose plus « Plan ».
+  // L'accueil ne propose plus « Plan » : son guide mène aux services et aux chemins (évolution 26 f).
   await page.locator('#btn-accueil').click();await attendre(300);
-  assert.deepEqual(await page.locator('#view-accueil .acc-tuile').filter({hasText:'L’unité'}).locator('.acc-page').allTextContents(),['Services et équipes','Chemins']);
+  assert.deepEqual(await page.locator('#view-accueil .acc-etape-tete').evaluateAll(bs=>bs.map(b=>b.dataset.page)),['mu-commandes','mu-services','mu-flux','mu-pas','v-programme','j-chiffres']);
   assert.equal(await page.locator('#view-accueil [data-page="u-plan"]').count(),0);
 
   /* ---- 6. en lecture seule : le plan verrouillé, la vue à plat ouverte ----------------------------------------- */

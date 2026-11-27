@@ -1,22 +1,21 @@
 /* ==========================================================================
- *  L'ACCUEIL — l'état de chaque espace du menu
+ *  L'ACCUEIL — le guide, dans l'ordre du travail (évolution 26 f)
  *
  *  Quelqu'un qui n'est pas du métier de l'informatique doit comprendre, d'un
- *  coup d'œil, ce que fait ce site et où il en est. L'accueil suit le
- *  rangement du menu (évolution 22 a) : deux blocs, une tuile par espace.
+ *  coup d'œil, ce que fait ce site, où il en est et quoi faire ensuite.
+ *  L'accueil est une entrée du menu, au-dessus de « Lire ». Il guide dans
+ *  l'ordre du travail : on décrit son site, puis on importe les vols.
  *
- *      Lire                   ce que la journée donne
- *      Régler   Vols          ce qui part et ce qui revient
- *               L'unité       qui prépare quoi, quand, par où
- *               Simulation    régler (horaires, rythme, pauses), vérifier
+ *      1  Commandes            les compagnies et leurs commandes
+ *      2  Services et équipes  qui prépare quoi, en combien de temps
+ *      3  Chemins              par où passe chaque commande
+ *      4  Contrôles            ce qui manque encore
+ *      5  Programme des vols   les vols de la journée
+ *      6  Lire le résultat     la Synthèse
  *
- *  Chaque tuile porte son état en clair (fait, exemple, à faire) et ses
- *  entrées du menu. Le menu lui-même est dessiné par onglets.js.
- *  L'histoire « Comment ça marche » y est racontée en quatre images ; elle
- *  n'encombre plus le haut de chaque page.
- *
- *  Les « étapes » calculées ici (etapes, suite) restent la mesure de ce qui
- *  est fait : les tuiles les regroupent par partie.
+ *  Chaque étape dit son état en clair (fait, provisoire, à vérifier, à faire)
+ *  et mène à sa page. L'histoire « Comment ça marche » se raconte en quatre
+ *  images, dans le même ordre. Le menu lui-même est dessiné par onglets.js.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -29,138 +28,91 @@
   const ETATS = { fait: '✓', verifier: '!', afaire: '·', provisoire: '~' };
   const MOTS = { fait: 'fait', verifier: 'à vérifier', afaire: 'à faire', provisoire: 'provisoire' };
 
-  /** Le titre et la phrase d'accueil de chaque vue, en mots de tous les jours. */
-  const VUES = {
-    vols: { titre: 'Les vols',
-      intro: 'Les avions qui partent aujourd’hui, et si leurs repas sont prêts à temps.' },
-    ateliers: { titre: 'Les équipes',
-      intro: 'Une commande par compagnie et par classe : par où elle passe, et quelle équipe la prépare.' },
-    reglages: { titre: 'Les temps par vol',
-      intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },
-    plan: { titre: 'La journée',
-      intro: 'La journée en direct : qui travaille, qui attend, ce qui circule, où ça coince.' },
-    flux: { titre: 'L’unité : qui livre qui',
-      intro: 'Les liens entre les services de l’unité. Ils ne servent qu’aux commandes qui n’ont pas de chemin.' }
-  };
-
   const pluriel = (n, mot, pl) => n + ' ' + (n > 1 ? (pl || mot + 's') : mot);
 
   /**
-   * Les étapes, d'après l'état de l'application.
+   * Les six étapes du guide, dans l'ordre du travail, d'après l'état de l'application.
    *
    * @param {object} e
-   *   vols     — { total, departs, source } ('demo' ou 'importe')
-   *   plan     — { services, approx }  approx : zones encore « à confirmer »
-   *   flux     — { liaisons, alertes } alertes graves de la lecture du graphe
-   *   ateliers — { total, fabriquent, absentes }
-   *   bareme   — { calibre }
-   *   journee  — { calculee, suivies, aHeure, fin }
-   * @returns {Array} [{ cle, onglet, num, titre, etat, detail, geste, annexe }]
+   *   compagnies — { liste, n, commandes }  liste : l'unité a sa liste ; sinon, ses compagnies viennent des vols
+   *   ateliers   — { total, fabriquent, absentes }
+   *   bareme     — { calibre }  les temps par vol ne sont plus ceux de l'exemple
+   *   chemins    — { flux, variantes, sansChemin }
+   *   controles  — { bloquants, corriger, pret }  pret : « il ne manque que les vols »
+   *   vols       — { total, departs, source } ('demo' ou 'importe')
+   *   journee    — { calculee, suivies, aHeure, fin }
+   * @returns {Array} [{ cle, page, lieu?, num, titre, ico, etat, detail, geste }]
    */
   function etapes(e) {
-    const vols = e.vols || {}, plan = e.plan || {}, flux = e.flux || {},
-          at = e.ateliers || {}, bar = e.bareme || {}, j = e.journee || {};
+    const cies = e.compagnies || {}, at = e.ateliers || {}, bar = e.bareme || {}, ch = e.chemins || {},
+          ct = e.controles || {}, vols = e.vols || {}, j = e.journee || {};
     const out = [];
+    const etape = (cle, page, titre, ico, o) => out.push({ cle, page, num: out.length + 1, titre, ico, ...o });
 
-    out.push({
-      cle: 'vols', onglet: 'vols', num: 1, titre: VUES.vols.titre,
-      etat: !vols.total ? 'afaire' : vols.source === 'importe' ? 'fait' : 'provisoire',
-      detail: !vols.total ? 'aucun vol'
-        : pluriel(vols.departs, 'départ') + (vols.source === 'importe' ? ' · les vôtres' : ' · exemple'),
-      geste: !vols.total ? 'Importer vos vols'
-        : vols.source === 'importe' ? null : 'Remplacer l’exemple par vos vols'
-    });
+    // 1. Les compagnies et leurs commandes. Sans liste, elles viennent des vols : provisoire.
+    etape('commandes', 'mu-commandes', 'Commandes', 'plateau', !cies.n
+      ? { lieu: 'ajout', etat: 'afaire', detail: 'aucune compagnie', geste: 'Ajouter une première compagnie' }
+      : { etat: cies.liste ? 'fait' : 'provisoire',
+          detail: pluriel(cies.n, 'compagnie') + ' · ' + pluriel(cies.commandes || 0, 'commande') + (cies.liste ? '' : ' · tirées des vols'),
+          geste: cies.liste ? null : 'Faire votre liste de compagnies' });
 
-    out.push({
-      cle: 'ateliers', onglet: 'ateliers', num: 2, titre: VUES.ateliers.titre,
-      etat: !at.fabriquent || at.absentes ? 'afaire' : 'fait',
+    // 2. Les services et leurs équipes, et leurs temps par vol.
+    etape('services', 'mu-services', 'Services et équipes', 'service', {
+      etat: !at.fabriquent || at.absentes ? 'afaire' : bar.calibre ? 'fait' : 'provisoire',
       detail: !at.fabriquent ? 'aucune équipe'
         : at.absentes ? pluriel(at.absentes, 'commande') + ' sans équipe'
-          : pluriel(at.fabriquent, 'équipe') + ' · tout est couvert',
+          : pluriel(at.fabriquent, 'équipe') + (bar.calibre ? ' · vos temps' : ' · temps d’exemple'),
       geste: !at.fabriquent ? 'Décrire une première équipe'
-        : at.absentes ? 'Donner une équipe aux commandes qui n’en ont pas' : null
-    });
+        : at.absentes ? 'Donner une équipe aux commandes qui n’en ont pas'
+          : bar.calibre ? null : 'Remplacer les temps d’exemple par les vôtres' });
 
-    out.push({
-      cle: 'bareme', onglet: 'reglages', num: 3, titre: VUES.reglages.titre,
-      etat: bar.calibre ? 'fait' : 'provisoire',
-      detail: bar.calibre ? 'vos chiffres' : 'chiffres d’exemple',
-      geste: bar.calibre ? null : 'Remplacer les chiffres d’exemple par votre étude'
-    });
+    // 3. Les chemins.
+    etape('chemins', 'mu-flux', 'Chemins', 'reseau', {
+      etat: ch.flux && !ch.sansChemin ? 'fait' : 'afaire',
+      detail: !ch.flux ? 'aucun chemin'
+        : pluriel(ch.flux, 'chemin') + (ch.sansChemin ? ' · ' + pluriel(ch.sansChemin, 'commande') + ' sans chemin' : ''),
+      geste: !ch.flux ? 'Dessiner un premier chemin' : ch.sansChemin ? 'Donner un chemin aux commandes qui n’en ont pas' : null });
 
-    const retard = (j.suivies || 0) - (j.aHeure || 0);
-    out.push({
-      cle: 'journee', onglet: 'plan', num: 4, titre: VUES.plan.titre,
-      etat: !j.calculee ? 'afaire' : retard > 0 ? 'verifier' : 'fait',
-      detail: !j.calculee ? 'rien à calculer encore'
+    // 4. Les contrôles : ce qui bloque, ce qui est à corriger ; ou « il ne manque que les vols ».
+    etape('controles', 'mu-pas', 'Contrôles', 'alerte', {
+      etat: ct.bloquants ? 'afaire' : ct.corriger ? 'verifier' : 'fait',
+      detail: ct.bloquants || ct.corriger
+        ? [ct.bloquants ? pluriel(ct.bloquants, 'point bloquant', 'points bloquants') : '', ct.corriger ? ct.corriger + ' à corriger' : ''].filter(Boolean).join(' · ')
+        : ct.pret ? 'il ne manque que les vols' : 'rien à corriger',
+      geste: ct.bloquants || ct.corriger ? 'Régler les points de « Contrôles »' : null });
+
+    // 5. Le programme des vols : les vôtres, ou ceux de l'exemple.
+    etape('vols', 'v-programme', 'Programme des vols', 'avion', {
+      etat: !vols.total ? 'afaire' : vols.source === 'importe' ? 'fait' : 'provisoire',
+      detail: !vols.total ? 'aucun vol'
+        : pluriel(vols.departs || 0, 'départ') + (vols.source === 'importe' ? ' · les vôtres' : ' · exemple'),
+      geste: vols.source === 'importe' && vols.total ? null : 'Importer vos vols' });
+
+    // 6. Lire le résultat. Sans aucune commande (une liste vide), rien à lire : ce que le calcul suit encore (un service
+    // par compagnie) ne dit pas qu'une commande est à l'heure.
+    const retard = (j.suivies || 0) - (j.aHeure || 0), rien = !j.calculee || !j.suivies || (cies.liste && !cies.commandes);
+    etape('journee', 'j-chiffres', 'Lire le résultat', 'journee', {
+      etat: rien ? 'afaire' : retard > 0 ? 'verifier' : 'fait',
+      detail: rien ? 'rien à calculer encore'
         : retard > 0 ? pluriel(retard, 'commande') + ' en retard'
-        : 'tout est à l’heure' + (j.fin ? ' · fini à ' + j.fin : ''),
-      geste: null
-    });
-
-    out.push({
-      cle: 'unite', onglet: 'flux', num: null, annexe: true, titre: 'L’unité',
-      etat: flux.alertes ? 'verifier' : plan.approx ? 'provisoire' : 'fait',
-      detail: pluriel(plan.services || 0, 'service') + ' · ' + pluriel(flux.liaisons || 0, 'lien')
-        + (plan.approx ? ' · ' + pluriel(plan.approx, 'zone') + ' à confirmer' : '')
-        + (flux.alertes ? ' · ' + flux.alertes + ' à corriger' : ''),
-      geste: null
-    });
+          : 'tout est à l’heure' + (j.fin ? ' · fini à ' + j.fin : ''),
+      geste: null });
 
     return out;
   }
 
-  /** Ce qu'il y a à faire maintenant : la première étape à faire, sinon à vérifier. */
+  /** Ce qu'il y a à faire maintenant : la première étape à faire, sinon à vérifier, sinon provisoire — dans l'ordre du travail. */
   function suite(liste) {
-    const afaire = liste.find(s => s.etat === 'afaire' && s.geste);
-    if (afaire) return { etape: afaire, texte: afaire.geste };
-    const verifier = liste.find(s => s.etat === 'verifier' && s.geste);
-    if (verifier) return { etape: verifier, texte: verifier.geste };
-    const provisoire = liste.find(s => s.etat === 'provisoire' && s.geste);
-    if (provisoire) return { etape: provisoire, texte: provisoire.geste };
+    for (const etat of ['afaire', 'verifier', 'provisoire']) {
+      const s = liste.find(x => x.etat === etat && x.geste);
+      if (s) return { etape: s, texte: s.geste };
+    }
     return { etape: null, texte: null };
   }
 
-  /** La page où l'on fait le geste d'une étape. */
-  const PAGE_DE_VUE = { vols: 'v-programme', ateliers: 'mu-services', reglages: 'mu-services', plan: 'j-chiffres', flux: 'mu-pas' };
-
-  const PIRE = ['afaire', 'verifier', 'provisoire', 'fait'];
-  const pire = etats => PIRE.find(x => etats.includes(x)) || 'fait';
-
-  /**
-   * L'état de chaque partie du menu, pour les tuiles de l'accueil.
-   * @param {object} e comme `etapes()`, plus
-   *   reglages — { delai, decalage, rendement, pauses }
-   * @returns {Array} [{ partie, etat, lignes:[{ texte, etat }] }]
-   */
-  function tuiles(e) {
-    const par = Object.fromEntries(etapes(e).map(x => [x.cle, x]));
-    const ligne = (cle, nom) => ({ texte: nom + ' : ' + par[cle].detail, etat: par[cle].etat });
-    const r = e.reglages || {};
-    const donnees = [ligne('vols', 'Vols')];
-    const c = e.chemins || {};
-    const chemins = [{ texte: 'Chemins : ' + pluriel(c.flux || 0, 'chemin', 'chemins') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
-      etat: c.flux ? 'fait' : 'afaire' }];
-    if (c.sansChemin) chemins.push({ texte: pluriel(c.sansChemin, 'commande') + ' sans chemin', etat: 'afaire' });
-    // « L'unité » : ses équipes, ses temps par vol, ses chemins, ses services (évolution 22 a : les chemins en font partie).
-    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Temps par vol'), ...chemins, ligne('unite', 'Unité')];
-    const reglages = [
-      { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
-        + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },
-      { texte: 'Rythme ' + String(r.rendement ?? 1).replace('.', ',')
-        + ' · ' + pluriel(r.pauses ?? 0, 'pause') + ' par poste', etat: 'fait' }];
-    const resultats = [ligne('journee', 'Journée')];
-    // Dans l'ordre du menu : ce qu'on lit, puis ce qu'on règle.
-    return [
-      { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats },
-      { partie: 'donnees', etat: pire(donnees.map(l => l.etat)), lignes: donnees },
-      { partie: 'organisation', etat: pire(organisation.map(l => l.etat)), lignes: organisation },
-      { partie: 'reglages', etat: 'fait', lignes: reglages }
-    ];
-  }
-
   /* Quatre images simples, dessinées au trait : elles portent l'histoire mieux
-   * qu'un paragraphe. */
+   * qu'un paragraphe. Dans l'ordre du travail (évolution 26 f) : les commandes,
+   * les équipes et leurs chemins, les vols, puis le calcul. */
   const PICTOS = {
     avion: '<path d="M26 5 C28.5 5 29.5 8.5 29.5 12 L29.5 21 L47 30 L47 34.5 L29.5 29 L29.5 39 L35 43.5 L35 47 L26 44.5 L17 47 L17 43.5 L22.5 39 L22.5 29 L5 34.5 L5 30 L22.5 21 L22.5 12 C22.5 8.5 23.5 5 26 5 Z"/>',
     plateau: '<rect x="6" y="14" width="40" height="26" rx="4"/><circle cx="20" cy="27" r="7"/><path d="M34 20 L34 34 M38 20 L38 34 M31 20 L31 25 Q34 28 37 25"/>',
@@ -170,12 +122,12 @@
   const picto = nom => `<svg viewBox="0 0 52 52" aria-hidden="true" class="cm-picto">${PICTOS[nom]}</svg>`;
 
   const COMMENT = [
-    { picto: 'avion', ico: 'avion', couleur: 'var(--c-vols)', titre: 'Des avions partent',
-      texte: 'à heure fixe, pleins de passagers' },
-    { picto: 'plateau', ico: 'plateau', couleur: 'var(--cab-BC)', titre: 'Chaque vol commande ses repas',
+    { picto: 'plateau', ico: 'plateau', couleur: 'var(--cab-BC)', titre: 'Vos compagnies commandent',
       texte: 'une commande par compagnie et par classe' },
     { picto: 'equipe', ico: 'equipe', couleur: 'var(--c-equipes)', titre: 'Des équipes les préparent',
-      texte: 'de service en service' },
+      texte: 'de service en service, sur leur chemin' },
+    { picto: 'avion', ico: 'avion', couleur: 'var(--c-vols)', titre: 'Les vols donnent l’heure',
+      texte: 'chaque commande part avec son vol' },
     { picto: 'horloge', ico: 'chrono', couleur: 'var(--c-journee)', titre: 'Le site calcule la journée',
       texte: 'chaque commande prête à l’heure, ou en retard ?' }
   ];
@@ -184,15 +136,17 @@
 
   const O = () => root.OrlyOnglets;
 
+  /** Le rond d'une étape : son numéro, ou une coche quand elle est faite. */
+  const rond = x => `<span class="etape-etat ${x.etat}" aria-hidden="true">${x.etat === 'fait' ? icone('check') : x.num}</span>`;
+
   class Accueil {
     /**
      * @param {object} a adaptateur :
      *   accueil()       — l'élément où dessiner la page d'accueil
-     *   etat()          — l'objet attendu par `tuiles()`
-     *   ferme(id)       — facultatif : vrai pour une page qui ne s'ouvre pas (la lecture seule, évolution 22 f) ; un bloc
-     *                     dont aucune page ne s'ouvre se replie en une ligne (`motFerme`, « Paramétrage verrouillé »)
-     * Les boutons portent `data-vers-partie` ou `data-page` : c'est la page
-     * qui écoute les clics.
+     *   etat()          — l'objet attendu par `etapes()`
+     *   ferme(id)       — facultatif : vrai pour une page qui ne s'ouvre pas (la lecture seule, évolution 22 f) ; les
+     *                     étapes dont la page ne s'ouvre pas se replient en une ligne (`motFerme`, « Paramétrage verrouillé »)
+     * Les boutons portent `data-page` (et `data-lieu`) : c'est la page qui écoute les clics.
      */
     constructor(a) {
       this.a = a;
@@ -201,50 +155,31 @@
 
     rendre() { this.rendreAccueil(); }
 
-    /* La page d'accueil : l'histoire en quatre images, ce qu'il y a à faire
-     * ensuite, puis les deux blocs du menu, une tuile par espace avec son état
-     * et ses entrées ; « Fichiers », en bas, comme au menu. */
+    /* La page d'accueil : l'histoire en quatre images, ce qu'il y a à faire ensuite, puis le guide — les six étapes du
+     * travail, dans l'ordre, chacune avec son état et sa page ; « Fichiers », en bas, comme au menu. */
     rendreAccueil() {
       const h = this.a.accueil && this.a.accueil(); if (!h || !O()) return;
-      const e = this.a.etat(), etat = Object.fromEntries(tuiles(e).map(t => [t.partie, t]));
-      const s = suite(etapes(e));
+      const liste = etapes(this.a.etat()), s = suite(liste);
+      const lieu = x => (x.lieu ? ` data-lieu="${esc(x.lieu)}"` : '');
       const suiteHtml = s.etape
         ? `<p class="acc-suite">${icone('ampoule')}<span>À faire ensuite :</span>
-            <button type="button" class="lien-fort" data-page="${PAGE_DE_VUE[s.etape.onglet]}">${esc(s.texte)} →</button></p>`
-        : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
-      const ferme = id => !!(this.a.ferme && this.a.ferme(id));
-      // En lecture seule, les entrées se rangent comme au menu (évolution 23 d) : « Contrôles », qui se lit, passe à la
-      // suite de « Lire ». Sans lecture seule, celles de chaque espace, comme avant.
-      const range = this.a.ferme ? O().menu({}, undefined, ferme).blocs.flatMap(b => b.espaces) : null;
-      const entreesDe = p => (range ? (range.find(x => x.id === p.id) || { entrees: [] }).entrees : O().menuDe(p.id));
-      const tuile = p => {
-        const t = etat[p.id];
-        // Les entrées du menu de cet espace : une page, ou un groupe (qui rouvre sa première page).
-        const pages = entreesDe(p).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(O().libelle(x))}</button>`).join('');
-        return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
-          <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
-            <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>
-            <span class="acc-titre"><b>${esc(p.nom)}</b><em>${esc(p.resume)}</em></span>
-            <span class="acc-etat ${t.etat}">${esc(MOTS[t.etat])}</span>
-          </button>
-          <ul class="acc-lignes">${t.lignes.map(l => `<li class="${l.etat}"><span class="etape-etat ${l.etat}" aria-hidden="true">${l.etat === 'fait' ? icone('check') : l.etat === 'verifier' ? icone('alerte') : ETATS[l.etat]}</span>${esc(l.texte)}</li>`).join('')}</ul>
-          <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
-        </article>`;
-      };
-      const bloc = b => {
-        const espaces = O().PARTIES.filter(p => p.bloc === b.id && !p.cache);
-        // En lecture seule, le bloc « Régler » se replie, comme au menu : ses pages ne s'ouvrent pas.
-        if (this.a.ferme && espaces.some(p => entreesDe(p).length) && espaces.every(p => entreesDe(p).every(x => ferme(x.id)))) {
-          return `<section class="acc-bloc acc-bloc-ferme" data-bloc="${b.id}" data-ferme aria-label="${esc(b.nom)}">
-            <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
-            <p class="acc-ferme">${icone('cadenas')}<span>${esc(this.a.motFerme || 'Paramétrage verrouillé')}</span></p>
-          </section>`;
-        }
-        return `<section class="acc-bloc" data-bloc="${b.id}" aria-label="${esc(b.nom)}">
-          <h2 class="acc-bloc-titre">${esc(b.nom)}</h2>
-          <div class="acc-tuiles">${espaces.map(tuile).join('')}</div>
-        </section>`;
-      };
+            <button type="button" class="lien-fort" data-page="${esc(s.etape.page)}"${lieu(s.etape)}>${esc(s.texte)} →</button></p>`
+        : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : <button type="button" class="lien-fort" data-page="j-chiffres">lisez le résultat →</button></span></p>`;
+      const ferme = x => !!(this.a.ferme && this.a.ferme(x.page));
+      // En lecture seule (évolution 23 d), les étapes dont la page ne s'ouvre pas se replient en une ligne, à la place de
+      // la première ; « Contrôles », qui se lit, et le résultat restent.
+      const rangees = [];
+      let replie = false;
+      for (const x of liste) {
+        if (!ferme(x)) { rangees.push(`<li class="acc-etape ${x.etat}" data-etape="${x.cle}">
+          <button type="button" class="acc-etape-tete" data-page="${esc(x.page)}"${x.etat === 'afaire' ? lieu(x) : ''}>${rond(x)}
+            <span class="acc-etape-ico" aria-hidden="true">${icone(x.ico)}</span>
+            <span class="acc-etape-nom">${esc(x.titre)}</span>
+            <span class="acc-etape-dit">${esc(x.detail)}</span>
+            <span class="acc-etat ${x.etat}">${esc(MOTS[x.etat])}</span></button></li>`); continue; }
+        if (!replie) rangees.push(`<li class="acc-etape acc-ferme" data-ferme>${icone('cadenas')}<span>${esc(this.a.motFerme || 'Paramétrage verrouillé')}</span></li>`);
+        replie = true;
+      }
       const bas = O().menu().bas.map(x => `<button type="button" class="btn btn-sm" data-page="${x.id}">${icone(x.ico)} ${esc(O().libelle(x))} : sauvegarde et limites du calcul</button>`).join('');
       const html = `<div class="acc">
         <section class="acc-histoire" aria-label="Comment ça marche">
@@ -254,14 +189,14 @@
             <b>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
         </section>
         ${suiteHtml}
-        <div class="acc-blocs">${O().BLOCS.map(bloc).join('')}</div>
+        <ol class="acc-guide" aria-label="Le travail, dans l’ordre">${rangees.join('')}</ol>
         <p class="acc-pied">${bas}</p>
       </div>`;
       if (h.innerHTML !== html) h.innerHTML = html;
     }
   }
 
-  const api = { ETATS, MOTS, VUES, COMMENT, PAGE_DE_VUE, etapes, suite, tuiles, Accueil };
+  const api = { ETATS, MOTS, COMMENT, etapes, suite, Accueil };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDemarrage = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

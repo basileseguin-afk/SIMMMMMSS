@@ -14,6 +14,7 @@ const J = require('../moteur/journee.js');
 const P = require('../moteur/production.js');
 const I = require('../moteur/indicateurs.js');
 const PE = require('../moteur/periode.js');
+const CO = require('../compagnies.js');
 
 const S = REF.scenarios.find(s => s.nom === 'unite-vol');
 const hh = t => (t == null ? '' : String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'));
@@ -45,9 +46,14 @@ function volsSansRetardCsv() {
   return TETE + '\n' + garde.map(v => LIGNE({ ...v, std: v.sens === 'DEP' ? Math.min(23 * 60 + 50, v.std + 300) : v.std })).join('\n') + '\n';
 }
 
-/** La sauvegarde de l'unité fictive, ses zones en grille : `colonnes` par rang, chaque zone `w` × `h` unités, depuis (x0, y0). */
-function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380, ecart = 140 } = {}) {
+/**
+ * La sauvegarde de l'unité fictive, ses zones en grille : `colonnes` par rang, chaque zone `w` × `h` unités, depuis (x0, y0).
+ * Évolution 26 (b) : l'unité d'exemple a sa liste des compagnies, celle que « En faire ma liste » écrirait (ses commandes
+ * d'aujourd'hui) — le calcul rend le même résultat. `liste: false` : l'unité d'avant, privée de sa liste.
+ */
+function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380, ecart = 140, liste = true } = {}) {
   const s = JSON.parse(JSON.stringify(S.sauvegarde));
+  if (liste) s.contenu['ory-ateliers-v1'].compagnies = CO.listeDesVols(S.args.vols, s.contenu['ory-ateliers-v1']);
   let i = 0;
   for (const z of s.contenu['orly-plan-v3'].zones) {
     Object.assign(z, { x: x0 + (i % colonnes) * (w + ecart), y: y0 + Math.floor(i / colonnes) * (h + ecart), w, h });
@@ -55,6 +61,37 @@ function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380,
     i++;
   }
   return s;
+}
+
+/**
+ * L'unité fictive complète (évolution 26 f) : chaque commande a son chemin, ses équipes et ses temps — rien n'est
+ * bloquant ni à corriger. On part de l'unité fictive : la compagnie que personne ne prépare (ZEN) quitte la liste avec
+ * son équipe ; les deux services de passage que personne n'y tient (« appros », « dotation ») quittent les chemins ; la
+ * cuisine et la préparation prennent les commandes qui y passaient sans équipe. Avant tout import, « Contrôles » dit
+ * qu'il ne manque que les vols ; avec `volsSansRetardCsv()`, la journée est complète. `liste: []` : une unité vide.
+ */
+function sauvegardeComplete({ liste } = {}) {
+  const s = sauvegardeFictive(), st = s.contenu['ory-ateliers-v1'], hors = ['appros', 'dotation'];
+  st.compagnies = liste || st.compagnies.filter(c => c.nom !== 'ZEN');
+  st.ateliers = st.ateliers.filter(a => a.id !== 'mob');
+  for (const c of st.parcours) { c.noeuds = c.noeuds.filter(n => !hors.includes(n)); c.liens = c.liens.filter(l => !hors.includes(l.de) && !hors.includes(l.vers)); }
+  st.ateliers.find(a => a.id === 'cu2').lots.push(['EST/CREW', 'SUD/CREW']);
+  st.ateliers.find(a => a.id === 'pr').lots.push(['EST/YC'], ['EST/CREW', 'SUD/CREW']);
+  return s;
+}
+
+/** Restaurer une sauvegarde dans la page, sans importer de vols (le programme d'exemple) : la page s'ouvre sur `pageId`. */
+async function restaurer(page, nav, url, sauvegarde, pageId) {
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'ory-restaurer-'));
+  try {
+    const f = path.join(dossier, 'unite-fictive.json'); fs.writeFileSync(f, JSON.stringify(sauvegarde));
+    await page.goto(url);await page.waitForTimeout(300);
+    await page.evaluate(() => localStorage.clear());await page.reload();await page.waitForTimeout(400);
+    await nav.aller(page, 'u-sauvegarde');
+    await page.locator('#sauvegarde-import').setInputFiles(f);
+    const recharge = page.waitForEvent('load');await nav.repondre(page);await recharge;await page.waitForLoadState('load');await page.waitForTimeout(500);
+    if (pageId) { await nav.aller(page, pageId);await page.waitForTimeout(300); }
+  } finally { fs.rmSync(dossier, { recursive: true, force: true }); }
 }
 
 /** L'heure du pic de travail que la page doit ouvrir, calculée hors de la page : les mêmes modules, la même journée. */
@@ -137,4 +174,4 @@ async function remettreEquipes(page, equipes) {
   await page.waitForFunction(() => { const r = Sim.ateliers.resultat; return !!r && (r.ateliers || []).some(a => a.type === 'lavage'); });
 }
 
-module.exports = { S, volsCsv, volsDatesCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, heureDOuvertureAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };
+module.exports = { S, volsCsv, volsDatesCsv, volsSansRetardCsv, sauvegardeFictive, sauvegardeComplete, restaurer, heureDuPicAttendue, heureDOuvertureAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };

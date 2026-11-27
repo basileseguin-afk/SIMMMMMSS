@@ -27,6 +27,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const J = require('../moteur/journee.js');
+const CO = require('../compagnies.js');
 const PE = require('../moteur/periode.js');
 const T = require('../tableur.js');
 // Le classeur compressé (correction 16 c) : le même contenu, bien plus léger.
@@ -66,8 +67,11 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
   try { vols = await J.volsDuFichier(new File([fs.readFileSync(cheminVols)], path.basename(cheminVols))); }
   catch (e) { throw new Error('vols : ' + e.message); }
   if (!PE.estDate(vols)) throw new Error('vols : le programme n’est pas daté (colonne date, docs/FORMATS_EXCEL.md) ; une seule journée : node outils/simuler-journee.cjs.');
+  // La liste des compagnies (évolution 26) : la sauvegarde et les vols préparés comme dans la page. Sans liste, les mêmes.
+  const pret = CO.preparerSauvegarde(sauvegarde, vols);
+  vols = pret.vols;
   const planning = cheminPlanning ? await planningDuFichier(cheminPlanning, sauvegarde, options) : null;
-  const p = PE.depuisSauvegarde(sauvegarde, vols, options, { detail, ...(planning ? { planning } : {}) });
+  const p = PE.depuisSauvegarde(pret.sauvegarde, vols, options, { detail, ...(planning ? { planning } : {}) });
   // Une politique d'effectif dans la sauvegarde (banc d'essai, évolution 11 d) : le prévu calé de chaque jour, même sans réel.
   const prevu = prevuDeLaSauvegarde(sauvegarde, p.bilan);
   return {

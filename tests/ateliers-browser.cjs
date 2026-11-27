@@ -209,19 +209,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 15. On déclare une compagnie × classe que le programme de vols ne porte pas.
   //     On ne lui saisit QUE son identité : passagers, vols et échéance viennent
   //     de l'import, et les redemander ouvrirait deux vérités.
-  await onglet('at-repas');await page.locator('#at-classes [data-at-action=classe-nouvelle]').click();await attendre();
-  assert.equal(await page.locator('#at-cls-pax').count(),0,'plus de champ Passagers');
-  assert.equal(await page.locator('#at-cls-vols').count(),0,'plus de champ Vols');
-  assert.equal(await page.locator('#at-cls-echeance').count(),0,'plus de champ Échéance');
-  const form='.at-ajout[data-lieu=commandes]';
-  await page.fill(`${form} [data-ajout=cie]`,'zz');
-  await page.uncheck(`${form} [data-ajout-cab=YC]`);await page.check(`${form} [data-ajout-cab=BC]`);
-  await page.locator('[data-at-action=classe-valider]').click();await attendre();
-  assert.match(await page.locator('#at-status').textContent(),/ZZ · Business ajouté/);
-  const ajoutee=(await etat()).ajoutees[0];
+  // (Évolution 26 c : elle s'ajoute dans « Commandes », à partir de zéro ; un seul champ à saisir, son nom.)
+  await nav.aller(page,'mu-commandes');await attendre();
+  await page.locator('#mu-commandes [data-co-action=ouvrir-ajout]').click();await attendre();
+  const form='#mu-commandes .co-panneau[data-co-panneau=ajout]';
+  assert.equal(await page.locator(`${form} input:not([type=radio]):not([type=checkbox])`).count(),1,'un seul champ à saisir : ni passagers, ni vols, ni échéance');
+  await page.fill(`${form} [data-co-champ=nom]`,'zz');
+  await page.uncheck(`${form} [data-co-champ=cabine][value=YC]`);await page.check(`${form} [data-co-champ=cabine][value=BC]`);
+  await page.check(`${form} [data-co-champ=mode][value=zero]`);
+  await page.locator(`${form} [data-co-action=valider]`).click();await attendre();
+  assert.match((await page.locator('.notifs .notif').last().textContent()).replace(/\s+/g,' '),/ZZ ajoutée : 1 commande, à partir de zéro\./);
+  const ajoutee=(await etat()).ajoutees.find(a=>a.cie==='ZZ');
   assert.equal(ajoutee.cie,'ZZ','la compagnie est normalisée en majuscules');
   assert.equal(ajoutee.cabine,'BC');
   assert.deepEqual(Object.keys(ajoutee).sort(),['cabine','cie'],'rien d’autre n’est retenu');
+  await onglet('at-repas');
   // Le jeu de démonstration lui donne des vols d'essai, marqués comme tels (02/10) ;
   // un programme importé, lui, n'est jamais complété.
   const ligneZZ=await page.locator('#at-classes tbody tr',{has:page.locator('th[data-classe="ZZ/BC"]')}).first()
@@ -242,8 +244,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);
 
   // 17. Retraits et ajouts survivent au rechargement.
-  await onglet('at-repas');await page.locator('#at-classes [data-at-action=classe-nouvelle]').click();await attendre();
-  await page.fill('.at-ajout[data-lieu=commandes] [data-ajout=cie]','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
+  await nav.aller(page,'mu-commandes');await attendre();await page.locator('#mu-commandes [data-co-action=ouvrir-ajout]').click();await attendre();
+  await page.fill(`${form} [data-co-champ=nom]`,'QQ');await page.check(`${form} [data-co-champ=mode][value=zero]`);
+  await page.locator(`${form} [data-co-action=valider]`).click();await attendre();
   const memoire=await etat();
   await page.reload();await nav.vue(page,'ateliers');await attendre();
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');

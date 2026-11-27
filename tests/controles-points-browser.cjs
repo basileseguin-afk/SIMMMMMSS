@@ -31,7 +31,8 @@ const CSV_NEUF=F.volsCsv()+'NE900,NEUF,MOYEN,DEP,18:00,,4,0,90,4,0\n';
  const ouvrir=async csv=>{
    const ctx=await browser.newContext({viewport:{width:1366,height:768}});
    const page=await ctx.newPage();page.on('pageerror',e=>erreurs.push(e.message));page.on('dialog',d=>d.accept());
-   const site=await F.charger(page,nav,URL_V1,{csv,pageId:'mu-pas'});
+   // Une unité d'avant (sans liste des compagnies) : la compagnie NEUF de l'import crée ses commandes (évolution 26 b).
+   const site=await F.charger(page,nav,URL_V1,{csv,sauvegarde:F.sauvegardeFictive({liste:false}),pageId:'mu-pas'});
    await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.ateliers.resultat&&Sim.problemes&&Sim.problemes.liste.length>0);
    await page.waitForTimeout(400);
    const attendre=(ms=350)=>page.waitForTimeout(ms);

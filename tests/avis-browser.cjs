@@ -112,7 +112,8 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   // son nom (avant : un seul bouton, « Régler dans Services et équipes »).
   const services=await page.evaluate(()=>{const p=Sim.problemes.liste.find(x=>x.etape==='commandes');return (p.nomsServices||[]).slice();});
   assert.ok(services.length>=2,'la commande est attendue dans plusieurs services : '+services);
-  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller]`).count(),r.length+services.length-1,'un bouton par avis ; pour le point bloquant, un par service');
+  // Évolution 26 (b) : le point « viennent encore des vols » porte un geste (« En faire ma liste »), pas une destination.
+  assert.equal(await page.locator(`${C} .ct-point [data-ct-aller], ${C} .ct-point [data-ct-action]`).count(),r.length+services.length-1,'un bouton par avis ; pour le point bloquant, un par service');
   assert.deepEqual(await page.locator(`${C} .ct-niveau.bloquant [data-ct-aller]`).evaluateAll(bs=>bs.map(b=>b.textContent)),services.map(n=>n+' →'));
   // Une information mène aussi quelque part : ici, à la fiche de l'équipe qui porte la commande sans vol.
   const sansVolIci=infos.locator('.ct-point',{hasText:'aucun vol ce jour-là'});
@@ -163,7 +164,9 @@ const UNITE=({sud,cies,faute})=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.
   assert.equal(await avisHandling.locator('[data-ct-voulu]').innerText(),'C’est voulu','et « C’est voulu », puisqu’il en a un');
   assert.equal(await page.locator(`${C} [data-ct-voulu]`).count(),1,'les autres avis n’en ont pas');
   const duCalcul=await page.evaluate(()=>Sim.ateliers.resultat.anomalies.filter(a=>OrlyAvis.niveauDuCode(a.code)==='information').length);
-  assert.equal(nI,duCalcul,'les informations sont celles du calcul');
+  // Évolution 26 (b) : plus le point « viennent encore des vols », qui n'est pas du calcul (cette unité n'a pas de liste).
+  assert.equal(nI,duCalcul+1,'les informations sont celles du calcul, et le point de la liste');
+  assert.equal((await registre()).filter(p=>p.niveau==='information'&&/viennent encore des vols/.test(p.titre)).length,1);
   assert.equal(await page.locator(`${C} .ct-niveau.bloquant .ct-point`,{hasText:'NORD'}).count(),0,'le calcul se fait : rien de bloquant dans ce qu’il dit');
   //    Le bouton du handling mène à l'équipe du handling.
   await avisHandling.locator('[data-ct-aller]').click();await attendre();

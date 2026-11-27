@@ -187,16 +187,17 @@ summary:hover{color:var(--ds-accent-texte)}
 
 /* Au plus un bouton plein par écran : l'action principale de la page — « Rejouer », « Importer des vols », « Simuler la
    période » dans « Période », « + Ajouter une équipe » dans la fiche d'un service, le premier bouton d'un point bloquant
-   de « Contrôles », « Retenir comme essai A », « Utiliser la planche retour », « Terminer » pendant qu'on modifie le plan.
+   de « Contrôles », « Retenir comme essai A », « Utiliser la planche retour », « Terminer » pendant qu'on modifie le plan,
+   « + Ajouter une compagnie » dans « Commandes » (« Ajouter les n commandes » tant que son panneau est ouvert).
    Tout autre bouton plein de la zone de travail (des scripts communs avec la version 2 en dessinent) prend l'allure d'un
    bouton de carte : fond de carte, trait. */
-#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done){
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done,[data-co-action="ouvrir-ajout"],[data-co-action="valider"]){
   background:var(--ds-surface-1);border-color:var(--ds-bordure-forte);color:var(--ds-texte-1);box-shadow:var(--ds-ombre-1)}
-#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done) .ico{color:var(--ds-texte-2)}
-#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done):hover:not(:disabled){
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done,[data-co-action="ouvrir-ajout"],[data-co-action="valider"]) .ico{color:var(--ds-texte-2)}
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done,[data-co-action="ouvrir-ajout"],[data-co-action="valider"]):hover:not(:disabled){
   background:var(--ds-survol);border-color:color-mix(in srgb,var(--ds-texte-3) 45%,var(--ds-bordure-forte));color:var(--ds-texte-1)}
 /* Son anneau de focus reste celui d'un bouton (la règle ci-dessus pose une ombre : elle ne doit pas l'effacer). */
-#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done):focus-visible{
+#workspace .btn-play:not(#btn-play,.vp-importer,[data-pv="lancer"],[data-mu-action="equipe"],[data-ct-aller],#snap-a,[data-pl-action="utiliser"],#edit-done,[data-co-action="ouvrir-ajout"],[data-co-action="valider"]):focus-visible{
   outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
 
 /* « En ce moment » : un état, une couleur (correction 24 c). La pastille d'un service au travail prend le bleu du

@@ -18,8 +18,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
 
-  // 1. Le menu (évolution 22 a) : deux blocs, trois espaces sous « Régler » ; le chemin d'une commande est dans « Chemins ».
-  assert.deepEqual(await page.locator('#menu .menu-bloc-titre, #menu .menu-espace-titre').allInnerTexts().then(t=>t.map(x=>x.toLowerCase())),['lire','régler','vols','l’unité','simulation']);
+  // 1. Le menu (évolution 22 a) : deux blocs ; « Régler » sans sous-groupes, dans l'ordre du travail (évolutions 26 c et f) ;
+  //    le chemin d'une commande est dans « Chemins ».
+  assert.deepEqual(await page.locator('#menu .menu-bloc-titre, #menu .menu-espace-titre').allInnerTexts().then(t=>t.map(x=>x.toLowerCase())),['lire','régler']);
   assert.deepEqual(await page.locator('#menu [data-espace=organisation] [data-sous-onglet]>span:not(.so-badge)').allInnerTexts(),['Services et équipes','Chemins']);   // (évolution 23 a : « Plan » n'est plus au menu)
   // (Évolution 22 c : « Chemins » est une seule page — la liste des chemins, le chemin choisi — sans onglets internes.)
   await page.locator('#menu [data-entree="mu-flux"]').click();await attendre();
