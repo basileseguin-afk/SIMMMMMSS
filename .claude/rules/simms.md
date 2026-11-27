@@ -32,6 +32,14 @@ Section ajoutée le 2026-11-27. Elle complète les règles ci-dessus sans en cha
 - Une fois le rapport donné, la branche ne bouge plus : le maître d'œuvre vérifie le commit de tête que le rapport nomme. Une retouche n'arrive que par un prompt « RETOUCHE PROMPT NN.k » qui nomme la branche ; ses commits s'ajoutent par-dessus, puis un nouveau rapport « RAPPORT PROMPT NN.k ».
 - L'en-tête d'un prompt dit s'il peut tourner en parallèle d'un autre. Sans mention : un seul à la fois.
 
+### Les tests
+- Chaque livraison a une catégorie, lue dans son diff ; la plus lourde l'emporte.
+  - Documents seuls (`docs/`, `CHANGELOG.md`, `README.md`, `CLAUDE.md`, `.claude/`) : aucun test à lancer.
+  - Interface : à chaque partie, la suite Node, les tests navigateur des pages touchées et les tests de la charte (ceux que `docs/CHARTE_INTERFACE.md` cite à côté de ses règles). Pas de batterie complète, sauf quand le prompt la demande (en fin de série).
+  - Calcul et données : le diff touche `moteur/`, un fichier appelé par le calcul ou par l'import des vols, le stockage ou la sauvegarde, ou un fichier identique à son jumeau de `v2/`. À chaque partie, la suite Node et les tests ciblés ; une fois, sur la tête de la branche, la batterie complète dans une copie propre.
+- Un fichier propre à la version 1 que toutes les pages chargent (feuilles et scripts de la coquille, `index.html`) touche toutes les pages : ses tests ciblés sont alors les tests navigateur de toutes les pages du menu.
+- La batterie complète ne se lance jamais à chaque partie. Pour la batterie, cette règle remplace la consigne « avant chaque commit » de l'en-tête de `outils/batterie.cjs`.
+
 ### Les documents de référence
 - Avant toute partie, lire `docs/decisions.md` et `docs/CHARTE_INTERFACE.md`. Toute page nouvelle ou modifiée de la version 1 respecte la charte ; un écart voulu se décide avec le chef de projet et s'écrit d'abord dans la charte.
 - Ces deux fichiers ne se modifient que si le prompt le demande, et seulement comme il le demande.
@@ -44,7 +52,7 @@ Le thread finit par un message qui commence par « RAPPORT PROMPT NN », recopi�
 3. Périmètre : `git diff --stat base..tête` ; la commande qui montre que `v2/`, `moteur/` et les fichiers identiques à leur jumeau de `v2/` n'ont pas changé, et son résultat (ou ce qui a changé, et pourquoi).
 4. Calcul : « aucun calcul ne change », ou ce qui change, où et pourquoi ; ce que donne `node outils/empreinte.cjs`.
 5. Sauvegarde : format inchangé, ou entrées ajoutées ou changées ; ce que devient une sauvegarde d'avant, et une sauvegarde d'après lue par le code d'avant.
-6. Tests : batterie complète lancée sur la tête, dans une copie propre (tests Node réussis et en échec, tests navigateur OK et ÉCHEC) ; tests ajoutés ; tests dont la valeur attendue change (ancienne → nouvelle, et pourquoi) ; tests instables rencontrés.
+6. Tests : la catégorie (documents, interface, calcul et données) et les fichiers du diff qui la décident ; la suite Node (réussis, en échec) ; chaque test navigateur lancé, avec sa raison (page touchée, charte) ; la batterie complète sur la tête si la catégorie la demande, dans une copie propre (OK, ÉCHEC) ; tests ajoutés ; tests dont la valeur attendue change (ancienne → nouvelle, et pourquoi) ; tests instables rencontrés.
 7. Données : confirmation qu'aucune donnée d'une unité réelle n'a été ajoutée (noms, chiffres, plan), et comment cela a été vérifié.
 8. Écarts au prompt : ce qui n'est pas fait, ce qui est fait autrement, ce qui est laissé faute de pouvoir toucher `moteur/` ou un fichier commun.
 9. Contradictions avec `docs/decisions.md` ou la charte.
