@@ -4314,7 +4314,11 @@ function suivreDemo(){
   if(dataSource!=='Jeu de démonstration'||!Sim.ateliers)return false;
   // Avec la liste des compagnies (évolution 26 b), chaque compagnie de la liste compte comme une compagnie ajoutée.
   const st=Sim.ateliers.state,liste=Array.isArray(st.compagnies)?st.compagnies.flatMap(c=>c.classes.map(cabine=>({cie:c.nom,cabine}))):[];
-  const data=OrlyDemo.completer(SAMPLE,OrlyDemo.compagniesUtilisees(liste.length?{...st,ajoutees:[...(st.ajoutees||[]),...liste]}:st));
+  const cies=OrlyDemo.compagniesUtilisees(liste.length?{...st,ajoutees:[...(st.ajoutees||[]),...liste]}:st);
+  // Une compagnie « Fixe, sans vol » (évolution 26 d) ne reçoit pas de vols d'essai : ses départs sont ses commandes
+  // fixes, et des départs d'essai, pris pour des lignes du programme, remplaceraient sa quantité par la leur.
+  if(Array.isArray(st.compagnies))for(const c of st.compagnies)if(c.fixe)cies.delete(String(c.nom).trim().toUpperCase());
+  const data=OrlyDemo.completer(SAMPLE,cies);
   const cle=data.map(v=>v.id).join(',');
   if(cle===cleDemo)return false;
   cleDemo=cle;Sim.dataCourante=data;chargerVols(data);

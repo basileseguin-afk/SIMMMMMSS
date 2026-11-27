@@ -103,6 +103,25 @@ Le plus récent est en haut.
   les liens) s'en vont : les alertes des liens sont dans « Contrôles ». Sans
   aucune commande, « Lire le résultat » reste à faire (« rien à calculer
   encore »). Aucun calcul ne change.
+- **(g) Le contrôle et la documentation.** `tests/captures-evolution-26-browser.cjs`
+  produit et vérifie 40 captures de contrôle, gardées hors du dépôt, sur
+  l'unité fictive, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre :
+  l'accueil d'une unité vide, d'une unité sans vols et d'une unité complète ;
+  le menu ; « Commandes » (la liste, l'ajout « comme une autre », le panneau
+  d'une compagnie et ses couleurs, celui d'une commande fixe) ; « Contrôles »
+  (« il ne manque que les vols » ; une compagnie non rattachée et une classe à
+  compléter). Chaque capture : sa taille, le thème, la fenêtre et le menu qui
+  ne défilent pas, aucun texte sous 13 px. La documentation :
+  `docs/CAHIER_DES_CHARGES.md` (« Les compagnies d'abord » : la liste, les
+  commandes fixes, l'import qui rattache, le menu et l'accueil),
+  `docs/FORMATS_EXCEL.md` (la feuille « Classes » avec la liste des
+  compagnies), `README.md` (le parcours, le menu, l'accueil, la section de
+  l'évolution 26, les fichiers et les tests). Correction de (d) : sur le
+  programme d'exemple, une compagnie « Fixe, sans vol » ne reçoit plus de vols
+  d'essai (`sim.js`, `suivreDemo`) ; leurs départs, pris pour des lignes du
+  programme, remplaçaient sa quantité par la leur
+  (`tests/commande-fixe-demo-browser.cjs`). Sans commande fixe, aucun calcul ne
+  change.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

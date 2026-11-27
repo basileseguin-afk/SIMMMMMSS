@@ -108,21 +108,22 @@ n'est présent dans ce dépôt.
 ## Parcours d’utilisation
 
 Le site raconte une histoire simple, pour qu’une personne qui n’est pas du
-métier de l’informatique comprenne ce qu’elle regarde : **des avions partent,
-chaque vol emporte ses repas, des équipes les préparent de service en service,
-et le site calcule à quelle heure chaque repas est prêt.** L’accueil la
-raconte en quatre images.
+métier de l’informatique comprenne ce qu’elle regarde : **vos compagnies
+commandent, des équipes préparent chaque commande de service en service, les
+vols donnent l’heure, et le site calcule si chaque commande est prête à
+l’heure.** L’accueil la raconte en quatre images (évolution 26 f : dans
+l’ordre du travail, les compagnies d’abord).
 
-**Le menu** (version 1, évolution 22 a). La **barre latérale** montre toutes ses
-entrées, sans partie à ouvrir ni mention « Plus » : quatorze, en deux blocs.
+**Le menu** (version 1, évolution 22 a ; évolution 26 f). La **barre latérale**
+montre toutes ses entrées, sans partie à ouvrir ni mention « Plus » :
+l’accueil en tête, puis deux blocs.
 
-| Bloc | Espace | Entrées |
-|---|---|---|
-| **Lire** | | Synthèse, En direct, Planning, Période (seulement avec un programme daté), Détails (quatre onglets), Comparer |
-| **Régler** | Vols | Programme, Retours |
-| | L’unité | Services et équipes, Chemins, Plan |
-| | Simulation | Réglages, Contrôles |
-| en bas | | Fichiers |
+| Bloc | Entrées |
+|---|---|
+| en tête | Accueil |
+| **Lire** | Synthèse, En direct, Planning, Période (seulement avec un programme daté), Détails (quatre onglets), Comparer |
+| **Régler** | Commandes, Services et équipes, Chemins, Programme des vols, Planche retour, Réglages, Contrôles — dans l’ordre du travail, sans sous-groupes |
+| en bas | Fichiers |
 
 Une entrée est une page, ou un **groupe** de pages qui se suivent en onglets
 internes, en tête de page : « Détails », et — en attendant leur fusion par les
@@ -133,11 +134,14 @@ garde son identifiant, et ses anciens noms se cherchent toujours par
 « Sauvegarde »).
 
 L’application **s’ouvre sur la Synthèse** quand une journée se calcule ; sinon
-sur l’**accueil**, que la marque, en haut de la barre, rouvre à tout moment.
-L’accueil suit le rangement du menu : deux blocs, une tuile par espace, avec
-son état en clair (✓ fait, · à faire, ~ provisoire — des chiffres d’exemple,
-par exemple —, ! à vérifier, réservé aux vrais problèmes), ses entrées, et ce
-qu’il y a « à faire ensuite ».
+sur l’**accueil**, que son entrée, en tête du menu, et la marque rouvrent à
+tout moment. L’accueil guide dans l’ordre du travail (évolution 26 f), une
+rangée par étape : les compagnies et leurs commandes, les services et leurs
+équipes, les chemins, les contrôles, le programme des vols, puis lire le
+résultat. Chaque rangée dit son état en clair (✓ fait, · à faire,
+~ provisoire — des chiffres d’exemple, par exemple —, ! à vérifier, réservé
+aux vrais problèmes) et mène à sa page ; au-dessus, ce qu’il y a « à faire
+ensuite » (sur une unité vide : « Ajouter une première compagnie »).
 
 La **pastille des problèmes** est sur l’entrée « Contrôles », et nulle part
 ailleurs : elle compte les points bloquants et à corriger de toute l’unité,
@@ -2583,6 +2587,51 @@ le tableau des temps défilé à droite. Les règles posées par la correction e
 ce qu'elle laisse faute de toucher un fichier commun : `docs/DESIGN_SYSTEM.md`,
 § 11.
 
+## Les compagnies d’abord (évolution 26)
+
+**L’unité a sa liste des compagnies, et elle lui appartient** (évolution 26 b) :
+chaque compagnie avec ses classes, gardée avec les équipes (`compagnies`, dans
+`ory-ateliers-v1`) ; une compagnie existe sans vol. Avec une liste, les
+commandes de l’unité sont celles de la liste, ni plus ni moins
+(`compagnies.js` la traduit, avant le calcul, en classes retirées et
+ajoutées ; `moteur/` ne change pas ; la page et les outils préparent la
+sauvegarde au même endroit). Sans liste, une unité d’avant : rien ne change,
+champ par champ ; « Contrôles » le dit en information, avec « En faire ma
+liste ».
+
+**« Commandes »** (évolution 26 c), la première entrée de « Régler » : la
+liste plate des commandes par compagnie, avec ce qui manque à chacune, et
+« + Ajouter une compagnie ». L’ajout se fait « Comme une autre compagnie »
+(son chemin, ses équipes, ses temps et ses réglages, copiés classe par
+classe ; une classe que le modèle n’a pas est « à compléter ») ou « en
+partant de zéro ». Le panneau d’une compagnie : son nom, ses classes, sa
+couleur ; la retirer. Chaque geste s’annule.
+
+**Les commandes fixes** (évolution 26 d) : une compagnie « Fixe, sans vol »
+(une cantine) a, par classe, sa quantité par jour, ses jours et son heure ;
+chaque jour coché, elle pèse sur la production comme une ligne du programme,
+même un jour sans vol.
+
+**L’import rattache, il ne crée plus** (évolution 26 e) : avec une liste,
+chaque ligne du programme se rattache à une compagnie de la liste par les
+règles d’import qui existent ; une ligne qui ne se rattache à rien ne compte
+pas, et « Contrôles » le dit, compagnie par compagnie, avec « L’ajouter »,
+« La rattacher à… » et « L’ignorer ».
+
+**Le menu et l’accueil dans l’ordre du travail** (évolution 26 f) : voir
+« Parcours d’utilisation ». Avant tout import, quand chaque commande a son
+chemin, ses équipes et ses temps, « Contrôles » dit « Le site est prêt : il
+ne manque que les vols », avec un bouton vers « Programme des vols ».
+
+**Le contrôle** (évolution 26 g). `tests/captures-evolution-26-browser.cjs`
+produit et vérifie les captures de contrôle, sur l’unité fictive, aux deux
+tailles et dans les deux thèmes (40 captures, gardées hors du dépôt) :
+l’accueil dans ses trois états, le menu, « Commandes » (la liste, l’ajout
+« comme une autre », le panneau d’une compagnie et ses couleurs, celui d’une
+commande fixe) et « Contrôles » (« il ne manque que les vols » ; une
+compagnie non rattachée et une classe à compléter). Le détail :
+`docs/CAHIER_DES_CHARGES.md`, « Les compagnies d’abord ».
+
 ## Fichiers et vérification
 
 | Fichier | Rôle |
@@ -2594,6 +2643,9 @@ ce qu'elle laisse faute de toucher un fichier commun : `docs/DESIGN_SYSTEM.md`,
 | `services-page.js` / `services-page.css` | « Services et équipes » (v1, évolution 22 b) : la page hérite de `MonUnite` (`unite.js`, commun, non modifié) ; la liste des services de l’amont vers l’aval, « Ajouter un service », les services supprimés ; la fiche du service (nom et type, tableau « Ses équipes », section des temps selon le type, réglages avancés) et la fiche d’une équipe au même endroit, faites des morceaux de la fiche d’avant, sans aucun résultat ; `resumeEquipe`, `sousTitre` (ce que disent le tableau et la liste) ; la feuille de style : une liste à gauche, une fiche à droite, chaque colonne défile seule, texte de 13 px au moins ; `allerA` (évolution 22 b2) : arriver par le nom ou le lien d’une page d’avant, au bon endroit (la liste, « Ses équipes », les temps du service, les services supprimés). Correction 23 (c) : `lignesACompleter` (l’encart « à compléter » nomme les commandes ou les compagnies ; pur, testé en Node) et `viser` (l’endroit exact : la case de la commande dans la fiche de l’équipe, le champ du temps par vol, « Ajouter une équipe » — mis en évidence, le clavier dessus). Correction 23 (g) : l’entrée « Tous les temps par vol » et son panneau (`entreeTousLesTemps`, `poser` : le tableau reste en place quand la page se redessine) |
 | `fichiers-page.js` / `fichiers-page.css` | « Fichiers » : le tableau des classeurs Excel (v1, évolution 22 b2) — une ligne par classeur, une colonne par sens (« Importer », « Exporter »), « sans objet » quand le sens n’existe pas ; `poser` y range les boutons que chaque module a déjà construits (les mêmes gestes, les mêmes fichiers) et leur fait dire le sens de la colonne ; pour l’instant, les trois classeurs des pages que « Services et équipes » a reprises (« Équipes et horaires », « Temps par vol, vue d’ensemble », « Temps par vol, service par service ») Évolution 22 (e) : tous les classeurs (dix lignes), une troisième colonne « Classeur vide à remplir » ; une cellule range un bouton qui existe, ou un bouton neuf qui en clique un autre (`declenche`) ou appelle un geste de la page (`geste`, grisé avec sa raison quand il ne peut pas se faire : `maj`) ; `direSauvegarde` ; la page tient dans l’écran |
 | `chemins-page.js` / `chemins-page.css` | « Chemins » (v1, évolution 22 c) : la page hérite de « Services et équipes » (donc de `MonUnite`, `unite.js`, commun, non modifié) ; la liste des chemins (`chemins`, `compte`), les commandes sans chemin (`sansChemin`), le tableau d’une étape (`ligneEtape` : l’équipe d’une commande à une étape, à la chaîne, commune, ou « à corriger ») ; un seul éditeur, le diagramme de `graphe.js`, pour tout chemin de l’unité ; les gestes d’un chemin à part ; `allerChemins` ; la feuille de style : une liste à gauche, le chemin à droite, chaque colonne défile seule ; (c2) `chemin(cmd, service)` ouvre le chemin d’une commande sur son étape ; « Relier à… » ; « + » d’après la nature du service (`PC.donnerCases`) ; `chemins-page.css` porte aussi le repli « Étapes de chaque commande » de « Détails › Commandes » (`EtapesCommandes`, `ateliers.js`). Correction 23 (c) : arrivé pour une commande, le clavier va sur le choix de son équipe ; `ouvrirSuivi` ouvre « Qui le suit » sur le chemin de la commande. Correction 23 (j) : la pastille dit le nom entier du fournisseur (`lignesDuNom` le met en lignes, sans rien retirer ; `poserPastilles`) ; la ligne des fournisseurs est dans l’en-tête du chemin, au-dessus du schéma |
+| `compagnies.js` | La liste des compagnies de l’unité (v1, évolution 26 b à e), sans navigateur : `lire` (la liste d’une sauvegarde, validée), `etatEffectif` (avec une liste, les classes retirées et ajoutées que le calcul lit), `listeDesVols` (« En faire ma liste »), `listeApresClasseur` (la feuille « Classes »), `preparerVols` (le rattachement, puis les commandes fixes), `rattacher` (les règles de tri de l’import), `preparerSauvegarde` (le même chemin pour la page et les outils). Sans liste : le même objet, le même résultat |
+| `compagnies-gestes.js` | Les gestes sur la liste (v1, évolution 26 c, d) : ajouter une compagnie « comme une autre » (le chemin, les équipes, les temps et les réglages du modèle, classe par classe) ou en partant de zéro, la renommer, lui ajouter ou ôter une classe, la retirer, régler ses commandes fixes. Module pur, testé en Node : chaque geste rend un état neuf, que la page applique d’un coup (un seul « Annuler ») |
+| `commandes-page.js` / `commandes-page.css` | « Commandes » (v1, évolution 26 c) : le compte, la liste plate des commandes par compagnie (pastille, classe, chemin, état), le panneau d’ajout et celui d’une compagnie (nom, type, classes, commandes fixes, couleurs) |
 | `controles-page.js` / `controles-page.css` | « Contrôles » (v1, évolution 22 d) : deux pages et un panneau en un. `destination` et `bouton` (où mène un avis, et le nom de son bouton), `etatDuCalcul`, `direDernier` (le dernier réglage changé et son heure), `colonnes`, `html` — purs, testés en Node ; `PageControles` dessine la page à la place du pas à pas de `unite.js` (commun, non modifié) et mène à l’endroit où l’avis se règle En lecture seule (évolution 23 d), la page se lit : `html` reçoit `verrou`, `ferme(page)` et `motFerme` — un bouton qui mène à une page fermée et « C’est voulu » sont grisés (`disabled`), leur raison les suit, une fois par point ; sans `verrou`, la page d’avant, au caractère près. Correction 23 (c) : `boutons` (un bouton par service pour un point qui en cite plusieurs ; « Choisir ses équipes » et « Lui donner un autre chemin » pour des commandes sans équipe à plusieurs étapes) ; `allerAvis(avis, rang)` mène à l’endroit exact et y pose le clavier |
 | `reglages-page.js` / `reglages-page.css` | « Réglages » (v1, évolution 23 e) : une liste à gauche, une fiche à droite. `SECTIONS` (les dix sections, leur titre, le panneau de la page qu’elles montrent), `regles` (une règle par section : la section choisie — `data-rs` sur `#view-reglages` — se montre seule dans la fiche ; sans elle, aucune règle ne joue), `liste`, `choix` (la section à montrer), `avance` (les réglages rares d’une section, repliés sous « Réglages avancés » ; dépliés, ils le restent d’un dessin à l’autre), `RARES`, `versDetails` (le lien qui remplace le bilan du matériel), `lire`/`ecrire` (la section retenue, clé `ory-ui-reglages-section`). `PageReglages` pose la liste à côté des panneaux, sans en déplacer un champ : ils restent écrits par `reglages.js` (commun avec la version 2, non modifié), `sim.js` et `ateliers.js`, qui demandent à ce module comment replier leurs réglages rares — sans lui, ils écrivent le panneau d’avant. La feuille : deux colonnes à la hauteur de la page, chacune défile seule |
 | `lisible.css` | Les trois règles d’une page (v1, évolution 23 g), chargée la dernière par la version 1 seule : les deux plus petites tailles de texte (`--ds-t-11`, `--ds-t-12`) valent 13 px ; la page ne défile pas, ses zones (`.page-zone`) si — la Synthèse, le planning, les onglets de « Détails », « Période » ; « Comparer », « Période » et « Heures sup et renforts » sur toute la largeur ; « Postes de travail » montre « sans limite ». Correction 23 (i) : le tableau de « Période » défile dans son cadre, pas plus haut que la zone (en-tête et première colonne figés). Correction 23 (b) : le titre de la page au-dessus de ses onglets ; les deux cartes de « Détails › Heures sup et renforts » (marge intérieure, bordure, rayon d’une carte : 8 px alors, 14 px depuis l’évolution 25), leurs tableaux à la largeur de leur contenu, les nombres à droite. Les feuilles communes avec la version 2 ne sont pas modifiées |
@@ -2657,10 +2709,10 @@ ce qu'elle laisse faute de toucher un fichier commun : `docs/DESIGN_SYSTEM.md`,
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
-| `demarrage.js` / `histoire.css` | L’accueil : l’histoire en quatre images, « à faire ensuite », puis les deux blocs du menu, une tuile par espace avec son état et ses entrées (v1, évolution 22 a) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `demarrage.js` / `histoire.css` | L’accueil : l’histoire en quatre images, « à faire ensuite », puis le guide, une rangée par étape du travail (`etapes`, `suite`), avec son état et sa page (v1, évolution 26 f ; avant, les deux blocs du menu en tuiles, évolution 22 a) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
-| `onglets.js` | Le menu (v1, évolution 22 a) : deux blocs (`BLOCS`), leurs espaces (`PARTIES`) et leurs treize entrées (quatorze avant l’évolution 23 a : « Plan » en est sorti ; `PAR_NOM` : ce qui ne s’ouvre que par son nom, « En direct, à plat »), toutes visibles — une page, ou un groupe de pages en onglets internes (`GROUPES`) ; `menu`, `entrees`, `entreeDe` ; chaque page est un sous-onglet d’une vue ; la règle qui masque les autres, le clavier, la dernière page choisie de chaque espace et de chaque groupe (la page ouverte au démarrage n’en est pas une) ; une page conditionnelle (la Période, avec un programme daté) ; `ANCIENNES`, `resoudre` (évolution 22 b2) : les pages qu’une page nouvelle a reprises — leur nom, leur nom plus ancien, la page qui les reprend et l’endroit où y arriver (`lieu`) ; `choisir(id, …, lieu)` y mène |
-| `menu.css` | Le menu de la version 1 : les deux blocs, les titres des espaces, les entrées, la barre repliée pendant la modification du plan ; les blocs de l’accueil. Les couleurs sont celles de la barre latérale de `ds.css`, qu’elle ne modifie pas |
+| `onglets.js` | Le menu (v1, évolution 22 a ; évolution 26 f : l’entrée de l’accueil en tête, « Régler » dans l’ordre du travail, sans sous-groupes) : deux blocs (`BLOCS`), leurs espaces (`PARTIES`) et leurs treize entrées (quatorze avant l’évolution 23 a : « Plan » en est sorti ; `PAR_NOM` : ce qui ne s’ouvre que par son nom, « En direct, à plat »), toutes visibles — une page, ou un groupe de pages en onglets internes (`GROUPES`) ; `menu`, `entrees`, `entreeDe` ; chaque page est un sous-onglet d’une vue ; la règle qui masque les autres, le clavier, la dernière page choisie de chaque espace et de chaque groupe (la page ouverte au démarrage n’en est pas une) ; une page conditionnelle (la Période, avec un programme daté) ; `ANCIENNES`, `resoudre` (évolution 22 b2) : les pages qu’une page nouvelle a reprises — leur nom, leur nom plus ancien, la page qui les reprend et l’endroit où y arriver (`lieu`) ; `choisir(id, …, lieu)` y mène |
+| `menu.css` | Le menu de la version 1 : l’entrée de l’accueil, les deux blocs, les entrées, la barre repliée pendant la modification du plan ; le guide de l’accueil (évolution 26 f). Les couleurs sont celles de la barre latérale de `ds.css`, qu’elle ne modifie pas |
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent. **Version 2** ; la version 1 a le sien, `avis.js` (évolution 19 d) |
 | `avis.js` / `avis.css` | Les avis en trois niveaux (v1, évolution 19 d) : « bloquant », « à corriger », « information ». `niveauDuCode` donne le niveau d’un point du calcul ; `lister` fait le registre (du bloquant à l’information) ; `compte` ne compte que les deux premiers ; `panneau` et `blocs` écrivent le panneau des Problèmes et les avis d’une page, informations repliées ; `Registre` tient le panneau, le nombre du menu et ceux des onglets Évolution 22 (d) : le panneau « Problèmes » a rejoint « Contrôles » (`panneau` retiré) ; chaque avis porte son code, son équipe, ses commandes, son étape — de quoi mener à l’endroit où il se règle ; les vols d’exemple sont une information. Correction 23 (c) : `nommer` (quatre noms au plus, puis « et n autres ») ; `regrouperTrous` regroupe les étapes sans équipe d’une même commande en un point (le plus petit nombre de points qui dise tout ; à égalité, par étape) ; le point bloquant nomme les commandes et les compagnies ; « Vos services et leurs équipes » ne s’affiche pas quand ses services sont déjà cités |
@@ -2833,7 +2885,7 @@ ce qu'elle laisse faute de toucher un fichier commun : `docs/DESIGN_SYSTEM.md`,
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins (dans « Chemins » : variante, lien tiré, boucle refusée, étape retirée) et tableau « Étapes de chaque commande » (dans « Détails › Commandes ») dans l’interface, classeurs ateliers et vols de bout en bout |
-| `tests/menu-browser.cjs` | Le menu de la version 1 (évolution 22 a) : sur un site neuf, l’accueil (deux blocs, une tuile par espace, états, « à faire ensuite »), les entrées du menu en deux blocs et trois espaces, sans « Plus » ni partie à ouvrir, chaque entrée et ses onglets internes, la nature de chaque page, les outils qui suivent la page, le clavier d’un bloc à l’autre, la page retenue, « Fichiers », le menu grisé pendant la modification du plan (même après un recalcul), la hauteur des bandeaux, l’écran de 1 024 px ; sur l’unité fictive avec un programme daté, à 1 366 × 768 et 1 920 × 1 080 : les quatorze entrées dans l’ordre, sans défilement du menu, une seule pastille (sur « Contrôles », bloquants plus à corriger), chaque ancien nom de page par « Aller à… », l’ouverture sur la Synthèse quand une journée se calcule, sans effacer la dernière page choisie; depuis l’évolution 22 (b2) : « Services et équipes » est une page sans onglets internes, et chacune des cinq pages qu’elle a reprises se cherche par son nom et par son nom plus ancien, et mène au bon endroit |
+| `tests/menu-browser.cjs` | Le menu de la version 1 (évolution 22 a ; évolution 26 f) : sur un site neuf, l’accueil (son entrée en tête du menu, le guide en six étapes, états, « à faire ensuite »), les entrées du menu en deux blocs, sans « Plus » ni partie à ouvrir, chaque entrée et ses onglets internes, la nature de chaque page, les outils qui suivent la page, le clavier d’un bloc à l’autre, la page retenue, « Fichiers », le menu grisé pendant la modification du plan (même après un recalcul), la hauteur des bandeaux, l’écran de 1 024 px ; sur l’unité fictive avec un programme daté, à 1 366 × 768 et 1 920 × 1 080 : les quatorze entrées dans l’ordre, sans défilement du menu, une seule pastille (sur « Contrôles », bloquants plus à corriger), chaque ancien nom de page par « Aller à… », l’ouverture sur la Synthèse quand une journée se calcule, sans effacer la dernière page choisie; depuis l’évolution 22 (b2) : « Services et équipes » est une page sans onglets internes, et chacune des cinq pages qu’elle a reprises se cherche par son nom et par son nom plus ancien, et mène au bon endroit |
 | `tests/liaisons-browser.cjs` | Une donnée, partout la même : barème, récap des man-minutes, récap des cases, fiches, chemin, « Qui prépare quoi », calcul, Excel, renommage, Annuler — changée à un endroit, vérifiée à tous les autres |
 | `tests/fantome-browser.cjs` | Un service qu'on ne retrouve pas : « Armement » sans équipe, ses salles au travail — la note des Contrôles et « Supprimer », la recherche, les salles qui gardent ses liens, un service supprimé encore cité (« Effacer partout », « Passer dans… », « Remettre ») |
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
@@ -2925,6 +2977,14 @@ ce qu'elle laisse faute de toucher un fichier commun : `docs/DESIGN_SYSTEM.md`,
 | `tests/pastilles.test.cjs` | `pastilles.js` sans navigateur (v1, évolution 25 d), sur des compagnies fictives : les compagnies de l’unité (programme et réglages, par ordre alphabétique) ; sans choix, les douze couleurs dans l’ordre, puis elles recommencent ; un choix porte un rang de 1 à 12 ; « Garder ces couleurs » arrête le décalage quand une compagnie s’ajoute ; un nom de quatre caractères au plus tient dans la pastille, un nom plus long y laisse ses deux premières lettres ; un texte n’est découpé que s’il nomme à lui seul une compagnie ou une commande, sans perdre un caractère ; l’entrée des choix, validée ; une sauvegarde qui la porte rend le même résultat ; aucune teinte dans le module ; chargé par la version 1 seule |
 | `tests/pastilles-browser.cjs` | La pastille et l’étiquette dans la page (v1, évolution 25 d), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : le `textContent` de chaque page du menu, d’une fiche de service, d’une fiche d’équipe et du tableau de tous les temps est celui de la page d’avant (sans `pastilles.js`) ; la pastille (6 px, 22 px, graisse 700 ; deux lettres en pseudo-élément pour un nom long) et l’étiquette (22 px, le point de la classe) ; une compagnie a la même pastille sur toutes les pages ; sans choix, « Tout sauvegarder » rend la sauvegarde d’avant, octet pour octet ; la carte « Couleurs des compagnies » (un choix, « Annuler », « Garder ces couleurs », « Revenir aux couleurs automatiques ») ; le même résultat et les mêmes réponses avec et sans choix ; un choix survit à sauvegarder puis restaurer, une entrée abîmée refuse la sauvegarde, la version 2 l’ignore ; douze couleurs à 4,5:1 dans les deux thèmes ; rien ne s’écrit en lecture seule |
 | `tests/visuel-dessins-browser.cjs` | Les dessins prennent leurs couleurs dans les jetons (v1, évolution 25 e), sur l’unité fictive et un programme daté fictif, à 1 366 × 768, dans les deux thèmes : sur chaque page du menu, sur un chemin ouvert et sur « En direct » en relief, aucune couleur calculée d’un élément visible (texte, fond, bordure, contour, remplissage, trait, ombre, dégradé ; pseudo-éléments compris) n’est l’un des anciens bleus (`#0B1A2E`, `#0D2036`, `#0B6E99`, `#38BDF8`) ; chaque remplissage et chaque trait d’un dessin est la valeur d’un jeton ou un mélange de la feuille, sauf les zones libres du plan (leur couleur est une donnée du plan, `plan-editor.js`) ; un texte dans un dessin tient 4,5:1 sur le fond réellement dessous ; les classes ont leurs cinq couleurs de donnée ; les teintes de la scène en relief (`--dv-…`) sont définies, et aucune n’est un ancien bleu |
+| `tests/captures-evolution-26-browser.cjs` | Les captures de contrôle des compagnies d’abord (v1, évolution 26 g), sur l’unité fictive, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre : l’accueil d’une unité vide, sans vols et complète ; le menu ; « Commandes » (la liste, l’ajout « comme une autre », le panneau d’une compagnie et ses couleurs, celui d’une commande fixe) ; « Contrôles » (« il ne manque que les vols » ; une compagnie non rattachée et une classe à compléter). Chaque capture : sa taille, le thème, la fenêtre et le menu qui ne défilent pas, aucun texte sous 13 px ; gardées hors du dépôt |
+| `tests/accueil-guide-browser.cjs` | Le menu et l’accueil dans l’ordre du travail (v1, évolution 26 f) : l’accueil en tête du menu, « Régler » sans sous-groupes ; « Aller à… » trouve « Commandes » et l’accueil ; le guide d’une unité vide (« Ajouter une première compagnie » ouvre le panneau d’ajout), d’une unité sans vols (« il ne manque que les vols », son bouton vers « Programme des vols », tu par un point à corriger) et d’une unité complète |
+| `tests/compagnies.test.cjs` / `tests/compagnies-liste-browser.cjs` | La liste des compagnies (v1, évolution 26 b) : sans liste, le même résultat et la même sauvegarde ; « En faire ma liste » ; avec une liste, les commandes de la liste, ni plus ni moins ; la feuille « Classes » ; les outils |
+| `tests/commandes-page-browser.cjs` / `tests/compagnies-gestes.test.cjs` | « Commandes » (v1, évolution 26 c, d) : la liste, l’ajout « comme une autre », la classe « à compléter » et son point, le renommage, les couleurs, les commandes fixes ; chaque geste s’annule |
+| `tests/commande-fixe-demo-browser.cjs` | Une commande fixe sur le programme d’exemple (v1, évolution 26 d, corrigée en g) : une compagnie « Fixe, sans vol » ne reçoit pas de vols d’essai, sa quantité est la sienne ; « Avec des vols », elle les reçoit |
+| `tests/compagnies-fixes.test.cjs` | Les commandes fixes (v1, évolution 26 d), sans navigateur : sans commande fixe, le même résultat ; à l’heure et à la quantité de la ligne qu’elle remplace, le même résultat ; son heure ne change que ses lots ; un jour décoché |
+| `tests/compagnies-import.test.cjs` / `tests/import-rattache-browser.cjs` | L’import qui rattache (v1, évolution 26 e) : une compagnie inconnue ne crée aucune commande et donne son point ; « L’ajouter », « La rattacher à… », « L’ignorer », et « Annuler » ; sans liste, l’import d’avant |
+| `tests/charte-budget-browser.cjs` / `tests/charte-couleurs.test.cjs` / `tests/charte-dette.json` | La charte tenue par des tests (v1, évolution 26 a) : le budget d’une page (règle 8) et aucune couleur écrite en dur (règle 12) ; l’écart d’avant relevé dans `charte-dette.json`, qui ne peut que baisser |
 | `tests/captures-evolution-25-browser.cjs` | Les captures de contrôle du nouveau visuel (v1, évolution 25 g), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 et 1 920 × 1 080, en clair et en sombre : chaque page du menu (« En direct » en relief), « En direct » à plat, l’accueil de l’application (son bandeau au fond du menu), la fiche d’un service par compagnie avec des champs saisis et des champs vides, le tableau de tous les temps par vol (une compagnie dépliée), un chemin ouvert, la carte « Couleurs des compagnies » dépliée, une notification avec « Annuler », une question, la palette « Aller à… », la page d’entrée. Chaque capture est vérifiée : sa taille, le fond de la page et celui du menu pour le thème, ce qu’elle doit montrer, la fenêtre qui ne défile pas, aucun texte sous 13 px (12 px à l’écran dans un dessin). Les captures restent hors du dépôt (`$ORY_CAPTURES`, ou un dossier temporaire) |
 | `tests/ouvrir-sans-changer-browser.cjs` | Ouvrir une page ne change jamais le résultat (v1, correction 24 a), sur l’unité fictive et un programme daté fictif, à 1 366 × 768 : après le chargement, puis une fois la période simulée, puis après un réglage, toutes les pages du menu une à une (sections dépliées, survol), chaque onglet de « Détails » et du Planning (jours de travail, échelles, rangées), dans l’ordre puis dans l’ordre inverse — le résultat champ par champ, les réponses de la Synthèse, chaque entrée de la sauvegarde et la révision des données sont les mêmes avant et après ; un recalcul rend le même résultat sans rien écrire ; un réglage, lui, les change |
 | `tests/etat-sauvegarde.test.cjs` | `etat-sauvegarde.js` sans navigateur (v1, correction 24 b) : la mémoire relue (absente, abîmée), celle d’un navigateur d’avant, les trois états et leurs mots (l’heure, la date un autre jour), ce qui compte comme un changement (un réglage oui ; l’effectif calculé reporté et les commandes d’une équipe « par compagnie » non) ; `stockage.js` signale chaque donnée vraiment écrite ; la page de secours a les neuf entrées de « Tout sauvegarder », dans l’ordre, et reste autonome |
