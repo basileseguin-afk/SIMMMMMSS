@@ -78,7 +78,7 @@ const C='#mu-pas';
   assert.ok(boutonsAvant.some(b=>b.page==='mu-services')&&boutonsAvant.some(b=>b.page==='mu-flux')&&boutonsAvant.some(b=>b.page==='j-chiffres'),'des boutons vers « Services et équipes », « Chemins » et la Synthèse');
   assert.deepEqual(boutonsAvant.filter(b=>b.gris||b.raison!==null),[],'hors lecture seule : aucun bouton grisé, aucune raison');
   assert.equal(await page.locator(C+' .ct-raison').count(),0);
-  assert.deepEqual(await menu(),[['lire',false,['Synthèse','En direct','Planning','Détails','Comparer']],['regler',false,['Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles']]]);
+  assert.deepEqual(await menu(),[['lire',false,['Synthèse','En direct','Planning','Détails','Comparer']],['regler',false,['Commandes','Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles']]]);
   assert.equal(pastilleAvant[2],'regler');
   assert.deepEqual(await tete(),['Simulation','Contrôles','Simulation','rg-simulation']);
 

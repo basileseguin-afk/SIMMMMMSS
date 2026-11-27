@@ -47,7 +47,9 @@
       { id: 'mu-flux', nom: 'Chemins', ancien: 'Flux de production', ico: 'reseau' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
-      { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' }
+      { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' },
+      // Évolution 26 (c) : les compagnies et leurs commandes, la première page de « Régler ».
+      { id: 'mu-commandes', nom: 'Commandes', ico: 'plateau' }
     ],
     reglages: [
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
@@ -104,7 +106,15 @@
         { id: 'j-details', groupe: 'details', intro: 'Les heures supplémentaires et les renforts, équipe par équipe.' },
         { id: 'j-comparer', court: 'Comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
-    { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)',
+    // Évolution 26 (c) : « Commandes », la première entrée de « Régler » — les compagnies d'abord. Un espace d'une page, à son
+    // nom, sans tuile à l'accueil (`cache`), que la partie (f) refait. Les espaces de « Régler » n'ont plus de titre au menu
+    // (`titre: false`) : avec une entrée de plus, les trois titres le faisaient défiler à 768 px de haut.
+    { id: 'commandes', nom: 'Commandes', bloc: 'regler', ico: 'plateau', couleur: 'var(--c-equipes)', titre: false, cache: true,
+      resume: 'Vos compagnies et leurs classes',
+      pages: [
+        { id: 'mu-commandes', intro: 'Les commandes de l’unité, par compagnie : ajoutez une compagnie, réglez-la d’un clic.' }
+      ] },
+    { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)', titre: false,
       resume: 'Ce qui part et ce qui revient',
       pages: [
         // `jour` (évolution 23 b) : hors du bloc « Lire », une page où le jour d'un programme daté compte — elle porte
@@ -112,7 +122,7 @@
         { id: 'v-programme', jour: true, court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
         { id: 'v-planche', jour: true, court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge.' }
       ] },
-    { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)',
+    { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)', titre: false,
       resume: 'Qui prépare quoi, quand, par où',
       pages: [
         // « Services et équipes » : six pages en une (évolution 22 b) — une liste à gauche, une fiche à droite.
@@ -126,7 +136,7 @@
         // par « Aller à… » et par le lien « Placer ce service sur le plan » de la fiche d'un service, qui reste marquée.
         { id: 'u-plan', sous: 'mu-services', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la ; « Terminer » ramène où vous étiez.' }
       ] },
-    { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)',
+    { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)', titre: false,
       resume: 'Régler, vérifier',
       pages: [
         // « Réglages » : une liste de sections à gauche, la section choisie à droite (évolution 23 e, reglages-page.js).
@@ -250,7 +260,7 @@
    */
   function menu(choix = {}, ouverte, ferme) {
     const blocs = BLOCS.map(b => ({ ...b, espaces: PARTIES.filter(p => p.bloc === b.id)
-      .map(p => ({ id: p.id, nom: p.nom, titre: p.nom !== b.nom, entrees: menuDe(p.id, choix, ouverte) })) }));
+      .map(p => ({ id: p.id, nom: p.nom, titre: p.nom !== b.nom && p.titre !== false, entrees: menuDe(p.id, choix, ouverte) })) }));
     return { blocs: typeof ferme === 'function' ? sousLire(blocs, ferme) : blocs, bas: PARTIES.filter(p => p.bas).flatMap(p => menuDe(p.id, choix, ouverte)) };
   }
   /**

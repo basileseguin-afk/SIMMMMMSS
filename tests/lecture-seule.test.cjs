@@ -31,7 +31,7 @@ test('le choix se garde comme le thème : une préférence d’affichage, hors d
 test('la lecture seule ferme les pages du bloc « Régler », sauf « Contrôles », qui se lit', () => {
   const pages = O.PARTIES.flatMap(p => p.pages.map(x => x.id));
   assert.deepEqual(pages.filter(id => L.fermee(O, id)),
-    ['v-programme', 'v-planche', 'mu-services', 'mu-flux', 'u-liens', 'u-plan', 'rg-simulation']);
+    ['mu-commandes', 'v-programme', 'v-planche', 'mu-services', 'mu-flux', 'u-liens', 'u-plan', 'rg-simulation']);
   // Les pages de résultats, « Fichiers », et « Contrôles » (évolution 23 d : celui qui lit les résultats doit savoir
   // s'il reste des points à corriger) restent ouvertes.
   assert.deepEqual(pages.filter(id => !L.fermee(O, id)),
@@ -115,11 +115,11 @@ test('le menu : en lecture seule, les pages de « Régler » ne s’ouvrent pas,
   assert.match(hote.innerHTML, /<div class="menu-bloc menu-bloc-ferme" data-bloc="regler" data-ferme>/);
   assert.match(hote.innerHTML, /<p class="menu-ferme">.*<span>Paramétrage verrouillé<\/span><\/p>/);
   assert.equal((hote.innerHTML.match(/data-sous-onglet=/g) || []).length, 6, 'les cinq entrées de « Lire », puis « Contrôles »');
-  assert.equal(/data-sous-onglet="(mu-services|mu-flux|v-programme|v-planche|rg-|u-plan)/.test(hote.innerHTML), false, 'aucune entrée qui règle');
+  assert.equal(/data-sous-onglet="(mu-commandes|mu-services|mu-flux|v-programme|v-planche|rg-|u-plan)/.test(hote.innerHTML), false, 'aucune entrée qui règle');
   // Arrêtée : le menu d'avant, et les pages s'ouvrent.
   lecture = false; so.rendre();
   assert.equal(/data-ferme/.test(hote.innerHTML), false);
-  assert.equal((hote.innerHTML.match(/data-sous-onglet=/g) || []).length, 11);   // (évolution 23 a : « Plan » n'est plus au menu)
+  assert.equal((hote.innerHTML.match(/data-sous-onglet=/g) || []).length, 12);   // (évolution 23 a : « Plan » n'est plus au menu ; 26 c : « Commandes » y est)
   so.choisir('mu-services');
   assert.equal(so.page, 'mu-services');
 });

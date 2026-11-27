@@ -1,0 +1,68 @@
+/* « Commandes » (version 1, évolution 26 c) : la liste des commandes par compagnie, et un panneau à côté. La page tient
+ * dans l'écran d'un portable (1 366 × 768) : la liste défile seule, le panneau aussi. Les couleurs viennent des jetons
+ * du visuel (visuel.css). */
+
+#mu-commandes{margin:0;max-width:none}
+body[data-sous="mu-commandes"] #view-ateliers:not([hidden]){display:flex;flex-direction:column;padding-bottom:12px}
+body[data-sous="mu-commandes"] #view-ateliers>*{flex:none}
+body[data-sous="mu-commandes"] #view-ateliers>#mu-commandes{flex:1 1 0;min-height:320px;display:flex;flex-direction:column}
+
+.co-cadre{flex:1 1 0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.co-cadre.avec-panneau{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+.co-principal{min-height:0;display:flex;flex-direction:column;gap:10px}
+
+/* Le compte, l'action (le titre est celui de la page). */
+.co-entete{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
+.co-compte{color:var(--ds-texte-2);font-size:var(--ds-t-14);font-variant-numeric:tabular-nums}
+.co-ajouter{margin-left:auto}
+
+/* La liste : un seul cadre, des rangées séparées par un trait (règle 11). */
+.co-liste{flex:1 1 0;min-height:0;overflow:auto;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-2);background:var(--ds-surface-1)}
+.co-table{width:100%;border-collapse:collapse;font-size:var(--ds-t-14)}
+.co-table thead th{position:sticky;top:0;z-index:1;padding:8px 12px;text-align:left;background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure)}
+.co-table td,.co-table tbody th{padding:6px 12px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--ds-bordure)}
+.co-table tbody th{width:1%;white-space:nowrap;font-weight:var(--ds-g-moyen);vertical-align:top}
+.co-table tbody:last-child tr:last-child>*{border-bottom:0}
+.co-cie{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 8px 2px 4px;border:1px solid transparent;border-radius:8px;
+  background:none;color:var(--ds-texte-1);font:inherit;font-weight:var(--ds-g-moyen);cursor:pointer}
+.co-cie:hover,.co-cie[aria-pressed="true"]{background:var(--ds-survol);border-color:var(--ds-bordure-forte)}
+.co-cie:focus-visible{outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+/* La compagnie choisie : le fond pâle de l'accent, un trait d'accent à gauche. */
+.co-groupe.choisie>tr>*{background:var(--ds-choix-fond)}
+.co-groupe.choisie>tr>th{box-shadow:inset 3px 0 0 var(--ds-choix-trait)}
+.co-fixe{margin-left:6px;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.co-chemin{white-space:nowrap}
+.co-etat{color:var(--ds-texte-2)}
+.co-etat.manque{color:var(--ds-attente-texte)}
+.co-vide{color:var(--ds-texte-3)}
+.co-aucune{margin:0;padding:16px;color:var(--ds-texte-2)}
+/* Les commandes qui seront créées, à part, en tête de liste : un trait plus marqué, le texte en italique. */
+.co-table tbody.co-prevues>tr:last-child>*{border-bottom:2px dashed var(--ds-bordure-forte)}
+.co-prevues td,.co-prevues th{font-style:italic;color:var(--ds-texte-2)}
+.co-nom-prevu{font-weight:var(--ds-g-moyen)}
+
+/* Le panneau, à côté de la liste (règle 7). */
+.co-panneau{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--ds-bordure-forte);
+  border-radius:var(--ds-r-3);background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
+.co-p-titre{margin:0;font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.co-champ{display:grid;gap:4px;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.co-champ input{min-height:32px;padding:4px 10px;border:1px solid var(--ds-saisi-bord);border-radius:8px;background:var(--ds-saisi-fond);
+  color:var(--ds-texte-1);font:inherit;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
+.co-saisie{display:flex;align-items:center;gap:10px}
+.co-saisie input{flex:1 1 auto;min-width:0}
+.co-apercu{flex:none;display:inline-flex;align-items:center;min-width:28px}
+.co-refus{margin:0;color:var(--ds-retard-texte);font-size:var(--ds-t-13)}
+.co-choix{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;padding:0;border:0;font-size:var(--ds-t-14)}
+.co-choix>legend{margin-bottom:4px;padding:0;font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.co-choix label{display:inline-flex;align-items:center;gap:6px;min-height:24px}
+/* Les boutons radio gardent leur taille (la page « Services et équipes » étire ses champs). */
+#mu-commandes .co-choix input[type=radio]{flex:none;width:auto;margin:0}
+.co-modele{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+#mu-commandes .co-modele select{width:auto;min-height:28px}
+.co-bilan{margin:0;color:var(--ds-texte-1);font-size:var(--ds-t-14);font-weight:var(--ds-g-moyen)}
+.co-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:auto}
+.co-couleur .pa-teintes{margin-top:2px}
+
+@media (max-width:900px){
+  .co-cadre.avec-panneau{grid-template-columns:minmax(0,1fr)}
+}

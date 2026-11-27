@@ -663,7 +663,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{suivreGestes();if(suivreDemo()||suivrePreparation()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
+    change:r=>{suivreGestes();if(suivreDemo()||suivrePreparation()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderLectureLiens();if(Sim.unite)Sim.unite.rendre();if(Sim.commandes&&document.body.dataset.sous==='mu-commandes')Sim.commandes.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();majDisposer();majSiteReglages();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -806,6 +806,8 @@ function majProblemes(){
     // Les nombres des onglets se lisent dans le registre : ils le suivent. « Contrôles », ouverte, aussi (évolution 22 d).
     if(Sim.onglets)Sim.onglets.rendre();
     if(Sim.unite&&document.body.dataset.sous==='mu-pas')Sim.unite.rendrePas();
+    // « Commandes », ouverte, dit l'état de chaque commande dans les mots de « Contrôles » (évolution 26 c).
+    if(Sim.commandes&&document.body.dataset.sous==='mu-commandes')Sim.commandes.rendre();
     // « Fichiers », ouverte, suit aussi (évolution 22 e) : une planche importée d'ici s'exporte aussitôt.
     if(document.body.dataset.sous==='u-sauvegarde')majFichiers();},0);
 }
@@ -909,12 +911,29 @@ function pointsDesCompagnies(){
     if(n)out.push({niveau:'information',cle:'liste',titre:'Les compagnies de cette unité viennent encore des vols : '+n+(n>1?' trouvées.':' trouvée.'),
       page:'mu-pas',gestes:[{action:'faire-liste',texte:'En faire ma liste'}]});
   }
+  // Une classe créée « comme une autre » que le modèle n'avait pas (évolution 26 c) : à compléter, dans son chemin.
+  const PC=window.OrlyParcours,P=window.MoteurProduction;
+  for(const c of at.compagnies||[])for(const cab of c.aCompleter||[]){
+    const id=P.idClasse(c.nom,cab),classe=at.classes.find(x=>x.id===id)||{id,cie:c.nom,cabine:cab};
+    const ch=PC?PC.fluxDe(at.state,classe):null,etape=ch?P.servicesDuParcours(ch)[0]:null;
+    out.push({niveau:'corriger',cle:'completer:'+id,aCompleter:true,commande:id,classes:[id],...(etape?{service:etape}:{}),
+      titre:P.libelleClasse(id)+' est à compléter',
+      detail:'Sa compagnie modèle n’a pas cette classe : elle suit le chemin habituel'+(ch?' (« '+ch.nom+' »)':'')+', sans équipe ni temps propres. Choisissez ses équipes, puis « C’est complet ».',
+      page:'mu-flux',gestes:[{action:'complete',valeur:id,texte:'C’est complet'}]});
+  }
   return out;
 }
 /** Un geste fait dans « Contrôles » (évolution 26). Rend vrai s'il a été fait. */
-function gesteControles(action){
+function gesteControles(action,valeur){
   if(action==='faire-liste')return faireMaListe();
+  if(action==='complete')return completerCommande(valeur);
   return false;
+}
+/** « C'est complet » : la classe n'est plus à compléter. */
+function completerCommande(id){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;if(!at||!G||!id)return false;
+  const i=String(id).lastIndexOf('/'),nom=id.slice(0,i),cab=id.slice(i+1);
+  return at.changer(()=>{at.state=G.complete(at.state,nom,cab);},MoteurProduction.libelleClasse(id)+' est complète.');
 }
 /** « En faire ma liste » : la liste des compagnies telle qu'elle est aujourd'hui (compagnies.js). Le résultat ne change pas. */
 function faireMaListe(){
@@ -974,6 +993,91 @@ async function supprimerServiceUnite(id){
   const fait=z.kind==='service'?Sim.editor.retirer(id,true,true):Sim.editor.supprimer(id,true);
   if(fait)toast('« '+nom+' » supprimé.',{parDefaut:true});
   return !!fait;
+}
+/* « COMMANDES » (évolution 26 c, commandes-page.js) : les commandes par compagnie, et les gestes sur une compagnie
+ * (compagnies-gestes.js). Un geste touche d'un coup les équipes, les temps par vol et les couleurs : une notification,
+ * dont « Annuler » défait le tout (notifications.js réunit les historiques d'un même geste). Une unité d'avant reçoit
+ * d'abord sa liste d'aujourd'hui (« En faire ma liste ») ; les couleurs du moment des autres compagnies sont gardées,
+ * pour qu'aucune ne change quand une compagnie arrive, part ou change de nom. */
+const deLaListe=()=>(Sim.ateliers.compagnies||OrlyCompagnies.listeDesVols(Sim.dataCourante||SAMPLE,Sim.ateliers.state));
+/** Les classes d'une compagnie : celles de la liste ; sans liste, ses commandes de la journée. */
+function classesDeLaCompagnie(nom){
+  const c=deLaListe().find(x=>x.nom===nom);
+  return c?c.classes.slice():[];
+}
+const plCmd=n=>n+(n>1?' commandes':' commande');
+/** Les couleurs : celles du moment de chaque compagnie sont gardées ; `f` les retouche (un nom qui change). */
+function garderLesCouleurs(f){
+  const PA=window.OrlyPastilles;if(!PA||!PA.reecrire)return;
+  PA.reecrire((choix,noms)=>{const g=PA.garder(noms,choix);return f?f(g):g;},'');
+}
+/** Un geste sur la liste : les temps par vol d'abord (s'ils changent), les couleurs, puis les équipes, qui disent la phrase. */
+function gesteSurLaListe(etat,bareme,phrase,couleurs){
+  const rg=Sim.reglages;
+  if(bareme&&rg&&JSON.stringify(bareme)!==JSON.stringify(rg.etat.bareme))rg.changer(()=>{rg.etat.bareme=bareme;},'');
+  garderLesCouleurs(couleurs);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=OrlyCompagniesGestes.aligner(etat,idsDuProgramme());},phrase);
+  return '';
+}
+/** « Ajouter les 3 commandes » : une phrase d'erreur quand le geste est refusé, sinon rien. */
+function ajouterCompagnie(b){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const noms=deLaListe().map(c=>c.nom);let nom;
+  try{nom=G.nomNeuf(b.nom,noms);}catch(e){return e.message;}
+  const cabines=P.CABINES.filter(c=>(b.cabines||[]).includes(c));
+  if(!cabines.length)return 'Cochez au moins une classe.';
+  const modele=b.modele&&noms.includes(b.modele)?b.modele:null;
+  let etat=at.state,bareme=null,aCompleter=[];
+  if(modele){const r=G.copier(etat,Sim.reglages?Sim.reglages.etat.bareme:{},{modele,nom,cabines,classesModele:classesDeLaCompagnie(modele)});etat=r.etat;bareme=r.bareme;aCompleter=r.aCompleter;}
+  etat=G.ajouterALaListe(etat,Sim.dataCourante||SAMPLE,{nom,cabines,fixe:!!b.fixe,aCompleter});
+  const nomsCab=aCompleter.map(c=>(P.NOM_CABINE||{})[c]||c);
+  return gesteSurLaListe(etat,bareme,nom+' ajoutée : '+plCmd(cabines.length)+(modele?', comme '+modele:', à partir de zéro')+'.'
+    +(nomsCab.length?' '+nomsCab.join(', ')+(nomsCab.length>1?' sont':' est')+' à compléter : voir « Contrôles ».':''));
+}
+/** Renommer une compagnie : ses réglages, ses temps par vol et sa couleur la suivent. */
+function renommerCompagnie(ancien,neufBrut){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const noms=deLaListe().map(c=>c.nom);let neuf;
+  try{neuf=G.nomNeuf(neufBrut,noms,ancien);}catch(e){return e.message;}
+  if(neuf===ancien)return '';
+  const r=G.renommer({...at.state,compagnies:deLaListe()},Sim.reglages?Sim.reglages.etat.bareme:{},ancien,neuf);
+  const aDesVols=(Sim.dataCourante||[]).some(v=>OrlyCompagnies.normaliser(v.cie)===ancien);
+  return gesteSurLaListe(r.etat,r.bareme,ancien+' s’appelle maintenant '+neuf+' : ses réglages et sa couleur suivent.'
+    +(aDesVols?' Ses vols portent encore le nom '+ancien+'.':''),
+    g=>{const rang=g[ancien];const {[ancien]:_,...reste}=g;return rang?{...reste,[neuf]:rang}:reste;});
+}
+/** Retirer une compagnie de la liste : ses commandes partent ; ses réglages restent, « Annuler » la rend. */
+function retirerCompagnie(nom){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const n=classesDeLaCompagnie(nom).length;
+  return gesteSurLaListe(G.retirerDeLaListe(at.state,Sim.dataCourante||SAMPLE,nom),null,nom+' retirée de la liste'+(n?', avec '+(n>1?'ses ':'sa ')+plCmd(n):'')+'.');
+}
+/** Ajouter ou ôter une classe d'une compagnie de la liste. */
+function classeCompagnie(nom,cabine,dedans){
+  const at=Sim.ateliers,G=window.OrlyCompagniesGestes,P=MoteurProduction;
+  if(!at||!G||lectureSeule)return 'Paramétrage verrouillé.';
+  const lib=P.libelleClasse(P.idClasse(nom,cabine));
+  Sim.ateliers.changer(()=>{Sim.ateliers.state=G.aligner(G.classe(at.state,Sim.dataCourante||SAMPLE,nom,cabine,dedans),idsDuProgramme());},
+    lib+(dedans?' ajoutée.':' ôtée de la liste.'));
+  return '';
+}
+function initCommandes(){
+  if(!window.OrlyCommandesPage||!OrlyCommandesPage.PageCommandes||!Sim.ateliers||!window.OrlyCompagniesGestes)return;
+  const at=()=>Sim.ateliers,PC=window.OrlyParcours,nomDuChemin=p=>(p?{id:p.id,nom:p.nom}:null);
+  Sim.commandes=new OrlyCommandesPage.PageCommandes({
+    liste:()=>at().compagnies,
+    classes:()=>at().classes,
+    avis:()=>(Sim.problemes?Sim.problemes.liste:[]),
+    cheminDe:id=>{const c=at().classes.find(x=>x.id===id)||id;return nomDuChemin(PC?PC.fluxDe(at().state,c):null);},
+    cheminHabituel:cab=>{const st=at().state,id=(st.parcoursCabine||{})[cab];return nomDuChemin((st.parcours||[]).find(x=>x.id===id));},
+    classesDe:classesDeLaCompagnie,
+    verrou:()=>lectureSeule,
+    ajouter:ajouterCompagnie, renommer:renommerCompagnie, retirer:retirerCompagnie, classe:classeCompagnie,
+    couleur:(nom,rang)=>{if(window.OrlyPastilles)OrlyPastilles.choisirCouleur(nom,rang);}
+  });
 }
 function initUnite(){
   if(!window.OrlyUnite||!Sim.ateliers)return;
@@ -1192,6 +1296,7 @@ function initOnglets(){
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
       if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
+      if(id==='mu-commandes'&&Sim.commandes)Sim.commandes.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -1388,7 +1493,8 @@ function boutonsAnnuler(){
   // « Disposer les zones » (évolution 20 b) règle la disposition, gardée avec les équipes : tant que son panneau est
   // ouvert, dans « En direct », le bouton du haut annule et rétablit ses gestes — et eux seuls (`gesteDeDisposition`).
   if(document.body.classList.contains('direct-dispose'))return ['at-undo','at-redo'];
-  if(document.body.dataset.sous==='mu-services'){
+  // « Commandes » (évolution 26 c) règle aussi les équipes et les temps par vol : les deux histoires, comme « Services et équipes ».
+  if(document.body.dataset.sous==='mu-services'||document.body.dataset.sous==='mu-commandes'){
     suivreGestes();
     return [DEUX_HISTOIRES[ordreGestes.faits.at(-1)||'at'][0],DEUX_HISTOIRES[ordreGestes.defaits.at(-1)||'at'][1]];
   }
@@ -3439,7 +3545,8 @@ function initPastilles(){
       etat:Sim.ateliers&&Sim.ateliers.state,bareme:Sim.reglages&&Sim.reglages.etat&&Sim.reglages.etat.bareme}),
     classes:()=>['BC','PC','YC','CREW','SPML'].map(cabine=>({cabine,nom:P.libelleClasse('_/'+cabine).slice(4)}))
   });
-  OrlyPastilles.poserCarte(document.getElementById('couleurs-compagnies'));
+  // La carte « Couleurs des compagnies » a quitté « Programme des vols » (évolution 26 c) : la couleur d'une compagnie se
+  // choisit dans son panneau, dans « Commandes ».
 }
 /** Les seuils gardés : { seuils (complets), erreur (null, ou pourquoi les défauts) }. */
 function seuilsAlerte(){
@@ -4313,6 +4420,7 @@ etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); eta
 etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
+etape('commandes',initCommandes);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
 etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut

@@ -14,9 +14,11 @@ const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const URL_SITE=pathToFileURL(path.resolve(__dirname,'../index.html')).href;
 const LIRE=['Synthèse','En direct','Planning','Période','Détails','Comparer'];
-// (Évolution 23 a : « Plan » n'est plus au menu — treize entrées, contre quatorze.)
+// (Évolution 23 a : « Plan » n'est plus au menu — treize entrées, contre quatorze. Évolution 26 c : « Commandes », en tête
+// de « Régler », sans titre d'espace et sans tuile à l'accueil — quatorze entrées.)
 const REGLER=[['Vols',['Programme','Retours']],['L’unité',['Services et équipes','Chemins']],['Simulation',['Réglages','Contrôles']]];
-const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
+const REGLER_MENU=[['',['Commandes']],...REGLER.map(([,e])=>['',e])];   // (sans titre d'espace au menu)
+const TREIZE=[...LIRE,...REGLER_MENU.flatMap(e=>e[1]),'Fichiers'];
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:950}}),errors=[];
@@ -61,18 +63,18 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   assert.equal(await courant(),'mu-services');
   assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services et leurs équipes');
 
-  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, douze (« Période » n'y est pas). Deux blocs,
-  //    trois espaces titrés sous « Régler » ; ni partie à ouvrir, ni mention « Plus ».
+  // 2. Le menu : toutes ses entrées, toujours — sans programme daté, treize (« Période » n’y est pas). Deux blocs,
+  //    quatre espaces sans titre sous « Régler » (évolution 26 c) ; ni partie à ouvrir, ni mention « Plus ».
   assert.deepEqual(await entrees(),TREIZE.filter(x=>x!=='Période'));
   assert.deepEqual(await page.locator('#menu .menu-bloc').evaluateAll(bs=>bs.map(b=>[b.querySelector('.menu-bloc-titre').textContent,
     [...b.querySelectorAll('.menu-espace')].map(e=>[(e.querySelector('.menu-espace-titre')||{}).textContent||'',[...e.querySelectorAll('[data-sous-onglet]>span:not(.so-badge)')].map(x=>x.textContent)])])),
-    [['Lire',[['',LIRE.filter(x=>x!=='Période')]]],['Régler',REGLER]]);
+    [['Lire',[['',LIRE.filter(x=>x!=='Période')]]],['Régler',REGLER_MENU]]);
   assert.equal(await page.locator('#menu .so-plus, #menu .so-secondaire, #menu [data-vers-partie], #menu .menu-partie').count(),0,'ni « Plus », ni partie à ouvrir');
   assert.equal(await page.locator('#menu [data-sous-onglet]:not(:visible)').count(),0,'toutes les entrées se voient');
-  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),11,'un pictogramme par entrée');
+  assert.equal(await page.locator('#menu [data-sous-onglet] svg.ico').count(),12,'un pictogramme par entrée');
   // Chaque entrée ouvre sa page, ou la première de son groupe ; le fil d'Ariane dit l'espace, le titre la page ou le groupe.
   const attendues=[['j-chiffres','Lire','Synthèse'],['j-plan','Lire','En direct'],['at-planning','Lire','Planning des équipes'],['groupe:details','Lire','Détails',['at-repas','v-departs','j-stocks','j-details']],
-    ['j-comparer','Lire','Comparer deux essais'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
+    ['j-comparer','Lire','Comparer deux essais'],['mu-commandes','Commandes','Commandes'],['v-programme','Vols','Programme des vols'],['v-planche','Vols','Planche retour'],
     // « Services et équipes » : une seule page depuis l'évolution 22 (b), sans onglets internes.
     ['mu-services','L’unité','Services et équipes'],
     // « Chemins » : une seule page depuis l'évolution 22 (c), sans onglets internes ; « Liens entre services » n'est
@@ -163,8 +165,8 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   await nav.aller(page,'j-comparer');
   assert.equal(await page.locator('#menu [data-sous-onglet][tabindex="0"]').count(),1,'une seule entrée dans l’ordre de tabulation');
   await page.locator('[data-sous-onglet=j-comparer]').focus();await page.keyboard.press('ArrowDown');await attendre();
-  assert.equal(await actif(),'v-programme','après « Comparer », la première entrée de « Régler »');
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'v-programme','le focus suit');
+  assert.equal(await actif(),'mu-commandes','après « Comparer », la première entrée de « Régler » (évolution 26 c : « Commandes »)');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'mu-commandes','le focus suit');
   await page.keyboard.press('ArrowUp');await attendre();
   assert.equal(await actif(),'j-comparer');
   await page.keyboard.press('Home');await attendre();
@@ -317,8 +319,9 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
      // Évolution 22 (c) : « Chemins » a repris trois pages de plus (« Vue d'ensemble », « Chemin d'une commande »,
      // « Étapes de chaque commande ») et garde l'ancien nom de la sienne (« Chemins de production ») : dix-neuf pages.
      // Évolution 22 (d) : « Contrôles » a repris « Contrôles détaillés », et garde l'ancien nom de sa page (« Prêt à
-     // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris.
-     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,18,'les dix-huit pages');
+     // simuler ? ») et celui du panneau « Problèmes » : dix-huit pages, douze noms repris. Évolution 26 (c) : « Commandes »,
+     // dix-neuf pages.
+     assert.equal(new Set(noms.filter(x=>!x[4]).map(x=>x[0])).size,19,'les dix-neuf pages');
      assert.deepEqual([...new Set(noms.filter(x=>x[4]).map(x=>x[4]))].sort(),['at-chemins','at-equipes','at-grille','at-recap','mu-carte','mu-flux:avant','mu-pas:avant','mu-pas:problemes','rg-minutes','rg-recap','u-lecture','u-services'],'et les douze noms repris');
      // (Correction 23 g : « Temps par vol » ouvre l'entrée « Tous les temps par vol », son tableau à droite.)
      const AU_BON_ENDROIT={'mu-services:equipes':'#mu-services details[data-mu-section=equipes][open]','mu-services:temps':'#mu-services details[data-mu-section=temps][open]','mu-services:liste':'#mu-services .se-liste',
@@ -329,7 +332,12 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
       await p.keyboard.press('Control+k');await p.waitForSelector('dialog.palette [role=option]');
       await p.keyboard.type(cherche);await p.waitForTimeout(150);
       const options=p.locator('dialog.palette [role=option]');
-      const i=(await options.evaluateAll(os=>os.map(o=>(o.querySelector('.pal-nom')||o).textContent.trim()))).findIndex(t=>t===nom||t.endsWith('› '+nom));
+      // (Évolution 26 c : deux pages s'appellent « Commandes » — celle de « Régler », et celle du groupe « Détails », qui se
+      // lit « Détails › Commandes » : une page d'un groupe se prend par son chemin.)
+      const textes=await options.evaluateAll(os=>os.map(o=>(o.querySelector('.pal-nom')||o).textContent.trim()));
+      const dansUnGroupe=await p.evaluate(x=>!!(OrlyOnglets.page(x)||{}).groupe,id);
+      let i=textes.findIndex(t=>dansUnGroupe?t.endsWith('› '+nom):t===nom);
+      if(i<0)i=textes.findIndex(t=>t===nom||t.endsWith('› '+nom));
       assert.ok(i>=0,'« Aller à… » trouve « '+cherche+' »');
       await options.nth(i).click();await p.waitForTimeout(150);
       assert.equal(await p.evaluate(()=>document.body.dataset.sous),id,'« '+cherche+' » mène à sa page');
@@ -364,6 +372,6 @@ const TREIZE=[...LIRE,...REGLER.flatMap(e=>e[1]),'Fichiers'];
   }
 
   assert.deepEqual(errors,[],'aucune erreur de page');
-  console.log('menu-browser : ok — treize entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
+  console.log('menu-browser : ok — quatorze entrées en deux blocs, dans l’ordre, à 1 366 × 768 et 1 920 × 1 080, sans défilement ; l’accueil suit ; ouverture sur la Synthèse ; une pastille, sur « Contrôles » ; chaque ancien nom par « Aller à… »');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

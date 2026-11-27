@@ -1299,6 +1299,7 @@
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="mu-flux" hidden></details>
+<section id="mu-commandes" class="mu mu-commandes" data-sous="mu-commandes" aria-label="Commandes"></section>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Contrôles"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les chemins de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
@@ -1551,9 +1552,6 @@
           return this.rendreClasses(this.resultat);
         }
         case 'classe-retablir':  return this.retablirClasse(data.classe);
-        case 'classe-nouvelle':  return this.ouvrirAjout(data.lieu);
-        case 'classe-annuler':   { this.ajout = null; return this.rendre(''); }
-        case 'classe-valider':   return this.validerAjout(data.lieu);
       }
     }
 
@@ -1929,49 +1927,10 @@
       c.classes = dedans ? P.CABINES.filter(x => x === cab || c.classes.includes(x)) : c.classes.filter(x => x !== cab);
     }
 
-    ouvrirAjout(lieu) { this.ajout = { lieu: lieu || 'commandes' }; this.rendre(''); }
-
-    /* Ajouter une compagnie, ou les classes qui lui manquent (retour d'usage :
-     * « je ne peux plus rajouter de compagnie ni de compagnie × classe ») : une
-     * compagnie, et ses classes cochées d'un coup. Le formulaire vit là où
-     * l'on regarde les commandes : les chemins, et la page des commandes. */
+    /* Ajouter une compagnie, ou les classes qui lui manquent : dans « Commandes » (évolution 26 c), la première page de
+     * « Régler ». Là où l'on regardait les commandes (les chemins, la liste des commandes), un lien y mène. */
     formAjout(lieu) {
-      if (!this.ajout || this.ajout.lieu !== lieu)
-        return `<button class="btn btn-sm at-ajout-ouvrir" data-at-action="classe-nouvelle" data-lieu="${esc(lieu)}">+ Ajouter une compagnie ou une classe</button>`;
-      const cies = [...new Set(this.classes.map(c => c.cie))].sort();
-      return `<div class="at-ajout" data-lieu="${esc(lieu)}">
-        <label>Compagnie<input data-ajout="cie" maxlength="40" placeholder="Ex. EZY" list="at-ajout-cies-${esc(lieu)}" autocomplete="off"></label>
-        <datalist id="at-ajout-cies-${esc(lieu)}">${cies.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
-        <fieldset class="at-ajout-cabs"><legend>Classes</legend>${P.CABINES.map(c => `<label class="chk chk-mini"><input type="checkbox" data-ajout-cab="${c}"
-          ${c === 'YC' ? 'checked' : ''}> ${esc((P.NOM_CABINE || {})[c] || c)}</label>`).join('')}</fieldset>
-        <div class="at-ajout-actions">
-          <button class="btn btn-play btn-sm" data-at-action="classe-valider" data-lieu="${esc(lieu)}">Ajouter</button>
-          <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
-        </div>
-        <p class="mini-note at-ajout-note">Une compagnie déjà là : cochez les classes qui lui manquent. Passagers, nombre de vols et
-          heure viennent de l’<b>import des vols</b> ; une commande absente des vols reste ajoutée, sans volume, jusqu’au prochain import.</p>
-      </div>`;
-    }
-
-    validerAjout(lieu) {
-      const f = document.querySelector('.at-ajout[data-lieu="' + (lieu || 'commandes') + '"]'); if (!f) return;
-      const cie = String((f.querySelector('[data-ajout=cie]') || {}).value || '').trim().toUpperCase();
-      const cabs = [...f.querySelectorAll('[data-ajout-cab]:checked')].map(x => x.dataset.ajoutCab);
-      if (!cie) return this.rendre('Nommez la compagnie.');
-      if (!cabs.length) return this.rendre('Cochez au moins une classe.');
-      const ids = cabs.map(c => P.idClasse(cie, c));
-      const deja = ids.filter(id => this.classes.some(c => c.id === id));
-      const nouvelles = cabs.filter(c => !deja.includes(P.idClasse(cie, c)));
-      if (!nouvelles.length) return this.rendre(deja.map(P.libelleClasse).join(', ') + (deja.length > 1 ? ' existent' : ' existe') + ' déjà.');
-      this.ajout = null;
-      const libs = nouvelles.map(c => (P.NOM_CABINE || {})[c] || c);
-      this.changer(() => {
-        this.state.exclues = (this.state.exclues || []).filter(x => !ids.includes(x));
-        this.state.ajoutees = [...(this.state.ajoutees || []), ...nouvelles.map(cabine => ({ cie, cabine }))];
-        for (const c of nouvelles) this.classeDansLaListe(P.idClasse(cie, c), true);
-      }, (nouvelles.length > 1 ? cie + ' : ' + libs.join(', ') + ' ajoutées.' : P.libelleClasse(P.idClasse(cie, nouvelles[0])) + ' ajouté.')
-        + (deja.length ? ' (' + deja.map(P.libelleClasse).join(', ') + ' : déjà là.)' : '')
-        + ' Donnez-leur un chemin ; leurs passagers viendront de l’import des vols.');
+      return `<button type="button" class="lien-discret at-vers-commandes" data-page="mu-commandes" data-lieu="${esc(lieu || '')}">Ajouter une compagnie ou une classe : Commandes →</button>`;
     }
 
     /* Le classeur Excel : c'est lui qu'on modifie hors du site, puis qu'on
@@ -3035,9 +2994,7 @@
       const classes = this.classes, retirees = this.retirees;
       const par = (r && r.parClasse) || {};
 
-      const ouvert = this.ajout && this.ajout.lieu === 'commandes';
-      const ajout = ouvert ? this.formAjout('commandes') : '';
-      const barre = ouvert ? '' : `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
+      const ajout = '', barre = `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
         ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}" title="Remettre cette commande au programme">${pic('recommencer')}${esc(c.id)}</button>`).join(' ')}</p>` : '';

@@ -1,5 +1,5 @@
 /* Évolution 23 (g) — le parcours automatique des pages du menu, aux deux tailles (1 366 × 768 et 1 920 × 1 080), sur
- * l'unité fictive et un programme daté fictif de trois jours (les treize entrées du menu, « Période » comprise).
+ * l'unité fictive et un programme daté fictif de trois jours (les quatorze entrées du menu, « Période » comprise).
  *
  * Chaque page du menu est ouverte — chaque entrée, chaque onglet de « Détails », « Fichiers » — et trois règles y sont
  * vérifiées (docs/DESIGN_SYSTEM.md, « Les trois règles d'une page ») ; le test échoue si l'une manque :
@@ -127,8 +127,8 @@ function mesurer([texteMin,dessinMin,tolerance]){
    await page.waitForTimeout(500);
    // Les pages du menu : chaque entrée (une page, ou chaque onglet de son groupe), puis « Fichiers ».
    const pages=await page.evaluate(()=>OrlyOnglets.entrees().flatMap(o=>o.pages||[o.id]));
-   assert.equal(await page.evaluate(()=>OrlyOnglets.entrees().length),13,T+' : les treize entrées du menu');
-   assert.deepEqual(pages,['j-chiffres','j-plan','at-planning','j-periode','at-repas','v-departs','j-stocks','j-details','j-comparer','v-programme','v-planche','mu-services','mu-flux','rg-simulation','mu-pas','u-sauvegarde'],T+' : les pages du menu');
+   assert.equal(await page.evaluate(()=>OrlyOnglets.entrees().length),14,T+' : les quatorze entrées du menu (évolution 26 c : « Commandes »)');
+   assert.deepEqual(pages,['j-chiffres','j-plan','at-planning','j-periode','at-repas','v-departs','j-stocks','j-details','j-comparer','mu-commandes','v-programme','v-planche','mu-services','mu-flux','rg-simulation','mu-pas','u-sauvegarde'],T+' : les pages du menu');
    const verifier=async(nom)=>{
      const m=await page.evaluate(mesurer,[TEXTE_MIN,DESSIN_MIN,TOLERANCE]);
      const ou=T+', '+nom;

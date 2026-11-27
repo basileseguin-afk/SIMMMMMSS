@@ -30,7 +30,7 @@ const FICHIER_DETTE=path.join(__dirname,'charte-dette.json');
 const BUDGET={mots:150,phrases:1,deplier:0,boutons:12,colonnes:7};
 const EXCEPTIONS={'j-chiffres':{colonnes:8}};
 /** Les pages créées par l'évolution 26 : aucune dette. */
-const NEUVES=[];
+const NEUVES=['mu-commandes'];
 const MESURES=Object.keys(BUDGET);
 
 /* ---- dans la page : les cinq mesures ---------------------------------------------------------------------------- */

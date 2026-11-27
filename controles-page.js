@@ -56,6 +56,9 @@
     if (p.groupe && (p.etapes || []).length) return { page: 'mu-flux', service: p.etapes[0], commande: (p.classes || [])[0] || undefined };
     // Une étape du chemin que personne ne prépare : l'équipe d'une commande à une étape se choisit dans « Chemins ».
     if (p.code === 'parcours-trou' && p.service) return { page: 'mu-flux', service: p.service, commande: (p.classes || [])[0] || undefined };
+    // Une commande « à compléter » (évolution 26 c) : ses équipes se choisissent dans « Chemins », à la première étape de
+    // son chemin.
+    if (p.aCompleter && p.commande) return { page: 'mu-flux', ...(p.service ? { service: p.service } : {}), commande: p.commande };
     // Un service sans temps par vol : la section de ses temps — et le champ de la commande, quand le point la nomme.
     if (SANS_TEMPS.has(p.code) && p.service) return { page: 'mu-services', service: p.service, lieu: 'temps', ...((p.classes || []).length ? { commande: p.classes[0] } : {}) };
     // Un point d'une équipe : sa fiche — sur la case de la commande cochée hors de son chemin, ou sur le champ en cause.

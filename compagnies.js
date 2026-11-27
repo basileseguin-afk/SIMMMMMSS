@@ -8,6 +8,11 @@
  *
  *    compagnies: [{ nom: 'NORD', classes: ['BC', 'YC'] }, …]
  *
+ *  Une compagnie créée « comme une autre » dont le modèle n'a pas une classe
+ *  porte cette classe dans `aCompleter` (partie c). Une compagnie aux
+ *  commandes fixes, sans vol, porte `fixe` : { BC: { quantite, jours, heure } }
+ *  (partie d).
+ *
  *  Sans liste (une unité d'avant), rien ne change : les commandes viennent du
  *  programme de vols, moins les classes retirées, plus les classes ajoutées à
  *  la main (moteur/journee.js, `classesDuProgramme`).
@@ -59,9 +64,33 @@
       if (nom.includes('/')) throw new Error('Le nom de la compagnie « ' + nom + ' » ne peut pas porter de « / ».');
       if (vus.has(nom)) throw new Error('La compagnie « ' + nom + ' » est deux fois dans la liste.');
       vus.add(nom);
-      const classes = Array.isArray(c.classes) ? c.classes.map(String) : [];
-      return { nom, classes: P().CABINES.filter(cab => classes.includes(cab)) };
+      const brutes = Array.isArray(c.classes) ? c.classes.map(String) : [], classes = P().CABINES.filter(cab => brutes.includes(cab));
+      const aCompleter = Array.isArray(c.aCompleter) ? classes.filter(cab => c.aCompleter.includes(cab)) : [];
+      return { nom, classes, ...(aCompleter.length ? { aCompleter } : {}), ...(c.fixe && typeof c.fixe === 'object' && !Array.isArray(c.fixe) ? { fixe: lireFixe(c.fixe, classes, nom) } : {}) };
     });
+  }
+
+  /** Les jours d'une semaine, du lundi (1) au dimanche (7). */
+  const JOURS = [1, 2, 3, 4, 5, 6, 7];
+  /** L'heure d'une commande fixe, tant qu'on ne l'a pas choisie. */
+  const HEURE_FIXE = '12:00';
+  /**
+   * Les commandes fixes d'une compagnie, classe par classe : une quantité par jour, les jours où elle existe (tous, au
+   * départ), l'heure où elle doit être prête. Une classe hors de la compagnie n'en a pas ; une valeur illisible refuse
+   * la liste en disant quoi corriger.
+   */
+  function lireFixe(brut, classes, nom) {
+    const out = {};
+    for (const cab of classes) {
+      const f = brut[cab]; if (!f || typeof f !== 'object') continue;
+      const q = Number(f.quantite ?? 0);
+      if (!Number.isInteger(q) || q < 0 || q > 99999) throw new Error(nom + ' : la quantité fixe d’une classe est un nombre entier, de 0 à 99 999.');
+      const jours = Array.isArray(f.jours) ? JOURS.filter(j => f.jours.map(Number).includes(j)) : JOURS.slice();
+      const heure = String(f.heure ?? HEURE_FIXE).trim();
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(heure)) throw new Error(nom + ' : l’heure d’une commande fixe s’écrit HH:MM (« ' + heure + ' »).');
+      out[cab] = { quantite: q, jours, heure };
+    }
+    return out;
   }
 
   /** Les commandes d'une liste : « NORD/BC »… */
@@ -155,7 +184,7 @@
     return { sauvegarde: { ...sauvegarde, contenu: { ...c, 'ory-ateliers-v1': { ...brut, exclues: eff.exclues, ajoutees: eff.ajoutees } } }, vols: v };
   }
 
-  const api = { MAX_COMPAGNIES, normaliser, lire, idsDeLaListe, idsDuProgramme, compagniesDuProgramme, etatEffectif, listeDesVols, listeApresClasseur, preparerVols, preparerSauvegarde };
+  const api = { MAX_COMPAGNIES, JOURS, HEURE_FIXE, normaliser, lire, lireFixe, idsDeLaListe, idsDuProgramme, compagniesDuProgramme, etatEffectif, listeDesVols, listeApresClasseur, preparerVols, preparerSauvegarde };
   if (enNode) module.exports = api;
   else root.OrlyCompagnies = api;
 })(typeof window !== 'undefined' ? window : globalThis);

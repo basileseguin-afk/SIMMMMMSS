@@ -42,20 +42,21 @@ test('les pictogrammes des onglets existent', () => {
 
 /* Le menu (évolution 22 a) : deux blocs, toutes les entrées visibles ; chaque page dans un seul espace. Évolution 23 (a) :
  * « Plan » en sort — treize entrées, contre quatorze. */
-test('le menu a treize entrées, dans cet ordre : « Lire », puis « Régler » en trois espaces, puis « Fichiers »', () => {
+test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler » (« Commandes » d’abord, puis trois espaces), puis « Fichiers »', () => {
   const noms = () => O.entrees().map(O.libelle);
-  // « Période » ne se montre qu'avec un programme daté : douze entrées sans lui, treize avec.
+  // « Période » ne se montre qu'avec un programme daté : treize entrées sans lui, quatorze avec (évolution 26 c : « Commandes »).
   assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer',
-    'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
+    'Commandes', 'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
   O.conditions.periode = () => true;
   try {
     assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer',
-      'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
-    assert.equal(O.entrees().length, 13);
+      'Commandes', 'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
+    assert.equal(O.entrees().length, 14);
     const m = O.menu();
     assert.deepEqual(m.blocs.map(b => [b.nom, b.espaces.map(e => [e.nom, e.titre, e.entrees.map(O.libelle)])]), [
       ['Lire', [['Lire', false, ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer']]]],
-      ['Régler', [['Vols', true, ['Programme', 'Retours']], ['L’unité', true, ['Services et équipes', 'Chemins']], ['Simulation', true, ['Réglages', 'Contrôles']]]]
+      // (Évolution 26 c : les espaces de « Régler » n'ont plus de titre au menu.)
+      ['Régler', [['Commandes', false, ['Commandes']], ['Vols', false, ['Programme', 'Retours']], ['L’unité', false, ['Services et équipes', 'Chemins']], ['Simulation', false, ['Réglages', 'Contrôles']]]]
     ]);
     assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
   } finally { delete O.conditions.periode; }
@@ -84,7 +85,7 @@ test('chaque page est dans un seul espace, et garde son nom et ses anciens noms'
   assert.equal(new Set(pages).size, pages.length, 'aucune page en double');
   assert.deepEqual([...pages].sort(), Object.values(O.ONGLETS).flat().map(o => o.id).sort(), 'aucune page oubliée');
   assert.deepEqual(O.BLOCS.map(b => b.nom), ['Lire', 'Régler']);
-  assert.deepEqual(O.PARTIES.map(p => [p.nom, p.bloc || (p.bas ? 'bas' : '')]), [['Lire', 'lire'], ['Vols', 'regler'], ['L’unité', 'regler'], ['Simulation', 'regler'], ['Fichiers', 'bas']]);
+  assert.deepEqual(O.PARTIES.map(p => [p.nom, p.bloc || (p.bas ? 'bas' : '')]), [['Lire', 'lire'], ['Commandes', 'regler'], ['Vols', 'regler'], ['L’unité', 'regler'], ['Simulation', 'regler'], ['Fichiers', 'bas']]);
   for (const p of O.PARTIES) for (const x of O.pagesDe(p.id)) {
     assert.ok(x.nom && x.ico && x.vue, x.id);
     assert.ok(x.intro && x.intro.length > 20, x.id + ' : une phrase');
@@ -95,7 +96,7 @@ test('chaque page est dans un seul espace, et garde son nom et ses anciens noms'
     'mu-flux': 'Chemins', 'mu-services': 'Services et équipes', 'at-planning': 'Planning des équipes', 'at-repas': 'Commandes', 'rg-simulation': 'Réglages de la simulation',
     'j-plan': 'En direct', 'j-chiffres': 'Synthèse', 'j-periode': 'Période', 'j-stocks': 'Stocks et retours', 'j-details': 'Heures sup et renforts',
     'j-comparer': 'Comparer deux essais', 'u-plan': 'Plan de l’unité', 'u-liens': 'Liens entre services',
-    'u-sauvegarde': 'Fichiers' });
+    'u-sauvegarde': 'Fichiers', 'mu-commandes': 'Commandes' });
 });
 
 /* Évolution 22 (b) : « Services et équipes » reprend cinq pages. Elles n'existent plus, mais leur nom, leur identifiant
@@ -377,11 +378,11 @@ test('le menu, quand des pages sont fermées : une entrée qui se lit encore pas
   const m = O.menu({}, undefined, id => regler.has(id) && id !== 'mu-pas');
   assert.deepEqual(noms(m), [
     ['Lire', [['Lire', ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer', 'Contrôles']]]],
-    ['Régler', [['Vols', ['Programme', 'Retours']], ['L’unité', ['Services et équipes', 'Chemins']], ['Simulation', ['Réglages']]]]
+    ['Régler', [['Commandes', ['Commandes']], ['Vols', ['Programme', 'Retours']], ['L’unité', ['Services et équipes', 'Chemins']], ['Simulation', ['Réglages']]]]
   ]);
   assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
   // L'entrée est la même : son identifiant, son pictogramme, son nom.
-  assert.deepEqual(m.blocs[0].espaces[0].entrees.at(-1), avant.blocs[1].espaces[2].entrees[1]);
+  assert.deepEqual(m.blocs[0].espaces[0].entrees.at(-1), avant.blocs[1].espaces[3].entrees[1]);
   // Rien n'est modifié en place : le menu d'après est celui d'avant.
   assert.deepEqual(O.menu(), avant);
   // Un bloc fermé en entier, ou ouvert en entier, ne perd ni ne donne rien.

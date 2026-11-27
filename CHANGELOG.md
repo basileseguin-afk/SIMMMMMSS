@@ -31,6 +31,27 @@ Le plus récent est en haut.
   gestes « Retirer », « Rétablir » et « + Ajouter » tiennent la liste à jour ; la
   feuille « Classes » du classeur des équipes la mène à l'import. L'unité fictive
   des tests a sa liste.
+- **(c) La page « Commandes ».** La première entrée de « Régler »
+  (`commandes-page.js`, `commandes-page.css`) : le compte (« 17 commandes ·
+  5 compagnies »), une liste plate des commandes par compagnie — sa pastille, sa
+  classe, son chemin, son état (« complète », ou ce qui lui manque, dans les mots
+  de « Contrôles ») — et un bouton plein, « + Ajouter une compagnie ». Son panneau,
+  à côté de la liste : le nom (la pastille se dessine à la frappe), « Avec des
+  vols » ou « Fixe, sans vol », les classes, « Comme une autre compagnie » ou
+  « Partir de zéro » ; la liste montre à part, en tête, les commandes qui seront
+  créées. « Comme une autre » copie, classe par classe, le chemin, l'équipe de
+  chaque étape, les temps par vol et les réglages par compagnie du modèle
+  (`compagnies-gestes.js`) ; une classe que le modèle n'a pas suit le chemin
+  habituel de sa classe, « à compléter », avec un point de « Contrôles » qui ouvre
+  son chemin et « C'est complet ». Un clic sur une compagnie ouvre son panneau :
+  la renommer (ses réglages et sa couleur suivent), lui ajouter ou lui ôter une
+  classe, choisir sa couleur (les douze teintes), la retirer. Chaque geste
+  s'annule d'un coup (équipes, temps par vol, couleurs). La carte « Couleurs des
+  compagnies » quitte le programme des vols ; les « + Ajouter une compagnie ou une
+  classe » de « Chemins » et de « Détails › Commandes » deviennent un lien vers
+  « Commandes ». Au menu, les espaces de « Régler » n'ont plus de titre (il
+  défilait à 768 px de haut avec une entrée de plus). Sans geste, aucun calcul ne
+  change.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

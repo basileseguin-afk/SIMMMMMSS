@@ -185,8 +185,10 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
   /* ---- 6. les pages de résultats restent intactes ; aucun réglage ne change par l'interface -------------------------- */
   // (a) Ce que la lecture seule retire des pages de résultats : les gestes qui changent un réglage, et eux seuls.
   await nav.aller(page,'at-repas');await attendre(300);
-  assert.ok(await page.locator('#at-classes table tbody tr').count()>=12,'« Détails › Commandes » montre ses commandes');
-  for(const sel of ['#at-classes .at-ajout-ouvrir','#at-etapes','#at-classes .at-ligne-actions .at-menu'])assert.equal(await page.locator(sel).first().isVisible(),false,sel+' ne se montre plus');
+  // (Évolution 26 b : l'unité fictive a sa liste des compagnies — ses 17 commandes, dont celles à l'heure, repliées en une
+  // ligne ; avant, les compagnies des vols de démonstration s'y ajoutaient.)
+  assert.ok(await page.locator('#at-classes table tbody tr').count()>=5,'« Détails › Commandes » montre ses commandes');
+  for(const sel of ['#at-classes .at-vers-commandes','#at-etapes','#at-classes .at-ligne-actions .at-menu'])assert.equal(await page.locator(sel).first().isVisible(),false,sel+' ne se montre plus');
   await nav.aller(page,'v-departs');await attendre(300);
   assert.equal(await page.locator('[data-vh-action=brancher]:visible').count(),0);
   await nav.aller(page,'j-plan');await attendre(400);
@@ -267,7 +269,7 @@ const OUVERTES=['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-st
     document.querySelector('#journee-chiffres .bilan-probleme').append(b);const c=getComputedStyle(b,'::after').content;b.remove();return c;}),'none');
   for(const id of REGLER.filter(i=>i!=='u-plan')){await page.evaluate(i=>Sim.onglets.choisir(i),id);await attendre(150);assert.equal(await sous(),id,id+' s’ouvre de nouveau');}
   await nav.aller(page,'at-repas');await attendre(300);
-  assert.equal(await page.locator('#at-classes .at-ajout-ouvrir').isVisible(),true);
+  assert.equal(await page.locator('#at-classes .at-vers-commandes').isVisible(),true);
   assert.equal(await page.locator('#at-etapes').isVisible(),true);
   assert.equal(await page.locator('#pv-reel').evaluate(e=>e.inert),false);
   // Un réglage change de nouveau, et se défait.
