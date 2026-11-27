@@ -14,14 +14,15 @@ Le plus récent est en haut.
 - **Les règles du travail par prompt** : une section ajoutée à la fin de
   `.claude/rules/simms.md` (un prompt, un thread, une branche, une pull
   request ; le rapport en douze sections). Aucune règle d'avant ne change.
-- **Les tests proportionnés au risque** (retouche 00.1, `docs/decisions.md` et `.claude/rules/simms.md`) : la catégorie de la livraison, lue dans son diff, dit quels tests lancer ; ils remplacent la batterie complète à chaque livraison (décision du 2026-11-03) et avant chaque commit (en-tête de `outils/batterie.cjs`).
+- **Les tests proportionnés au risque** (retouches 00.1 et 00.2) : la catégorie de la livraison, lue dans son diff, dit quels tests lancer. La batterie complète tourne au plus une fois par livraison, sur la tête de la branche, quand la catégorie la demande ; jamais à chaque partie ni avant chaque commit. La règle remplace la décision du 2026-11-03 ; `docs/decisions.md`, `.claude/rules/simms.md`, le skill `verification-loop` et `.claude/rules/ecc/common/testing.md` la portent.
 - **`CLAUDE.md`** (nouveau, retouche 00.1) : il renvoie aux trois textes de référence, sans aucune règle de plus.
 
 Aucun code, aucun test, aucune feuille de style ne change, ni aucun calcul,
 ni aucune donnée ; la version 2 n'est pas touchée.
 
-Fichiers : `docs/CHARTE_INTERFACE.md` et `docs/decisions.md` (nouveaux) ;
-`.claude/rules/simms.md`, `CHANGELOG.md`.
+Fichiers : `docs/CHARTE_INTERFACE.md`, `docs/decisions.md` et `CLAUDE.md` (nouveaux) ;
+`.claude/rules/simms.md`, `.claude/rules/ecc/common/testing.md`,
+`.claude/skills/verification-loop/SKILL.md`, `CHANGELOG.md`.
 
 ## 2026-11-26 — Correction 24 (i) : contrôle et doc
 
