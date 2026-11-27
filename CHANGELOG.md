@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
+
+- **La charte de l'interface** (`docs/CHARTE_INTERFACE.md`, version 1) : un
+  écran nouveau n'est accepté que s'il la respecte.
+- **Le registre des décisions en vigueur** (`docs/decisions.md`) : une ligne
+  par décision encore valable, datée, rangée par thème.
+- **Les règles du travail par prompt** : une section ajoutée à la fin de
+  `.claude/rules/simms.md` (un prompt, un thread, une branche, une pull
+  request ; le rapport en douze sections). Aucune règle d'avant ne change.
+
+Aucun code, aucun test, aucune feuille de style ne change, ni aucun calcul,
+ni aucune donnée ; la version 2 n'est pas touchée.
+
+Fichiers : `docs/CHARTE_INTERFACE.md` et `docs/decisions.md` (nouveaux) ;
+`.claude/rules/simms.md`, `CHANGELOG.md`.
+
 ## 2026-11-26 — Correction 24 (i) : contrôle et doc
 
 - **Les captures de contrôle** (`tests/captures-correction-24-browser.cjs`),
