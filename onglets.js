@@ -1,11 +1,13 @@
-/* Le menu : deux blocs, quatorze entrées, toutes visibles (évolution 22 a ;
- * « une chose se règle à un seul endroit »).
+/* Le menu : l'accueil, puis deux blocs, quatorze entrées, toutes visibles (évolution 22 a ; « une chose se règle à un
+ * seul endroit » ; évolution 26 f : « Régler » dans l'ordre du travail).
  *
+ *   Accueil   le guide, dans l'ordre du travail
  *   Lire      Synthèse, En direct, Planning, Période, Détails, Comparer
- *   Régler    Vols        Programme, Retours
- *             L’unité     Services et équipes, Chemins, Plan
- *             Simulation  Réglages, Contrôles
+ *   Régler    Commandes, Services et équipes, Chemins, Programme des vols, Planche retour, Réglages, Contrôles
  *   en bas    Fichiers
+ *
+ * « Régler » n'a pas de sous-groupes : ses quatre espaces (`PARTIES`) n'ont ni titre ni écart au menu ; ils restent des
+ * espaces pour le reste (la dernière page ouverte de chacun, le fil d'Ariane, le nom d'une partie d'avant).
  *
  * Plus de partie à ouvrir, plus de mention « Plus » : une entrée est une page,
  * ou un groupe de pages (`GROUPES`) qui se suivent en onglets internes, en tête
@@ -34,7 +36,8 @@
   const ONGLETS = {
     vols: [
       { id: 'v-programme', nom: 'Programme des vols', ico: 'avion' },
-      { id: 'v-planche', nom: 'Planche retour', ico: 'camion' },
+      // Évolution 26 (f) : son entrée au menu porte son nom ; « Retours », le nom court d'avant, se cherche toujours.
+      { id: 'v-planche', nom: 'Planche retour', ancien: 'Retours', ico: 'camion' },
       // Évolution 15 (c) : un onglet de « Détails » ; son ancien nom se cherche toujours (« Aller à… »).
       { id: 'v-departs', nom: 'Vols', ancien: 'Vols prêts au départ', ico: 'depart' }
     ],
@@ -82,9 +85,10 @@
     { id: 'regler', nom: 'Régler' }
   ];
 
-  /* Les espaces du menu, dans son ordre : celui du bloc « Lire », les trois du
-   * bloc « Régler », puis « Fichiers », en bas (`bas`, sans tuile à l'accueil :
-   * `cache`). `intro` : une phrase, pas un paragraphe. `court` : le nom de
+  /* Les espaces du menu, dans son ordre : celui du bloc « Lire », les quatre du
+   * bloc « Régler » (Commandes, L'unité, Vols, Simulation : l'ordre du travail,
+   * évolution 26 f), puis « Fichiers », en bas (`bas`, hors du guide de
+   * l'accueil : `cache`). `intro` : une phrase, pas un paragraphe. `court` : le nom de
    * l'entrée au menu, quand il est plus court que celui de la page ; `ico` :
    * son pictogramme au menu, quand deux entrées porteraient le même ;
    * `ancien` : le nom de la partie d'avant, qui se cherche toujours.
@@ -106,21 +110,14 @@
         { id: 'j-details', groupe: 'details', intro: 'Les heures supplémentaires et les renforts, équipe par équipe.' },
         { id: 'j-comparer', court: 'Comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
-    // Évolution 26 (c) : « Commandes », la première entrée de « Régler » — les compagnies d'abord. Un espace d'une page, à son
-    // nom, sans tuile à l'accueil (`cache`), que la partie (f) refait. Les espaces de « Régler » n'ont plus de titre au menu
-    // (`titre: false`) : avec une entrée de plus, les trois titres le faisaient défiler à 768 px de haut.
-    { id: 'commandes', nom: 'Commandes', bloc: 'regler', ico: 'plateau', couleur: 'var(--c-equipes)', titre: false, cache: true,
+    // « Régler », dans l'ordre du travail (évolution 26 f) : les compagnies et leurs commandes, les services et leurs équipes,
+    // les chemins, puis les vols, les réglages et les contrôles. Ses espaces n'ont plus de titre au menu (`titre: false`,
+    // évolution 26 c), ni d'écart entre eux (menu.css) : une seule liste, sans sous-groupes.
+    // « Commandes » (évolution 26 c) : la première entrée de « Régler » — les compagnies d'abord.
+    { id: 'commandes', nom: 'Commandes', bloc: 'regler', ico: 'plateau', couleur: 'var(--c-equipes)', titre: false,
       resume: 'Vos compagnies et leurs classes',
       pages: [
         { id: 'mu-commandes', intro: 'Les commandes de l’unité, par compagnie : ajoutez une compagnie, réglez-la d’un clic.' }
-      ] },
-    { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)', titre: false,
-      resume: 'Ce qui part et ce qui revient',
-      pages: [
-        // `jour` (évolution 23 b) : hors du bloc « Lire », une page où le jour d'un programme daté compte — elle porte
-        // la barre « Journée de vols ».
-        { id: 'v-programme', jour: true, court: 'Programme', intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
-        { id: 'v-planche', jour: true, court: 'Retours', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge.' }
       ] },
     { id: 'organisation', nom: 'L’unité', ancien: 'Équipes Chemins', bloc: 'regler', ico: 'equipe', couleur: 'var(--c-equipes)', titre: false,
       resume: 'Qui prépare quoi, quand, par où',
@@ -135,6 +132,15 @@
         // Évolution 23 (a) : le plan de l'unité ne sert pas au calcul. Sa page n'est plus au menu (`sous`) : elle s'ouvre
         // par « Aller à… » et par le lien « Placer ce service sur le plan » de la fiche d'un service, qui reste marquée.
         { id: 'u-plan', sous: 'mu-services', court: 'Plan', ico: 'grille', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la ; « Terminer » ramène où vous étiez.' }
+      ] },
+    { id: 'donnees', nom: 'Vols', bloc: 'regler', ico: 'avion', couleur: 'var(--c-vols)', titre: false,
+      resume: 'Ce qui part et ce qui revient',
+      pages: [
+        // `jour` (évolution 23 b) : hors du bloc « Lire », une page où le jour d'un programme daté compte — elle porte
+        // la barre « Journée de vols ». Évolution 26 (f) : les entrées portent le nom de leur page (« Programme des vols »,
+        // « Planche retour ») ; les noms courts d'avant se cherchent toujours (« Aller à… »).
+        { id: 'v-programme', jour: true, intro: 'Les vols de la journée : importez les vôtres, le tableau les montre par heure de départ.' },
+        { id: 'v-planche', jour: true, intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge.' }
       ] },
     { id: 'reglages', nom: 'Simulation', bloc: 'regler', ico: 'sablier', couleur: 'var(--c-temps)', titre: false,
       resume: 'Régler, vérifier',
@@ -313,6 +319,9 @@
      *   lieu(id,lieu) — facultatif : appelé une fois la page `id` ouverte, quand on y arrive pour un endroit précis
      *                   (celui d'une page d'avant, `ANCIENNES`, ou celui qu'un lien demande)
      *   apres(id)     — facultatif : appelé une fois la page ouverte et dessinée
+     *   accueil       — facultatif : le nom de l'entrée de l'accueil, en tête du menu, au-dessus de « Lire » (évolution
+     *                   26 f) ; elle porte `data-vers-partie="accueil"`, que la page écoute, et se marque sur l'accueil
+     *                   (`vue()` vaut 'accueil'). Sans lui, le menu d'avant.
      * } */
     constructor(a) {
       this.a = a;
@@ -443,7 +452,11 @@
           b && b.n ? `<b class="so-badge ${esc(b.ton || '')}" title="${esc(b.titre || '')}">${esc(b.n)}</b>` : ''}</button>`;
       };
       const motFerme = this.a.motFerme || 'Paramétrage verrouillé';
-      const html = m.blocs.map(b => plie(b)
+      // L'accueil, en tête du menu (évolution 26 f) : une entrée à part, hors des onglets — elle ouvre le guide.
+      const surAccueil = vue === 'accueil';
+      const accueil = this.a.accueil ? `<div class="menu-bloc menu-accueil" data-bloc="accueil"><button type="button" class="menu-entree${surAccueil ? ' actif' : ''}" data-vers-partie="accueil" data-entree="accueil"${
+        surAccueil ? ' aria-current="page"' : ''}${verrou ? ' disabled' : ''}>${I ? I.ico('maison') : ''}<span>${esc(this.a.accueil)}</span></button></div>` : '';
+      const html = accueil + m.blocs.map(b => plie(b)
         ? `<div class="menu-bloc menu-bloc-ferme" data-bloc="${b.id}" data-ferme><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>`
           + `<p class="menu-ferme">${I ? I.ico('cadenas') : ''}<span>${esc(motFerme)}</span></p></div>`
         : `<div class="menu-bloc" data-bloc="${b.id}"><p class="menu-bloc-titre" aria-hidden="true">${esc(b.nom)}</p>${

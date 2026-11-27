@@ -22,6 +22,8 @@
     chrono: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M18.5 6.5l1.5-1.5"/>',
     journee: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M10.5 13.5v4l3.5-2z"/>',
     unite: '<path d="M3 20.5h18M5 20.5V9l7-5 7 5v11.5"/><path d="M9.5 20.5v-5h5v5"/>',
+    // L'accueil, au-dessus de « Lire » (évolution 26 f) : une maison au toit débordant, distincte de l'unité.
+    maison: '<path d="M2.5 11.5 12 3.5l9.5 8"/><path d="M5.5 9.5v11h13v-11"/><path d="M10 20.5v-6h4v6"/>',
     camion: '<path d="M2.5 6.5h11v10h-11zM13.5 10h4l3 3.2v3.3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
     depart: '<path d="M3 17.5h18M5 14.5l-1.5-4 2-.6 2.5 2.4 4.5-1.5-3-6 2.5-.8 5.5 5.2 3.3-1c1-.3 1.9.2 2.1 1s-.3 1.6-1.2 1.9L6.5 16z"/>',
     boite: '<path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9"/>',

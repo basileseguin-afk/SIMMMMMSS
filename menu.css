@@ -1,9 +1,11 @@
-/* Le menu de la version 1 (évolution 22 a) : deux blocs, quatorze entrées,
- * toutes visibles — « Lire », puis « Régler » en trois espaces (Vols, L'unité,
- * Simulation), et « Fichiers » en bas. Plus de partie à ouvrir, plus de
- * mention « Plus ». Dessiné par onglets.js ; les couleurs sont celles de la
- * barre latérale du design system (ds.css, commun avec la version 2, que
- * cette feuille ne modifie pas). */
+/* Le menu de la version 1 (évolution 22 a ; évolution 26 f) : l'accueil en
+ * tête, puis deux blocs, quatorze entrées, toutes visibles — « Lire », puis
+ * « Régler » dans l'ordre du travail, sans sous-groupes (Commandes, Services et
+ * équipes, Chemins, Programme des vols, Planche retour, Réglages, Contrôles),
+ * et « Fichiers » en bas. Plus de partie à ouvrir, plus de mention « Plus ».
+ * Dessiné par onglets.js ; les couleurs sont celles de la barre latérale du
+ * design system (ds.css, commun avec la version 2, que cette feuille ne
+ * modifie pas). */
 .menu{display:block}
 .menu-liste .so-liste{display:block}
 .menu-bloc+.menu-bloc{margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-nav-trait)}
@@ -11,6 +13,11 @@
   text-transform:uppercase;color:var(--ds-nav-texte-3)}
 .menu-espace{display:flex;flex-direction:column;gap:1px}
 .menu-espace+.menu-espace{margin-top:4px}
+/* « Régler », sans sous-groupes (évolution 26 f) : ses espaces se suivent sans écart, une seule liste. */
+.menu-bloc[data-bloc="regler"] .menu-espace+.menu-espace{margin-top:1px}
+/* L'accueil, en tête du menu, au-dessus de « Lire » (évolution 26 f) : sans trait ni titre — et plus fort que l'écart
+ * entre deux blocs de visuel.css, qui vient après cette feuille. */
+.menu-bloc.menu-accueil+.menu-bloc{margin-top:6px;padding-top:0;border-top:0}
 .menu-espace-titre{margin:0;padding:2px 10px 1px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);line-height:1.5;color:var(--ds-nav-texte-3)}
 .menu-entree{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:28px;padding:3px 10px;border:0;
   border-radius:var(--ds-r-2);background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);line-height:1.3;
@@ -25,8 +32,7 @@
 .menu-entree.actif .ico{color:var(--ds-nav-repere)}
 .menu-entree:focus-visible{outline:2px solid var(--ds-nav-repere);outline-offset:-2px}
 .menu-entree:disabled{opacity:.45;cursor:not-allowed}
-/* La marque mène à l'accueil : quand on y est, elle le dit. */
-.barre .marque[aria-current="page"]{box-shadow:inset 3px 0 0 var(--ds-nav-repere)}
+/* La marque mène toujours à l'accueil ; c'est son entrée, en tête du menu, qui dit qu'on y est (évolution 26 f). */
 
 /* Pendant la modification du plan, la barre se replie sur ses pictogrammes. */
 body.plan-editing .menu-entree>span,body.plan-editing .menu-bloc-titre,body.plan-editing .menu-espace-titre,
@@ -34,9 +40,25 @@ body.plan-editing .menu-entree .so-badge{display:none}
 body.plan-editing .menu-entree{justify-content:center;padding:0}
 body.plan-editing .menu-bloc+.menu-bloc{margin-top:6px;padding-top:6px}
 
-/* L'accueil suit le rangement du menu : deux blocs, une tuile par espace. */
-.acc-blocs{display:grid;gap:20px}
-.acc-bloc{display:grid;gap:8px;min-width:0}
-.acc-bloc-titre{margin:0;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);letter-spacing:.09em;text-transform:uppercase;color:var(--ds-texte-3)}
-.acc-bloc[data-bloc="lire"] .acc-tuiles{grid-template-columns:minmax(0,1fr)}
-@media (min-width:1100px){.acc-bloc[data-bloc="regler"] .acc-tuiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* L'accueil (évolution 26 f) : le guide, dans l'ordre du travail — une liste plate, un seul cadre, une rangée par étape,
+ * séparées par un trait. La rangée entière mène à sa page : son rond (le numéro, ou une coche), son pictogramme, son nom,
+ * ce qu'elle dit, son état en clair. */
+.acc-guide{list-style:none;margin:0;padding:0;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);
+  box-shadow:var(--ds-ombre-carte);overflow:hidden}
+.acc-etape+.acc-etape{border-top:1px solid var(--ds-bordure)}
+.acc-etape-tete{display:grid;grid-template-columns:22px 18px minmax(9em,13em) minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;
+  min-height:44px;margin:0;padding:8px 16px;border:0;border-radius:0;background:none;font:inherit;font-size:var(--ds-t-14);
+  color:var(--ds-texte-1);text-align:left;cursor:pointer}
+.acc-etape-tete:hover{background:var(--ds-survol)}
+.acc-etape-tete:focus-visible{outline:2px solid var(--ds-accent);outline-offset:-2px}
+.acc-etape .etape-etat{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;font-size:var(--ds-t-12);
+  font-weight:var(--ds-g-fort)}
+.acc-etape-ico{display:inline-flex;color:var(--ds-texte-3)}
+.acc-etape-ico .ico{width:18px;height:18px}
+.acc-etape-nom{font-weight:var(--ds-g-fort)}
+.acc-etape-dit{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ds-texte-2)}
+.acc-guide .acc-ferme{border:0;border-radius:0;padding:12px 16px}
+@media (max-width:700px){
+  .acc-etape-tete{grid-template-columns:22px 18px minmax(0,1fr) auto}
+  .acc-etape-dit{grid-column:3/5;grid-row:2}
+}

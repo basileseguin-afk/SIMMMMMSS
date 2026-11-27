@@ -31,7 +31,8 @@ test('le choix se garde comme le thème : une préférence d’affichage, hors d
 test('la lecture seule ferme les pages du bloc « Régler », sauf « Contrôles », qui se lit', () => {
   const pages = O.PARTIES.flatMap(p => p.pages.map(x => x.id));
   assert.deepEqual(pages.filter(id => L.fermee(O, id)),
-    ['mu-commandes', 'v-programme', 'v-planche', 'mu-services', 'mu-flux', 'u-liens', 'u-plan', 'rg-simulation']);
+    // (Évolution 26 f : dans l'ordre du travail — les commandes, l'unité, puis les vols.)
+    ['mu-commandes', 'mu-services', 'mu-flux', 'u-liens', 'u-plan', 'v-programme', 'v-planche', 'rg-simulation']);
   // Les pages de résultats, « Fichiers », et « Contrôles » (évolution 23 d : celui qui lit les résultats doit savoir
   // s'il reste des points à corriger) restent ouvertes.
   assert.deepEqual(pages.filter(id => !L.fermee(O, id)),
@@ -173,28 +174,28 @@ test('le menu : une page fermée retenue par ce navigateur ne rouvre pas par sa 
 });
 
 /* ---- l'accueil suit le menu ------------------------------------------------------------------------------------------ */
-test('l’accueil en lecture seule : « Régler » replié ; « Contrôles » se lit, avec les pages de « Lire » (évolution 23 d)', () => {
+test('l’accueil en lecture seule : les étapes de « Régler » repliées en une ligne ; « Contrôles » et le résultat se lisent (évolutions 23 d, 26 f)', () => {
   const D = require('../demarrage.js');
-  const etat = { vols: { total: 12, departs: 6, source: 'import' }, plan: { services: 11, approx: 0 }, flux: { liaisons: 4, alertes: 0 },
-    ateliers: { total: 5, fabriquent: 5, absentes: 0 }, bareme: { calibre: true }, journee: { calculee: true, suivies: 6, aHeure: 6, fin: 900 } };
+  const etat = { compagnies: { liste: true, n: 3, commandes: 7 }, ateliers: { total: 5, fabriquent: 5, absentes: 0 }, bareme: { calibre: true },
+    chemins: { flux: 2, variantes: 0, sansChemin: 0 }, controles: { bloquants: 0, corriger: 1, pret: false },
+    vols: { total: 12, departs: 6, source: 'importe' }, journee: { calculee: true, suivies: 6, aHeure: 6, fin: '15:00' } };
   const dessiner = lecture => { const hote = { innerHTML: '' };
     globalThis.OrlyOnglets = O;
     try { new D.Accueil({ accueil: () => hote, etat: () => etat, ...(lecture === null ? {} : { ferme: id => lecture && L.fermee(O, id), motFerme: L.MOT }) }); }
     finally { delete globalThis.OrlyOnglets; }
     return hote.innerHTML; };
-  const pages = (h, debut, fin) => [...h.slice(h.indexOf(debut), fin ? h.indexOf(fin) : undefined).matchAll(/class="acc-page" data-page="([^"]+)"/g)].map(m => m[1]);
-  // Arrêtée, ou sans lecture seule du tout (la version d'avant) : la même page, « Contrôles » dans la tuile « Simulation ».
+  const pages = h => [...h.matchAll(/class="acc-etape-tete" data-page="([^"]+)"/g)].map(m => m[1]);
+  // Arrêtée, ou sans lecture seule du tout (la version d'avant) : la même page, les six étapes.
   const avant = dessiner(null);
   assert.equal(dessiner(false), avant, 'arrêtée : l’accueil d’avant, au caractère près');
-  assert.deepEqual(pages(avant, 'data-bloc="lire"', 'data-bloc="regler"'), ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'j-comparer']);
-  assert.deepEqual(pages(avant, 'data-bloc="regler"'), ['v-programme', 'v-planche', 'mu-services', 'mu-flux', 'rg-simulation', 'mu-pas']);
-  // En marche : le bloc « Régler » replié, sans tuile ; « Contrôles » à la suite des pages de « Lire ».
+  assert.deepEqual(pages(avant), ['mu-commandes', 'mu-services', 'mu-flux', 'mu-pas', 'v-programme', 'j-chiffres']);
+  assert.equal((avant.match(/data-ferme/g) || []).length, 0);
+  // En marche : les étapes dont la page ne s'ouvre pas, repliées en une ligne à la place de la première ; « Contrôles »,
+  // qui se lit, et le résultat restent.
   const seule = dessiner(true);
-  assert.match(seule, /<section class="acc-bloc acc-bloc-ferme" data-bloc="regler" data-ferme[^>]*>[^]*?<p class="acc-ferme">[^]*?<span>Paramétrage verrouillé<\/span><\/p>/);
-  assert.deepEqual(pages(seule, 'data-bloc="lire"', 'data-bloc="regler"'), ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'j-comparer', 'mu-pas']);
-  assert.deepEqual(pages(seule, 'data-bloc="regler"'), []);
-  assert.match(seule, /class="acc-page" data-page="mu-pas">Contrôles<\/button>/);
-  assert.equal((seule.match(/data-vers-partie=/g) || []).length, 1, 'une seule tuile : « Lire »');
+  assert.deepEqual(pages(seule), ['mu-pas', 'j-chiffres']);
+  assert.match(seule, /<ol class="acc-guide"[^>]*><li class="acc-etape acc-ferme" data-ferme>[^]*?<span>Paramétrage verrouillé<\/span><\/li><li class="acc-etape verifier" data-etape="controles">/);
+  assert.equal((seule.match(/data-ferme/g) || []).length, 1, 'une seule ligne repliée');
 });
 
 /* ---- « Fichiers » : « Restaurer » et « Importer » grisés, avec la raison ; les exports marchent ------------------------ */

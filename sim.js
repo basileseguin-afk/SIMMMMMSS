@@ -795,7 +795,15 @@ function etatDemarrage(){
   try{ calibre=Sim.reglages
     ? JSON.stringify(Sim.reglages.etat.bareme)!==JSON.stringify(MoteurProduction.BAREME_DEMO)
     : false; }catch(e){ calibre=false; }
+  // Évolution 26 (f) : les compagnies et leurs commandes (la liste, ou, sans liste, celles des vols), et ce que
+  // « Contrôles » compte — l'accueil guide dans l'ordre du travail.
+  const at=Sim.ateliers,liste=at&&at.compagnies,pb=Sim.problemes?Sim.problemes.liste:[];
+  const duJour=at?at.classes.filter(c=>!String(c.id).includes('/@')):[];
   return {
+    compagnies:liste?{liste:true,n:liste.length,commandes:liste.reduce((k,c)=>k+(c.classes||[]).length,0)}
+      :{liste:false,n:new Set(duJour.map(c=>c.cie)).size,commandes:duJour.length},
+    controles:{bloquants:pb.filter(p=>p.niveau==='bloquant').length,corriger:pb.filter(p=>p.niveau==='corriger').length,
+      pret:pb.some(p=>p.cle==='pret')},
     vols:{ total:flights.length, departs:flights.filter(f=>f.sens==='DEP').length,
            source:dataSource==='Jeu de démonstration'?'demo':'importe' },
     plan:{ services:servicesDuPlan().length+annexes().length,
@@ -831,7 +839,9 @@ function majProblemes(){
     // « Commandes », ouverte, dit l'état de chaque commande dans les mots de « Contrôles » (évolution 26 c).
     if(Sim.commandes&&document.body.dataset.sous==='mu-commandes')Sim.commandes.rendre();
     // « Fichiers », ouverte, suit aussi (évolution 22 e) : une planche importée d'ici s'exporte aussitôt.
-    if(document.body.dataset.sous==='u-sauvegarde')majFichiers();},0);
+    if(document.body.dataset.sous==='u-sauvegarde')majFichiers();
+    // L'accueil, ouvert, compte les points de « Contrôles » (évolution 26 f) : il suit le registre.
+    if(Sim.demarrage&&activeView==='accueil')Sim.demarrage.rendre();},0);
 }
 function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
@@ -914,14 +924,26 @@ function sourcesProblemes(){
   // Fournisseurs » ; et les clients réglés en partie (une sauvegarde d'avant) se lisent, en information.
   const U=Sim.unite&&window.OrlyFournisseurs&&Sim.unite.estFournisseur?Sim.unite:null;
   const fourni=a=>(U&&a.code==='parcours-trou'&&a.service&&U.estFournisseur(a.service)?{...a,fournisseur:true}:a);
-  return {points:pointsDesCompagnies(),anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
+  return avecSitePret({points:pointsDesCompagnies(),anomalies:duCalcul.map(situer).map(a=>({...a,service:serviceDe(a)})).map(fourni),fantomes:servicesFantomes(),
     clientsEnPartie:U&&U.tableauFournisseurs?U.tableauFournisseurs().enPartie:0,
     liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>!a.fantomes):[],
     etapes,enClair:MoteurProduction.enClair,
     // Correction 23 (c) : de quoi regrouper les étapes sans équipe d'une même commande, et nommer ce qui est en cause.
     cheminDe:c=>{const PC=window.OrlyParcours,st=Sim.ateliers.state,p=PC?PC.fluxDe(st,Sim.ateliers.classes.find(x=>x.id===c)||c):null;
       return p?{id:p.id,nom:p.nom,defaut:!PC.cheminDe(st,c)}:null;},
-    libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService};
+    libelle:c=>MoteurProduction.libelleClasse(c),nomService:nomDeService});
+}
+/* « Il ne manque que les vols » (évolution 26 f). Avant tout import (les vols d'exemple), une unité qui a sa liste de
+ * compagnies et dont rien n'est bloquant ni à corriger est prête : chaque commande a son chemin, ses équipes et ses
+ * temps. Un point le dit, en tête des informations, avec son bouton vers « Programme des vols » ; il prend la place de
+ * l'étape des vols d'exemple, qui disait la même chose. Sinon, les sources telles quelles. */
+function avecSitePret(src){
+  const at=Sim.ateliers;
+  if(dataSource!=='Jeu de démonstration'||!at||!at.compagnies||!at.classes.length)return src;
+  if(OrlyAvis.lister(src).some(OrlyAvis.estProbleme))return src;
+  return {...src,etapes:src.etapes.filter(e=>e.id!=='vols'),
+    points:[{niveau:'information',cle:'pret',titre:'Le site est prêt : il ne manque que les vols',
+      detail:'Chaque commande a son chemin, ses équipes et ses temps.',page:'v-programme'},...src.points]};
 }
 /* Les points de la liste des compagnies (évolution 26), en tête de « Contrôles ». Une unité sans liste : ses compagnies
  * viennent encore des vols — une information, et le geste « En faire ma liste ». */
@@ -1417,6 +1439,8 @@ function initOnglets(){
     verrou:()=>editMode,
     // En lecture seule (évolution 22 f), les pages du bloc « Régler » ne s'ouvrent pas : le bloc se replie, la page le dit.
     ferme:pageFermee,refus:direVerrou,motFerme:window.OrlyLectureSeule?OrlyLectureSeule.MOT:undefined,
+    // L'accueil, en tête du menu, au-dessus de « Lire » (évolution 26 f).
+    accueil:'Accueil',
     // Une fois la page ouverte : son titre (le menu, lui, marque déjà son entrée).
     // Arrivé par le nom ou le lien d'une page d'avant (évolution 22 b) : la page qui l'a reprise s'ouvre au bon endroit.
     lieu:(id,lieu)=>{
@@ -1425,6 +1449,8 @@ function initOnglets(){
       if(id==='j-plan'&&lieu==='plat'){choisirVueDirect('plat');Sim.pageAvantPlan='j-plan:plat';return;}
       if(id==='at-repas'&&lieu==='etapes'&&Sim.ateliers&&Sim.ateliers.ouvrirEtapes)return Sim.ateliers.ouvrirEtapes();
       if(id==='u-sauvegarde'&&lieu==='classeurs'){const t=document.getElementById('fichiers-classeurs');if(t)t.scrollIntoView({block:'start'});return;}
+      // « Ajouter une première compagnie » (l'accueil d'une unité vide, évolution 26 f) : le panneau d'ajout, ouvert.
+      if(id==='mu-commandes'&&lieu==='ajout'&&Sim.commandes&&!lectureSeule){Sim.commandes.ouvrirAjout();return;}
       if(!Sim.unite)return;
       if(id==='mu-services'&&Sim.unite.allerA)Sim.unite.allerA(lieu);
       if(id==='mu-flux'&&Sim.unite.allerChemins)Sim.unite.allerChemins(lieu);},
@@ -1596,11 +1622,10 @@ function afficherTitre(){
     if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
   }
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg&&!pg.sansIntro?pg.intro:'';
-  // « Fichiers », en bas du menu : son bouton dit qu'on y est. De même la marque, pour l'accueil.
+  // « Fichiers », en bas du menu : son bouton dit qu'on y est. L'accueil, c'est son entrée en tête du menu qui le dit
+  // (évolution 26 f, onglets.js) : la marque y mène toujours, sans le dire une seconde fois.
   const sv=document.getElementById('btn-sauvegarde');
   if(sv){const ici=!!partie&&partie.id==='fichier';sv.classList.toggle('actif',ici);if(ici)sv.setAttribute('aria-current','page');else sv.removeAttribute('aria-current');}
-  const marque=document.getElementById('btn-accueil');
-  if(marque){if(accueil)marque.setAttribute('aria-current','page');else marque.removeAttribute('aria-current');}
   majAnnuler();
 }
 
@@ -1733,7 +1758,7 @@ function elementsPalette(){
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
   geste('Exporter les résultats',()=>allerPage('u-sauvegarde','classeurs'),{ico:'telecharger',indice:'Fichiers',mots:'json fichier excel période'});
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
-  out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
+  out.push({groupe:'Pages',nom:'Accueil',ico:'maison',mots:'guide commencer démarrer',faire:()=>{allerPartie('accueil');ici();}});
   // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
   // Le nom court de son entrée au menu (« Retours ») et le nom de sa partie d'avant (« Résultats ») se cherchent aussi (évolution 22 a).
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,

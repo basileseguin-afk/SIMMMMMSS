@@ -84,6 +84,25 @@ Le plus récent est en haut.
   la Synthèse compte ces points. Renommer une compagnie qui a des vols écrit la
   règle qui les mène au nouveau nom, et la montre. Les outils lisent les règles
   dans la sauvegarde. Sans liste, l'import d'avant, champ par champ.
+- **(f) Le menu et l'accueil dans l'ordre du travail.** « Régler », sans
+  sous-groupes : Commandes, Services et équipes, Chemins, Programme des vols,
+  Planche retour (l'ancien « Retours », que « Aller à… » trouve encore),
+  Réglages, Contrôles. L'accueil devient une entrée du menu (« Accueil », sa
+  maison), au-dessus de « Lire » ; c'est elle qui dit qu'on y est. L'accueil
+  (`demarrage.js`) guide en six rangées, une liste plate : les compagnies et
+  leurs commandes, les services et leurs équipes, les chemins, les contrôles, le
+  programme des vols, puis lire le résultat — chacune avec son état en clair, et
+  qui mène à sa page. Sur une unité vide, « À faire ensuite » propose « Ajouter
+  une première compagnie », qui ouvre le panneau d'ajout de « Commandes ».
+  L'histoire du haut se récrit dans le même ordre (vos compagnies commandent,
+  des équipes les préparent, les vols donnent l'heure, le site calcule la
+  journée). Avant tout import, quand chaque commande de la liste a son chemin,
+  ses équipes et ses temps, « Contrôles » le dit en tête : « Le site est prêt :
+  il ne manque que les vols », avec « Voir dans Programme des vols → » (`sim.js`,
+  sans toucher `avis.js`). Les tuiles de l'accueil d'avant et son annexe (le plan,
+  les liens) s'en vont : les alertes des liens sont dans « Contrôles ». Sans
+  aucune commande, « Lire le résultat » reste à faire (« rien à calculer
+  encore »). Aucun calcul ne change.
 
 ## 2026-11-27 — Prompt 00 : mise en place du travail par prompt
 

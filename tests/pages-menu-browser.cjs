@@ -128,7 +128,7 @@ function mesurer([texteMin,dessinMin,tolerance]){
    // Les pages du menu : chaque entrée (une page, ou chaque onglet de son groupe), puis « Fichiers ».
    const pages=await page.evaluate(()=>OrlyOnglets.entrees().flatMap(o=>o.pages||[o.id]));
    assert.equal(await page.evaluate(()=>OrlyOnglets.entrees().length),14,T+' : les quatorze entrées du menu (évolution 26 c : « Commandes »)');
-   assert.deepEqual(pages,['j-chiffres','j-plan','at-planning','j-periode','at-repas','v-departs','j-stocks','j-details','j-comparer','mu-commandes','v-programme','v-planche','mu-services','mu-flux','rg-simulation','mu-pas','u-sauvegarde'],T+' : les pages du menu');
+   assert.deepEqual(pages,['j-chiffres','j-plan','at-planning','j-periode','at-repas','v-departs','j-stocks','j-details','j-comparer','mu-commandes','mu-services','mu-flux','v-programme','v-planche','rg-simulation','mu-pas','u-sauvegarde'],T+' : les pages du menu (évolution 26 f : « Régler » dans l’ordre du travail)');
    const verifier=async(nom)=>{
      const m=await page.evaluate(mesurer,[TEXTE_MIN,DESSIN_MIN,TOLERANCE]);
      const ou=T+', '+nom;

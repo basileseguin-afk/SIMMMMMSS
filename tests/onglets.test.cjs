@@ -41,22 +41,25 @@ test('les pictogrammes des onglets existent', () => {
 });
 
 /* Le menu (évolution 22 a) : deux blocs, toutes les entrées visibles ; chaque page dans un seul espace. Évolution 23 (a) :
- * « Plan » en sort — treize entrées, contre quatorze. */
-test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler » (« Commandes » d’abord, puis trois espaces), puis « Fichiers »', () => {
+ * « Plan » en sort — treize entrées, contre quatorze. Évolution 26 (f) : « Régler » dans l'ordre du travail, sans
+ * sous-groupes, chaque entrée au nom de sa page. */
+test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler » dans l’ordre du travail, puis « Fichiers »', () => {
   const noms = () => O.entrees().map(O.libelle);
   // « Période » ne se montre qu'avec un programme daté : treize entrées sans lui, quatorze avec (évolution 26 c : « Commandes »).
+  // Évolution 26 (f) : « Régler » — Commandes, Services et équipes, Chemins, Programme des vols, Planche retour, Réglages,
+  // Contrôles (docs/CHARTE_INTERFACE.md, règle 2).
   assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer',
-    'Commandes', 'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
+    'Commandes', 'Services et équipes', 'Chemins', 'Programme des vols', 'Planche retour', 'Réglages', 'Contrôles', 'Fichiers']);
   O.conditions.periode = () => true;
   try {
     assert.deepEqual(noms(), ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer',
-      'Commandes', 'Programme', 'Retours', 'Services et équipes', 'Chemins', 'Réglages', 'Contrôles', 'Fichiers']);
+      'Commandes', 'Services et équipes', 'Chemins', 'Programme des vols', 'Planche retour', 'Réglages', 'Contrôles', 'Fichiers']);
     assert.equal(O.entrees().length, 14);
     const m = O.menu();
     assert.deepEqual(m.blocs.map(b => [b.nom, b.espaces.map(e => [e.nom, e.titre, e.entrees.map(O.libelle)])]), [
       ['Lire', [['Lire', false, ['Synthèse', 'En direct', 'Planning', 'Période', 'Détails', 'Comparer']]]],
-      // (Évolution 26 c : les espaces de « Régler » n'ont plus de titre au menu.)
-      ['Régler', [['Commandes', false, ['Commandes']], ['Vols', false, ['Programme', 'Retours']], ['L’unité', false, ['Services et équipes', 'Chemins']], ['Simulation', false, ['Réglages', 'Contrôles']]]]
+      // (Évolution 26 c : les espaces de « Régler » n'ont plus de titre au menu ; 26 f : dans l'ordre du travail.)
+      ['Régler', [['Commandes', false, ['Commandes']], ['L’unité', false, ['Services et équipes', 'Chemins']], ['Vols', false, ['Programme des vols', 'Planche retour']], ['Simulation', false, ['Réglages', 'Contrôles']]]]
     ]);
     assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
   } finally { delete O.conditions.periode; }
@@ -75,7 +78,7 @@ test('le menu a quatorze entrées, dans cet ordre : « Lire », puis « Régler 
   assert.equal(O.entreeDe('at-grille').nom, 'Chemins');
   assert.equal(O.entreeDe('u-liens').nom, 'Chemins');
   assert.equal(O.entreeDe('u-lecture').nom, 'Contrôles');
-  assert.equal(O.libelle(O.entreeDe('v-planche')), 'Retours');
+  assert.equal(O.libelle(O.entreeDe('v-planche')), 'Planche retour', 'l’entrée porte le nom de sa page (évolution 26 f)');
   assert.equal(O.libelle(O.entreeDe('u-sauvegarde')), 'Fichiers');
   assert.equal(O.entreeDe('rien'), null);
 });
@@ -85,7 +88,7 @@ test('chaque page est dans un seul espace, et garde son nom et ses anciens noms'
   assert.equal(new Set(pages).size, pages.length, 'aucune page en double');
   assert.deepEqual([...pages].sort(), Object.values(O.ONGLETS).flat().map(o => o.id).sort(), 'aucune page oubliée');
   assert.deepEqual(O.BLOCS.map(b => b.nom), ['Lire', 'Régler']);
-  assert.deepEqual(O.PARTIES.map(p => [p.nom, p.bloc || (p.bas ? 'bas' : '')]), [['Lire', 'lire'], ['Commandes', 'regler'], ['Vols', 'regler'], ['L’unité', 'regler'], ['Simulation', 'regler'], ['Fichiers', 'bas']]);
+  assert.deepEqual(O.PARTIES.map(p => [p.nom, p.bloc || (p.bas ? 'bas' : '')]), [['Lire', 'lire'], ['Commandes', 'regler'], ['L’unité', 'regler'], ['Vols', 'regler'], ['Simulation', 'regler'], ['Fichiers', 'bas']]);
   for (const p of O.PARTIES) for (const x of O.pagesDe(p.id)) {
     assert.ok(x.nom && x.ico && x.vue, x.id);
     assert.ok(x.intro && x.intro.length > 20, x.id + ' : une phrase');
@@ -378,7 +381,7 @@ test('le menu, quand des pages sont fermées : une entrée qui se lit encore pas
   const m = O.menu({}, undefined, id => regler.has(id) && id !== 'mu-pas');
   assert.deepEqual(noms(m), [
     ['Lire', [['Lire', ['Synthèse', 'En direct', 'Planning', 'Détails', 'Comparer', 'Contrôles']]]],
-    ['Régler', [['Commandes', ['Commandes']], ['Vols', ['Programme', 'Retours']], ['L’unité', ['Services et équipes', 'Chemins']], ['Simulation', ['Réglages']]]]
+    ['Régler', [['Commandes', ['Commandes']], ['L’unité', ['Services et équipes', 'Chemins']], ['Vols', ['Programme des vols', 'Planche retour']], ['Simulation', ['Réglages']]]]
   ]);
   assert.deepEqual(m.bas.map(O.libelle), ['Fichiers']);
   // L'entrée est la même : son identifiant, son pictogramme, son nom.
@@ -389,6 +392,26 @@ test('le menu, quand des pages sont fermées : une entrée qui se lit encore pas
   assert.deepEqual(noms(O.menu({}, undefined, id => regler.has(id))), noms(avant));
   // Le premier bloc ne donne jamais ses entrées : une page fermée y reste (c'est à la page de dire qu'elle l'est).
   assert.deepEqual(noms(O.menu({}, undefined, id => id === 'j-plan')), noms(avant));
+});
+
+/* Évolution 26 (f) : l'accueil, une entrée du menu, au-dessus de « Lire ». Elle se dessine quand la page la demande
+ * (`accueil`, son nom) ; elle n'est pas une page : elle porte `data-vers-partie="accueil"`, que la page écoute. */
+test('l’accueil est une entrée du menu, au-dessus de « Lire », marquée sur l’accueil ; sans elle, le menu d’avant', () => {
+  const dessin = (o = {}) => { let vue = o.vue || 'plan'; const hote = { innerHTML: '', firstChild: null, querySelector: () => null, addEventListener() {} };
+    const so = new O.SousOnglets({ hote: () => hote, vue: () => vue, ...o.a });
+    so.choisir('j-chiffres'); vue = o.vue || 'plan'; so.rendre(); return hote.innerHTML; };
+  const avec = dessin({ a: { accueil: 'Accueil' } }), sans = dessin();
+  // En tête, avant le bloc « Lire » : un bouton, son nom, sans onglet ni page.
+  assert.ok(avec.indexOf('data-entree="accueil"') >= 0 && avec.indexOf('data-entree="accueil"') < avec.indexOf('data-bloc="lire"'));
+  assert.match(avec, /^<div class="menu-bloc menu-accueil" data-bloc="accueil"><button type="button" class="menu-entree" data-vers-partie="accueil" data-entree="accueil"><span>Accueil<\/span><\/button><\/div>/);
+  assert.equal((avec.match(/data-sous-onglet=/g) || []).length, (sans.match(/data-sous-onglet=/g) || []).length, 'les mêmes onglets');
+  // Sans elle (la page ne la demande pas) : le menu d'avant, à l'octet près.
+  assert.equal(avec.slice(avec.indexOf('</div>') + '</div>'.length), sans);
+  // Sur l'accueil : marquée, et dite (`aria-current`) ; aucune page n'est ouverte au menu.
+  const ici = dessin({ vue: 'accueil', a: { accueil: 'Accueil' } });
+  assert.match(ici, /class="menu-entree actif" data-vers-partie="accueil" data-entree="accueil" aria-current="page">/);
+  // Pendant la modification du plan, elle attend, comme les autres.
+  assert.match(dessin({ a: { accueil: 'Accueil', verrou: () => true } }), /data-entree="accueil" disabled>/);
 });
 
 test('chaque page a une phrase d’introduction au plus (évolution 23 g)', () => {

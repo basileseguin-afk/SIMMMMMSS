@@ -82,17 +82,19 @@ const MESURER=([racine,vue])=>{
     await nav.aller(page,'j-chiffres');await poserTheme();
     await page.waitForSelector('#journee-chiffres .sy-service');
     const menu=await page.evaluate(()=>{const O=OrlyOnglets,z=document.querySelector('#barre .barre-defile');
-      return {blocs:[...document.querySelectorAll('#menu .menu-bloc')].map(b=>[b.querySelector('.menu-bloc-titre').textContent,b.querySelectorAll('[data-sous-onglet]').length]),
+      return {blocs:[...document.querySelectorAll('#menu .menu-bloc:not(.menu-accueil)')].map(b=>[b.querySelector('.menu-bloc-titre').textContent,b.querySelectorAll('[data-sous-onglet]').length]),
         entrees:[...document.querySelectorAll('#menu [data-sous-onglet]')].map(b=>b.textContent.replace(/\d+$/,'').trim()),
         pied:[...document.querySelectorAll('#barre .barre-pied > button')].map(b=>b.textContent.trim()),defile:z.scrollHeight-z.clientHeight,
         pages:O.PARTIES.flatMap(p=>p.pages).length,montrees:O.PARTIES.flatMap(p=>p.pages).filter(q=>O.montree(q.id)).length,auMenu:O.entrees().length,anciennes:Object.keys(O.ANCIENNES).length};});
-    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze.)
-    assert.deepEqual(menu.blocs,[['Lire',5],['Régler',6]],V+'deux blocs : cinq entrées pour lire, six pour régler');
-    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Programme','Retours','Services et équipes','Chemins','Réglages','Contrôles'],V+'les onze entrées, dans l’ordre');
+    // (Évolution 23 a : « Plan » n'est plus au menu — onze entrées dans les deux blocs, contre douze. Évolution 26 c :
+    // « Commandes » — douze ; 26 f : « Régler » dans l'ordre du travail, l'accueil en tête, hors des deux blocs.)
+    assert.deepEqual(menu.blocs,[['Lire',5],['Régler',7]],V+'deux blocs : cinq entrées pour lire, sept pour régler');
+    assert.deepEqual(menu.entrees,['Synthèse','En direct','Planning','Détails','Comparer','Commandes','Services et équipes','Chemins','Programme des vols','Planche retour','Réglages','Contrôles'],V+'les douze entrées, dans l’ordre');
     assert.deepEqual(menu.pied,['Fichiers','Lecture seule','Thème sombre'],V+'en bas : Fichiers, Lecture seule, le thème');
     assert.ok(menu.defile<=1,V+'le menu ne défile pas ('+menu.defile+' px)');
-    // Douze entrées sans programme daté (onze et « Fichiers ») ; « Période » fait la treizième avec un programme daté.
-    assert.deepEqual([menu.auMenu,menu.pages,menu.montrees],[12,18,17],V+'douze entrées au menu, dix-huit pages (dix-sept sans « Période »)');
+    // Treize entrées sans programme daté (douze et « Fichiers ») ; « Période » fait la quatorzième avec un programme daté.
+    // (Évolution 26 c : « Commandes », une page de plus.)
+    assert.deepEqual([menu.auMenu,menu.pages,menu.montrees],[13,19,18],V+'treize entrées au menu, dix-neuf pages (dix-huit sans « Période »)');
     await capturer('1-menu');
 
     /* ---- « Services et équipes » : la liste à gauche, la fiche à droite -------------------------------------- */
@@ -148,7 +150,7 @@ const MESURER=([racine,vue])=>{
     assert.ok(await page.locator('#journee-chiffres .sy-service').count()>=5,V+'la Synthèse est intacte');
     await capturer('6-synthese-lecture-seule');
     await page.locator('#btn-lecture-seule').click();
-    await page.waitForFunction(()=>document.body.dataset.lecture===undefined&&document.querySelectorAll('#menu [data-sous-onglet]').length===11);
+    await page.waitForFunction(()=>document.body.dataset.lecture===undefined&&document.querySelectorAll('#menu [data-sous-onglet]').length===12);   // (évolution 26 c : « Commandes »)
 
     if(theme==='clair'&&largeur===1366)mesures={menu,pages:M};
     assert.deepEqual(errors,[],V+'aucune erreur de page');

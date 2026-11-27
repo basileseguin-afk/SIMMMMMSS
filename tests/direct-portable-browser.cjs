@@ -68,6 +68,10 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
    /** Un point de l'écran, dans la page, pour un point du sol de la scène. */
    const surLaToile=async(x,y,z=0)=>{const b=await page.locator('#direct-toile').boundingBox(),p=await page.evaluate(([x,y,z])=>Sim.direct.ecranDe(x,y,z),[x,y,z]);return {x:b.x+p[0],y:b.y+p[1]};};
    const ch=await F.charger(page,nav,site.url('index.html'),{sauvegarde,csv:CSV,pageId:'j-plan',relief:true,panneau:false});
+   // Rechargée, la page revient au programme d'exemple : les vols fictifs se réimportent. (Depuis l'évolution 26 e, avec la
+   // liste des compagnies de l'unité fictive, les vols d'exemple hors de la liste ne comptent plus : la journée d'exemple
+   // n'a plus les heures de celle des vols fictifs.)
+   const reimporter=async()=>{await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&!!Sim.ateliers.resultat);await F.importerVols(page,nav,ch.fichier,'vols-fictifs.csv',CSV);};
    try{
     await prete();
 
@@ -229,7 +233,7 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
     assert.deepEqual([apresClic.replie,apresClic.choix],[!avantClic.replie,avantClic.replie?'ouvert':'replie'],V+'le bouton retient le choix');
     if(apresClic.replie){await page.locator('#btn-en-ce-moment').click();await page.waitForFunction(()=>!document.body.classList.contains('sans-en-ce-moment'));}
     assert.equal((await replie()).choix,'ouvert');
-    await page.reload();await page.waitForLoadState('load');
+    await page.reload();await page.waitForLoadState('load');await reimporter();
     await nav.aller(page,'j-plan',{relief:true,panneau:false});await prete();
     assert.deepEqual([(await replie()).replie,(await replie()).panneau],[false,true],V+'rechargée, la page garde le panneau ouvert');
     cadrage(await dessinee(),V+'rechargée, le panneau ouvert');
@@ -272,7 +276,7 @@ const pourcent=x=>Math.round(x*1000)/10+' %';
     // 8. Replié par son bouton, le choix est retenu aussi.
     await page.locator('#btn-en-ce-moment').click();
     await page.waitForFunction(()=>document.body.classList.contains('sans-en-ce-moment'));
-    await page.reload();await page.waitForLoadState('load');
+    await page.reload();await page.waitForLoadState('load');await reimporter();
     await nav.aller(page,'j-plan',{relief:true,panneau:false});await prete();
     assert.deepEqual([(await replie()).replie,(await replie()).choix],[true,'replie'],V+'rechargée, la page garde le panneau replié');
     mesures.push(V+'le site cadré prend '+pourcent(parts0.largeur)+' de la largeur de la toile et '+pourcent(parts0.hauteur)+' de sa hauteur (à '+autre.join(' × ')+' : '+pourcent(partsAutre.largeur)+' et '+pourcent(partsAutre.hauteur)+') ; les étiquettes en couvrent '+pourcent(part0));

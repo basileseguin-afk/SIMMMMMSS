@@ -68,9 +68,14 @@ const recoupe=(a,b)=>a.x0<b.x1-0.5&&b.x0<a.x1-0.5&&a.y0<b.y1-0.5&&b.y0<a.y1-0.5;
    const memeCamera=(a,b,mot)=>assert.deepEqual([a.camera,a.ecran],[b.camera,b.ecran],mot);
    try{
     const x=await F.charger(page,nav,site.url('index.html'),{pageId:'j-plan',relief:true});await pret();
+    const reimporter=()=>F.importerVols(page,nav,x.fichier,'vols-fictifs.csv',F.volsCsv());
     // Aucun choix gardé : la légende s'ouvre repliée sur un portable, dépliée sur un grand écran (correction 21 d).
     await page.evaluate(cles=>cles.forEach(c=>localStorage.removeItem(c)),CLES);
     await page.reload();await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.direct&&!!Sim.ateliers.resultat);
+    // Rechargée, la page revient au programme d'exemple : les vols fictifs se réimportent. (Depuis l'évolution 26 e, avec la
+    // liste des compagnies de l'unité fictive, les vols d'exemple hors de la liste ne comptent plus : la journée d'exemple
+    // ne garde que des vols d'essai, trop peu pour que quatre services travaillent à l'heure choisie plus bas.)
+    await reimporter();
     await nav.aller(page,'j-plan',{relief:true});await pret();
 
     /* ---- 1. sans disposition réglée : la vue d'aujourd'hui ------------------------------------------------ */
@@ -120,6 +125,7 @@ const recoupe=(a,b)=>a.x0<b.x1-0.5&&b.x0<a.x1-0.5&&a.y0<b.y1-0.5&&b.y0<a.y1-0.5;
     await page.waitForFunction(()=>localStorage.getItem('ory-ui-direct-legende')==='ouverte');
     await page.reload();
     await page.waitForFunction(()=>window.Sim&&Sim.ateliers&&Sim.direct&&!!Sim.ateliers.resultat);
+    await reimporter();
     await nav.aller(page,'j-plan',{relief:true});await pret();
     const e4=await siteRegle(),m4=await mesures();
     assert.equal(m4.depliee,true,V+'après un rechargement : la légende dépliée, comme on l’a laissée');
